@@ -2,11 +2,12 @@
 
 ## Unreleased
 
+- Fix Microsoft text, sender and recipient mail searches by separating Graph `$search` from `$filter`/`$orderby`. Preserve local folder exclusions, structured filters and continuation through excluded pages; classify HTTP 400 as an invalid request.
 - Allow the documented rolling diagnostic files during stateless CLI/MCP smoke validation while continuing to reject database, configuration, credential or other first-run state.
 - Increase the visual size of Windows package icons by generating the exact MSIX tile assets from the tighter original artwork.
 - Add per-account **Reconnect** and **Remove from device** actions to the Windows setup UI, with confirmation, preserved sharing choices on reconnection, and clear separation between local credential removal and provider consent.
 - Add bounded Serilog diagnostics shared by the Windows setup app and CLI/MCP process, with daily local files, operation timings, independent mail/calendar check totals and safe failure categories for comparing UI and Codex behavior.
-- Build, sign and locally install Windows x64 MSIX `0.1.1.14` with account recovery, Serilog diagnostics and the larger package icon; the installed package reports status `Ok`.
+- Build, sign and locally install Windows x64 MSIX `0.1.1.15` with account recovery, Serilog diagnostics, the larger package icon and the Microsoft search fix; the installed package reports status `Ok`.
 - Add a Windows-only **Check read access** action that verifies every locally connected Google and Microsoft account with minimal Mail/Calendar requests, reports Mail and Calendar independently, silently refreshes tokens when possible, and marks reconnect-required capabilities without exposing provider response content.
 - Redesign the Windows setup wizard with native Acrylic, a shared title bar, unnumbered visual progress, local Google/Microsoft SVG logos and generated illustrations.
 - Replace long account cards with searchable, paged rows and one sharing editor at a time. Reveal calendar choices, provider registration, privacy details and manual Codex setup on request; retain explicit saving and protect unsaved changes.

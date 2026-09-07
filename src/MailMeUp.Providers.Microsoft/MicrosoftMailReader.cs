@@ -47,46 +47,7 @@ public sealed class MicrosoftMailReader : IMailReader
                 ? CreateSearchUrl(query, limit, excludedFolderIds)
                 : ValidateNextLink(cursor);
             using var document = await GetJsonAsync(url, accessToken, preferText: false, cancellationToken);
-            var summaries = new List<ProviderMailSummary>();
-            if (document.RootElement.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in values.EnumerateArray().Take(limit))
-                {
-                    var id = GetOptionalString(item, "id");
-                    if (string.IsNullOrWhiteSpace(id))
-                    {
-                        continue;
-                    }
-
-                    var summary = new ProviderMailSummary(
-                        id,
-                        GetOptionalString(item, "subject") ?? "(no subject)",
-                        ReadSender(item),
-                        ReadDate(item),
-                        GetOptionalString(item, "bodyPreview") ?? string.Empty,
-                        IsRead: GetOptionalBoolean(item, "isRead") ?? true,
-                        HasAttachments: GetOptionalBoolean(item, "hasAttachments") ?? false,
-                        Recipients: ReadRecipients(item, "toRecipients")
-                            .Concat(ReadRecipients(item, "ccRecipients"))
-                            .ToArray());
-                    var parentFolderId = GetOptionalString(item, "parentFolderId");
-                    if (string.IsNullOrWhiteSpace(parentFolderId) ||
-                        excludedFolderIds.Contains(parentFolderId, StringComparer.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    if ((query.Start is null || summary.ReceivedAt >= query.Start.Value) &&
-                        (query.End is null || summary.ReceivedAt < query.End.Value))
-                    {
-                        summaries.Add(summary);
-                    }
-                }
-            }
-
-            return new ProviderMailSearchPage(
-                summaries,
-                GetOptionalString(document.RootElement, "@odata.nextLink"));
+            return ParseSearchPage(document.RootElement, query, limit, excludedFolderIds);
         }
         catch (OperationCanceledException)
         {
@@ -207,12 +168,13 @@ public sealed class MicrosoftMailReader : IMailReader
         var parameters = new List<string>
         {
             "%24select=id%2Csubject%2Cfrom%2CtoRecipients%2CccRecipients%2CreceivedDateTime%2CbodyPreview%2CisRead%2ChasAttachments%2CparentFolderId",
-            "%24top=" + limit.ToString(CultureInfo.InvariantCulture),
-            "%24filter=" + Uri.EscapeDataString(string.Join(" and ", filterParts))
+            "%24top=" + limit.ToString(CultureInfo.InvariantCulture)
         };
 
         if (searchParts.Count > 0)
         {
+            // Graph message search rejects $filter and $orderby alongside $search.
+            // Enforce folder exclusions and structured criteria on each returned page instead.
             var escapedSearch = string.Join(" AND ", searchParts)
                 .Replace("\\", "\\\\", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal);
@@ -221,10 +183,56 @@ public sealed class MicrosoftMailReader : IMailReader
         else
         {
             // The broad receivedDateTime lower bound is first in $filter so Graph accepts this $orderby.
+            parameters.Add("%24filter=" + Uri.EscapeDataString(string.Join(" and ", filterParts)));
             parameters.Add("%24orderby=receivedDateTime%20DESC");
         }
 
         return "https://graph.microsoft.com/v1.0/me/messages?" + string.Join('&', parameters);
+    }
+
+    private static ProviderMailSearchPage ParseSearchPage(
+        JsonElement root,
+        ProviderMailQuery query,
+        int limit,
+        IReadOnlyList<string> excludedFolderIds)
+    {
+        var summaries = new List<ProviderMailSummary>();
+        if (root.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in values.EnumerateArray().Take(limit))
+            {
+                var id = GetOptionalString(item, "id");
+                var parentFolderId = GetOptionalString(item, "parentFolderId");
+                if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(parentFolderId) ||
+                    excludedFolderIds.Contains(parentFolderId, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                var summary = new ProviderMailSummary(
+                    id,
+                    GetOptionalString(item, "subject") ?? "(no subject)",
+                    ReadSender(item),
+                    ReadDate(item),
+                    GetOptionalString(item, "bodyPreview") ?? string.Empty,
+                    IsRead: GetOptionalBoolean(item, "isRead") ?? true,
+                    HasAttachments: GetOptionalBoolean(item, "hasAttachments") ?? false,
+                    Recipients: ReadRecipients(item, "toRecipients")
+                        .Concat(ReadRecipients(item, "ccRecipients"))
+                        .ToArray());
+                if ((query.Start is null || summary.ReceivedAt >= query.Start.Value) &&
+                    (query.End is null || summary.ReceivedAt < query.End.Value) &&
+                    (!query.UnreadOnly || !summary.IsRead) &&
+                    (query.HasAttachments is null || summary.HasAttachments == query.HasAttachments.Value))
+                {
+                    summaries.Add(summary);
+                }
+            }
+        }
+
+        // Keep the continuation even when this whole page was excluded; the application
+        // refills within its existing time/page budget and applies sender/recipient filters.
+        return new ProviderMailSearchPage(summaries, GetOptionalString(root, "@odata.nextLink"));
     }
 
     private static async Task<IReadOnlyList<string>> ReadExcludedFolderIdsAsync(
@@ -408,6 +416,7 @@ public sealed class MicrosoftMailReader : IMailReader
     }
     private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
     {
+        400 => ReadFailureKind.InvalidRequest,
         401 => ReadFailureKind.SignInRequired,
         403 => ReadFailureKind.AccessDenied,
         404 or 410 => ReadFailureKind.ItemUnavailable,

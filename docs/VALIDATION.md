@@ -1,5 +1,15 @@
 # Validation
 
+## Microsoft mail search regression and real-account verification
+
+**Windows x64, 2026-09-07 — package 0.1.1.15.** Microsoft text searches previously combined `$search` and `$filter` and failed on both real Microsoft accounts while unread/date listings and Calendar worked. Three new query-construction regression cases failed on the previous code. After separating the query modes, all **122 .NET tests passed**, including nine new cases for query compatibility, local exclusions/filters, continuation through empty filtered pages and HTTP 400 classification.
+
+The CI-equivalent formatting check, Release build, CLI/MCP smoke, dependency inventory and repository preflight passed locally. The newly published native CLI also passed isolated synthetic smoke. Signed MSIX creation and installation succeeded; installed version `0.1.1.15` reports `Ok`, with a valid signature.
+
+With the owner's explicit permission, the installed executable passed **34 real-provider checks, zero failures and three skips**, across three Google and two Microsoft accounts. Microsoft text search, bounded message detail, continuation and mixed-account search all passed. The run covered five mail samples, four event samples and 16 calendars. One Microsoft calendar had no events in the 30-day window (detail and continuation skipped); the other had no next event page (continuation skipped). No mailbox identities, credentials or content were printed. Provider data was not modified; normal protected token refresh and local diagnostics remain possible.
+
+The standalone published executable separately passed 27 checks, zero failures and three skips against its four visible accounts. Its default runtime data context differs from the installed executable's five-account context, so the installed run is the verification for the owner's app. These are bounded summary/detail consistency checks, not an independent comparison with Outlook/Gmail. Clean-machine installation, deliberate revocation/reconnect and post-install desktop interaction remain untested. Remote CI results for this fix are recorded on the PR, separately from these local results.
+
 ## Account recovery, CI smoke and package icon
 
 **Windows x64, 2026-09-07 — package 0.1.1.14.** The CI-equivalent `scripts/validate.ps1 -SkipUnitTests -CheckFormatting` command passed formatting, Release build, CLI/MCP smoke, dependency inventory and repository preflight. The build completed with zero warnings and zero errors. The smoke test permits only the documented rolling files below `logs`; database, configuration, credential and any other first-run state still fail validation.
