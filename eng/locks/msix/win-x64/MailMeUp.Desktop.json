@@ -488,11 +488,19 @@
         "type": "Project",
         "dependencies": {
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
       },
       "mailmeup.core": {
         "type": "Project"
+      },
+      "mailmeup.diagnostics": {
+        "type": "Project",
+        "dependencies": {
+          "MailMeUp.Core": "[0.1.1, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
+        }
       },
       "mailmeup.hosting": {
         "type": "Project",
@@ -510,6 +518,7 @@
         "dependencies": {
           "Google.Apis.Auth": "[1.76.0, )",
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "MailMeUp.Security": "[0.1.1, )"
         }
       },
@@ -517,6 +526,7 @@
         "type": "Project",
         "dependencies": {
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "MailMeUp.Security": "[0.1.1, )",
           "Microsoft.Identity.Client": "[4.88.0, )"
         }

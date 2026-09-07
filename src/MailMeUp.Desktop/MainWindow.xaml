@@ -104,12 +104,27 @@
                             <StackPanel Spacing="8"><TextBlock Text="Changes apply to future reads. Existing conversations keep what was already shared." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><Button Style="{StaticResource QuietButton}" Click="SharingInfoButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="What reaches your assistant" /></StackPanel></Button></StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="CodexPage" Spacing="20" Visibility="Collapsed">
-                            <StackPanel Spacing="6"><TextBlock Text="Connect to Codex" Style="{StaticResource SectionTitle}" /><TextBlock Text="Install the local plugin to make MailMeUp available in Codex." Style="{StaticResource BodyText}" /></StackPanel>
-                            <Grid MaxWidth="460" HorizontalAlignment="Stretch" ColumnSpacing="24" Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel Spacing="6"><Image Source="Assets/Logo.png" Width="56" Height="56" AutomationProperties.AccessibilityView="Raw" /><TextBlock Text="MailMeUp" HorizontalAlignment="Center" /></StackPanel><TextBlock Grid.Column="1" Text="· · · · · · · ·" FontSize="24" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" AutomationProperties.AccessibilityView="Raw" /><StackPanel Grid.Column="2" Spacing="6"><FontIcon Glyph="&#xE756;" FontSize="40" Height="56" /><TextBlock Text="Codex" HorizontalAlignment="Center" /></StackPanel></Grid>
-                            <Border Style="{StaticResource SetupCard}" Padding="18"><StackPanel Spacing="12"><TextBlock x:Name="CodexStatusTitle" Text="Check local configuration" FontSize="18" FontWeight="SemiBold" /><TextBlock x:Name="CodexStatusText" Text="Refresh status to see the available setup options." Style="{StaticResource BodyText}" /><StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="InstallPluginButton" Content="Install local plugin" Click="InstallPluginButton_Click" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" /><Button Content="Refresh status" Click="RefreshCodexButton_Click" Style="{StaticResource QuietButton}" /></StackPanel></StackPanel></Border>
+                            <StackPanel Spacing="6"><TextBlock Text="Connect to Codex" Style="{StaticResource SectionTitle}" /><TextBlock Text="See what is configured on this device and what to do next." Style="{StaticResource BodyText}" /></StackPanel>
+                            <Border Style="{StaticResource SetupCard}" Padding="18">
+                                <StackPanel Spacing="12">
+                                    <TextBlock x:Name="CodexStatusTitle" Text="Check your setup" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                    <TextBlock x:Name="CodexStatusText" Text="Check the MailMeUp command, Codex CLI, marketplace and plugin. This reads configuration only; it does not run a prompt or read your accounts." Style="{StaticResource BodyText}" />
+                                    <StackPanel x:Name="CodexActions" Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="InstallPluginButton" Content="Install local plugin" Click="InstallPluginButton_Click" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" IsEnabled="False" />
+                                        <Button x:Name="CodexHelpButton" Content="Review next steps" Click="CodexHelpButton_Click" Visibility="Collapsed" />
+                                        <Button x:Name="RefreshCodexButton" Content="Check setup" Click="RefreshCodexButton_Click" Style="{StaticResource AccentButtonStyle}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Local configuration" FontWeight="SemiBold" />
+                                <StackPanel x:Name="CodexChecks" Spacing="4" />
+                                <TextBlock x:Name="CodexCheckedText" Text="Not checked yet." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.LiveSetting="Polite" />
+                                <Button x:Name="CopyCodexResultsButton" Content="Copy setup results" Click="CopyCodexResultsButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
+                            </StackPanel>
                             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="CodexSharingText" Text="No accounts shared yet." TextWrapping="Wrap" VerticalAlignment="Center" /><Button Grid.Column="1" Content="Review sharing →" Style="{StaticResource QuietButton}" Click="ReviewSharingButton_Click" /></Grid>
-                            <TextBlock Text="After installation, start a new Codex task and ask MailMeUp for its status." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Button Style="{StaticResource QuietButton}" Click="ManualSetupButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="Installation details &amp; manual setup" TextWrapping="Wrap" /></StackPanel></Button>
+                            <TextBlock Text="Configuration is not a connection test. No prompt is run, no mailbox is read, and no existing connection is removed by this check." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button Style="{StaticResource QuietButton}" Click="ManualSetupButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="Manual setup (fallback)" TextWrapping="Wrap" /></StackPanel></Button>
                         </StackPanel>
                     </Grid>
                 </ContentControl>

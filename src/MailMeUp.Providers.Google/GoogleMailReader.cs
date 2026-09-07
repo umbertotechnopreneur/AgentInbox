@@ -5,7 +5,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MailMeUp.Core;
+using MailMeUp.Diagnostics;
 using MailMeUp.Security;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MailMeUp.Providers.Google;
 
@@ -14,12 +17,14 @@ public sealed class GoogleMailReader : IMailReader
 {
     private const int MaximumJsonBytes = 12 * 1024 * 1024;
     private static readonly HttpClient HttpClient = new();
+    private readonly ILogger<GoogleMailReader> _logger;
     private readonly GoogleAccessTokenProvider _tokens;
 
     /// <summary>Creates a Gmail reader backed by protected Google account tokens.</summary>
-    public GoogleMailReader(IProviderConfigurationStore configurations, ISecretStore secrets)
+    public GoogleMailReader(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger<GoogleMailReader>? logger = null)
     {
-        _tokens = new GoogleAccessTokenProvider(configurations, secrets);
+        _logger = logger ?? NullLogger<GoogleMailReader>.Instance;
+        _tokens = new GoogleAccessTokenProvider(configurations, secrets, _logger);
     }
 
     /// <inheritdoc />
@@ -34,7 +39,11 @@ public sealed class GoogleMailReader : IMailReader
         CancellationToken cancellationToken = default)
     {
         ValidateMailAccount(account);
+        using var diagnostics = ReadDiagnostics.Begin(_logger, account, "search_mail");
         ArgumentNullException.ThrowIfNull(query);
+        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
+            !string.IsNullOrWhiteSpace(query.Text), query.Sender is not null, query.RecipientContains is not null,
+            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.HasAttachments.HasValue, cursor is not null, limit);
         if (query.Text.Length > 500 || query.Text.Any(char.IsControl) || limit is < 1 or > 50 || cursor is { Length: > 4_096 })
         {
             throw new ArgumentException("The Gmail search page is invalid.");
@@ -47,14 +56,14 @@ public sealed class GoogleMailReader : IMailReader
                 .Append(limit.ToString(CultureInfo.InvariantCulture))
                 .Append("&q=").Append(Uri.EscapeDataString(CreateProviderQuery(query)))
                 .Append("&includeSpamTrash=false")
-                .Append("&fields=messages(id%2CthreadId)%2CnextPageToken")
+                .Append("&fields=messages(id%2CthreadId)%2CnextPageToken%2CresultSizeEstimate")
                 .ToString();
             if (!string.IsNullOrWhiteSpace(cursor))
             {
                 url += "&pageToken=" + Uri.EscapeDataString(cursor);
             }
 
-            using var page = await GetJsonAsync(url, accessToken, cancellationToken);
+            using var page = await GetJsonAsync(url, accessToken, "gmail.messages.list", cancellationToken);
             var summaries = new List<ProviderMailSummary>();
             if (page.RootElement.TryGetProperty("messages", out var messages) && messages.ValueKind == JsonValueKind.Array)
             {
@@ -82,16 +91,19 @@ public sealed class GoogleMailReader : IMailReader
         {
             throw;
         }
-        catch (ProviderReadException)
+        catch (ProviderReadException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The provider could not be reached.", ReadFailureKind.Network);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("Gmail search failed.");
         }
     }
@@ -103,12 +115,13 @@ public sealed class GoogleMailReader : IMailReader
         CancellationToken cancellationToken = default)
     {
         ValidateMailAccount(account);
+        using var diagnostics = ReadDiagnostics.Begin(_logger, account, "read_mail");
         ValidateMessageId(providerMessageId);
         try
         {
             var accessToken = await _tokens.GetAsync(account, cancellationToken);
             var url = $"https://gmail.googleapis.com/gmail/v1/users/me/messages/{Uri.EscapeDataString(providerMessageId)}?format=full";
-            using var document = await GetJsonAsync(url, accessToken, cancellationToken);
+            using var document = await GetJsonAsync(url, accessToken, "gmail.messages.get", cancellationToken);
             var root = document.RootElement;
             var headers = root.TryGetProperty("payload", out var payload)
                 ? ReadHeaders(payload)
@@ -129,21 +142,24 @@ public sealed class GoogleMailReader : IMailReader
         {
             throw;
         }
-        catch (ProviderReadException)
+        catch (ProviderReadException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The provider could not be reached.", ReadFailureKind.Network);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The Gmail message could not be read.");
         }
     }
 
-    private static async Task<ProviderMailSummary> ReadSummaryAsync(
+    private async Task<ProviderMailSummary> ReadSummaryAsync(
         string messageId,
         string accessToken,
         CancellationToken cancellationToken)
@@ -153,7 +169,7 @@ public sealed class GoogleMailReader : IMailReader
                   "?format=metadata&metadataHeaders=Subject&metadataHeaders=From" +
                   "&metadataHeaders=To&metadataHeaders=Cc" +
                   "&fields=id%2CinternalDate%2Csnippet%2ClabelIds%2Cpayload%2Fheaders%2Cpayload%2Fparts";
-        using var document = await GetJsonAsync(url, accessToken, cancellationToken);
+        using var document = await GetJsonAsync(url, accessToken, "gmail.messages.metadata", cancellationToken);
         var root = document.RootElement;
         var headers = root.TryGetProperty("payload", out var payload)
             ? ReadHeaders(payload)
@@ -213,42 +229,13 @@ public sealed class GoogleMailReader : IMailReader
         return string.Join(' ', parts);
     }
 
-    private static async Task<JsonDocument> GetJsonAsync(string url, string accessToken, CancellationToken cancellationToken)
+    private async Task<JsonDocument> GetJsonAsync(string url, string accessToken, string endpoint, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new ProviderReadException("Gmail returned an unsuccessful response.", ClassifyHttpFailure((int)response.StatusCode));
-        }
-
-        if (response.Content.Headers.ContentLength is > MaximumJsonBytes)
-        {
-            throw new ProviderReadException("The Gmail response is too large.");
-        }
-
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var buffer = new MemoryStream();
-        var chunk = new byte[32 * 1024];
-        while (true)
-        {
-            var read = await source.ReadAsync(chunk, cancellationToken);
-            if (read == 0)
-            {
-                break;
-            }
-
-            if (buffer.Length + read > MaximumJsonBytes)
-            {
-                throw new ProviderReadException("The Gmail response is too large.");
-            }
-
-            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
-        }
-
-        buffer.Position = 0;
-        return await JsonDocument.ParseAsync(buffer, cancellationToken: cancellationToken);
+        return await ProviderHttpDiagnostics.ReadJsonAsync(
+            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken,
+            allowNoContent: endpoint == "gmail.messages.list");
     }
 
     private static Dictionary<string, string> ReadHeaders(JsonElement payload)
@@ -397,6 +384,7 @@ public sealed class GoogleMailReader : IMailReader
     }
     private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
     {
+        400 => ReadFailureKind.InvalidRequest,
         401 => ReadFailureKind.SignInRequired,
         403 => ReadFailureKind.AccessDenied,
         404 or 410 => ReadFailureKind.ItemUnavailable,

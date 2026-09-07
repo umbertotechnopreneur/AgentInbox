@@ -20,7 +20,8 @@ flowchart LR
 | Module | Responsibility |
 | --- | --- |
 | Core | Account models and contracts |
-| Application | Shared operations, account lifecycle and capability status |
+| Application | Shared operations, account lifecycle, bounded read checks and capability status |
+| Diagnostics | Bounded HTTP failure capture, pseudonymous account correlation and log scopes |
 | Storage | SQLite metadata and local paths |
 | Security | Operating-system protected credential storage |
 | Providers.Google / Providers.Microsoft | Provider app setup, sign-in and read-only mail/calendar adapters |

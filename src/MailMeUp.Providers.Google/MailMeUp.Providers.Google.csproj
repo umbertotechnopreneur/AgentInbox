@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../MailMeUp.Core/MailMeUp.Core.csproj" />
+    <ProjectReference Include="../MailMeUp.Diagnostics/MailMeUp.Diagnostics.csproj" />
     <ProjectReference Include="../MailMeUp.Security/MailMeUp.Security.csproj" />
   </ItemGroup>
   <ItemGroup>

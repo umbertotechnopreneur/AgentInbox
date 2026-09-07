@@ -48,6 +48,7 @@ public sealed partial class MainWindow : Window
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        RenderCodexChecks(CodexSetupCheck.Pending());
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         UpdateTitleBar();
@@ -149,6 +150,7 @@ public sealed partial class MainWindow : Window
         WelcomeHeading.FontSize = availableWidth < 500 ? 32 : 40;
         RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
         _narrowSharing = availableWidth < 750;
+        CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
         UpdateSharingLayout();
 
     }
@@ -198,7 +200,7 @@ public sealed partial class MainWindow : Window
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty, _codexStatus?.IsPluginConfigured == true];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
         var contiguous = 0;
         while (contiguous < 3 && completed[contiguous]) contiguous++;
         ProgressLine.Height = contiguous * 52;
@@ -275,40 +277,33 @@ public sealed partial class MainWindow : Window
         foreach (var account in _accounts)
         {
             var row = AccountRow(account, includeStatus: false);
-            var sharingStatus = IsShared(account) ? "Shared" : "Sharing off";
             var connection = _connectionChecks.GetValueOrDefault(account.Id);
-            var connectionStatus = ConnectionStatusText(connection);
-            var status = new TextBlock
+            if (NeedsReadAttention(connection))
             {
-                Text = connectionStatus is null ? sharingStatus : $"{connectionStatus} · {sharingStatus}",
-                FontSize = 12,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = ConnectionStatusBrush(connection)
-            };
-            if (connection is { Reachable: false })
-            {
-                ToolTipService.SetToolTip(status, ConnectionFailureTooltip(connection));
+                var reconnect = AccountActionButton(
+                    "Try to reconnect", $"Try to reconnect {account.EmailAddress}",
+                    "Try to reconnect", account, ReconnectAccountButton_Click);
+                reconnect.Foreground = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
+                Grid.SetColumn(reconnect, 2);
+                row.Children.Add(reconnect);
             }
-            Grid.SetColumn(status, 2);
-            row.Children.Add(status);
-            var actions = new StackPanel
+            var menu = new MenuFlyout();
+            var reconnectItem = new MenuFlyoutItem { Text = "Reconnect", Tag = account };
+            reconnectItem.Click += ReconnectAccountButton_Click;
+            menu.Items.Add(reconnectItem);
+            var removeItem = new MenuFlyoutItem { Text = "Remove from device", Tag = account };
+            removeItem.Click += RemoveAccountButton_Click;
+            menu.Items.Add(removeItem);
+            var actions = new Button
             {
-                Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Content = new FontIcon { Glyph = "\uE712", FontSize = 16 },
+                Flyout = menu,
+                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
+                Padding = new Thickness(8),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            actions.Children.Add(AccountActionButton(
-                "Reconnect",
-                $"Reconnect {account.EmailAddress}",
-                "Reconnect this account with the same provider account",
-                account,
-                ReconnectAccountButton_Click));
-            actions.Children.Add(AccountActionButton(
-                "Remove",
-                $"Remove {account.EmailAddress} from this device",
-                "Remove this account and its local credentials from this device",
-                account,
-                RemoveAccountButton_Click));
+            AutomationProperties.SetName(actions, $"Account actions for {account.EmailAddress}");
+            ToolTipService.SetToolTip(actions, "Account actions");
             Grid.SetColumn(actions, 3);
             row.Children.Add(actions);
             ConnectedAccounts.Children.Add(new Border
@@ -364,46 +359,20 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    private static string? ConnectionStatusText(AccountConnectionCheck? connection)
+    private static bool NeedsReadAttention(AccountConnectionCheck? check)
     {
-        if (connection is null)
-            return null;
-
-        var services = new List<string>(2);
-        if (connection.MailReachable is bool mailReachable)
-            services.Add($"Mail: {(mailReachable ? "OK" : "needs attention")}");
-        if (connection.CalendarReachable is bool calendarReachable)
-            services.Add($"Calendar: {(calendarReachable ? "OK" : "needs attention")}");
-        if (services.Count > 0)
-            return string.Join(" · ", services);
-
-        return connection switch
-        {
-            { Reachable: true } => "Connected",
-            { FailureKind: ReadFailureKind.SignInRequired or ReadFailureKind.AccessDenied or ReadFailureKind.LocalCredentialsUnavailable } => "Reconnect needed",
-            _ => "Needs attention"
-        };
+        if (check is null || !check.HasFailures)
+            return false;
+        // Missing samples and bounded checks are not broken connections.
+        var failures = new List<ReadFailureKind>();
+        if (check.MailReachable == false || check.MailFailureKind is not null)
+            failures.Add(check.MailFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
+        if (check.CalendarReachable == false || check.CalendarFailureKind is not null)
+            failures.Add(check.CalendarFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
+        if (failures.Count == 0)
+            failures.Add(check.FailureKind ?? ReadFailureKind.Unknown);
+        return failures.Any(kind => kind != ReadFailureKind.ResultLimit);
     }
-
-    private static string ConnectionFailureTooltip(AccountConnectionCheck connection)
-    {
-        var actions = new List<string>(2);
-        if (connection.MailReachable == false)
-            actions.Add($"Mail: {ReadFailureGuidance.Describe(connection.MailFailureKind ?? connection.FailureKind ?? ReadFailureKind.Unknown).Action}");
-        if (connection.CalendarReachable == false)
-            actions.Add($"Calendar: {ReadFailureGuidance.Describe(connection.CalendarFailureKind ?? connection.FailureKind ?? ReadFailureKind.Unknown).Action}");
-        if (actions.Count > 0)
-            return string.Join(" ", actions);
-
-        return ReadFailureGuidance.Describe(connection.FailureKind ?? ReadFailureKind.Unknown).Action;
-    }
-
-    private static Brush ConnectionStatusBrush(AccountConnectionCheck? connection) => connection switch
-    {
-        { Reachable: true } => ThemeBrush("WizardAccentBrush"),
-        { Reachable: false } => new SolidColorBrush(Microsoft.UI.Colors.IndianRed),
-        _ => ThemeBrush("TextFillColorSecondaryBrush")
-    };
 
     private static ImageSource ProviderLogo(string provider) =>
         new SvgImageSource(new Uri($"ms-appx:///Assets/{(provider == "google" ? "Google" : "Microsoft")}.svg"));
@@ -422,50 +391,64 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CheckConnectionsButton_Click(object sender, RoutedEventArgs e) => await RunAsync(
-        "Checking Mail and Calendar read access…",
+        "Checking read access…",
         async cancellationToken =>
         {
-            var result = await _application.CheckConnectionsAsync(cancellationToken);
-            _connectionChecks = result.Accounts.ToDictionary(check => check.AccountId, StringComparer.Ordinal);
+            // A failed or cancelled retry must never retain a previous successful result.
+            _connectionChecks.Clear();
             RenderConnectedAccounts();
-            var unavailable = result.Accounts.Count(check => !check.Reachable);
-            var mailFailures = result.Accounts.Count(check => check.MailReachable == false);
-            var calendarFailures = result.Accounts.Count(check => check.CalendarReachable == false);
-            if (result.Accounts.Count == 0)
+            try
             {
-                SetNotice("No accounts to check", "Connect an account first, then check its connection here.", InfoBarSeverity.Informational);
+                var result = await _application.CheckConnectionsAsync(cancellationToken);
+                _connectionChecks = result.Accounts.ToDictionary(check => check.AccountId, StringComparer.Ordinal);
+                foreach (var account in _accounts)
+                {
+                    if (!_connectionChecks.ContainsKey(account.Id))
+                        _connectionChecks[account.Id] = UnavailableCheck(account);
+                }
             }
-            else if (unavailable == 0)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                SetNotice("Read access checked", "Mail and calendar read access succeeded for every enabled account. Expired access tokens were refreshed silently when possible.", InfoBarSeverity.Success);
+                _logger.LogInformation("Desktop read check cancelled; previous results cleared");
             }
-            else
+            catch (Exception exception)
             {
-                var failures = new List<string>(2);
-                if (mailFailures > 0)
-                    failures.Add($"{mailFailures} mail access {(mailFailures == 1 ? "check" : "checks")} failed");
-                if (calendarFailures > 0)
-                    failures.Add($"{calendarFailures} calendar access {(calendarFailures == 1 ? "check" : "checks")} failed");
-                var detail = failures.Count == 0
-                    ? "Some account read checks need attention."
-                    : string.Join("; ", failures) + ".";
-                SetNotice("Some read capabilities need attention", $"{detail} MailMeUp checked provider read access for each enabled capability (Microsoft Graph: Mail.Read and Calendars.Read). Review the affected account and sign in again if needed.", InfoBarSeverity.Warning);
+                _logger.LogWarning("Desktop read check failed ({ErrorType}); no successful result assumed", exception.GetType().Name);
+                _connectionChecks = _accounts.ToDictionary(account => account.Id, UnavailableCheck, StringComparer.Ordinal);
             }
+            for (var index = 0; index < _accounts.Count; index++)
+            {
+                var account = _accounts[index];
+                var check = _connectionChecks.GetValueOrDefault(account.Id);
+                _logger.LogInformation(
+                    "Desktop read check row={AccountRow}; account={AccountKey}; resultPresent={ResultPresent}; failures={HasFailures}; mail={MailReachable}/{MailFailureCategory}/{MailEvidence}; calendar={CalendarReachable}/{CalendarFailureCategory}/{CalendarEvidence}",
+                    index + 1, MailMeUp.Diagnostics.ReadDiagnostics.AccountKey(account.Id), check is not null,
+                    check?.HasFailures, check?.MailReachable, check?.MailFailureKind, check?.MailEvidence,
+                    check?.CalendarReachable, check?.CalendarFailureKind, check?.CalendarEvidence);
+            }
+            RenderConnectedAccounts();
+            Notice.IsOpen = false;
         },
         TimeSpan.FromMinutes(2.5));
+
+    private static AccountConnectionCheck UnavailableCheck(Account account) => new(account.Id, false,
+        ReadFailureKind.Unknown, account.MailReadEnabled ? false : null,
+        account.MailReadEnabled ? ReadFailureKind.Unknown : null, account.CalendarReadEnabled ? false : null,
+        account.CalendarReadEnabled ? ReadFailureKind.Unknown : null);
+
     private async void GoogleButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("google");
     private async void MicrosoftButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("microsoft");
 
     private async void ReconnectAccountButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _dialogOpen || sender is not Button { Tag: Account account }) return;
+        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
         if (!CanLeaveSharing()) return;
         await ConnectAsync(account.Provider, account);
     }
 
     private async void RemoveAccountButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _dialogOpen || sender is not Button { Tag: Account account }) return;
+        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
         if (!CanLeaveSharing()) return;
 
         var content = new StackPanel { Spacing = 12 };
@@ -584,44 +567,6 @@ public sealed partial class MainWindow : Window
         return true;
     }
 
-    private async void RefreshCodexButton_Click(object sender, RoutedEventArgs e) =>
-        await RunAsync("Reading local Codex configuration…", async token => ApplyCodexStatus(await _codex.GetStatusAsync(token)));
-
-    private void ApplyCodexStatus(CodexSetupStatus status)
-    {
-        _codexStatus = status;
-        CodexStatusTitle.Text = status.Code switch
-        {
-            "ReadyToInstall" => "Plugin not installed",
-            "PluginConfigured" => "Plugin installed and enabled",
-            "PluginDisabled" => "Plugin is disabled",
-            "DirectRegistrationExists" => "Existing connection found",
-            "AliasUnavailable" => "Windows alias unavailable",
-            "CodexUnavailable" => "Manual setup needed",
-            _ => "Setup needs attention"
-        };
-        CodexStatusText.Text = status.Code switch
-        {
-            "ReadyToInstall" => "Ready for local installation.",
-            "PluginConfigured" => "Start a new Codex task to load the tools. Runtime connection is not confirmed here.",
-            "PluginDisabled" => "Enable MailMeUp in Codex, then refresh status.",
-            "DirectRegistrationExists" => "Review the direct MCP connection in Codex before adding this plugin.",
-            "CodexUnavailable" => "Open manual setup for the available installation route.",
-            _ => "Open installation details for the next steps."
-        };
-        InstallPluginButton.IsEnabled = status.CanInstall;
-        InstallPluginButton.Content = status.IsPluginConfigured ? "Update local plugin" : "Install local plugin";
-        UpdateProgress();
-    }
-
-    private async void InstallPluginButton_Click(object sender, RoutedEventArgs e) =>
-        await RunAsync("Installing the local Codex plugin…", async token =>
-        {
-            var result = await _codex.InstallPluginAsync(token);
-            ApplyCodexStatus(result.Status);
-            SetNotice(result.Success ? "Plugin configured" : "Setup needs attention", result.Message,
-                result.Success ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-        }, TimeSpan.FromMinutes(2));
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => _operation?.Cancel();
 

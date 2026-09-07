@@ -22,7 +22,26 @@ public sealed record CodexSetupStatus(
     string Message,
     bool CanInstall,
     bool IsPluginConfigured,
-    bool HasDirectRegistration);
+    bool HasDirectRegistration)
+{
+    /// <summary>Gets safe, individual observations; an unperformed check is never reported as absent or successful.</summary>
+    public IReadOnlyList<CodexSetupCheck> Checks { get; init; } = [];
+}
+
+/// <summary>Describes one local configuration check without exposing command output or credentials.</summary>
+/// <param name="Name">The component being inspected.</param>
+/// <param name="Result">A safe description of the observed result or why it is unknown.</param>
+public sealed record CodexSetupCheck(string Name, string Result)
+{
+    internal static IReadOnlyList<CodexSetupCheck> Pending() =>
+    [
+        new("MailMeUp command", "Not checked"),
+        new("Codex CLI", "Not checked"),
+        new("Local marketplace", "Not checked"),
+        new("MailMeUp plugin", "Not checked"),
+        new("Direct MCP connection", "Not checked")
+    ];
+}
 
 /// <summary>Reports the outcome of an explicit guided installation request.</summary>
 /// <param name="Success">Whether Codex reports the plugin installed and enabled after installation.</param>

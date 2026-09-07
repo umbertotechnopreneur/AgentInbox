@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../MailMeUp.Core/MailMeUp.Core.csproj" />
-    <ProjectReference Include="../MailMeUp.Diagnostics/MailMeUp.Diagnostics.csproj" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 </Project>

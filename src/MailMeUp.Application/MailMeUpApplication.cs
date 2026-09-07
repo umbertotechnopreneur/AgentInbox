@@ -945,7 +945,19 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
 
             try
             {
-                return await ReadWithDeadlineAsync(token => checker.CheckAsync(account, token), cancellationToken);
+                var result = await ReadWithDeadlineAsync(token => checker.CheckAsync(account, token), cancellationToken);
+                if (result.AccountId != account.Id ||
+                    (!account.MailReadEnabled && !account.CalendarReadEnabled) ||
+                    (account.MailReadEnabled && result.MailReachable is null) ||
+                    (account.CalendarReadEnabled && result.CalendarReachable is null))
+                {
+                    return FailedConnectionCheck(account, ReadFailureKind.Unknown);
+                }
+                return result.HasFailures ? result with
+                {
+                    Reachable = false,
+                    FailureKind = result.FailureKind ?? result.MailFailureKind ?? result.CalendarFailureKind ?? ReadFailureKind.Unknown
+                } : result;
             }
             catch (Exception exception) when (IsProviderReadFailure(exception, cancellationToken))
             {

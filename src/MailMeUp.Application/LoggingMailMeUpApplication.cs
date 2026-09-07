@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using MailMeUp.Core;
+using MailMeUp.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace MailMeUp.Application;
@@ -78,6 +79,10 @@ public sealed class LoggingMailMeUpApplication(
 
     private async Task<T> RunAsync<T>(string operation, Func<Task<T>> action, CancellationToken cancellationToken)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object>
+        {
+            ["OperationId"] = Guid.NewGuid().ToString("N")
+        });
         var started = Stopwatch.GetTimestamp();
         logger.LogDebug("Operation {Operation} started", operation);
         try
@@ -128,6 +133,18 @@ public sealed class LoggingMailMeUpApplication(
                     operation,
                     failedAccounts,
                     failureCategories);
+                IEnumerable<AccountReadFailure> failures = result switch
+                {
+                    MailSearchResult mail => mail.FailedAccounts,
+                    CalendarListResult calendars => calendars.FailedAccounts,
+                    EventSearchResult events => events.FailedAccounts,
+                    _ => []
+                };
+                foreach (var failure in failures)
+                {
+                    logger.LogWarning("Operation {Operation} unavailable account={AccountKey}; category={FailureCategory}",
+                        operation, ReadDiagnostics.AccountKey(failure.AccountId), failure.Kind);
+                }
             }
 
             return result;

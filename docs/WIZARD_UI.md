@@ -20,7 +20,7 @@ Each connected-account row also exposes **Reconnect** and **Remove** actions. Re
 
 Calendar discovery occurs only after choosing individual calendars. The picker filters and pages names in memory, retains saved IDs absent from discovery, and only returns a draft selection. An empty discovery cannot silently replace saved choices. Saving the account applies that draft; OAuth grants and provider data remain unchanged.
 
-Privacy/terms, sharing explanations, provider registration and manual Codex commands open dedicated dialogs. Essential AI-service disclosure remains on Welcome. The Codex page distinguishes installed configuration from tools loaded by a running session. Plugin preparation and installation still require explicit UI actions.
+Privacy/terms, sharing explanations, provider registration and manual Codex commands open dedicated dialogs. Essential AI-service disclosure remains on Welcome. The Codex source page replaces its decorative connection strip with individual command, CLI, marketplace, plugin and direct MCP findings. It distinguishes an added marketplace, installed configuration and tools loaded by a running session. Blocked installation offers state-specific guidance, not a disabled dead end. Each attempt clears stale results; safe results can be copied without raw command output, credentials or account identities. Manual commands remain a fallback; no CLI prompt is executed. Plugin preparation and installation still require explicit UI actions. These follow-up source changes are not yet built or visually validated.
 
 ## Desktop instance lifetime
 

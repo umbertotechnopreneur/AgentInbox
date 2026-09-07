@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Build, sign and locally install Windows x64 MSIX `0.1.1.18` with Gmail no-content response handling, broader bounded calendar checks and the actionable Codex setup screen. Installed version/status and package signature were confirmed; unit tests, smoke checks and post-install runtime checks were not run.
+- Make Connect to Codex show separate local command, native CLI, marketplace, plugin and direct MCP findings, with an attempt timestamp and copyable safe results. Replace blocked install buttons with state-specific guidance; distinguish an added marketplace from an installed plugin. Clear stale success on retries/cancellation and keep manual commands as a fallback, without running prompts or changing existing connections during inspection. Source and synthetic regressions await validation and packaging.
+- Handle observed Gmail message-list HTTP 204 responses as empty pages, include `resultSizeEstimate` in the list projection, and keep required-detail, malformed-payload and HTTP-error paths strict. Remove the five-calendar check cutoff while retaining time/page limits, continuation handling and explicit coverage diagnostics. Source changes and synthetic regressions await validation and packaging.
+- Build, sign and locally install Windows x64 MSIX `0.1.1.17` with correlated logs, bounded read checks and the minimal account UI. Its new regressions were compiled but not executed; the Google HTTP 204 parsing issue identified in owner-triggered logs was still present in that package.
+- Simplify connected-account rows to an address, an optional red **Try to reconnect** action and an account menu. Keep all check diagnostics in the log; missing event samples and sampling limits no longer look like broken connections.
+- Add correlated provider diagnostics with pseudonymous account keys, HTTP status, fixed endpoint/read phases, allowlisted error codes and exception types, without logging credentials or mail content.
+- Replace minimal connection probes with bounded search/detail checks using the production readers. Preserve independent Mail/Calendar outcomes; show missing samples, incomplete checks, exceptions and cancellation without a false all-clear or stale green status.
+
 - Fix Microsoft text, sender and recipient mail searches by separating Graph `$search` from `$filter`/`$orderby`. Preserve local folder exclusions, structured filters and continuation through excluded pages; classify HTTP 400 as an invalid request.
 - Allow the documented rolling diagnostic files during stateless CLI/MCP smoke validation while continuing to reject database, configuration, credential or other first-run state.
 - Increase the visual size of Windows package icons by generating the exact MSIX tile assets from the tighter original artwork.

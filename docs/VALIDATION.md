@@ -1,5 +1,37 @@
 # Validation
 
+## Owner-requested plugin mail reads after the Windows update
+
+**2026-09-07 and 2026-09-08.** After installing `0.1.1.18`, owner-requested reads through the local MailMeUp plugin listed all five shared accounts and returned unread-mail search results with `coverage_complete: true` and no failed accounts. The subsequent review followed a search continuation, queried individual accounts and read selected message bodies successfully. Empty unread results from individual accounts also completed without errors. Reads did not mark messages as read or modify provider data. No account identities or message content are included in this record.
+
+These observations validate the exercised plugin search, continuation and selected-detail paths, not every mailbox query, the desktop read-access button, calendar coverage or credential recovery. The newly added synthetic regressions remain unexecuted; no additional tests or builds were run for the commit/push request.
+
+## Windows update with Gmail response handling and Codex setup
+
+**Windows x64, 2026-09-07 — package 0.1.1.18.** The desktop and CLI Release publications, MSIX creation and signing completed successfully. The upgrade from `0.1.1.17` was confirmed independently: Windows reports installed version `0.1.1.18`, status `Ok`, and a valid package signature. The installation tool response was interrupted, but the subsequent package-state query confirmed completion; installation was not repeated.
+
+This package includes the Gmail list-only HTTP 204 handling, removal of the five-calendar sampling cutoff and the actionable Codex configuration screen described below. Tests, formatting, smoke checks, live mailbox checks and automated UI inspection were not run for this build/install request. The added regression tests were not built by the packaging script. Runtime behavior after the update remains to be exercised; build and installation do not establish mailbox access or a successful Codex connection. The source-only records below describe the state before this package.
+
+## Actionable Codex setup — source changes
+
+**2026-09-07 — not built or installed.** Connect to Codex now renders separate observations for the Windows alias, native CLI, local marketplace, plugin and direct MCP registration. An added marketplace does not imply an installed plugin. Inspection attempts each Codex configuration query independently, exposes safe exit-code/unsupported-response/timeout outcomes, and keeps installation blocked when required configuration is unknown. Guidance is specific to the detected state; retries and cancellation clear old success. Partial installation does not reuse pre-installation observations as current results.
+
+Synthetic parser and presentation cases were added for marketplace-only setup, missing/unsupported marketplace responses, conflicting sources, plugin enablement, direct/plugin coexistence and unknown/interrupted states. These tests and source edits have not been compiled or executed. No CLI prompt, live configuration query, provider check, formatter, build, packaging or installation was run for this increment. Native UI rendering, clipboard interaction and cancellation still require owner-approved validation. The owner's screenshot confirms manual addition of the local marketplace, not plugin installation or a successful MCP connection.
+
+## Gmail no-content responses and calendar sampling — source changes
+
+**2026-09-07 — not built or installed.** The source now normalizes HTTP 204 only for Gmail message-list reads, includes the result-size estimate in that list's field projection, and rejects no-content responses for required JSON reads. Empty/malformed HTTP 200 responses and HTTP errors remain failures. The local five-calendar cutoff was removed; checks iterate discovered calendars within the existing deadline and can follow bounded empty event pages to a sample. Logs report actual calendar coverage.
+
+Synthetic regressions were added for explicit list-only no-content handling, empty/malformed HTTP 200 responses, error statuses, caller cancellation, checking a sixth calendar, a failure or absent sample on that calendar, continuation limits and the calendar deadline. These new changes and tests have not been compiled or executed. No formatting, smoke, live-account checks, package build or installation was run for this follow-up. Version `0.1.1.17` remains the last installed package; its historical evidence below does not validate this source fix.
+
+## Correlated diagnostics, real read checks and minimal account UI
+
+**Windows x64, 2026-09-07 — package 0.1.1.17.** The solution build, Windows desktop build, Release publications, MSIX creation and signing succeeded. The Windows build reported zero warnings and errors. The installed package reports version `0.1.1.17`, status `Ok`, and the MSIX signature is valid. The new synthetic diagnostic/privacy and read-check regressions compiled; unit tests, formatting checks, smoke tests and automated real-provider checks were not run for this increment. Post-install rendering/interaction of the minimal rows remains unverified.
+
+The owner exercised the preceding `0.1.1.16` check through the app. Local logs at 16:03 and 16:04 (+07:00) show two Google unread/date searches receiving HTTP 204 and failing JSON parsing, then being classified as `Unknown`. Their earlier general search and message-detail requests returned HTTP 200. This response-handling issue was unresolved in `0.1.1.17`; reconnecting is not supported as its cause or cure by this evidence. Another Google calendar check hit the application's five-calendar sampling cap (`ResultLimit`), not a sign-in failure. Both Microsoft accounts passed mail sample reads; their calendar checks completed with `SearchOnly` evidence because some checked windows had no detail sample. These are owner-triggered observations, not an automated validation run or proof that all reads work.
+
+Version `0.1.1.17` retains detailed diagnostic outcomes but removes verbose status rows and check-result banners. Missing samples and sampling limits are not shown as broken connections. Rows show only the owner-requested red **Try to reconnect** action for read failures, with normal account actions in a menu. Provider data, credentials and account identities were not copied into this validation record.
+
 ## Microsoft mail search regression and real-account verification
 
 **Windows x64, 2026-09-07 — package 0.1.1.15.** Microsoft text searches previously combined `$search` and `$filter` and failed on both real Microsoft accounts while unread/date listings and Calendar worked. Three new query-construction regression cases failed on the previous code. After separating the query modes, all **122 .NET tests passed**, including nine new cases for query compatibility, local exclusions/filters, continuation through empty filtered pages and HTTP 400 classification.

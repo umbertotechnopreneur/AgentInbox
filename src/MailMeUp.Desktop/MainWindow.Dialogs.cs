@@ -116,12 +116,12 @@ public sealed partial class MainWindow
             var preview = _codex.GetPreview();
             var content = new StackPanel { Spacing = 14 };
             content.Children.Add(Body(_codexStatus?.Message ?? "Refresh status in the setup page to inspect local Codex configuration."));
-            content.Children.Add(Body("Prepare the local plugin files before running these commands. An existing direct MCP connection must be reviewed in Codex to avoid duplicate tools."));
+            content.Children.Add(Body("Fallback only: prepare the local plugin files, then run the commands below. Adding the marketplace makes the plugin available; the second command installs it. Review any direct MCP connection first to avoid duplicate tools."));
             var commands = new TextBox
             {
                 Header = "Commands to review", Text = preview.ManualCommands, IsReadOnly = true,
                 AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
-                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"), MaxHeight = 150
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"), MinHeight = 130, MaxHeight = 220
             };
             content.Children.Add(commands);
             var feedback = Body(string.Empty);
@@ -132,7 +132,7 @@ public sealed partial class MainWindow
             buttons.Children.Add(copy);
             content.Children.Add(buttons);
             content.Children.Add(feedback);
-            var dialog = DetailsDialog("Installation details", content);
+            var dialog = DetailsDialog("Manual setup (fallback)", content);
             dialog.Closing += (_, closing) =>
             {
                 if (_busy && !_lifetime.IsCancellationRequested) closing.Cancel = true;
@@ -198,4 +198,3 @@ public sealed partial class MainWindow
         return link;
     }
 }
-
