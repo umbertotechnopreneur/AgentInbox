@@ -17,6 +17,25 @@ def check(condition, message):
         raise RuntimeError(message)
 
 
+def check_only_diagnostic_state(registry):
+    """Allow documented rolling logs while rejecting any other first-run state."""
+    registry_path = Path(registry)
+    if not registry_path.exists():
+        return
+
+    log_directory = registry_path / "logs"
+    unexpected = []
+    for path in registry_path.rglob("*"):
+        if path == log_directory:
+            continue
+        if (path.is_file() and path.parent == log_directory and path.name.startswith("mailmeup-")
+                and path.suffix == ".log"):
+            continue
+        unexpected.append(str(path.relative_to(registry_path)))
+
+    check(not unexpected, f"Read-only first run created non-diagnostic local state: {', '.join(unexpected)}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("executable", type=Path)
@@ -176,14 +195,14 @@ def main():
                 process.kill()
                 process.wait(timeout=5)
             stderr_thread.join(timeout=5)
-        check(not Path(registry).exists(), "Discovery created local state")
+        check_only_diagnostic_state(registry)
         diagnostics = "".join(errors)
         check("Starting read-only MCP bridge" in diagnostics and "search_mail" in diagnostics,
               "MCP application diagnostics were not written to stderr")
         check("private-query-sentinel" not in diagnostics and "m_private-reference-sentinel" not in diagnostics,
               "Verbose MCP diagnostics disclosed request arguments")
         check("\x1b" not in diagnostics, "MCP diagnostics contain ANSI escapes")
-    print("PASS: CLI options, JSON, private stderr logs, nine MCP tools, empty reads, invalid references, and stateless first run.")
+    print("PASS: CLI options, JSON, private stderr logs, nine MCP tools, empty reads, invalid references, and diagnostic-only first run.")
 
 
 if __name__ == "__main__":

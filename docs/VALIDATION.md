@@ -1,5 +1,11 @@
 # Validation
 
+## Account recovery, CI smoke and package icon
+
+**Windows x64, 2026-09-07 — package 0.1.1.14.** The CI-equivalent `scripts/validate.ps1 -SkipUnitTests -CheckFormatting` command passed formatting, Release build, CLI/MCP smoke, dependency inventory and repository preflight. The build completed with zero warnings and zero errors. The smoke test permits only the documented rolling files below `logs`; database, configuration, credential and any other first-run state still fail validation.
+
+The desktop and CLI publications, signed MSIX packaging and local upgrade installation completed successfully. The installed `MailMeUp.Desktop_0.1.1.14_x64__kqhwqwq9w6r3m` package reports status `Ok`, and its package signature is valid. The 44-pixel package asset now has a measured nontransparent visual extent of 38 by 37 pixels, up from the more heavily padded source. Unit tests, live provider reads and post-install visual inspection of the Windows app list were not run.
+
 ## Serilog diagnostics — build and installation
 
 **Windows x64, 2026-09-07 — package 0.1.1.12.** The Release desktop and CLI publications, signed MSIX packaging and local upgrade installation completed successfully with the Serilog diagnostics included. The installed `MailMeUp.Desktop_0.1.1.12_x64__kqhwqwq9w6r3m` package reports status `Ok`.

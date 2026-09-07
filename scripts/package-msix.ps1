@@ -174,7 +174,9 @@ try {
     $assetsDirectory = Join-Path $payload 'Assets'
     New-Item -ItemType Directory -Path $assetsDirectory -Force | Out-Null
     Add-Type -AssemblyName System.Drawing
-    $sourceLogo = [System.Drawing.Image]::FromFile((Join-Path $repoRoot 'resources/mailmeup-logo-512-safe.png'))
+    # Package tiles are already rendered into exact Windows asset sizes, so use the tighter
+    # original artwork. The more generously padded asset remains appropriate inside the app.
+    $sourceLogo = [System.Drawing.Image]::FromFile((Join-Path $repoRoot 'resources/mailmeup-logo-original.png'))
     try {
         foreach ($asset in @(
             @{ Name = 'StoreLogo.png'; Size = 50 },
