@@ -1,5 +1,24 @@
 # Validation
 
+## Serilog diagnostics — build and installation
+
+**Windows x64, 2026-09-07 — package 0.1.1.12.** The Release desktop and CLI publications, signed MSIX packaging and local upgrade installation completed successfully with the Serilog diagnostics included. The installed `MailMeUp.Desktop_0.1.1.12_x64__kqhwqwq9w6r3m` package reports status `Ok`.
+
+No tests, MCP smoke run or live provider read were run for this increment.
+
+## Connection check and wizard — build and installed package validation
+
+**Windows x64, 2026-09-06 — package 0.1.1.10.** The installed update adds the explicit **Check connections** action to the Acrylic wizard. It verifies each local Google/Microsoft account even when sharing is off, silently refreshes OAuth/MSAL access where possible, checks enabled Mail and Calendar services with minimal requests, and discards every response body. It reports safe categories only.
+
+- **113 .NET tests passed**, with zero failures or skips, in Release configuration. The two new synthetic tests cover checking all local accounts, safe sign-in-required handling, and an unavailable provider checker. This suite covers shared application behavior; it does not exercise the desktop UI.
+- The Desktop Release build passed with zero warnings and errors.
+- Self-contained Desktop and CLI publication, MakeAppx packaging and signing succeeded. Build log: `artifacts/msix-build-0.1.1.10.log`.
+- Authenticode reported a valid package signature. `MailMeUp.Desktop_0.1.1.10_x64__kqhwqwq9w6r3m` replaced `0.1.1.9` and reports status `Ok`. The existing publisher and signing certificate were retained; no trust-store changes were made.
+- A launch of the installed desktop executable with an isolated synthetic `MAILMEUP_DATA_DIR` remained running with a synthetic existing account registry. The process was then closed. This checks package startup, not visual rendering, interaction or live provider access. Result: `artifacts/smoke-desktop-0.1.1.10.log`.
+- The published package CLI and installed `%LOCALAPPDATA%\Microsoft\WindowsApps\mailmeup.exe` alias both passed the CLI/MCP smoke suite, including nine tools, bounded error notifications, redirected output and a stateless first run. Results: `artifacts/smoke-cli-0.1.1.10.log` and `artifacts/smoke-alias-0.1.1.10.log`.
+
+At the owner's request, no Computer Use automation or desktop visual inspection was performed; the owner will review the rendering. The button has not been clicked against a real account, so silent refresh, expired/revoked consent, network errors, status display and reconnect flow remain live-validation work. Future automated runtime checks must use synthetic `example.test` accounts and `MAILMEUP_DATA_DIR` for isolation. No real mailbox checks, remote CI, release tags or publication were performed for this update.
+
 ## Windows onboarding changes
 
 **Windows x64, 2026-09-06 — package 0.1.1.4.** The owner reported that the installed `0.1.1.3` setup window terminated immediately when its existing account registry was opened. Windows Error Reporting recorded `0xC000027B` in `Microsoft.UI.Xaml.dll`; the crash dump placed the managed thread in the Microsoft.Data.Sqlite static application-data probe before the first database connection.

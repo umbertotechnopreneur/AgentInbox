@@ -15,6 +15,6 @@ For the practical steps and completion checks, see the [MVP delivery plan](MVP_P
 
 Each step needs working tests before it is advertised as available.
 
-The current source passed 111 synthetic tests. Step 4 includes an installed Windows MSIX / WinUI 3 preview, a generated About banner and GitHub support links; an upgrade, installed existing-registry startup and the alias MCP smoke passed. The earlier CLI build passed real reads across four accounts. Next: clean-machine installation, UI sign-in/Codex plugin setup, deliberate real recovery scenarios and a small pilot.
+The current source passed 113 synthetic tests and the Desktop Release build. Step 4 includes Windows MSIX / WinUI 3 preview `0.1.1.10`, locally installed with the Acrylic wizard, progressive disclosure, account connection checks and single-instance implementation. The upgrade, synthetic native-window launch without diagnostics and installed alias CLI/MCP smoke passed; the redesigned desktop's visual and interaction checks remain with the owner. The earlier CLI build passed real reads across four accounts. Next, when requested: validate desktop interactions, clean-machine installation, UI sign-in/Codex plugin setup, deliberate real recovery scenarios and a small pilot.
 
 A bundled local Codex plugin is included in the Windows setup scope. No public marketplace publication, web dashboard or hosted service is planned.

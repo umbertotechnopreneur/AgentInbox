@@ -10,6 +10,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private const int MaximumProviderPagesPerRefill = 20;
     private const int MaximumProviderCursorHistory = 512;
     private const int MaximumConcurrentMailAccountReads = 4;
+    private const int MaximumConcurrentConnectionChecks = 4;
     private static readonly TimeSpan ProviderReadTimeout = TimeSpan.FromSeconds(30);
     private readonly IAccountStore _accounts;
     private readonly IAccountSharingStore _sharing;
@@ -18,6 +19,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private readonly IReadOnlyDictionary<string, IAccountConnector> _accountConnectors;
     private readonly IReadOnlyDictionary<string, IMailReader> _mailReaders;
     private readonly IReadOnlyDictionary<string, ICalendarReader> _calendarReaders;
+    private readonly IReadOnlyDictionary<string, IAccountConnectionChecker> _connectionCheckers;
     private readonly LocalReferenceStore _references = new();
 
     /// <summary>Creates the complete application boundary used by the local CLI and MCP host.</summary>
@@ -28,7 +30,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         IEnumerable<IAccountConnector> accountConnectors,
         IEnumerable<IMailReader> mailReaders,
         IEnumerable<ICalendarReader> calendarReaders,
-        IAccountSharingStore? sharingStore = null)
+        IAccountSharingStore? sharingStore = null,
+        IEnumerable<IAccountConnectionChecker>? connectionCheckers = null)
     {
         _accounts = accounts;
         _sharing = sharingStore ?? new MemoryAccountSharingStore();
@@ -36,6 +39,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         _accountConnectors = accountConnectors.ToDictionary(connector => connector.ProviderId, StringComparer.Ordinal);
         _mailReaders = mailReaders.ToDictionary(reader => reader.ProviderId, StringComparer.Ordinal);
         _calendarReaders = calendarReaders.ToDictionary(reader => reader.ProviderId, StringComparer.Ordinal);
+        _connectionCheckers = (connectionCheckers ?? []).ToDictionary(checker => checker.ProviderId, StringComparer.Ordinal);
         _providers = providers
             .Select(provider => provider.Descriptor with
             {
@@ -116,6 +120,15 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         {
             throw new ProviderReadException("Calendar discovery timed out. Try loading calendars again.");
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<AccountConnectionCheckResult> CheckConnectionsAsync(CancellationToken cancellationToken = default)
+    {
+        var accounts = await _accounts.ListAsync(cancellationToken);
+        using var gate = new SemaphoreSlim(MaximumConcurrentConnectionChecks);
+        var checks = await Task.WhenAll(accounts.Select(account => CheckConnectionAsync(account, gate, cancellationToken)));
+        return new AccountConnectionCheckResult(checks.OrderBy(check => check.AccountId, StringComparer.Ordinal).ToArray());
     }
 
     /// <inheritdoc />
@@ -916,6 +929,48 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }
+
+    private async Task<AccountConnectionCheck> CheckConnectionAsync(
+        Account account,
+        SemaphoreSlim gate,
+        CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!_connectionCheckers.TryGetValue(account.Provider, out var checker))
+            {
+                return FailedConnectionCheck(account, ReadFailureKind.ProviderUnavailable);
+            }
+
+            try
+            {
+                return await ReadWithDeadlineAsync(token => checker.CheckAsync(account, token), cancellationToken);
+            }
+            catch (Exception exception) when (IsProviderReadFailure(exception, cancellationToken))
+            {
+                return FailedConnectionCheck(account, GetReadFailureKind(exception));
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return FailedConnectionCheck(account, ReadFailureKind.Unknown);
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private static AccountConnectionCheck FailedConnectionCheck(Account account, ReadFailureKind failureKind) =>
+        new(
+            account.Id,
+            Reachable: false,
+            failureKind,
+            account.MailReadEnabled ? false : null,
+            account.MailReadEnabled ? failureKind : null,
+            account.CalendarReadEnabled ? false : null,
+            account.CalendarReadEnabled ? failureKind : null);
 
     private static bool IsProviderReadFailure(Exception exception, CancellationToken cancellationToken) =>
         !cancellationToken.IsCancellationRequested &&

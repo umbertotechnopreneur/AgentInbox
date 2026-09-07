@@ -26,6 +26,8 @@ Use restrained dimensional envelopes, generous empty space and clear connection 
 
 ## Assets
 
+- `resources/wizard/hero.png` and `resources/wizard/rail.png`: generated cutouts for the approved Mica wizard. [Final prompts and provenance](../resources/wizard/GENERATION.md).
+- `resources/providers/google.svg` and `resources/providers/microsoft.svg`: original-color provider vectors downloaded from SVG Logos CDN and bundled locally. [Sources](../resources/providers/README.md).
 - `resources/mailmeup-about-banner.png`: 2172 by 724 pixel banner for the Windows app's About & Support dialog, generated with the built-in image generation tool on September 6, 2026. Its calm left area is reserved for accessible native title text; the illustration contains no embedded text or vendor marks.
 - `assets/branding/mailmeup-hero.png`: generated README/product hero.
 - `assets/branding/mailmeup-concept.png`: generated planned architecture illustration.

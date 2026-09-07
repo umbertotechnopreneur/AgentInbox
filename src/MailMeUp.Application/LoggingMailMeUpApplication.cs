@@ -37,6 +37,10 @@ public sealed class LoggingMailMeUpApplication(
         RunAsync("discover_calendars_for_setup", () => application.ListAvailableCalendarsAsync(accountId, cancellationToken), cancellationToken);
 
     /// <inheritdoc />
+    public Task<AccountConnectionCheckResult> CheckConnectionsAsync(CancellationToken cancellationToken = default) =>
+        RunAsync("check_account_connections", () => application.CheckConnectionsAsync(cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<ProviderSetupStatus>> ListProviderSetupAsync(CancellationToken cancellationToken = default) =>
         RunAsync("setup_status", () => application.ListProviderSetupAsync(cancellationToken), cancellationToken);
 
@@ -80,6 +84,29 @@ public sealed class LoggingMailMeUpApplication(
         {
             var result = await action();
             logger.LogInformation("Operation {Operation} completed in {ElapsedMs} ms", operation, (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            if (result is AccountConnectionCheckResult connections)
+            {
+                var mailChecks = connections.Accounts.Where(check => check.MailReachable.HasValue).ToArray();
+                var calendarChecks = connections.Accounts.Where(check => check.CalendarReachable.HasValue).ToArray();
+                var mailFailures = mailChecks.Where(check => check.MailReachable == false).ToArray();
+                var calendarFailures = calendarChecks.Where(check => check.CalendarReachable == false).ToArray();
+                logger.LogInformation(
+                    "Operation {Operation} checked {AccountCount} accounts: mail {MailCheckCount} checked with {MailFailureCount} failures; calendar {CalendarCheckCount} checked with {CalendarFailureCount} failures",
+                    operation,
+                    connections.Accounts.Count,
+                    mailChecks.Length,
+                    mailFailures.Length,
+                    calendarChecks.Length,
+                    calendarFailures.Length);
+                if (mailFailures.Length > 0 || calendarFailures.Length > 0)
+                {
+                    logger.LogWarning(
+                        "Operation {Operation} read-access failure categories: mail {MailFailureCategories}; calendar {CalendarFailureCategories}",
+                        operation,
+                        FormatFailureCategories(mailFailures.Select(check => check.MailFailureKind ?? ReadFailureKind.Unknown)),
+                        FormatFailureCategories(calendarFailures.Select(check => check.CalendarFailureKind ?? ReadFailureKind.Unknown)));
+                }
+            }
             var failedAccounts = result switch
             {
                 MailSearchResult mail => mail.FailedAccounts.Count,
@@ -89,7 +116,18 @@ public sealed class LoggingMailMeUpApplication(
             };
             if (failedAccounts > 0)
             {
-                logger.LogWarning("Operation {Operation} returned partial coverage; {FailedAccountCount} accounts unavailable", operation, failedAccounts);
+                var failureCategories = result switch
+                {
+                    MailSearchResult mail => FormatFailureCategories(mail.FailedAccounts.Select(account => account.Kind)),
+                    CalendarListResult calendars => FormatFailureCategories(calendars.FailedAccounts.Select(account => account.Kind)),
+                    EventSearchResult events => FormatFailureCategories(events.FailedAccounts.Select(account => account.Kind)),
+                    _ => string.Empty
+                };
+                logger.LogWarning(
+                    "Operation {Operation} returned partial coverage; {FailedAccountCount} accounts unavailable ({FailureCategories})",
+                    operation,
+                    failedAccounts,
+                    failureCategories);
             }
 
             return result;
@@ -107,4 +145,10 @@ public sealed class LoggingMailMeUpApplication(
             throw;
         }
     }
+
+    private static string FormatFailureCategories(IEnumerable<ReadFailureKind> kinds) =>
+        string.Join(", ", kinds
+            .GroupBy(kind => kind)
+            .OrderBy(group => group.Key)
+            .Select(group => $"{group.Key}={group.Count()}"));
 }

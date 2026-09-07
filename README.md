@@ -40,13 +40,13 @@ MailMeUp runs on your computer. Each user connects their own accounts. No market
 > [!IMPORTANT]
 > **Provider setup is currently required.** To connect Google or Microsoft accounts, each user must currently register their own OAuth desktop application and configure its Client ID locally. Google also requires the downloaded desktop client configuration file; Microsoft requires its Application (client) ID. No provider credentials are bundled with MailMeUp. Follow the [provider setup and CLI guide](docs/APP_REGISTRATION.md). We are actively working on a simpler onboarding experience.
 
-The current source includes local provider setup, interactive multi-account sign-in, compact cross-account mail search and a combined calendar agenda. Mail searches exclude Spam/Junk and Trash/Deleted Items by default. Client credentials and account token caches use operating-system protection. Read-only flows have been exercised with two Google and two Microsoft accounts on Windows without including account content in the validation output.
+The current source includes local provider setup, interactive multi-account sign-in, a per-account read-access check in the Windows wizard, compact cross-account mail search and a combined calendar agenda. The check uses minimal provider requests for each enabled Mail and Calendar capability, reports them independently and silently refreshes an expired token when the provider permits it; it never returns mail or calendar content. Mail searches exclude Spam/Junk and Trash/Deleted Items by default. Client credentials and account token caches use operating-system protection. Read-only flows have been exercised with two Google and two Microsoft accounts on Windows without including account content in the validation output.
 
 ![MailMeUp cross-account mail search in an AI conversation, with example addresses redacted](docs/assets/branding/mailmeup-chat-search.png)
 
 *Example conversation with redacted addresses. MailMeUp searches selected accounts without modifying messages.*
 
-The current source passed 111 automated tests. Windows MSIX preview `0.1.1.4` is locally installed, its existing-registry startup and command alias passed smoke checks, and the preceding build's welcome/About window was inspected. The earlier CLI build also passed read-only checks across four real accounts. Clean-machine installation, UI sign-in and the pilot remain. See the [validation record](docs/VALIDATION.md) and [account recovery guide](docs/RECOVERY.md).
+The current source passed 113 automated tests and the Desktop Release build. Windows MSIX preview `0.1.1.10`, including the Acrylic wizard, connection check and single-instance implementation, is locally installed; a synthetic launch created its native window without startup diagnostics and its command alias passed CLI/MCP smoke checks. Visual and interaction checks of the redesigned UI remain with the owner. The earlier CLI build also passed read-only checks across four real accounts. Clean-machine installation, UI sign-in and the pilot remain. See the [validation record](docs/VALIDATION.md) and [account recovery guide](docs/RECOVERY.md).
 
 ## AI assistant support
 

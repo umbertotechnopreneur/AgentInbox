@@ -44,7 +44,7 @@ Exit codes: `0` success, `1` operation/startup failure, `2` invalid command/opti
 
 ## Local setup
 
-`MAILMEUP_DATA_DIR` selects an absolute data directory. By default the program uses .NET's per-user `LocalApplicationData` directory plus `MailMeUp`, independent of the working directory. Discovery and logging do not create a database or log files.
+`MAILMEUP_DATA_DIR` selects an absolute data directory. By default the program uses .NET's per-user `LocalApplicationData` directory plus `MailMeUp`, independent of the working directory. Discovery does not create a database. The executable creates `logs\mailmeup-YYYYMMDD.log` below this directory for bounded diagnostics; see [diagnostics](LOGGING.md).
 
 Provider setup does not sign in an account. Complete it before `accounts connect`. Use `accounts list` to obtain the local ID for `accounts remove`. Removal does not revoke access at the provider.
 

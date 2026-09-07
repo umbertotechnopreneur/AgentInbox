@@ -28,6 +28,8 @@ public static class ServiceRegistration
         services.AddSingleton<IMailReader, MicrosoftMailReader>();
         services.AddSingleton<ICalendarReader, GoogleCalendarReader>();
         services.AddSingleton<ICalendarReader, MicrosoftCalendarReader>();
+        services.AddSingleton<IAccountConnectionChecker, GoogleConnectionChecker>();
+        services.AddSingleton<IAccountConnectionChecker, MicrosoftConnectionChecker>();
         services.AddSingleton<MailMeUpApplication>();
         services.AddSingleton<IMailMeUpApplication>(provider => new LoggingMailMeUpApplication(
             provider.GetRequiredService<MailMeUpApplication>(),

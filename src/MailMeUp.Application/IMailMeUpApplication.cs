@@ -23,6 +23,9 @@ public interface IMailMeUpApplication
     /// <summary>Discovers calendar names for local setup even before assistant sharing is enabled; never expose as an MCP tool.</summary>
     Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(string accountId, CancellationToken cancellationToken = default);
 
+    /// <summary>Checks local account reachability and refreshes provider tokens silently when possible; for local setup adapters only.</summary>
+    Task<AccountConnectionCheckResult> CheckConnectionsAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Reports local provider app registration readiness without returning credentials.</summary>
     Task<IReadOnlyList<ProviderSetupStatus>> ListProviderSetupAsync(CancellationToken cancellationToken = default);
 
