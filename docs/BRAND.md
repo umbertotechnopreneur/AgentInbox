@@ -31,6 +31,7 @@ Use restrained dimensional envelopes, generous empty space and clear connection 
 - `resources/mailmeup-about-banner.png`: 2172 by 724 pixel banner for the Windows app's About & Support dialog, generated with the built-in image generation tool on September 6, 2026. Its calm left area is reserved for accessible native title text; the illustration contains no embedded text or vendor marks.
 - `assets/branding/mailmeup-hero.png`: generated README/product hero.
 - `assets/branding/mailmeup-concept.png`: generated planned architecture illustration.
+- `assets/branding/mailmeup-setup-flow-welcome-accounts.png` and `assets/branding/mailmeup-setup-flow-sharing-codex.png`: two generated README concepts that present the four-screen Windows setup flow. They are not shipping UI screenshots. [Final prompts and provenance](assets/branding/GENERATION.md).
 - `assets/branding/mailmeup-icon.svg`: editable vector envelope mark.
 - `assets/branding/mailmeup-app-icon-source.png`: large raster app-icon artwork.
 - `assets/branding/mailmeup-app-icon-256.png`: compact app-icon variant.
