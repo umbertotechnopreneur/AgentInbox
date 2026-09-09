@@ -51,69 +51,126 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         }
     }
 
-    /// <summary>Reads Codex's installed-plugin and MCP configuration without starting the MailMeUp server.</summary>
+    /// <summary>Reads local configuration without starting a prompt, MCP server or mailbox check.</summary>
     public async Task<CodexSetupStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
+        var checks = CodexSetupCheck.Pending().ToDictionary(check => check.Name, check => check.Result);
+        var installed = false;
+        var enabled = false;
+        var hasDirectRegistration = false;
+        var otherPlugin = false;
+        var collision = false;
+        var marketplaceRegistered = false;
+
+        CodexSetupStatus Finish(string code, string message, bool canInstall = false)
+        {
+            logger.LogInformation("Codex setup inspection result={SetupCode}; canInstall={CanInstall}", code, canInstall);
+            foreach (var check in checks)
+                logger.LogInformation("Codex setup check={SetupCheck}; result={CheckResult}", check.Key, check.Value);
+            return new(code, message, canInstall, installed && enabled, hasDirectRegistration)
+            {
+                Checks = checks.Select(check => new CodexSetupCheck(check.Key, check.Value)).ToArray()
+            };
+        }
+
+        async Task<bool> InspectAsync(string executable, string name, string[] arguments, Func<string, bool> read)
+        {
+            checks[name] = "Could not check";
+            try
+            {
+                var result = await RunCodexAsync(executable, arguments, cancellationToken);
+                if (!result.Success)
+                {
+                    checks[name] = result.ExitCode != 0
+                        ? $"Command failed (exit {result.ExitCode})"
+                        : "Response exceeded the output limit";
+                    return false;
+                }
+                if (!read(result.Output))
+                {
+                    checks[name] = "Unsupported response";
+                    logger.LogWarning("Codex setup check={SetupCheck} returned an unsupported response", name);
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception exception) when (IsExpectedFailure(exception))
+            {
+                checks[name] = exception is TimeoutException ? "Timed out" : "Could not read configuration";
+                logger.LogWarning("Codex setup check={SetupCheck} failed with {FailureType}", name, exception.GetType().Name);
+                return false;
+            }
+        }
+
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var preview = GetPreview();
-            if (!File.Exists(preview.StableExecutablePath))
-            {
-                return State("AliasUnavailable", "Install the MailMeUp MSIX and enable its mailmeup.exe app execution alias in Windows Settings.");
-            }
-
+            var aliasAvailable = File.Exists(preview.StableExecutablePath);
+            checks["MailMeUp command"] = aliasAvailable ? "Available" : "Not found";
             var executable = FindCodexExecutable();
+            checks["Codex CLI"] = executable is null ? "Not found" : "Found (native executable)";
             if (executable is null)
-            {
-                return State("CodexUnavailable", "The native Codex CLI was not found. Prepare the plugin files, then run the displayed commands in your Codex terminal. A script-only CLI installation requires this manual route.");
-            }
+                return Finish("CodexUnavailable", "Automatic setup could not find the native Codex CLI. This does not check whether the Codex desktop app is installed. Manual setup is available below.");
 
-            var mcp = await RunCodexAsync(executable, ["mcp", "list", "--json"], cancellationToken);
-            if (!mcp.Success || !TryReadDirectRegistration(mcp.Output, out var hasDirectRegistration))
+            // Inspect each component independently so one failure does not hide the other findings.
+            var mcpKnown = await InspectAsync(executable, "Direct MCP connection", ["mcp", "list", "--json"], output =>
             {
-                return State("ConfigurationUnknown", "Codex MCP configuration could not be read. Check it in Codex before adding another MailMeUp connection.");
-            }
-
-            var plugins = await RunCodexAsync(executable, ["plugin", "list", "--json"], cancellationToken);
-            if (!plugins.Success || !TryReadPluginState(plugins.Output, out var installed, out var enabled, out var otherPlugin))
+                if (!TryReadDirectRegistration(output, out var observedDirect)) return false;
+                hasDirectRegistration = observedDirect;
+                checks["Direct MCP connection"] = hasDirectRegistration ? "Registration found (may be disabled)" : "Not registered";
+                return true;
+            });
+            var pluginsKnown = await InspectAsync(executable, "MailMeUp plugin", ["plugin", "list", "--json"], output =>
             {
-                return new("PluginStatusUnknown", "This Codex CLI did not return a supported plugin status. Update Codex or use its plugin settings; no installation was attempted.", false, false, hasDirectRegistration);
-            }
+                if (!TryReadPluginState(output, out var observedInstalled, out var observedEnabled, out var observedOther)) return false;
+                installed = observedInstalled;
+                enabled = observedEnabled;
+                otherPlugin = observedOther;
+                checks["MailMeUp plugin"] = installed
+                    ? enabled ? "Installed and enabled" : "Installed but disabled"
+                    : "Not installed";
+                if (otherPlugin) checks["MailMeUp plugin"] += "; another source also found";
+                return true;
+            });
+            var marketplaceKnown = await InspectAsync(executable, "Local marketplace", ["plugin", "marketplace", "list", "--json"], output =>
+            {
+                if (!TryReadMarketplaceState(output, preview.PluginDirectory, out collision, out marketplaceRegistered)) return false;
+                checks["Local marketplace"] = collision ? "Name used by a different source"
+                    : marketplaceRegistered ? "Added" : "Not added";
+                return true;
+            });
+            cancellationToken.ThrowIfCancellationRequested();
 
+            if (!aliasAvailable)
+                return Finish("AliasUnavailable", "The mailmeup.exe Windows app execution alias was not found. Restore the alias before installing the plugin.");
+            if (!mcpKnown)
+                return Finish("ConfigurationUnknown", "The direct MCP check did not finish. Installation is paused because duplicate MailMeUp tools cannot be ruled out.");
+            if (!pluginsKnown)
+                return Finish("PluginStatusUnknown", "The plugin check did not finish. Review the result below, update Codex if needed, then refresh status. No installation was attempted.");
             if (hasDirectRegistration)
-            {
-                return new("DirectRegistrationExists", "A direct MailMeUp MCP connection already exists. Review and remove that connection in Codex before installing this plugin to avoid duplicate tools. MailMeUp will not remove it automatically.", false, installed && enabled, true);
-            }
-
+                return Finish("DirectRegistrationExists", installed && enabled
+                    ? "A direct MCP registration and the enabled local plugin were both found. Review the two methods before installing or updating."
+                    : "MailMeUp already has a direct MCP registration. You can keep that setup; adding the plugin is optional. Review connections if you want to switch.");
             if (otherPlugin)
-            {
-                return State("OtherPluginExists", "MailMeUp is already installed from another marketplace. Manage that plugin in Codex before adding this local copy.");
-            }
-
-            var marketplaces = await RunCodexAsync(executable, ["plugin", "marketplace", "list", "--json"], cancellationToken);
-            if (!marketplaces.Success || !TryReadMarketplaceState(marketplaces.Output, preview.PluginDirectory, out var collision))
-            {
-                return State("MarketplaceStatusUnknown", "The Codex marketplace configuration could not be read. Review the MailMeUp local marketplace in Codex.");
-            }
-
+                return Finish("OtherPluginExists", "A MailMeUp plugin from another marketplace was found. Review that source before adding this local copy.");
+            if (!marketplaceKnown)
+                return Finish("MarketplaceStatusUnknown", "The marketplace check did not finish. Installation is paused until its source can be confirmed.");
             if (collision)
-            {
-                return State("MarketplaceConflict", "A different source already uses the mailmeup-local marketplace name. Resolve it in Codex before installing this copy.");
-            }
-
+                return Finish("MarketplaceConflict", "A different source uses the mailmeup-local name. Review that marketplace before installing this copy.");
             if (installed)
-            {
                 return enabled
-                    ? new("PluginConfigured", "Codex reports the MailMeUp plugin installed and enabled. Start a new Codex task to load its tools. This checks configuration only; the server connection has not been tested.", true, true, false)
-                    : State("PluginDisabled", "The MailMeUp plugin is installed but disabled. Enable it in Codex, then refresh the status.");
-            }
+                    ? Finish("PluginConfigured", "Codex reports the local plugin installed and enabled. Start a new Codex task to load its tools; no live connection was tested.", true)
+                    : Finish("PluginDisabled", "The local plugin is installed but disabled. Enable it in Codex's plugin settings, then refresh status.");
 
-            return new("ReadyToInstall", "The Windows alias and Codex CLI are available. Install the local plugin to connect your selected accounts.", true, false, false);
+            return Finish("ReadyToInstall", marketplaceRegistered
+                ? "The local marketplace is already added. Install the MailMeUp plugin to complete setup."
+                : "Install the local plugin to add the MailMeUp marketplace and connect your sharing choices to Codex.", true);
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             logger.LogWarning("Codex configuration inspection failed with {FailureType}.", exception.GetType().Name);
-            return State("ConfigurationUnknown", "Codex configuration could not be read. Check that Codex is installed and that its local configuration is accessible, then refresh.");
+            return Finish("ConfigurationUnknown", "Local setup could not be fully inspected. Review the available results below, then refresh status.");
         }
     }
 
@@ -139,17 +196,20 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             var marketplace = await RunCodexAsync(executable, ["plugin", "marketplace", "add", preview.PluginDirectory, "--json"], cancellationToken);
             if (!marketplace.Success)
             {
-                return new(false, "The plugin files are ready, but Codex did not confirm adding the local marketplace. Use the displayed manual commands or review Codex settings.", status);
+                const string message = "The plugin files are ready, but Codex did not confirm adding the marketplace. Refresh status to inspect what was saved before retrying.";
+                return new(false, message, State("InstallationIncomplete", message));
             }
 
             var install = await RunCodexAsync(executable, ["plugin", "add", PluginId, "--json"], cancellationToken);
             if (!install.Success)
             {
-                return new(false, "The local marketplace was added, but plugin installation was not confirmed. Open MailMeUp in Codex's plugin settings to complete setup.", status);
+                const string message = "The local marketplace was added, but plugin installation was not confirmed. Refresh status, or review MailMeUp in Codex's plugin settings.";
+                return new(false, message, State("InstallationIncomplete", message));
             }
 
             var refreshed = await GetStatusAsync(cancellationToken);
-            return new(refreshed.IsPluginConfigured, refreshed.IsPluginConfigured
+            var confirmed = refreshed.Code == "PluginConfigured" && refreshed.IsPluginConfigured;
+            return new(confirmed, confirmed
                 ? "The MailMeUp plugin is installed and enabled. Start a new Codex task to load its tools."
                 : "Codex accepted the installation request, but enabled configuration could not be confirmed. Refresh the status or inspect the plugin in Codex.", refreshed);
         }
@@ -240,8 +300,11 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             await process.WaitForExitAsync(timeout.Token);
             var stdout = await output;
             await errors;
-            logger.LogInformation("Codex configuration command completed with exit code {ExitCode}.", process.ExitCode);
-            return new(process.ExitCode == 0 && stdout is not null, stdout ?? string.Empty);
+            // Arguments are fixed by this service; paths and raw streams are deliberately excluded.
+            logger.LogInformation("Codex configuration command={CommandKind} completed with exit code {ExitCode}; outputLimited={OutputLimited}.",
+                arguments[0] == "mcp" ? "mcp-list" : arguments.Count > 1 && arguments[1] == "marketplace" ? "marketplace" : "plugin",
+                process.ExitCode, stdout is null);
+            return new(process.ExitCode == 0 && stdout is not null, stdout ?? string.Empty, process.ExitCode);
         }
         catch (OperationCanceledException)
         {
@@ -333,7 +396,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
-    private static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin)
+    internal static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin)
     {
         installed = false;
         enabled = false;
@@ -372,9 +435,10 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
-    private static bool TryReadMarketplaceState(string output, string expectedRoot, out bool collision)
+    internal static bool TryReadMarketplaceState(string output, string expectedRoot, out bool collision, out bool registered)
     {
         collision = false;
+        registered = false;
         using var document = JsonDocument.Parse(output);
         if (document.RootElement.ValueKind != JsonValueKind.Object
             || !document.RootElement.TryGetProperty("marketplaces", out var entries) || entries.ValueKind != JsonValueKind.Array)
@@ -391,12 +455,13 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
 
             if (name == MarketplaceName)
             {
+                registered = true;
                 if (!TryString(entry, "root", out var root) || !Path.IsPathFullyQualified(root))
                 {
                     return false;
                 }
 
-                collision = !string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)),
+                collision |= !string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)),
                     Path.TrimEndingDirectorySeparator(Path.GetFullPath(expectedRoot)), StringComparison.OrdinalIgnoreCase);
             }
         }
@@ -461,5 +526,5 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
     private static bool IsExpectedFailure(Exception exception) => exception is IOException or UnauthorizedAccessException
         or JsonException or Win32Exception or TimeoutException or InvalidOperationException or ArgumentException;
 
-    private sealed record CommandResult(bool Success, string Output);
+    private sealed record CommandResult(bool Success, string Output, int ExitCode);
 }

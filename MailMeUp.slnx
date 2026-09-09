@@ -3,6 +3,7 @@
     <Project Path="src/MailMeUp.Application/MailMeUp.Application.csproj" />
     <Project Path="src/MailMeUp.Cli/MailMeUp.Cli.csproj" />
     <Project Path="src/MailMeUp.Core/MailMeUp.Core.csproj" />
+    <Project Path="src/MailMeUp.Diagnostics/MailMeUp.Diagnostics.csproj" />
     <Project Path="src/MailMeUp.Hosting/MailMeUp.Hosting.csproj" />
     <Project Path="src/MailMeUp.Mcp/MailMeUp.Mcp.csproj" />
     <Project Path="src/MailMeUp.Providers.Google/MailMeUp.Providers.Google.csproj" />

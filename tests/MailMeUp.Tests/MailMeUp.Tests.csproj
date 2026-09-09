@@ -6,6 +6,12 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Exercise the desktop's configuration-only logic without a WinUI or Windows runtime. -->
+    <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupModels.cs" Link="Desktop/CodexSetupModels.cs" />
+    <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupPresentation.cs" Link="Desktop/CodexSetupPresentation.cs" />
+    <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupService.cs" Link="Desktop/CodexSetupService.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/MailMeUp.Application/MailMeUp.Application.csproj" />
     <ProjectReference Include="../../src/MailMeUp.Mcp/MailMeUp.Mcp.csproj" />
     <ProjectReference Include="../../src/MailMeUp.Storage/MailMeUp.Storage.csproj" />

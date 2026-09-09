@@ -39,6 +39,8 @@ Omit account IDs to search all eligible accounts, or pass explicit IDs. Calendar
 
 Mail search accepts common text plus optional sender/recipient contains filters, unread state, attachment presence and received-time boundaries. Each adapter translates those structured filters to Gmail or Microsoft syntax. `search_unread_mail` and `search_mail_by_date` do not require a text query.
 
+Microsoft text/address searches use Graph `$search` without `$filter` or `$orderby`. MailMeUp filters each returned page locally before releasing matches and keeps its continuation even when all items on a page are excluded. Structured listings without search text or address criteria retain Graph filtering and received-time ordering. Graph message search has an [index limit of 1,000 results](https://learn.microsoft.com/en-us/graph/search-query-parameter#use-search-on-message-collections); it is not an exhaustive mailbox export. Narrow searches when needed. Existing refill limits and timeouts report partial account coverage.
+
 Search first, read details second. Omit raw HTML, MIME, binary attachments and unnecessary attendee lists. Caching reduces API calls; it does not automatically reduce conversation tokens.
 
 References and cursors expire after about 30 minutes or a server restart. Results return coverage and individual account failures; partial coverage is never presented as complete.

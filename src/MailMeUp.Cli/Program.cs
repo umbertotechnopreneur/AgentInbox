@@ -32,7 +32,8 @@ if (options.Command == CliCommand.Version)
     return 0;
 }
 
-using var diagnostics = CliLogging.Create(options);
+var dataDirectory = DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
+using var diagnostics = CliLogging.Create(options, dataDirectory);
 var startupLogger = diagnostics.ForContext("SourceContext", "MailMeUp.Cli");
 using var cancellation = new CancellationTokenSource();
 ConsoleCancelEventHandler onCancel = (_, eventArgs) =>
@@ -46,7 +47,6 @@ try
     var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = [], DisableDefaults = true });
     builder.Logging.ClearProviders();
     builder.Services.AddSerilog(diagnostics, dispose: false);
-    var dataDirectory = DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
     builder.Services.AddMailMeUp(dataDirectory);
     builder.Services.AddSingleton(presentation);
     builder.Services.AddTransient<CliRunner>();

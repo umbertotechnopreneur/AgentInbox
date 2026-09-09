@@ -4,11 +4,13 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
 using MailMeUp.Core;
+using MailMeUp.Diagnostics;
 using MailMeUp.Security;
+using Microsoft.Extensions.Logging;
 
 namespace MailMeUp.Providers.Google;
 
-internal sealed class GoogleAccessTokenProvider(IProviderConfigurationStore configurations, ISecretStore secrets)
+internal sealed class GoogleAccessTokenProvider(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger logger)
 {
     private const string MailScope = "https://www.googleapis.com/auth/gmail.readonly";
     private const string CalendarListScope = "https://www.googleapis.com/auth/calendar.calendarlist.readonly";
@@ -57,25 +59,30 @@ internal sealed class GoogleAccessTokenProvider(IProviderConfigurationStore conf
         {
             throw;
         }
-        catch (ProviderReadException)
+        catch (ProviderReadException exception)
         {
+            ReadDiagnostics.Failure(logger, exception, "token_acquisition");
             throw;
         }
         catch (TokenResponseException exception) when (
             string.Equals(exception.Error?.Error, "invalid_grant", StringComparison.Ordinal))
         {
+            ReadDiagnostics.Failure(logger, exception, "token_acquisition");
             throw new ProviderReadException("Google authorization expired or was revoked. Reconnect the account.", ReadFailureKind.SignInRequired);
         }
-        catch (SecretStoreException)
+        catch (SecretStoreException exception)
         {
+            ReadDiagnostics.Failure(logger, exception, "token_acquisition");
             throw new ProviderReadException("The protected Google credential could not be accessed. Check local credential storage.", ReadFailureKind.LocalCredentialsUnavailable);
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
+            ReadDiagnostics.Failure(logger, exception, "token_acquisition");
             throw new ProviderReadException("Google authorization could not be reached.", ReadFailureKind.Network);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReadDiagnostics.Failure(logger, exception, "token_acquisition");
             throw new ProviderReadException("Google authorization is temporarily unavailable. Try again later.", ReadFailureKind.ProviderUnavailable);
         }
         finally

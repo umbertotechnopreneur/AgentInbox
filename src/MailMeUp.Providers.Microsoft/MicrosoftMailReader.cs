@@ -4,7 +4,10 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MailMeUp.Core;
+using MailMeUp.Diagnostics;
 using MailMeUp.Security;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MailMeUp.Providers.Microsoft;
 
@@ -13,12 +16,14 @@ public sealed class MicrosoftMailReader : IMailReader
 {
     private const int MaximumJsonBytes = 12 * 1024 * 1024;
     private static readonly HttpClient HttpClient = new();
+    private readonly ILogger<MicrosoftMailReader> _logger;
     private readonly MicrosoftAccessTokenProvider _tokens;
 
     /// <summary>Creates a Microsoft mail reader backed by the protected MSAL cache.</summary>
-    public MicrosoftMailReader(IProviderConfigurationStore configurations, ISecretStore secrets)
+    public MicrosoftMailReader(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger<MicrosoftMailReader>? logger = null)
     {
-        _tokens = new MicrosoftAccessTokenProvider(configurations, secrets);
+        _logger = logger ?? NullLogger<MicrosoftMailReader>.Instance;
+        _tokens = new MicrosoftAccessTokenProvider(configurations, secrets, _logger);
     }
 
     /// <inheritdoc />
@@ -33,7 +38,11 @@ public sealed class MicrosoftMailReader : IMailReader
         CancellationToken cancellationToken = default)
     {
         ValidateMailAccount(account);
+        using var diagnostics = ReadDiagnostics.Begin(_logger, account, "search_mail");
         ArgumentNullException.ThrowIfNull(query);
+        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
+            !string.IsNullOrWhiteSpace(query.Text), query.Sender is not null, query.RecipientContains is not null,
+            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.HasAttachments.HasValue, cursor is not null, limit);
         if (query.Text.Length > 500 || query.Text.Any(char.IsControl) || limit is < 1 or > 50)
         {
             throw new ArgumentException("The Microsoft mail search page is invalid.");
@@ -46,62 +55,26 @@ public sealed class MicrosoftMailReader : IMailReader
             var url = string.IsNullOrWhiteSpace(cursor)
                 ? CreateSearchUrl(query, limit, excludedFolderIds)
                 : ValidateNextLink(cursor);
-            using var document = await GetJsonAsync(url, accessToken, preferText: false, cancellationToken);
-            var summaries = new List<ProviderMailSummary>();
-            if (document.RootElement.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in values.EnumerateArray().Take(limit))
-                {
-                    var id = GetOptionalString(item, "id");
-                    if (string.IsNullOrWhiteSpace(id))
-                    {
-                        continue;
-                    }
-
-                    var summary = new ProviderMailSummary(
-                        id,
-                        GetOptionalString(item, "subject") ?? "(no subject)",
-                        ReadSender(item),
-                        ReadDate(item),
-                        GetOptionalString(item, "bodyPreview") ?? string.Empty,
-                        IsRead: GetOptionalBoolean(item, "isRead") ?? true,
-                        HasAttachments: GetOptionalBoolean(item, "hasAttachments") ?? false,
-                        Recipients: ReadRecipients(item, "toRecipients")
-                            .Concat(ReadRecipients(item, "ccRecipients"))
-                            .ToArray());
-                    var parentFolderId = GetOptionalString(item, "parentFolderId");
-                    if (string.IsNullOrWhiteSpace(parentFolderId) ||
-                        excludedFolderIds.Contains(parentFolderId, StringComparer.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    if ((query.Start is null || summary.ReceivedAt >= query.Start.Value) &&
-                        (query.End is null || summary.ReceivedAt < query.End.Value))
-                    {
-                        summaries.Add(summary);
-                    }
-                }
-            }
-
-            return new ProviderMailSearchPage(
-                summaries,
-                GetOptionalString(document.RootElement, "@odata.nextLink"));
+            using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.messages.list", cancellationToken);
+            return ParseSearchPage(document.RootElement, query, limit, excludedFolderIds);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (ProviderReadException)
+        catch (ProviderReadException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The provider could not be reached.", ReadFailureKind.Network);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("Microsoft mail search failed.");
         }
     }
@@ -113,13 +86,14 @@ public sealed class MicrosoftMailReader : IMailReader
         CancellationToken cancellationToken = default)
     {
         ValidateMailAccount(account);
+        using var diagnostics = ReadDiagnostics.Begin(_logger, account, "read_mail");
         ValidateMessageId(providerMessageId);
         try
         {
             var accessToken = await _tokens.GetAsync(account, ["Mail.Read"], cancellationToken);
             var url = $"https://graph.microsoft.com/v1.0/me/messages/{Uri.EscapeDataString(providerMessageId)}" +
                       "?%24select=id%2Csubject%2Cfrom%2CtoRecipients%2CccRecipients%2CreceivedDateTime%2Cbody%2CisRead%2ChasAttachments";
-            using var document = await GetJsonAsync(url, accessToken, preferText: true, cancellationToken);
+            using var document = await GetJsonAsync(url, accessToken, preferText: true, "graph.messages.get", cancellationToken);
             var root = document.RootElement;
             var body = root.TryGetProperty("body", out var bodyProperty)
                 ? GetOptionalString(bodyProperty, "content") ?? string.Empty
@@ -147,16 +121,19 @@ public sealed class MicrosoftMailReader : IMailReader
         {
             throw;
         }
-        catch (ProviderReadException)
+        catch (ProviderReadException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The provider could not be reached.", ReadFailureKind.Network);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReadDiagnostics.Failure(_logger, exception, "provider_operation");
             throw new ProviderReadException("The Microsoft message could not be read.");
         }
     }
@@ -207,12 +184,13 @@ public sealed class MicrosoftMailReader : IMailReader
         var parameters = new List<string>
         {
             "%24select=id%2Csubject%2Cfrom%2CtoRecipients%2CccRecipients%2CreceivedDateTime%2CbodyPreview%2CisRead%2ChasAttachments%2CparentFolderId",
-            "%24top=" + limit.ToString(CultureInfo.InvariantCulture),
-            "%24filter=" + Uri.EscapeDataString(string.Join(" and ", filterParts))
+            "%24top=" + limit.ToString(CultureInfo.InvariantCulture)
         };
 
         if (searchParts.Count > 0)
         {
+            // Graph message search rejects $filter and $orderby alongside $search.
+            // Enforce folder exclusions and structured criteria on each returned page instead.
             var escapedSearch = string.Join(" AND ", searchParts)
                 .Replace("\\", "\\\\", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal);
@@ -221,13 +199,63 @@ public sealed class MicrosoftMailReader : IMailReader
         else
         {
             // The broad receivedDateTime lower bound is first in $filter so Graph accepts this $orderby.
+            parameters.Add("%24filter=" + Uri.EscapeDataString(string.Join(" and ", filterParts)));
             parameters.Add("%24orderby=receivedDateTime%20DESC");
         }
 
         return "https://graph.microsoft.com/v1.0/me/messages?" + string.Join('&', parameters);
     }
 
-    private static async Task<IReadOnlyList<string>> ReadExcludedFolderIdsAsync(
+    private static ProviderMailSearchPage ParseSearchPage(
+        JsonElement root,
+        ProviderMailQuery query,
+        int limit,
+        IReadOnlyList<string> excludedFolderIds)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("value", out var items) || items.ValueKind != JsonValueKind.Array)
+        {
+            throw new JsonException("The provider mail result list is missing or invalid.");
+        }
+        var summaries = new List<ProviderMailSummary>();
+        if (root.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in values.EnumerateArray().Take(limit))
+            {
+                var id = GetOptionalString(item, "id");
+                var parentFolderId = GetOptionalString(item, "parentFolderId");
+                if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(parentFolderId) ||
+                    excludedFolderIds.Contains(parentFolderId, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                var summary = new ProviderMailSummary(
+                    id,
+                    GetOptionalString(item, "subject") ?? "(no subject)",
+                    ReadSender(item),
+                    ReadDate(item),
+                    GetOptionalString(item, "bodyPreview") ?? string.Empty,
+                    IsRead: GetOptionalBoolean(item, "isRead") ?? true,
+                    HasAttachments: GetOptionalBoolean(item, "hasAttachments") ?? false,
+                    Recipients: ReadRecipients(item, "toRecipients")
+                        .Concat(ReadRecipients(item, "ccRecipients"))
+                        .ToArray());
+                if ((query.Start is null || summary.ReceivedAt >= query.Start.Value) &&
+                    (query.End is null || summary.ReceivedAt < query.End.Value) &&
+                    (!query.UnreadOnly || !summary.IsRead) &&
+                    (query.HasAttachments is null || summary.HasAttachments == query.HasAttachments.Value))
+                {
+                    summaries.Add(summary);
+                }
+            }
+        }
+
+        // Keep the continuation even when this whole page was excluded; the application
+        // refills within its existing time/page budget and applies sender/recipient filters.
+        return new ProviderMailSearchPage(summaries, GetOptionalString(root, "@odata.nextLink"));
+    }
+
+    private async Task<IReadOnlyList<string>> ReadExcludedFolderIdsAsync(
         string accessToken,
         CancellationToken cancellationToken)
     {
@@ -235,7 +263,7 @@ public sealed class MicrosoftMailReader : IMailReader
         foreach (var folder in new[] { "junkemail", "deleteditems" })
         {
             var url = $"https://graph.microsoft.com/v1.0/me/mailFolders/{folder}?%24select=id";
-            using var document = await GetJsonAsync(url, accessToken, preferText: false, cancellationToken);
+            using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.mailFolders.get", cancellationToken);
             var id = GetOptionalString(document.RootElement, "id");
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -269,10 +297,11 @@ public sealed class MicrosoftMailReader : IMailReader
         return uri.AbsoluteUri;
     }
 
-    private static async Task<JsonDocument> GetJsonAsync(
+    private async Task<JsonDocument> GetJsonAsync(
         string url,
         string accessToken,
         bool preferText,
+        string endpoint,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -283,38 +312,8 @@ public sealed class MicrosoftMailReader : IMailReader
             request.Headers.TryAddWithoutValidation("Prefer", "outlook.body-content-type=\"text\"");
         }
 
-        using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new ProviderReadException("Microsoft Graph returned an unsuccessful response.", ClassifyHttpFailure((int)response.StatusCode));
-        }
-
-        if (response.Content.Headers.ContentLength is > MaximumJsonBytes)
-        {
-            throw new ProviderReadException("The Microsoft Graph response is too large.");
-        }
-
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var buffer = new MemoryStream();
-        var chunk = new byte[32 * 1024];
-        while (true)
-        {
-            var read = await source.ReadAsync(chunk, cancellationToken);
-            if (read == 0)
-            {
-                break;
-            }
-
-            if (buffer.Length + read > MaximumJsonBytes)
-            {
-                throw new ProviderReadException("The Microsoft Graph response is too large.");
-            }
-
-            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
-        }
-
-        buffer.Position = 0;
-        return await JsonDocument.ParseAsync(buffer, cancellationToken: cancellationToken);
+        return await ProviderHttpDiagnostics.ReadJsonAsync(
+            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken);
     }
 
     private static string ReadSender(JsonElement message)
@@ -408,6 +407,7 @@ public sealed class MicrosoftMailReader : IMailReader
     }
     private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
     {
+        400 => ReadFailureKind.InvalidRequest,
         401 => ReadFailureKind.SignInRequired,
         403 => ReadFailureKind.AccessDenied,
         404 or 410 => ReadFailureKind.ItemUnavailable,

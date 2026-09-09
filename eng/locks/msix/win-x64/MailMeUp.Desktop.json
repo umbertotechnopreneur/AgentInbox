@@ -26,6 +26,28 @@
           "Microsoft.WindowsAppSDK.WinUI": "2.3.6"
         }
       },
+      "Serilog.Extensions.Hosting": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "E7juuIc+gzoGxgzFooFgAV8g9BfiSXNKsUok9NmEpyAXg2odkcPsMa/Yo4axkJRlh0se7mkYQ1GXDaBemR+b6w==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
+          "Serilog": "4.3.0",
+          "Serilog.Extensions.Logging": "10.0.0"
+        }
+      },
+      "Serilog.Sinks.File": {
+        "type": "Direct",
+        "requested": "[7.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
+        "dependencies": {
+          "Serilog": "4.2.0"
+        }
+      },
       "Google.Apis": {
         "type": "Transitive",
         "resolved": "1.76.0",
@@ -402,6 +424,20 @@
         "resolved": "13.0.4",
         "contentHash": "pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A=="
       },
+      "Serilog": {
+        "type": "Transitive",
+        "resolved": "4.3.0",
+        "contentHash": "+cDryFR0GRhsGOnZSKwaDzRRl4MupvJ42FhCE4zhQRVanX0Jpg6WuCBk59OVhVDPmab1bB+nRykAnykYELA9qQ=="
+      },
+      "Serilog.Extensions.Logging": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "vx0kABKl2dWbBhhqAfTOk53/i8aV/5VaT3a6il9gn72Wqs2pM7EK2OB6No6xdqK2IaY6Zf9gdjLuK9BVa2rT+Q==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging": "10.0.0",
+          "Serilog": "4.2.0"
+        }
+      },
       "SQLitePCLRaw.core": {
         "type": "Transitive",
         "resolved": "2.1.12",
@@ -452,11 +488,19 @@
         "type": "Project",
         "dependencies": {
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
       },
       "mailmeup.core": {
         "type": "Project"
+      },
+      "mailmeup.diagnostics": {
+        "type": "Project",
+        "dependencies": {
+          "MailMeUp.Core": "[0.1.1, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
+        }
       },
       "mailmeup.hosting": {
         "type": "Project",
@@ -474,6 +518,7 @@
         "dependencies": {
           "Google.Apis.Auth": "[1.76.0, )",
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "MailMeUp.Security": "[0.1.1, )"
         }
       },
@@ -481,6 +526,7 @@
         "type": "Project",
         "dependencies": {
           "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "MailMeUp.Security": "[0.1.1, )",
           "Microsoft.Identity.Client": "[4.88.0, )"
         }

@@ -28,6 +28,13 @@ public static class ServiceRegistration
         services.AddSingleton<IMailReader, MicrosoftMailReader>();
         services.AddSingleton<ICalendarReader, GoogleCalendarReader>();
         services.AddSingleton<ICalendarReader, MicrosoftCalendarReader>();
+        foreach (var providerId in new[] { "google", "microsoft" })
+        {
+            services.AddSingleton<IAccountConnectionChecker>(provider => new ReadAccessConnectionChecker(
+                provider.GetServices<IMailReader>().Single(reader => reader.ProviderId == providerId),
+                provider.GetServices<ICalendarReader>().Single(reader => reader.ProviderId == providerId),
+                provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReadAccessConnectionChecker>>()));
+        }
         services.AddSingleton<MailMeUpApplication>();
         services.AddSingleton<IMailMeUpApplication>(provider => new LoggingMailMeUpApplication(
             provider.GetRequiredService<MailMeUpApplication>(),

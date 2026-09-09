@@ -20,7 +20,8 @@ flowchart LR
 | Module | Responsibility |
 | --- | --- |
 | Core | Account models and contracts |
-| Application | Shared operations, account lifecycle and capability status |
+| Application | Shared operations, account lifecycle, bounded read checks and capability status |
+| Diagnostics | Bounded HTTP failure capture, pseudonymous account correlation and log scopes |
 | Storage | SQLite metadata and local paths |
 | Security | Operating-system protected credential storage |
 | Providers.Google / Providers.Microsoft | Provider app setup, sign-in and read-only mail/calendar adapters |
@@ -40,7 +41,7 @@ Local sharing choices are separate from provider consent. New accounts connected
 - Current provider scope is read-only. No write tools are registered or planned for this milestone.
 - Mail searches exclude Spam/Junk and Trash/Deleted Items by default; provider adapters enforce the exclusion before returning results.
 - MCP stdout contains protocol messages only; diagnostics go to stderr.
-- CLI output uses a compact banner and section dividers in terminals, with JSON for pipes or `--json`. An application decorator records bounded operation diagnostics through `ILogger<T>` for both adapters; Serilog lives only in the executable. See [logging](LOGGING.md).
+- CLI output uses a compact banner and section dividers in terminals, with JSON for pipes or `--json`. An application decorator records bounded operation diagnostics through `ILogger<T>` for both adapters; the CLI and Windows executable configure Serilog with the shared local rolling file sink. See [logging](LOGGING.md).
 - SQLite stores metadata, never credentials. An empty account list does not create a database. The storage adapter calls SQLitePCL directly so packaged startup does not activate unrelated Windows application-data APIs.
 - Public provider IDs use a small local settings file. Google uses a protected token slot per account; Microsoft uses a protected MSAL multi-account cache. Protection uses DPAPI, macOS Keychain or Linux Secret Service, with no plain-text fallback.
 - Credential refresh, reconnect persistence and removal hold a cross-process session lease. Microsoft cache mutations are persisted after a successful operation; a failed reconnect does not delete existing credentials.

@@ -7,6 +7,30 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WizardAccentBrush" Color="#115C63" />
+                    <SolidColorBrush x:Key="WizardSelectionBrush" Color="#18115C63" />
+                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#115C63" />
+                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#D9115C63" />
+                    <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#B8115C63" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="White" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#E6FFFFFF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WizardAccentBrush" Color="#71DEB7" />
+                    <SolidColorBrush x:Key="WizardSelectionBrush" Color="#2671DEB7" />
+                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#71DEB7" />
+                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#D971DEB7" />
+                    <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#B871DEB7" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#071525" />
+                    <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#D9071525" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="WizardAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="WizardSelectionBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <Style x:Key="BodyText" TargetType="TextBlock">
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="FontSize" Value="14" />
@@ -23,6 +47,19 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="Padding" Value="20" />
+            </Style>
+            <Style x:Key="QuietButton" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="8,8" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+            </Style>
+            <Style x:Key="WizardStep" TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="12,10" />
+                <Setter Property="Margin" Value="0,3" />
+                <Setter Property="MinHeight" Value="46" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

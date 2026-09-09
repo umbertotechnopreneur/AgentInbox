@@ -47,6 +47,7 @@ This lists package dependencies, including transitive dependencies. Self-contain
 | Serilog.Extensions.Hosting | 10.0.0 | Apache-2.0 |
 | Serilog.Extensions.Logging | 10.0.0 | Apache-2.0 |
 | Serilog.Sinks.Console | 6.1.1 | Apache-2.0 |
+| Serilog.Sinks.File | 7.0.0 | Apache-2.0 |
 | Serilog | 4.3.0 | Apache-2.0 |
 | Spectre.Console.Ansi | 0.57.2 | MIT |
 | Spectre.Console | 0.57.2 | MIT |

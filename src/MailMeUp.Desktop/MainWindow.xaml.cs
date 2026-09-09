@@ -5,10 +5,13 @@ using MailMeUp.Desktop.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Windows.ApplicationModel.DataTransfer;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
+using Windows.UI.ViewManagement;
 
 namespace MailMeUp.Desktop;
 
@@ -19,25 +22,64 @@ public sealed partial class MainWindow : Window
     private readonly CodexSetupService _codex;
     private readonly ILogger<MainWindow> _logger;
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly AccessibilitySettings _accessibility = new();
     private CancellationTokenSource? _operation;
+    private IReadOnlyList<Account> _accounts = [];
+    private IReadOnlyList<ProviderSetupStatus> _providers = [];
+    private Dictionary<string, AccountSharingSettings> _sharing = new(StringComparer.Ordinal);
+    private Dictionary<string, AccountConnectionCheck> _connectionChecks = new(StringComparer.Ordinal);
+    private CodexSetupStatus? _codexStatus;
     private bool _loaded;
     private bool _busy;
-    private bool _aboutOpen;
-    private int _step;
+    private bool _dialogOpen;
+    private bool _allowClose;
+    private bool _welcomeReviewed;
+    private bool _sharingReviewed;
     private bool _sharingDirty;
-    private readonly Dictionary<string, TextBlock> _accountSharingLabels = new(StringComparer.Ordinal);
+    private int _step;
+    private bool _narrowSharing;
+    private bool _showSharingList;
+    private bool _highContrastSubscribed;
 
-    /// <summary>Creates the centered setup window without starting sign-in or reading mailbox content.</summary>
+    /// <summary>Creates the setup window without starting sign-in or reading mailbox content.</summary>
     public MainWindow(IMailMeUpApplication application, CodexSetupService codex, ILogger<MainWindow> logger)
     {
         _application = application;
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        RenderCodexChecks(CodexSetupCheck.Pending());
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        UpdateTitleBar();
         CenterWindow();
         Root.Loaded += Root_Loaded;
+        PageScroll.SizeChanged += (_, _) => { if (_loaded) UpdateLayout(); };
+        Root.ActualThemeChanged += (_, _) =>
+        {
+            UpdateTitleBar();
+            if (_loaded)
+            {
+                UpdateProgress();
+                RenderSharingAccounts();
+            }
+        };
+        try
+        {
+            _accessibility.HighContrastChanged += Accessibility_HighContrastChanged;
+            _highContrastSubscribed = true;
+        }
+        catch (COMException exception) when ((uint)exception.HResult == 0x80070490)
+        {
+            // Some desktop configurations do not expose this optional WinRT event.
+            // Current high-contrast state is still read when the window is initialized.
+            _logger.LogDebug("High-contrast change notification is unavailable.");
+        }
+        AppWindow.Closing += AppWindow_Closing;
         Closed += (_, _) =>
         {
+            if (_highContrastSubscribed)
+                _accessibility.HighContrastChanged -= Accessibility_HighContrastChanged;
             _lifetime.Cancel();
             _operation?.Cancel();
         };
@@ -46,19 +88,34 @@ public sealed partial class MainWindow : Window
     private void CenterWindow()
     {
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        var scale = Math.Max(1.0, GetDpiForWindow(handle) / 96.0);
-        var width = Math.Min((int)(1000 * scale), area.Width);
-        var height = Math.Min((int)(780 * scale), area.Height);
-        AppWindow.MoveAndResize(new RectInt32(
-            area.X + (area.Width - width) / 2,
-            area.Y + (area.Height - height) / 2,
-            width,
-            height));
+        var scale = Math.Max(1.0, GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0);
+        var width = Math.Min((int)(1180 * scale), area.Width);
+        var height = Math.Min((int)(820 * scale), area.Height);
+        AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - width) / 2,
+            area.Y + (area.Height - height) / 2, width, height));
     }
 
     [DllImport("user32.dll", ExactSpelling = true)]
     private static extern uint GetDpiForWindow(IntPtr window);
+
+    private void UpdateTitleBar()
+    {
+        AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+        AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+        AppWindow.TitleBar.ButtonForegroundColor = _accessibility.HighContrast
+            ? new UISettings().GetColorValue(UIColorType.Foreground)
+            : Root.ActualTheme == ElementTheme.Dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black;
+    }
+
+    private void Accessibility_HighContrastChanged(AccessibilitySettings sender, object args) =>
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_lifetime.IsCancellationRequested)
+            {
+                UpdateTitleBar();
+                UpdateLayout();
+            }
+        });
 
     private async void Root_Loaded(object sender, RoutedEventArgs e)
     {
@@ -66,59 +123,100 @@ public sealed partial class MainWindow : Window
         _loaded = true;
         Steps.SelectedIndex = 0;
         ShowStep(0);
+        UpdateLayout();
         await RunAsync("Loading local setup…", RefreshAccountsAsync);
+    }
+
+    private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_loaded) UpdateLayout();
+    }
+
+    private void UpdateLayout()
+    {
+        var compact = Root.ActualWidth < 1000;
+        RailColumn.Width = new GridLength(compact ? 76 : 220);
+        RailLayout.Padding = new Thickness(compact ? 6 : 14, 16, compact ? 6 : 14, 16);
+        foreach (var label in new[] { RailTagline, WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, PrivacyLabel, AboutLabel, ReadOnlyLabel })
+            label.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        RailArtwork.Visibility = compact || Root.ActualHeight < 700 || _accessibility.HighContrast
+            ? Visibility.Collapsed : Visibility.Visible;
+        ContentLayout.Padding = new Thickness(compact ? 20 : 32, 16, compact ? 20 : 32, 20);
+        var availableWidth = Math.Max(0, Root.ActualWidth - RailColumn.Width.Value - ContentLayout.Padding.Left - ContentLayout.Padding.Right);
+        var showHero = availableWidth >= 730 && Root.ActualHeight >= 690 && !_accessibility.HighContrast;
+        WelcomeArtwork.Visibility = showHero ? Visibility.Visible : Visibility.Collapsed;
+        HeroColumn.Width = showHero ? new GridLength(0.9, GridUnitType.Star) : new GridLength(0);
+        WelcomeHero.MinHeight = showHero ? 300 : 250;
+        WelcomeHeading.FontSize = availableWidth < 500 ? 32 : 40;
+        RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
+        _narrowSharing = availableWidth < 750;
+        CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
+        UpdateSharingLayout();
+
     }
 
     private void ShowStep(int step)
     {
         _step = step;
-        WelcomePage.Visibility = step == 0 ? Visibility.Visible : Visibility.Collapsed;
-        AccountsPage.Visibility = step == 1 ? Visibility.Visible : Visibility.Collapsed;
-        SharingPage.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
-        CodexPage.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
+        WelcomePage.Visibility = ToVisibility(step == 0);
+        AccountsPage.Visibility = ToVisibility(step == 1);
+        SharingPage.Visibility = ToVisibility(step == 2);
+        CodexPage.Visibility = ToVisibility(step == 3);
+        BackButton.Visibility = ToVisibility(step > 0);
         BackButton.IsEnabled = step > 0 && !_busy;
-        NextButton.Content = step switch { 0 => "Get started", 1 => "Choose sharing", 2 => "Connect to Codex", _ => "Close setup" };
-        if (step == 3)
+        PreviewLabel.Visibility = ToVisibility(step == 0);
+        NextButton.Content = step switch
         {
-            CodexCommands.Text = _codex.GetPreview().ManualCommands;
-        }
+            0 => "Get started →", 1 => "Choose sharing →", 2 => "Connect to Codex →", _ => "Close setup"
+        };
+        NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
+            step == 3 ? "DefaultButtonStyle" : "AccentButtonStyle"];
+        PageScroll.ChangeView(null, 0, null, true);
+        UpdateProgress();
     }
 
     private void Steps_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_loaded || Steps.SelectedIndex < 0) return;
-        if (_sharingDirty && Steps.SelectedIndex != 2)
+        if (!_loaded || Steps.SelectedIndex < 0 || Steps.SelectedIndex == _step) return;
+        if (_busy || !CanLeaveSharing())
         {
-            Steps.SelectedIndex = 2;
-            SetNotice("Unsaved sharing choices", "Save the changed account choices before leaving this step.", InfoBarSeverity.Warning);
+            Steps.SelectedIndex = _step;
             return;
         }
+        if (_step == 0) _welcomeReviewed = true;
+        if (_step == 2 && _accounts.Count > 0) _sharingReviewed = true;
         ShowStep(Steps.SelectedIndex);
     }
 
-    private void BackButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = Math.Max(0, _step - 1);
-
-    private async void AboutButton_Click(object sender, RoutedEventArgs e)
+    private bool CanLeaveSharing()
     {
-        if (_busy || _aboutOpen) return;
-        _aboutOpen = true;
-        try
+        if (!_sharingDirty) return true;
+        SetNotice("Unsaved sharing choices", "Save or discard this account's changes before continuing.", InfoBarSeverity.Warning);
+        return false;
+    }
+
+    private void UpdateProgress()
+    {
+        var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
+        string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
+        string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
+        var contiguous = 0;
+        while (contiguous < 3 && completed[contiguous]) contiguous++;
+        ProgressLine.Height = contiguous * 52;
+        for (var index = 0; index < icons.Length; index++)
         {
-            var dialog = new AboutDialog { XamlRoot = Root.XamlRoot };
-            using var cancellation = _lifetime.Token.Register(() => DispatcherQueue.TryEnqueue(() => dialog.Hide()));
-            await dialog.ShowAsync();
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning("About dialog could not open ({ErrorType})", exception.GetType().Name);
-            if (!_lifetime.IsCancellationRequested)
-                SetNotice("Support", "Visit github.com/umbertotechnopreneur/MailMeUp for support or umbertogiacobbi.biz for the creator's website.", InfoBarSeverity.Informational);
-        }
-        finally
-        {
-            _aboutOpen = false;
+            var active = index == _step;
+            icons[index].Glyph = completed[index] && !active ? "\uE73E" : glyphs[index];
+            icons[index].Foreground = ThemeBrush(active || completed[index] ? "WizardAccentBrush" : "TextFillColorSecondaryBrush");
+            var item = (ListBoxItem)Steps.Items[index];
+            AutomationProperties.SetName(item, labels[index]);
+            AutomationProperties.SetItemStatus(item, active ? "Current stage" : completed[index] ? "Completed" : "Upcoming");
         }
     }
+
+    private void BackButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = Math.Max(0, _step - 1);
+    private void ReviewSharingButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = 2;
 
     private void NextButton_Click(object sender, RoutedEventArgs e)
     {
@@ -126,179 +224,311 @@ public sealed partial class MainWindow : Window
         else Steps.SelectedIndex = _step + 1;
     }
 
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_allowClose || !_sharingDirty) return;
+        args.Cancel = true;
+        if (_busy || _dialogOpen) return;
+        var result = await ShowDialogAsync(new ContentDialog
+        {
+            Title = "Discard unsaved choices?",
+            Content = Body("Your saved sharing settings will stay unchanged."),
+            PrimaryButtonText = "Discard and close",
+            CloseButtonText = "Keep editing",
+            DefaultButton = ContentDialogButton.Close
+        });
+        if (result == ContentDialogResult.Primary)
+        {
+            _allowClose = true;
+            Close();
+        }
+    }
+
     private async Task RefreshAccountsAsync(CancellationToken cancellationToken)
     {
         var accounts = await _application.ListAccountsAsync(cancellationToken);
         var providers = await _application.ListProviderSetupAsync(cancellationToken);
-        var settings = (await _application.ListAccountSharingAsync(cancellationToken)).ToDictionary(item => item.AccountId, StringComparer.Ordinal);
-        ProviderStatusText.Text = string.Join("  ·  ", new[] { "google", "microsoft" }.Select(id =>
-            $"{(id == "google" ? "Google" : "Microsoft")}: {(providers.Any(provider => provider.ProviderId == id && provider.Configured) ? "ready to sign in" : "app registration needed")}"));
-        ConnectedAccounts.Children.Clear();
-        _accountSharingLabels.Clear();
-        SharingAccounts.Children.Clear();
+        var settings = await _application.ListAccountSharingAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _accounts = accounts;
+        _providers = providers;
+        _sharing = settings.ToDictionary(item => item.AccountId, StringComparer.Ordinal);
+        var connectedIds = accounts.Select(account => account.Id).ToHashSet(StringComparer.Ordinal);
+        _connectionChecks = _connectionChecks
+            .Where(pair => connectedIds.Contains(pair.Key))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        ProviderStatusText.Text = string.Join(" · ", new[] { "google", "microsoft" }.Select(id =>
+            $"{ProviderName(id)}: {(providers.Any(provider => provider.ProviderId == id && provider.Configured) ? "configured" : "setup needed")}"));
         _sharingDirty = false;
-        if (accounts.Count == 0)
-        {
-            ConnectedAccounts.Children.Add(Body("No accounts connected yet. Add your first account above."));
-            SharingAccounts.Children.Add(Body("Connect an account in step 1 to choose what to share."));
-            return;
-        }
-
-        foreach (var account in accounts)
-        {
-            var sharing = settings.GetValueOrDefault(account.Id) ?? new AccountSharingSettings(account.Id);
-            var details = new StackPanel { Spacing = 5 };
-            details.Children.Add(new TextBlock { Text = account.EmailAddress, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-            var sharingLabel = Body(SharingLabel(account, sharing));
-            _accountSharingLabels[account.Id] = sharingLabel;
-            details.Children.Add(sharingLabel);
-            ConnectedAccounts.Children.Add(Card(details));
-            SharingAccounts.Children.Add(CreateSharingCard(account, sharing));
-        }
+        _sharingReviewed = false;
+        SelectSharingAccount(_accounts.FirstOrDefault(account => account.Id == _selectedAccount?.Id) ?? _accounts.FirstOrDefault());
+        UpdateLayout();
+        RenderConnectedAccounts();
+        RenderSharingAccounts();
+        UpdateSharingSummary();
+        UpdateProgress();
     }
 
-    private Border CreateSharingCard(Account account, AccountSharingSettings initial)
+    private void RenderConnectedAccounts()
     {
-        var panel = new StackPanel { Spacing = 10 };
-        panel.Children.Add(new TextBlock { Text = account.EmailAddress, FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-        var enabled = new CheckBox { Content = "Share this account with my assistant", IsChecked = initial.Enabled };
-        var mail = new CheckBox { Content = account.MailReadEnabled ? "Mail" : "Mail (not granted at sign-in)", IsChecked = initial.ShareMail && account.MailReadEnabled };
-        var calendars = new CheckBox { Content = account.CalendarReadEnabled ? "Calendars" : "Calendars (not granted at sign-in)", IsChecked = initial.ShareCalendars && account.CalendarReadEnabled };
-        var allCalendars = new CheckBox { Content = "All current and future calendars", IsChecked = initial.CalendarIds is null };
-        var calendarList = new StackPanel { Spacing = 6, Margin = new Thickness(20, 0, 0, 0) };
-        var load = new Button { Content = "Choose individual calendars" };
-        var summary = Body(initial.CalendarIds is null ? "All calendars selected." : $"{initial.CalendarIds.Count} individual calendars selected.");
-        var save = new Button { Content = "Save choices", IsEnabled = false };
-        var saved = Body("Choices saved on this device.");
-        var selectedIds = initial.CalendarIds?.ToHashSet(StringComparer.Ordinal) ?? [];
-        var calendarChecks = new List<(string Id, CheckBox Control)>();
-        var dirty = false;
-
-        void MarkDirty()
+        AccountsCountText.Text = $"{_accounts.Count} {(_accounts.Count == 1 ? "account" : "accounts")}";
+        CheckConnectionsButton.IsEnabled = _accounts.Count > 0;
+        ConnectedAccounts.Children.Clear();
+        foreach (var account in _accounts)
         {
-            dirty = true;
-            save.IsEnabled = true;
-            saved.Text = "Unsaved changes";
-            save.Tag = true;
-            _sharingDirty = true;
-        }
-
-        void UpdateControls()
-        {
-            mail.IsEnabled = enabled.IsChecked == true && account.MailReadEnabled;
-            calendars.IsEnabled = enabled.IsChecked == true && account.CalendarReadEnabled;
-            var canChoose = enabled.IsChecked == true && calendars.IsChecked == true && account.CalendarReadEnabled;
-            allCalendars.IsEnabled = canChoose;
-            load.IsEnabled = canChoose;
-            foreach (var item in calendarChecks) item.Control.IsEnabled = canChoose && allCalendars.IsChecked != true;
-        }
-
-        void Changed(object sender, RoutedEventArgs e)
-        {
-            UpdateControls();
-            MarkDirty();
-        }
-
-        foreach (var check in new[] { enabled, mail, calendars, allCalendars })
-        {
-            check.Checked += Changed;
-            check.Unchecked += Changed;
-        }
-
-        load.Click += async (_, _) => await RunAsync("Loading calendar names…", async cancellationToken =>
-        {
-            if (calendarChecks.Count > 0)
-                selectedIds = calendarChecks.Where(item => item.Control.IsChecked == true).Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
-            var available = await _application.ListAvailableCalendarsAsync(account.Id, cancellationToken);
-            calendarList.Children.Clear();
-            calendarChecks.Clear();
-            foreach (var calendar in available)
+            var row = AccountRow(account, includeStatus: false);
+            var connection = _connectionChecks.GetValueOrDefault(account.Id);
+            if (NeedsReadAttention(connection))
             {
-                var check = new CheckBox
-                {
-                    Content = calendar.Name + (calendar.Primary ? " (primary)" : ""),
-                    IsChecked = allCalendars.IsChecked == true || selectedIds.Contains(calendar.ProviderCalendarId)
-                };
-                check.Checked += (_, _) => MarkDirty();
-                check.Unchecked += (_, _) => MarkDirty();
-                calendarChecks.Add((calendar.ProviderCalendarId, check));
-                calendarList.Children.Add(check);
+                var reconnect = AccountActionButton(
+                    "Try to reconnect", $"Try to reconnect {account.EmailAddress}",
+                    "Try to reconnect", account, ReconnectAccountButton_Click);
+                reconnect.Foreground = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
+                Grid.SetColumn(reconnect, 2);
+                row.Children.Add(reconnect);
             }
-            // Preserve inaccessible saved IDs when discovery returns no rows; never silently widen sharing.
-            summary.Text = available.Count == 0 ? "No calendars returned. Saved selections are kept." : "Choose the calendars your assistant may read.";
-            if (available.Count > 0) allCalendars.IsChecked = false;
-            UpdateControls();
-        });
-
-        save.Click += async (_, _) => await RunAsync("Saving sharing choices…", async cancellationToken =>
-        {
-            var ids = allCalendars.IsChecked == true
-                ? null
-                : calendarChecks.Count > 0
-                    ? calendarChecks.Where(item => item.Control.IsChecked == true).Select(item => item.Id).ToArray()
-                    : selectedIds.ToArray();
-            var result = await _application.SaveAccountSharingAsync(new AccountSharingSettings(
-                account.Id,
-                Enabled: enabled.IsChecked == true,
-                ShareMail: mail.IsChecked == true && account.MailReadEnabled,
-                ShareCalendars: calendars.IsChecked == true && account.CalendarReadEnabled,
-                CalendarIds: ids), cancellationToken);
-            selectedIds = result.CalendarIds?.ToHashSet(StringComparer.Ordinal) ?? [];
-            dirty = false;
-            save.Tag = false;
-            save.IsEnabled = false;
-            saved.Text = "Saved. Applies to future assistant reads.";
-            if (_accountSharingLabels.TryGetValue(account.Id, out var sharingLabel)) sharingLabel.Text = SharingLabel(account, result);
-            summary.Text = result.CalendarIds is null ? "All calendars selected." : $"{result.CalendarIds.Count} individual calendars selected.";
-            _sharingDirty = SharingAccounts.Children.OfType<Border>().Any(card =>
-                card.Child is StackPanel stack && stack.Children.OfType<Button>().Any(button => button.Tag is true));
-            SetNotice("Sharing choices saved", "Information already returned to an assistant stays in its conversation.", InfoBarSeverity.Success);
-        });
-
-        // Dirty state is kept per card so saving one account does not discard another account's choices.
-        save.Loaded += (_, _) => save.IsEnabled = dirty;
-        panel.Children.Add(enabled);
-        var categories = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18 };
-        categories.Children.Add(mail);
-        categories.Children.Add(calendars);
-        panel.Children.Add(categories);
-        panel.Children.Add(allCalendars);
-        panel.Children.Add(summary);
-        panel.Children.Add(load);
-        panel.Children.Add(calendarList);
-        panel.Children.Add(save);
-        panel.Children.Add(saved);
-        UpdateControls();
-        return Card(panel);
+            var menu = new MenuFlyout();
+            var reconnectItem = new MenuFlyoutItem { Text = "Reconnect", Tag = account };
+            reconnectItem.Click += ReconnectAccountButton_Click;
+            menu.Items.Add(reconnectItem);
+            var removeItem = new MenuFlyoutItem { Text = "Remove from device", Tag = account };
+            removeItem.Click += RemoveAccountButton_Click;
+            menu.Items.Add(removeItem);
+            var actions = new Button
+            {
+                Content = new FontIcon { Glyph = "\uE712", FontSize = 16 },
+                Flyout = menu,
+                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
+                Padding = new Thickness(8),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            AutomationProperties.SetName(actions, $"Account actions for {account.EmailAddress}");
+            ToolTipService.SetToolTip(actions, "Account actions");
+            Grid.SetColumn(actions, 3);
+            row.Children.Add(actions);
+            ConnectedAccounts.Children.Add(new Border
+            {
+                Child = row, BorderThickness = new Thickness(0, 0, 0, 1),
+                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"), Padding = new Thickness(8, 8, 8, 8)
+            });
+        }
+        if (_accounts.Count == 0)
+            ConnectedAccounts.Children.Add(Body("Add your first account above."));
     }
+
+    private Grid AccountRow(Account account, bool includeStatus)
+    {
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var logo = new Image { Source = ProviderLogo(account.Provider), Width = 24, Height = 24 };
+        AutomationProperties.SetName(logo, ProviderName(account.Provider));
+        row.Children.Add(logo);
+        var details = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        var address = new TextBlock { Text = account.EmailAddress, TextTrimming = TextTrimming.CharacterEllipsis };
+        ToolTipService.SetToolTip(address, account.EmailAddress);
+        AutomationProperties.SetName(address, account.EmailAddress);
+        details.Children.Add(address);
+        if (includeStatus)
+            details.Children.Add(new TextBlock { Text = IsShared(account) ? "Shared" : "Sharing off", FontSize = 12, Foreground = ThemeBrush("TextFillColorSecondaryBrush") });
+        Grid.SetColumn(details, 1);
+        row.Children.Add(details);
+        return row;
+    }
+
+    private Button AccountActionButton(
+        string text,
+        string automationName,
+        string tooltip,
+        Account account,
+        RoutedEventHandler handler)
+    {
+        var button = new Button
+        {
+            Content = text,
+            Tag = account,
+            Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
+            Padding = new Thickness(8, 4, 8, 4),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        AutomationProperties.SetName(button, automationName);
+        ToolTipService.SetToolTip(button, tooltip);
+        button.Click += handler;
+        return button;
+    }
+
+    private static bool NeedsReadAttention(AccountConnectionCheck? check)
+    {
+        if (check is null || !check.HasFailures)
+            return false;
+        // Missing samples and bounded checks are not broken connections.
+        var failures = new List<ReadFailureKind>();
+        if (check.MailReachable == false || check.MailFailureKind is not null)
+            failures.Add(check.MailFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
+        if (check.CalendarReachable == false || check.CalendarFailureKind is not null)
+            failures.Add(check.CalendarFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
+        if (failures.Count == 0)
+            failures.Add(check.FailureKind ?? ReadFailureKind.Unknown);
+        return failures.Any(kind => kind != ReadFailureKind.ResultLimit);
+    }
+
+    private static ImageSource ProviderLogo(string provider) =>
+        new SvgImageSource(new Uri($"ms-appx:///Assets/{(provider == "google" ? "Google" : "Microsoft")}.svg"));
+
+    private bool IsShared(Account account)
+    {
+        var setting = _sharing.GetValueOrDefault(account.Id) ?? new AccountSharingSettings(account.Id);
+        return setting.Enabled && (setting.ShareMail && account.MailReadEnabled
+            || setting.ShareCalendars && account.CalendarReadEnabled && setting.CalendarIds is not { Count: 0 });
+    }
+
+    private void UpdateSharingSummary()
+    {
+        var shared = _accounts.Count(IsShared);
+        CodexSharingText.Text = shared == 0 ? "No accounts shared yet." : $"Sharing: {shared} {(shared == 1 ? "account" : "accounts")}";
+    }
+
+    private async void CheckConnectionsButton_Click(object sender, RoutedEventArgs e) => await RunAsync(
+        "Checking read access…",
+        async cancellationToken =>
+        {
+            // A failed or cancelled retry must never retain a previous successful result.
+            _connectionChecks.Clear();
+            RenderConnectedAccounts();
+            try
+            {
+                var result = await _application.CheckConnectionsAsync(cancellationToken);
+                _connectionChecks = result.Accounts.ToDictionary(check => check.AccountId, StringComparer.Ordinal);
+                foreach (var account in _accounts)
+                {
+                    if (!_connectionChecks.ContainsKey(account.Id))
+                        _connectionChecks[account.Id] = UnavailableCheck(account);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Desktop read check cancelled; previous results cleared");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning("Desktop read check failed ({ErrorType}); no successful result assumed", exception.GetType().Name);
+                _connectionChecks = _accounts.ToDictionary(account => account.Id, UnavailableCheck, StringComparer.Ordinal);
+            }
+            for (var index = 0; index < _accounts.Count; index++)
+            {
+                var account = _accounts[index];
+                var check = _connectionChecks.GetValueOrDefault(account.Id);
+                _logger.LogInformation(
+                    "Desktop read check row={AccountRow}; account={AccountKey}; resultPresent={ResultPresent}; failures={HasFailures}; mail={MailReachable}/{MailFailureCategory}/{MailEvidence}; calendar={CalendarReachable}/{CalendarFailureCategory}/{CalendarEvidence}",
+                    index + 1, MailMeUp.Diagnostics.ReadDiagnostics.AccountKey(account.Id), check is not null,
+                    check?.HasFailures, check?.MailReachable, check?.MailFailureKind, check?.MailEvidence,
+                    check?.CalendarReachable, check?.CalendarFailureKind, check?.CalendarEvidence);
+            }
+            RenderConnectedAccounts();
+            Notice.IsOpen = false;
+        },
+        TimeSpan.FromMinutes(2.5));
+
+    private static AccountConnectionCheck UnavailableCheck(Account account) => new(account.Id, false,
+        ReadFailureKind.Unknown, account.MailReadEnabled ? false : null,
+        account.MailReadEnabled ? ReadFailureKind.Unknown : null, account.CalendarReadEnabled ? false : null,
+        account.CalendarReadEnabled ? ReadFailureKind.Unknown : null);
 
     private async void GoogleButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("google");
-
     private async void MicrosoftButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("microsoft");
 
-    private async Task ConnectAsync(string provider)
+    private async void ReconnectAccountButton_Click(object sender, RoutedEventArgs e)
     {
-        if (RequestMail.IsChecked != true && RequestCalendars.IsChecked != true)
+        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
+        if (!CanLeaveSharing()) return;
+        await ConnectAsync(account.Provider, account);
+    }
+
+    private async void RemoveAccountButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
+        if (!CanLeaveSharing()) return;
+
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(Body($"Remove {account.EmailAddress} from MailMeUp on this device?"));
+        content.Children.Add(Body("This removes the local account record and protected sign-in cache. It does not delete or change email, calendars or provider consent. You can connect the account again later."));
+        var confirmation = await ShowDialogAsync(new ContentDialog
+        {
+            Title = "Remove account?",
+            Content = content,
+            PrimaryButtonText = "Remove from device",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        });
+        if (confirmation != ContentDialogResult.Primary) return;
+
+        await RunAsync($"Removing {account.EmailAddress} from this device…", async cancellationToken =>
+        {
+            var removal = await _application.RemoveAccountAsync(account.Id, cancellationToken);
+            if (!removal.Removed)
+            {
+                SetNotice("Account not found", "The local account was already removed. Refresh the account list and connect it again if needed.", InfoBarSeverity.Informational);
+                await RefreshAccountsAsync(cancellationToken);
+                return;
+            }
+
+            if (_selectedAccount?.Id == account.Id)
+            {
+                _selectedAccount = null;
+                _selectedCalendarIds.Clear();
+            }
+            _connectionChecks.Remove(account.Id);
+            await RefreshAccountsAsync(cancellationToken);
+            SetNotice("Account removed", "The local account and protected credentials were removed. Provider consent and account data are unchanged; connect it again above when needed.", InfoBarSeverity.Success);
+        }, TimeSpan.FromMinutes(2.5));
+    }
+
+    private async Task ConnectAsync(string provider, Account? reconnectAccount = null)
+    {
+        var includeMail = reconnectAccount?.MailReadEnabled ?? RequestMail.IsChecked == true;
+        var includeCalendar = reconnectAccount?.CalendarReadEnabled ?? RequestCalendars.IsChecked == true;
+        if (reconnectAccount is not null && !includeMail && !includeCalendar)
+        {
+            includeMail = true;
+            includeCalendar = true;
+        }
+        if (reconnectAccount is null && !includeMail && !includeCalendar)
         {
             SetNotice("Choose read access", "Select mail, calendars, or both before signing in.", InfoBarSeverity.Warning);
             return;
         }
-
-        await RunAsync($"Connecting {ProviderName(provider)} — finish sign-in in your browser…", async cancellationToken =>
+        var activity = reconnectAccount is null
+            ? $"Connecting {ProviderName(provider)} — finish sign-in in your browser…"
+            : $"Reconnecting {reconnectAccount.EmailAddress} — choose the same account in your browser…";
+        await RunAsync(activity, async cancellationToken =>
         {
             var setup = await _application.ListProviderSetupAsync(cancellationToken);
             if (!setup.Any(item => item.ProviderId == provider && item.Configured))
             {
                 var configured = provider == "google"
                     ? await ConfigureGoogleAsync(cancellationToken)
-                    : await ConfigureMicrosoftAsync(cancellationToken);
+                    : await ConfigureMicrosoftAsync(cancellationToken, signIn: true);
                 if (!configured) return;
             }
-
-            await _application.ConnectAccountAsync(provider,
-                new AccountConnectionOptions(RequestMail.IsChecked == true, RequestCalendars.IsChecked == true, ShareWithAssistant: false), cancellationToken);
+            var connection = await _application.ConnectAccountAsync(provider,
+                new AccountConnectionOptions(includeMail, includeCalendar, ShareWithAssistant: false), cancellationToken);
+            _connectionChecks.Remove(connection.Account.Id);
             await RefreshAccountsAsync(cancellationToken);
-            SetNotice("Account connected", "New accounts start with sharing off. Add another account or continue to choose sharing. Reconnected accounts keep their saved choices.", InfoBarSeverity.Success);
+            if (reconnectAccount is not null && !string.Equals(connection.Account.Id, reconnectAccount.Id, StringComparison.Ordinal))
+            {
+                SetNotice("Different account connected", $"{connection.Account.EmailAddress} was connected. The original account remains in the list.", InfoBarSeverity.Warning);
+            }
+            else
+            {
+                SetNotice(
+                    reconnectAccount is null ? "Account connected" : "Account reconnected",
+                    reconnectAccount is null
+                        ? "New accounts start with sharing off. Reconnected accounts keep their saved choices."
+                        : "The local sign-in was renewed and the saved sharing choices were kept.",
+                    InfoBarSeverity.Success);
+            }
         }, TimeSpan.FromMinutes(5));
     }
 
@@ -312,79 +542,31 @@ public sealed partial class MainWindow : Window
         cancellationToken.ThrowIfCancellationRequested();
         if (file is null) return false;
         await _application.ConfigureProviderAsync("google", file.Path, cancellationToken);
-        SetNotice("Google app configured", "The original JSON file is still in its original folder. Keep it private.", InfoBarSeverity.Informational);
-        ActivityText.Text = "Connecting Google — finish sign-in in your browser…";
+        SetNotice("Google app configured", "The original JSON stays in its folder. Keep it private.", InfoBarSeverity.Informational);
+        ActivityText.Text = "Google app configured.";
         return true;
     }
 
-    private async Task<bool> ConfigureMicrosoftAsync(CancellationToken cancellationToken)
+    private async Task<bool> ConfigureMicrosoftAsync(CancellationToken cancellationToken, bool signIn)
     {
         var input = new TextBox { Header = "Application (client) ID", PlaceholderText = "00000000-0000-0000-0000-000000000000" };
         var content = new StackPanel { Spacing = 14 };
-        content.Children.Add(Body("Enter the public client ID of your Microsoft desktop app registration. A client secret is not needed."));
+        content.Children.Add(Body("Enter the public client ID of your Microsoft desktop app. No client secret is needed."));
         content.Children.Add(input);
         var dialog = new ContentDialog
         {
-            XamlRoot = Root.XamlRoot,
-            Title = "Set up Microsoft sign-in",
-            Content = content,
-            PrimaryButtonText = "Save and sign in",
-            CloseButtonText = "Cancel",
-            IsPrimaryButtonEnabled = false,
-            DefaultButton = ContentDialogButton.Primary
+            Title = "Set up Microsoft sign-in", Content = content,
+            PrimaryButtonText = signIn ? "Save and sign in" : "Save",
+            CloseButtonText = "Cancel", IsPrimaryButtonEnabled = false, DefaultButton = ContentDialogButton.Primary
         };
         input.TextChanged += (_, _) => dialog.IsPrimaryButtonEnabled = Guid.TryParseExact(input.Text.Trim(), "D", out _);
         using var registration = cancellationToken.Register(() => DispatcherQueue.TryEnqueue(() => dialog.Hide()));
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return false;
+        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary) return false;
         cancellationToken.ThrowIfCancellationRequested();
         await _application.ConfigureProviderAsync("microsoft", input.Text.Trim(), cancellationToken);
         return true;
     }
 
-    private async void RefreshCodexButton_Click(object sender, RoutedEventArgs e) =>
-        await RunAsync("Reading local Codex configuration…", RefreshCodexAsync);
-
-    private async Task RefreshCodexAsync(CancellationToken cancellationToken)
-    {
-        var status = await _codex.GetStatusAsync(cancellationToken);
-        CodexStatusText.Text = status.Message;
-        InstallPluginButton.IsEnabled = status.CanInstall;
-        CodexCommands.Text = _codex.GetPreview().ManualCommands;
-    }
-
-    private async void InstallPluginButton_Click(object sender, RoutedEventArgs e) =>
-        await RunAsync("Installing the local Codex plugin…", async cancellationToken =>
-        {
-            var result = await _codex.InstallPluginAsync(cancellationToken);
-            CodexStatusText.Text = result.Status.Message;
-            InstallPluginButton.IsEnabled = result.Status.CanInstall;
-            SetNotice(result.Success ? "Plugin configured" : "Setup needs attention", result.Message,
-                result.Success ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
-        }, TimeSpan.FromMinutes(2));
-
-    private async void PreparePluginButton_Click(object sender, RoutedEventArgs e) =>
-        await RunAsync("Preparing local plugin files…", async cancellationToken =>
-        {
-            var preview = await _codex.PreparePluginAsync(cancellationToken);
-            CodexCommands.Text = preview.ManualCommands;
-            SetNotice("Plugin files prepared", "Copy the commands and run them where the Codex CLI is available. This step alone does not install the plugin.", InfoBarSeverity.Informational);
-        });
-
-    private void CopyCommandsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var data = new DataPackage();
-        data.SetText(CodexCommands.Text);
-        try
-        {
-            Clipboard.SetContent(data);
-            SetNotice("Copied", "The setup commands are on your clipboard.", InfoBarSeverity.Informational);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning("Clipboard operation failed ({ErrorType})", exception.GetType().Name);
-            SetNotice("Clipboard unavailable", "Select and copy the commands from the text box.", InfoBarSeverity.Warning);
-        }
-    }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => _operation?.Cancel();
 
@@ -395,11 +577,7 @@ public sealed partial class MainWindow : Window
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _operation = operation;
         operation.CancelAfter(timeout ?? TimeSpan.FromSeconds(60));
-        PageHost.IsEnabled = false;
-        Steps.IsEnabled = false;
-        NextButton.IsEnabled = false;
-        BackButton.IsEnabled = false;
-        AboutButton.IsEnabled = false;
+        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = false;
         ActivityText.Text = activity;
         Activity.Visibility = Visibility.Visible;
         Notice.IsOpen = false;
@@ -410,13 +588,13 @@ public sealed partial class MainWindow : Window
         catch (OperationCanceledException)
         {
             if (!_lifetime.IsCancellationRequested)
-                SetNotice("Operation stopped", "The operation was cancelled or timed out. Any completed setup steps remain saved; you can retry.", InfoBarSeverity.Warning);
+                SetNotice("Operation stopped", "The operation was cancelled or timed out. Completed changes remain saved.", InfoBarSeverity.Warning);
         }
         catch (Exception exception)
         {
             _logger.LogWarning("Desktop setup operation failed ({ErrorType})", exception.GetType().Name);
             if (!_lifetime.IsCancellationRequested)
-                SetNotice("Could not complete setup", "Check the provider app registration, network and local storage access, then retry. Existing credentials and saved sharing choices are kept.", InfoBarSeverity.Error);
+                SetNotice("Could not complete setup", "Check provider setup, network and local storage access, then retry. Saved choices are kept.", InfoBarSeverity.Error);
         }
         finally
         {
@@ -424,11 +602,8 @@ public sealed partial class MainWindow : Window
             _busy = false;
             if (!_lifetime.IsCancellationRequested)
             {
-                PageHost.IsEnabled = true;
-                Steps.IsEnabled = true;
-                NextButton.IsEnabled = true;
+                PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = true;
                 BackButton.IsEnabled = _step > 0;
-                AboutButton.IsEnabled = true;
                 Activity.Visibility = Visibility.Collapsed;
             }
         }
@@ -442,12 +617,8 @@ public sealed partial class MainWindow : Window
         Notice.IsOpen = true;
     }
 
-    private TextBlock Body(string text) => new() { Text = text, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["BodyText"] };
-
-    private Border Card(UIElement child) => new() { Child = child, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SetupCard"] };
-
+    private static Visibility ToVisibility(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
+    private static Brush ThemeBrush(string key) => (Brush)Microsoft.UI.Xaml.Application.Current.Resources[key];
     private static string ProviderName(string provider) => provider == "google" ? "Google" : provider == "microsoft" ? "Microsoft" : provider;
-
-    private static string SharingLabel(Account account, AccountSharingSettings settings) =>
-        $"{ProviderName(account.Provider)} · {(settings.Enabled && (settings.ShareMail && account.MailReadEnabled || settings.ShareCalendars && account.CalendarReadEnabled && settings.CalendarIds is not { Count: 0 }) ? "Sharing enabled" : "Sharing off")}";
+    private static TextBlock Body(string text) => new() { Text = text, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["BodyText"] };
 }

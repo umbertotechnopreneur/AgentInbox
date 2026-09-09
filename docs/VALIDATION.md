@@ -1,5 +1,72 @@
 # Validation
 
+## Owner-requested plugin mail reads after the Windows update
+
+**2026-09-07 and 2026-09-08.** After installing `0.1.1.18`, owner-requested reads through the local MailMeUp plugin listed all five shared accounts and returned unread-mail search results with `coverage_complete: true` and no failed accounts. The subsequent review followed a search continuation, queried individual accounts and read selected message bodies successfully. Empty unread results from individual accounts also completed without errors. Reads did not mark messages as read or modify provider data. No account identities or message content are included in this record.
+
+These observations validate the exercised plugin search, continuation and selected-detail paths, not every mailbox query, the desktop read-access button, calendar coverage or credential recovery. The newly added synthetic regressions remain unexecuted; no additional tests or builds were run for the commit/push request.
+
+## Windows update with Gmail response handling and Codex setup
+
+**Windows x64, 2026-09-07 — package 0.1.1.18.** The desktop and CLI Release publications, MSIX creation and signing completed successfully. The upgrade from `0.1.1.17` was confirmed independently: Windows reports installed version `0.1.1.18`, status `Ok`, and a valid package signature. The installation tool response was interrupted, but the subsequent package-state query confirmed completion; installation was not repeated.
+
+This package includes the Gmail list-only HTTP 204 handling, removal of the five-calendar sampling cutoff and the actionable Codex configuration screen described below. Tests, formatting, smoke checks, live mailbox checks and automated UI inspection were not run for this build/install request. The added regression tests were not built by the packaging script. Runtime behavior after the update remains to be exercised; build and installation do not establish mailbox access or a successful Codex connection. The source-only records below describe the state before this package.
+
+## Actionable Codex setup — source changes
+
+**2026-09-07 — not built or installed.** Connect to Codex now renders separate observations for the Windows alias, native CLI, local marketplace, plugin and direct MCP registration. An added marketplace does not imply an installed plugin. Inspection attempts each Codex configuration query independently, exposes safe exit-code/unsupported-response/timeout outcomes, and keeps installation blocked when required configuration is unknown. Guidance is specific to the detected state; retries and cancellation clear old success. Partial installation does not reuse pre-installation observations as current results.
+
+Synthetic parser and presentation cases were added for marketplace-only setup, missing/unsupported marketplace responses, conflicting sources, plugin enablement, direct/plugin coexistence and unknown/interrupted states. These tests and source edits have not been compiled or executed. No CLI prompt, live configuration query, provider check, formatter, build, packaging or installation was run for this increment. Native UI rendering, clipboard interaction and cancellation still require owner-approved validation. The owner's screenshot confirms manual addition of the local marketplace, not plugin installation or a successful MCP connection.
+
+## Gmail no-content responses and calendar sampling — source changes
+
+**2026-09-07 — not built or installed.** The source now normalizes HTTP 204 only for Gmail message-list reads, includes the result-size estimate in that list's field projection, and rejects no-content responses for required JSON reads. Empty/malformed HTTP 200 responses and HTTP errors remain failures. The local five-calendar cutoff was removed; checks iterate discovered calendars within the existing deadline and can follow bounded empty event pages to a sample. Logs report actual calendar coverage.
+
+Synthetic regressions were added for explicit list-only no-content handling, empty/malformed HTTP 200 responses, error statuses, caller cancellation, checking a sixth calendar, a failure or absent sample on that calendar, continuation limits and the calendar deadline. These new changes and tests have not been compiled or executed. No formatting, smoke, live-account checks, package build or installation was run for this follow-up. Version `0.1.1.17` remains the last installed package; its historical evidence below does not validate this source fix.
+
+## Correlated diagnostics, real read checks and minimal account UI
+
+**Windows x64, 2026-09-07 — package 0.1.1.17.** The solution build, Windows desktop build, Release publications, MSIX creation and signing succeeded. The Windows build reported zero warnings and errors. The installed package reports version `0.1.1.17`, status `Ok`, and the MSIX signature is valid. The new synthetic diagnostic/privacy and read-check regressions compiled; unit tests, formatting checks, smoke tests and automated real-provider checks were not run for this increment. Post-install rendering/interaction of the minimal rows remains unverified.
+
+The owner exercised the preceding `0.1.1.16` check through the app. Local logs at 16:03 and 16:04 (+07:00) show two Google unread/date searches receiving HTTP 204 and failing JSON parsing, then being classified as `Unknown`. Their earlier general search and message-detail requests returned HTTP 200. This response-handling issue was unresolved in `0.1.1.17`; reconnecting is not supported as its cause or cure by this evidence. Another Google calendar check hit the application's five-calendar sampling cap (`ResultLimit`), not a sign-in failure. Both Microsoft accounts passed mail sample reads; their calendar checks completed with `SearchOnly` evidence because some checked windows had no detail sample. These are owner-triggered observations, not an automated validation run or proof that all reads work.
+
+Version `0.1.1.17` retains detailed diagnostic outcomes but removes verbose status rows and check-result banners. Missing samples and sampling limits are not shown as broken connections. Rows show only the owner-requested red **Try to reconnect** action for read failures, with normal account actions in a menu. Provider data, credentials and account identities were not copied into this validation record.
+
+## Microsoft mail search regression and real-account verification
+
+**Windows x64, 2026-09-07 — package 0.1.1.15.** Microsoft text searches previously combined `$search` and `$filter` and failed on both real Microsoft accounts while unread/date listings and Calendar worked. Three new query-construction regression cases failed on the previous code. After separating the query modes, all **122 .NET tests passed**, including nine new cases for query compatibility, local exclusions/filters, continuation through empty filtered pages and HTTP 400 classification.
+
+The CI-equivalent formatting check, Release build, CLI/MCP smoke, dependency inventory and repository preflight passed locally. The newly published native CLI also passed isolated synthetic smoke. Signed MSIX creation and installation succeeded; installed version `0.1.1.15` reports `Ok`, with a valid signature.
+
+With the owner's explicit permission, the installed executable passed **34 real-provider checks, zero failures and three skips**, across three Google and two Microsoft accounts. Microsoft text search, bounded message detail, continuation and mixed-account search all passed. The run covered five mail samples, four event samples and 16 calendars. One Microsoft calendar had no events in the 30-day window (detail and continuation skipped); the other had no next event page (continuation skipped). No mailbox identities, credentials or content were printed. Provider data was not modified; normal protected token refresh and local diagnostics remain possible.
+
+The standalone published executable separately passed 27 checks, zero failures and three skips against its four visible accounts. Its default runtime data context differs from the installed executable's five-account context, so the installed run is the verification for the owner's app. These are bounded summary/detail consistency checks, not an independent comparison with Outlook/Gmail. Clean-machine installation, deliberate revocation/reconnect and post-install desktop interaction remain untested. Remote CI results for this fix are recorded on the PR, separately from these local results.
+
+## Account recovery, CI smoke and package icon
+
+**Windows x64, 2026-09-07 — package 0.1.1.14.** The CI-equivalent `scripts/validate.ps1 -SkipUnitTests -CheckFormatting` command passed formatting, Release build, CLI/MCP smoke, dependency inventory and repository preflight. The build completed with zero warnings and zero errors. The smoke test permits only the documented rolling files below `logs`; database, configuration, credential and any other first-run state still fail validation.
+
+The desktop and CLI publications, signed MSIX packaging and local upgrade installation completed successfully. The installed `MailMeUp.Desktop_0.1.1.14_x64__kqhwqwq9w6r3m` package reports status `Ok`, and its package signature is valid. The 44-pixel package asset now has a measured nontransparent visual extent of 38 by 37 pixels, up from the more heavily padded source. Unit tests, live provider reads and post-install visual inspection of the Windows app list were not run.
+
+## Serilog diagnostics — build and installation
+
+**Windows x64, 2026-09-07 — package 0.1.1.12.** The Release desktop and CLI publications, signed MSIX packaging and local upgrade installation completed successfully with the Serilog diagnostics included. The installed `MailMeUp.Desktop_0.1.1.12_x64__kqhwqwq9w6r3m` package reports status `Ok`.
+
+No tests, MCP smoke run or live provider read were run for this increment.
+
+## Connection check and wizard — build and installed package validation
+
+**Windows x64, 2026-09-06 — package 0.1.1.10.** The installed update adds the explicit **Check connections** action to the Acrylic wizard. It verifies each local Google/Microsoft account even when sharing is off, silently refreshes OAuth/MSAL access where possible, checks enabled Mail and Calendar services with minimal requests, and discards every response body. It reports safe categories only.
+
+- **113 .NET tests passed**, with zero failures or skips, in Release configuration. The two new synthetic tests cover checking all local accounts, safe sign-in-required handling, and an unavailable provider checker. This suite covers shared application behavior; it does not exercise the desktop UI.
+- The Desktop Release build passed with zero warnings and errors.
+- Self-contained Desktop and CLI publication, MakeAppx packaging and signing succeeded. Build log: `artifacts/msix-build-0.1.1.10.log`.
+- Authenticode reported a valid package signature. `MailMeUp.Desktop_0.1.1.10_x64__kqhwqwq9w6r3m` replaced `0.1.1.9` and reports status `Ok`. The existing publisher and signing certificate were retained; no trust-store changes were made.
+- A launch of the installed desktop executable with an isolated synthetic `MAILMEUP_DATA_DIR` remained running with a synthetic existing account registry. The process was then closed. This checks package startup, not visual rendering, interaction or live provider access. Result: `artifacts/smoke-desktop-0.1.1.10.log`.
+- The published package CLI and installed `%LOCALAPPDATA%\Microsoft\WindowsApps\mailmeup.exe` alias both passed the CLI/MCP smoke suite, including nine tools, bounded error notifications, redirected output and a stateless first run. Results: `artifacts/smoke-cli-0.1.1.10.log` and `artifacts/smoke-alias-0.1.1.10.log`.
+
+At the owner's request, no Computer Use automation or desktop visual inspection was performed; the owner will review the rendering. The button has not been clicked against a real account, so silent refresh, expired/revoked consent, network errors, status display and reconnect flow remain live-validation work. Future automated runtime checks must use synthetic `example.test` accounts and `MAILMEUP_DATA_DIR` for isolation. No real mailbox checks, remote CI, release tags or publication were performed for this update.
+
 ## Windows onboarding changes
 
 **Windows x64, 2026-09-06 — package 0.1.1.4.** The owner reported that the installed `0.1.1.3` setup window terminated immediately when its existing account registry was opened. Windows Error Reporting recorded `0xC000027B` in `Microsoft.UI.Xaml.dll`; the crash dump placed the managed thread in the Microsoft.Data.Sqlite static application-data probe before the first database connection.

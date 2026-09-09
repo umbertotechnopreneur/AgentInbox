@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- Build, sign and locally install Windows x64 MSIX `0.1.1.18` with Gmail no-content response handling, broader bounded calendar checks and the actionable Codex setup screen. Installed version/status and package signature were confirmed; unit tests, smoke checks and post-install runtime checks were not run.
+- Make Connect to Codex show separate local command, native CLI, marketplace, plugin and direct MCP findings, with an attempt timestamp and copyable safe results. Replace blocked install buttons with state-specific guidance; distinguish an added marketplace from an installed plugin. Clear stale success on retries/cancellation and keep manual commands as a fallback, without running prompts or changing existing connections during inspection. Source and synthetic regressions await validation and packaging.
+- Handle observed Gmail message-list HTTP 204 responses as empty pages, include `resultSizeEstimate` in the list projection, and keep required-detail, malformed-payload and HTTP-error paths strict. Remove the five-calendar check cutoff while retaining time/page limits, continuation handling and explicit coverage diagnostics. Source changes and synthetic regressions await validation and packaging.
+- Build, sign and locally install Windows x64 MSIX `0.1.1.17` with correlated logs, bounded read checks and the minimal account UI. Its new regressions were compiled but not executed; the Google HTTP 204 parsing issue identified in owner-triggered logs was still present in that package.
+- Simplify connected-account rows to an address, an optional red **Try to reconnect** action and an account menu. Keep all check diagnostics in the log; missing event samples and sampling limits no longer look like broken connections.
+- Add correlated provider diagnostics with pseudonymous account keys, HTTP status, fixed endpoint/read phases, allowlisted error codes and exception types, without logging credentials or mail content.
+- Replace minimal connection probes with bounded search/detail checks using the production readers. Preserve independent Mail/Calendar outcomes; show missing samples, incomplete checks, exceptions and cancellation without a false all-clear or stale green status.
+
+- Fix Microsoft text, sender and recipient mail searches by separating Graph `$search` from `$filter`/`$orderby`. Preserve local folder exclusions, structured filters and continuation through excluded pages; classify HTTP 400 as an invalid request.
+- Allow the documented rolling diagnostic files during stateless CLI/MCP smoke validation while continuing to reject database, configuration, credential or other first-run state.
+- Increase the visual size of Windows package icons by generating the exact MSIX tile assets from the tighter original artwork.
+- Add per-account **Reconnect** and **Remove from device** actions to the Windows setup UI, with confirmation, preserved sharing choices on reconnection, and clear separation between local credential removal and provider consent.
+- Add bounded Serilog diagnostics shared by the Windows setup app and CLI/MCP process, with daily local files, operation timings, independent mail/calendar check totals and safe failure categories for comparing UI and Codex behavior.
+- Build, sign and locally install Windows x64 MSIX `0.1.1.15` with account recovery, Serilog diagnostics, the larger package icon and the Microsoft search fix; the installed package reports status `Ok`.
+- Add a Windows-only **Check read access** action that verifies every locally connected Google and Microsoft account with minimal Mail/Calendar requests, reports Mail and Calendar independently, silently refreshes tokens when possible, and marks reconnect-required capabilities without exposing provider response content.
+- Redesign the Windows setup wizard with native Acrylic, a shared title bar, unnumbered visual progress, local Google/Microsoft SVG logos and generated illustrations.
+- Replace long account cards with searchable, paged rows and one sharing editor at a time. Reveal calendar choices, provider registration, privacy details and manual Codex setup on request; retain explicit saving and protect unsaved changes.
+- Redirect additional desktop launches to the existing setup window, restoring it when minimized. CLI/MCP processes remain independent.
+- Load bundled Google and Microsoft SVGs with WinUI's `SvgImageSource`, so the setup window can be created instead of falling back to the local-storage error screen.
+- Explicitly start the setup window after registering the primary Windows App SDK instance; the custom entry point previously kept an invisible process alive without calling the window-start path.
+- Treat high-contrast change notifications as optional when the desktop WinRT event is unavailable, instead of replacing the setup UI with its fallback window.
+- Replace the dark Mica backdrop with Desktop Acrylic because Windows transparency is enabled but Mica was too subtle on the owner's dark desktop.
+- Build, sign and locally install the redesigned wizard and connection check as Windows x64 MSIX `0.1.1.10`. Release build, 113 shared .NET tests, published and installed-alias CLI/MCP smoke, and a synthetic native-window launch without diagnostics passed; desktop rendering and interaction checks remain pending with the owner.
+
 - Fix the packaged WinUI startup crash when an account database already exists by using SQLitePCL directly instead of triggering the Microsoft.Data.Sqlite application-data probe. Add a synthetic installed-desktop startup smoke test for this regression.
 - Auto-format staged C# files before commits, apply style fixes during local validation and keep CI formatting checks read-only.
 - Add an English About & Support dialog with a generated MailMeUp banner, app-version copying, creator website and GitHub links, support issues, and an invitation to star the project.
@@ -13,7 +37,7 @@
 - Add Windows MSIX packaging with a stable `mailmeup.exe` console app execution alias and optional signing with an existing certificate.
 - Ask callers to notify the user in plain English when MailMeUp cannot read a mailbox, including actionable, sanitized error details and partial-coverage reporting.
 
-The desktop, plugin and sharing behavior remains a preview. Windows x64 MSIX `0.1.1.4` was built, signed and installed as an upgrade; synthetic existing-registry startup, published/installed-alias smoke checks and 111 tests passed. The About dialog, generated banner and version-copy action were inspected on the preceding build. Clean-machine installation, UI sign-in and Codex plugin loading remain pending.
+The desktop, plugin and sharing behavior remains a preview. Windows x64 MSIX `0.1.1.12` is locally installed as an upgrade. Earlier `0.1.1.4` startup checks and earlier About dialog inspection do not validate the redesigned UI. Clean-machine installation, UI sign-in and Codex plugin loading remain pending. See [validation](docs/VALIDATION.md).
 
 ## 0.1.1 — Mail search ergonomics
 
