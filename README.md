@@ -6,7 +6,7 @@
 
 **All your inboxes. One conversation.**
 
-Bring your email and appointments from multiple Google and Microsoft accounts into Codex or another compatible AI assistant.
+Connect as many supported Google and Microsoft email accounts as you need to any compatible AI assistant through one local, read-only bridge. MailMeUp combines an MCP server, a CLI and a Windows desktop setup app. The first-class setup today focuses on OpenAI Codex; ChatGPT Desktop is not yet a direct local MailMeUp integration.
 
 [![CI](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
@@ -16,6 +16,15 @@ Bring your email and appointments from multiple Google and Microsoft accounts in
 > **MailMeUp is pre-alpha software.** It is intended for development and supervised testing. Commands, setup steps and stored local data may change before the first stable release.
 
 > **Read-only by design for the current scope.** MailMeUp will help you find and read information. It will not send email, change messages, create or edit appointments, delete anything from your accounts, or send invitations.
+
+## A clear four-screen setup flow
+
+![MailMeUp setup flow: Welcome and connect accounts](docs/assets/branding/mailmeup-setup-flow-welcome-accounts.png)
+
+![MailMeUp setup flow: choose what to share and connect to Codex](docs/assets/branding/mailmeup-setup-flow-sharing-codex.png)
+
+> [!NOTE]
+> These product-flow concepts are based on the implemented Windows wizard. They show the intended experience, not pixel-perfect screenshots of the current UI.
 
 ## Why MailMeUp?
 
@@ -46,13 +55,11 @@ The current source includes local provider setup, interactive multi-account sign
 
 *Example conversation with redacted addresses. MailMeUp searches selected accounts without modifying messages.*
 
-The current source passed 111 automated tests. Windows MSIX preview `0.1.1.4` is locally installed, its existing-registry startup and command alias passed smoke checks, and the preceding build's welcome/About window was inspected. The earlier CLI build also passed read-only checks across four real accounts. Clean-machine installation, UI sign-in and the pilot remain. See the [validation record](docs/VALIDATION.md) and [account recovery guide](docs/RECOVERY.md).
-
 ## AI assistant support
 
 The Windows setup preview adds a centered WinUI 3 wizard for accounts, sharing choices and a local Codex plugin. The MSIX declares a stable command alias so updates do not require a new executable path. See [Windows setup and packaging](docs/WINDOWS_SETUP.md) for its current validation limits.
 
-Development currently focuses only on OpenAI's Codex. MailMeUp uses the standard Model Context Protocol (MCP) over stdio, so it may also work with other compatible clients, including Claude. Claude compatibility has not been tested.
+Development currently focuses on OpenAI's Codex. MailMeUp uses the standard Model Context Protocol (MCP) over stdio, so it may also work with other compatible clients, including Claude. Other-client compatibility has not been tested. ChatGPT custom MCP connections currently require a remote server, so ChatGPT Desktop is not yet a direct local client for MailMeUp.
 
 Contributors interested in Claude are welcome to help with compatibility testing, setup documentation and any necessary integration work. See [how to contribute](CONTRIBUTING.md).
 

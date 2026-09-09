@@ -29,3 +29,17 @@ Primary request: show the planned product architecture as an exceptionally clear
 Exact top title: "Many accounts. One local bridge."
 Exact small footer: "Planned architecture · Product concept"
 Constraints: English only, no real addresses or message contents. No third-party logos. No promise that email content stays entirely offline, no cloud privacy slogans. No charts or metrics. This is a conceptual architecture illustration, not a screenshot.
+
+## Four-screen setup-flow concepts
+
+Files: `mailmeup-setup-flow-welcome-accounts.png` and `mailmeup-setup-flow-sharing-codex.png`
+
+Generated on 2026-09-09 with the built-in Imagegen tool through the Imagegen skill. No API/CLI fallback or image manipulation was used. The four pre-existing wizard concepts in `docs/design/wizard-2026-09-06/` and `resources/mailmeup-logo-512-safe.png` were reference images. These are concrete product-flow concepts based on the implemented Windows wizard, not pixel-perfect screenshots of the current UI. Every shown account uses the synthetic `example.test` domain.
+
+Final prompt set:
+
+```text
+Create a polished 16:9 README product image showing two equal-sized, full, front-on Windows 11 MailMeUp setup windows side by side. Use the supplied Welcome and Accounts concepts as concrete UI-fidelity references, not as abstract inspiration. The first image shows the Welcome stage and the Accounts stage: the visible flow covers a readable welcome message, Google and Microsoft compatibility, read-only disclosure, Connect Google and Connect Microsoft controls, Mail and Calendars access, and a compact list of multiple example.test accounts. Use high-fidelity light Acrylic/Mica, dark-navy text, a restrained teal accent, rounded window corners, the MailMeUp app icon and unnumbered left navigation. No desktop, monitor, perspective, people, real email content, unsupported providers, write actions, watermark or extra title.
+
+Create a matching polished 16:9 README product image showing two equal-sized, full, front-on Windows 11 MailMeUp setup windows side by side. Use the supplied Sharing and Connect to Codex concepts as concrete UI-fidelity references. The second image shows granular per-account sharing with Mail and Calendars toggles, calendar scope and Save choices, followed by local Codex configuration with Install local plugin and Review sharing. Keep example.test accounts, light Acrylic/Mica, dark-navy text, restrained teal, the MailMeUp app icon and unnumbered left navigation. Do not show terminal commands, fake chat, a successful runtime connection, desktop, monitor, perspective, people, write actions, watermark or extra title.
+```
