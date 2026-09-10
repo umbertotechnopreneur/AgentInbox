@@ -32,6 +32,14 @@ Built-in Gmail and Outlook integrations are useful when one connection is enough
 
 MailMeUp is built for that reality. Connect as many supported Google and Microsoft accounts as you choose, decide which accounts participate and search them together from one conversation. It gives professionals, and anyone managing more than one address, a modern local bridge without creating another hosted inbox.
 
+## Extremely lightweight
+
+Each MailMeUp CLI process in this real Windows Task Manager snapshot uses roughly **7 MB of RAM**. That keeps a multi-process local MCP connection lightweight while it waits for your assistant's next request.
+
+![Windows Task Manager showing the highlighted MailMeUp CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/mailmeup-task-manager-lightweight.png)
+
+*Real Task Manager snapshot. MailMeUp is highlighted; unrelated processes were blurred for privacy. Individual MailMeUp processes shown use 7.4–9.6 MB of RAM.*
+
 ## What it will do
 
 - Search across Gmail, Google Workspace, Outlook.com and Microsoft 365 inboxes.
