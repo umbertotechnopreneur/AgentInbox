@@ -1,5 +1,7 @@
 # Windows setup preview
 
+**Latest local update: `0.1.1.19`, September 11.** Desktop/CLI Release publication, signing and the upgrade from `0.1.1.18` completed; Windows reports `Ok` and the package signature is valid. It includes the default search-period editor and Google request-limit recovery. A subsequent owner-requested run passed all 229 .NET tests. Post-install UI and live-provider checks remain pending. Earlier validation below remains historical evidence.
+
 MailMeUp includes a WinUI 3 setup window and MSIX packaging. Windows x64 preview `0.1.1.10` was built, signed and installed as an upgrade on 2026-09-06. Release build, 113 shared .NET tests, the installed alias CLI/MCP smoke and a synthetic native-window launch without diagnostics passed. The update adds an explicit account connection check, fixes the WinUI vector-source error, an entry-point omission that left the setup process running without a window, an unavailable optional high-contrast change event, and replaces dark Mica with visible Desktop Acrylic. The owner will review the redesigned UI; its interactions and single-instance activation have not yet been exercised. Clean-machine installation, browser sign-in from the UI and Codex plugin loading still need runtime validation.
 
 ## Setup
@@ -12,6 +14,8 @@ The installed update uses native Desktop Acrylic, unnumbered visual progress, co
 4. **Connect to Codex:** refresh configuration status and install the bundled local plugin. The UI offers manual preparation and commands if the native Codex CLI is unavailable. Existing direct MCP registrations require an explicit migration to avoid duplicate tools. See [Codex setup](CODEX_SETUP.md).
 
 The interface is English-only. A persistent **Privacy & terms** entry opens the website and the MailMeUp, Google and Microsoft policy links. **About & support** remains available throughout setup. The welcome keeps the essential read-only and AI-service disclosures visible; further explanations appear on request.
+
+The September 11 update adds **Sharing → Default mail search period**, a global setting from 1 to 365 days, initially 14. Save or discard explicitly; navigation and closing protect unsaved edits. The UI explains that longer periods take more time, make more requests and may hit provider limits, and that explicit search dates override the setting. It also distinguishes rate-limit-only account checks from reconnect actions. These changes are included in the locally installed `0.1.1.19` preview but have not been exercised in the desktop UI.
 
 Closing the setup window does not stop an MCP process started by Codex. Changes affect future reads, including previously issued local result references. They cannot retract data already returned in a conversation. The UI cannot grant read access that was not requested during provider sign-in; reconnect with that category selected first.
 

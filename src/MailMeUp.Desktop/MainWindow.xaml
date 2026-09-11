@@ -101,6 +101,19 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>
+                            <Expander x:Name="MailSearchPreferencesExpander" Header="Default mail search period" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Applies to every account when a mail search has no dates. Explicit search dates override this setting." Style="{StaticResource BodyText}" />
+                                    <NumberBox x:Name="MailSearchLookbackDaysBox" Header="Days to look back" Width="200" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="7" ValidationMode="Disabled" IsEnabled="False" AutomationProperties.Name="Default mail search period in days" AutomationProperties.HelpText="Enter a whole number from 1 to 365. The default is 14 days. Explicit search dates override this setting." />
+                                    <TextBlock Text="Longer periods take more time, make more requests and may hit your email provider's limits. The default is 14 days." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="MailSearchPreferencesSavedText" Text="Loading the saved search period…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                    <StackPanel x:Name="MailSearchPreferencesActions" Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="SaveMailSearchPreferencesButton" Content="Save search period" Style="{StaticResource AccentButtonStyle}" Click="SaveMailSearchPreferencesButton_Click" IsEnabled="False" />
+                                        <Button x:Name="DiscardMailSearchPreferencesButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardMailSearchPreferencesButton_Click" Visibility="Collapsed" />
+                                        <Button x:Name="ReloadMailSearchPreferencesButton" Content="Retry loading" Style="{StaticResource QuietButton}" Click="ReloadMailSearchPreferencesButton_Click" Visibility="Collapsed" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
                             <StackPanel Spacing="8"><TextBlock Text="Changes apply to future reads. Existing conversations keep what was already shared." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><Button Style="{StaticResource QuietButton}" Click="SharingInfoButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="What reaches your assistant" /></StackPanel></Button></StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="CodexPage" Spacing="20" Visibility="Collapsed">

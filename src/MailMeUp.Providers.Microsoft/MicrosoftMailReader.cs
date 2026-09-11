@@ -168,7 +168,8 @@ public sealed class MicrosoftMailReader : IMailReader
         var searchParts = new List<string>();
         if (!string.IsNullOrWhiteSpace(query.Text))
         {
-            searchParts.Add(query.Text);
+            // Keep an OR in provider text inside the structured date/address constraints.
+            searchParts.Add($"({query.Text})");
         }
 
         if (!string.IsNullOrWhiteSpace(query.Sender))
@@ -190,7 +191,15 @@ public sealed class MicrosoftMailReader : IMailReader
         if (searchParts.Count > 0)
         {
             // Graph message search rejects $filter and $orderby alongside $search.
-            // Enforce folder exclusions and structured criteria on each returned page instead.
+            // KQL received constraints bound the provider scan; keep exact local filtering too.
+            if (query.Start is { } start)
+            {
+                searchParts.Add($"received>={FormatSearchDate(start)}");
+            }
+            if (query.End is { } end)
+            {
+                searchParts.Add($"received<{FormatSearchDate(end)}");
+            }
             var escapedSearch = string.Join(" AND ", searchParts)
                 .Replace("\\", "\\\\", StringComparison.Ordinal)
                 .Replace("\"", "\\\"", StringComparison.Ordinal);
@@ -278,6 +287,9 @@ public sealed class MicrosoftMailReader : IMailReader
 
     private static string FormatGraphDate(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    private static string FormatSearchDate(DateTimeOffset value) =>
+        value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture);
 
     private static string EscapeODataString(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 

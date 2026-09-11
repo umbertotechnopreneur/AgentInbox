@@ -48,6 +48,10 @@ public sealed partial class MainWindow : Window
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
+        MailSearchLookbackDaysBox.Maximum = MailSearchPreferences.MaximumDays;
+        MailSearchLookbackDaysBox.RegisterPropertyChangedCallback(NumberBox.TextProperty,
+            (_, _) => UpdateMailSearchPreferencesDirty());
         RenderCodexChecks(CodexSetupCheck.Pending());
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -150,6 +154,7 @@ public sealed partial class MainWindow : Window
         WelcomeHeading.FontSize = availableWidth < 500 ? 32 : 40;
         RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
         _narrowSharing = availableWidth < 750;
+        MailSearchPreferencesActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
         CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
         UpdateSharingLayout();
 
@@ -190,9 +195,19 @@ public sealed partial class MainWindow : Window
 
     private bool CanLeaveSharing()
     {
-        if (!_sharingDirty) return true;
-        SetNotice("Unsaved sharing choices", "Save or discard this account's changes before continuing.", InfoBarSeverity.Warning);
-        return false;
+        if (_sharingDirty)
+        {
+            SetNotice("Unsaved sharing choices", "Save or discard this account's changes before continuing.", InfoBarSeverity.Warning);
+            return false;
+        }
+        if (_mailSearchPreferencesDirty)
+        {
+            MailSearchPreferencesExpander.IsExpanded = true;
+            SetNotice("Unsaved search period", "Save or discard the default mail search period before continuing.", InfoBarSeverity.Warning);
+            MailSearchLookbackDaysBox.Focus(FocusState.Programmatic);
+            return false;
+        }
+        return true;
     }
 
     private void UpdateProgress()
@@ -200,7 +215,7 @@ public sealed partial class MainWindow : Window
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
         var contiguous = 0;
         while (contiguous < 3 && completed[contiguous]) contiguous++;
         ProgressLine.Height = contiguous * 52;
@@ -226,13 +241,13 @@ public sealed partial class MainWindow : Window
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_allowClose || !_sharingDirty) return;
+        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty)) return;
         args.Cancel = true;
         if (_busy || _dialogOpen) return;
         var result = await ShowDialogAsync(new ContentDialog
         {
             Title = "Discard unsaved choices?",
-            Content = Body("Your saved sharing settings will stay unchanged."),
+            Content = Body("Your saved sharing choices and default mail search period will stay unchanged."),
             PrimaryButtonText = "Discard and close",
             CloseButtonText = "Keep editing",
             DefaultButton = ContentDialogButton.Close
@@ -246,6 +261,7 @@ public sealed partial class MainWindow : Window
 
     private async Task RefreshAccountsAsync(CancellationToken cancellationToken)
     {
+        await LoadMailSearchPreferencesAsync(cancellationToken);
         var accounts = await _application.ListAccountsAsync(cancellationToken);
         var providers = await _application.ListProviderSetupAsync(cancellationToken);
         var settings = await _application.ListAccountSharingAsync(cancellationToken);
@@ -286,6 +302,15 @@ public sealed partial class MainWindow : Window
                 reconnect.Foreground = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
                 Grid.SetColumn(reconnect, 2);
                 row.Children.Add(reconnect);
+            }
+            else if (GetReadFailures(connection).Contains(ReadFailureKind.RateLimited))
+            {
+                var limited = AccountActionButton(
+                    "Read limit reached", $"Read limit reached for {account.EmailAddress}; show guidance",
+                    "Wait before trying again. A shorter search period makes fewer requests.",
+                    account, ReadRateLimitButton_Click);
+                Grid.SetColumn(limited, 2);
+                row.Children.Add(limited);
             }
             var menu = new MenuFlyout();
             var reconnectItem = new MenuFlyoutItem { Text = "Reconnect", Tag = account };
@@ -359,11 +384,14 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    private static bool NeedsReadAttention(AccountConnectionCheck? check)
+    private static bool NeedsReadAttention(AccountConnectionCheck? check) =>
+        GetReadFailures(check).Any(kind => kind is not (ReadFailureKind.ResultLimit or ReadFailureKind.RateLimited));
+
+    private static IReadOnlyList<ReadFailureKind> GetReadFailures(AccountConnectionCheck? check)
     {
         if (check is null || !check.HasFailures)
-            return false;
-        // Missing samples and bounded checks are not broken connections.
+            return [];
+        // Missing samples, bounded checks and rate limits are not broken connections.
         var failures = new List<ReadFailureKind>();
         if (check.MailReachable == false || check.MailFailureKind is not null)
             failures.Add(check.MailFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
@@ -371,8 +399,13 @@ public sealed partial class MainWindow : Window
             failures.Add(check.CalendarFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
         if (failures.Count == 0)
             failures.Add(check.FailureKind ?? ReadFailureKind.Unknown);
-        return failures.Any(kind => kind != ReadFailureKind.ResultLimit);
+        return failures;
     }
+
+    private void ReadRateLimitButton_Click(object sender, RoutedEventArgs e) =>
+        SetNotice("Read limit reached",
+            "Your provider is temporarily limiting requests. Wait before trying again, use a shorter mail search period and check read access later. This error does not require reconnecting the account.",
+            InfoBarSeverity.Warning);
 
     private static ImageSource ProviderLogo(string provider) =>
         new SvgImageSource(new Uri($"ms-appx:///Assets/{(provider == "google" ? "Google" : "Microsoft")}.svg"));

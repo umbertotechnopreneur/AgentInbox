@@ -34,6 +34,14 @@ public sealed class LoggingMailMeUpApplication(
         RunAsync("save_account_sharing", () => application.SaveAccountSharingAsync(settings, cancellationToken), cancellationToken);
 
     /// <inheritdoc />
+    public Task<MailSearchPreferences> GetMailSearchPreferencesAsync(CancellationToken cancellationToken = default) =>
+        RunAsync("get_mail_search_preferences", () => application.GetMailSearchPreferencesAsync(cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
+    public Task<MailSearchPreferences> SaveMailSearchPreferencesAsync(MailSearchPreferences preferences, CancellationToken cancellationToken = default) =>
+        RunAsync("save_mail_search_preferences", () => application.SaveMailSearchPreferencesAsync(preferences, cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(string accountId, CancellationToken cancellationToken = default) =>
         RunAsync("discover_calendars_for_setup", () => application.ListAvailableCalendarsAsync(accountId, cancellationToken), cancellationToken);
 

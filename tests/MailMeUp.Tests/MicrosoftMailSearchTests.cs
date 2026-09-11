@@ -48,6 +48,29 @@ public sealed class MicrosoftMailSearchTests
     }
 
     [Fact]
+    public void TextSearchBoundsProviderWorkAndPreservesUtcPrecision()
+    {
+        var start = Start.AddTicks(1);
+        var end = End.AddTicks(2);
+        var parameters = SearchParameters(new("invoice OR contract", null, start, end));
+
+        Assert.Contains("(invoice OR contract) AND received>=2026-09-04T17:00:00.0000001Z AND received<2026-09-05T17:00:00.0000002Z", parameters["$search"]);
+        Assert.DoesNotContain("$filter", parameters.Keys);
+        Assert.DoesNotContain("$orderby", parameters.Keys);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AddressSearchKeepsExplicitOneSidedDateRange(bool lowerBound)
+    {
+        var parameters = SearchParameters(new("", "sender@example.test", lowerBound ? Start : null, lowerBound ? null : End));
+
+        Assert.Contains(lowerBound ? "received>=" : "received<", parameters["$search"]);
+        Assert.DoesNotContain(lowerBound ? "received<" : "received>=", parameters["$search"]);
+    }
+
+    [Fact]
     public void TextSearchFiltersProviderPageLocallyAndRetainsContinuation()
     {
         const string nextLink = "https://graph.microsoft.com/v1.0/me/messages?%24skiptoken=synthetic-next";

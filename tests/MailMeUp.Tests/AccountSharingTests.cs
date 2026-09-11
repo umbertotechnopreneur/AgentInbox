@@ -162,7 +162,7 @@ public sealed class AccountSharingTests : IDisposable
     }
 
     private MailMeUpApplication CreateApplication(IAccountStore accounts, IMailReader? mail = null, ICalendarReader? calendar = null, IAccountConnector? connector = null) =>
-        new(accounts, [], [], connector is null ? [] : [connector], mail is null ? [] : [mail], calendar is null ? [] : [calendar], new JsonAccountSharingStore(_directory));
+        new(accounts, [], [], connector is null ? [] : [connector], mail is null ? [] : [mail], calendar is null ? [] : [calendar], new JsonAccountSharingStore(_directory), timeProvider: FixedTimeProvider.September2026);
 
     public void Dispose()
     {

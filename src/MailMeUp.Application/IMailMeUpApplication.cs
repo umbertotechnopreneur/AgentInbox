@@ -20,6 +20,12 @@ public interface IMailMeUpApplication
     /// <summary>Saves explicit local sharing choices independently of provider consent; for local setup adapters only.</summary>
     Task<AccountSharingSettings> SaveAccountSharingAsync(AccountSharingSettings settings, CancellationToken cancellationToken = default);
 
+    /// <summary>Reads the local default period used by mail searches without an explicit date.</summary>
+    Task<MailSearchPreferences> GetMailSearchPreferencesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Saves the global default mail search period; for local setup adapters only.</summary>
+    Task<MailSearchPreferences> SaveMailSearchPreferencesAsync(MailSearchPreferences preferences, CancellationToken cancellationToken = default);
+
     /// <summary>Discovers calendar names for local setup even before assistant sharing is enabled; never expose as an MCP tool.</summary>
     Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(string accountId, CancellationToken cancellationToken = default);
 

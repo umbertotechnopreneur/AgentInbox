@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -16,7 +15,6 @@ namespace MailMeUp.Providers.Google;
 public sealed class GoogleMailReader : IMailReader
 {
     private const int MaximumJsonBytes = 12 * 1024 * 1024;
-    private static readonly HttpClient HttpClient = new();
     private readonly ILogger<GoogleMailReader> _logger;
     private readonly GoogleAccessTokenProvider _tokens;
 
@@ -63,7 +61,7 @@ public sealed class GoogleMailReader : IMailReader
                 url += "&pageToken=" + Uri.EscapeDataString(cursor);
             }
 
-            using var page = await GetJsonAsync(url, accessToken, "gmail.messages.list", cancellationToken);
+            using var page = await GetJsonAsync(account, url, accessToken, "gmail.messages.list", cancellationToken);
             var summaries = new List<ProviderMailSummary>();
             if (page.RootElement.TryGetProperty("messages", out var messages) && messages.ValueKind == JsonValueKind.Array)
             {
@@ -80,7 +78,7 @@ public sealed class GoogleMailReader : IMailReader
                         continue;
                     }
 
-                    summaries.Add(await ReadSummaryAsync(id, accessToken, cancellationToken));
+                    summaries.Add(await ReadSummaryAsync(account, id, accessToken, cancellationToken));
                 }
             }
 
@@ -121,7 +119,7 @@ public sealed class GoogleMailReader : IMailReader
         {
             var accessToken = await _tokens.GetAsync(account, cancellationToken);
             var url = $"https://gmail.googleapis.com/gmail/v1/users/me/messages/{Uri.EscapeDataString(providerMessageId)}?format=full";
-            using var document = await GetJsonAsync(url, accessToken, "gmail.messages.get", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, "gmail.messages.get", cancellationToken);
             var root = document.RootElement;
             var headers = root.TryGetProperty("payload", out var payload)
                 ? ReadHeaders(payload)
@@ -160,6 +158,7 @@ public sealed class GoogleMailReader : IMailReader
     }
 
     private async Task<ProviderMailSummary> ReadSummaryAsync(
+        Account account,
         string messageId,
         string accessToken,
         CancellationToken cancellationToken)
@@ -169,7 +168,7 @@ public sealed class GoogleMailReader : IMailReader
                   "?format=metadata&metadataHeaders=Subject&metadataHeaders=From" +
                   "&metadataHeaders=To&metadataHeaders=Cc" +
                   "&fields=id%2CinternalDate%2Csnippet%2ClabelIds%2Cpayload%2Fheaders%2Cpayload%2Fparts";
-        using var document = await GetJsonAsync(url, accessToken, "gmail.messages.metadata", cancellationToken);
+        using var document = await GetJsonAsync(account, url, accessToken, "gmail.messages.metadata", cancellationToken);
         var root = document.RootElement;
         var headers = root.TryGetProperty("payload", out var payload)
             ? ReadHeaders(payload)
@@ -229,14 +228,10 @@ public sealed class GoogleMailReader : IMailReader
         return string.Join(' ', parts);
     }
 
-    private async Task<JsonDocument> GetJsonAsync(string url, string accessToken, string endpoint, CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await ProviderHttpDiagnostics.ReadJsonAsync(
-            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken,
+    private Task<JsonDocument> GetJsonAsync(Account account, string url, string accessToken, string endpoint, CancellationToken cancellationToken) =>
+        GoogleReadRequests.Shared.GetJsonAsync(
+            account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken,
             allowNoContent: endpoint == "gmail.messages.list");
-    }
 
     private static Dictionary<string, string> ReadHeaders(JsonElement payload)
     {
@@ -382,14 +377,4 @@ public sealed class GoogleMailReader : IMailReader
             throw new ArgumentException("The Gmail message identifier is invalid.", nameof(messageId));
         }
     }
-    private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
-    {
-        400 => ReadFailureKind.InvalidRequest,
-        401 => ReadFailureKind.SignInRequired,
-        403 => ReadFailureKind.AccessDenied,
-        404 or 410 => ReadFailureKind.ItemUnavailable,
-        408 or 504 => ReadFailureKind.Timeout,
-        429 or >= 500 => ReadFailureKind.ProviderUnavailable,
-        _ => ReadFailureKind.Unknown
-    };
 }

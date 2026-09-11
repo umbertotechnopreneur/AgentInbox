@@ -36,6 +36,8 @@ The Windows MSIX contains a WinUI setup executable and a separate console MCP ex
 
 Local sharing choices are separate from provider consent. New accounts connected through the UI are stored with sharing disabled; existing CLI accounts retain their previous behavior until configured. Account/category/calendar restrictions are applied by the application facade and reloaded for reads, including cached result references and continuations. Setup-only calendar discovery is not exposed as an MCP tool.
 
+Global mail search preferences are local non-secret settings shared by the UI, CLI and MCP application facade. Undated searches use a configurable 14-day default; explicit dates override it. A continuation retains its original date window and rejects a changed default. Search results report the applied window so callers can describe their scope accurately.
+
 ## Boundaries
 
 - Current provider scope is read-only. No write tools are registered or planned for this milestone.

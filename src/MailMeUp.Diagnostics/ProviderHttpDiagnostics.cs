@@ -1,10 +1,14 @@
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using MailMeUp.Core;
 using Microsoft.Extensions.Logging;
 
 namespace MailMeUp.Diagnostics;
+
+/// <summary>Contains only bounded, allowlisted HTTP failure metadata for provider-specific recovery.</summary>
+public sealed record ProviderHttpFailure(int StatusCode, IReadOnlyList<string> Codes, TimeSpan? RetryAfter);
 
 /// <summary>Reads bounded provider responses and records allowlisted failure metadata, never response text or URLs.</summary>
 public static class ProviderHttpDiagnostics
@@ -28,7 +32,8 @@ public static class ProviderHttpDiagnostics
     public static async Task<JsonDocument> ReadJsonAsync(
         HttpClient client, HttpRequestMessage request, ILogger logger, string endpoint,
         int maximumBytes, Func<int, ReadFailureKind> classify, CancellationToken cancellationToken,
-        bool allowNoContent = false)
+        bool allowNoContent = false,
+        Func<ProviderHttpFailure, ReadFailureKind>? classifyFailure = null)
     {
         var started = Stopwatch.GetTimestamp();
         var phase = "http_send";
@@ -38,7 +43,7 @@ public static class ProviderHttpDiagnostics
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             status = (int)response.StatusCode;
             phase = "http_status";
-            await EnsureSuccessAsync(response, logger, endpoint, classify, cancellationToken);
+            await EnsureSuccessAsync(response, logger, endpoint, classify, cancellationToken, classifyFailure);
             cancellationToken.ThrowIfCancellationRequested();
             if (response.StatusCode == HttpStatusCode.NoContent)
             {
@@ -99,23 +104,26 @@ public static class ProviderHttpDiagnostics
     /// <summary>Logs only status, allowlisted error codes and a GUID request ID before returning a sanitized failure.</summary>
     public static async Task EnsureSuccessAsync(
         HttpResponseMessage response, ILogger logger, string endpoint,
-        Func<int, ReadFailureKind> classify, CancellationToken cancellationToken)
+        Func<int, ReadFailureKind> classify, CancellationToken cancellationToken,
+        Func<ProviderHttpFailure, ReadFailureKind>? classifyFailure = null)
     {
         if (response.IsSuccessStatusCode)
         {
             return;
         }
 
-        var (code, bodyState) = await ReadErrorCodeAsync(response, cancellationToken);
+        var (codes, bodyState) = await ReadErrorCodeAsync(response, cancellationToken);
         var status = (int)response.StatusCode;
+        var failure = new ProviderHttpFailure(status, codes, ReadRetryAfter(response));
+        var kind = classifyFailure?.Invoke(failure) ?? classify(status);
         logger.LogWarning(
             "Provider HTTP {Endpoint} rejected: status={HttpStatus}; category={FailureCategory}; code={ProviderErrorCode}; errorBody={ErrorBodyState}; requestId={ProviderRequestId}",
-            endpoint, status, classify(status), code, bodyState, RequestId(response));
+            endpoint, status, kind, codes.Count == 0 ? "unavailable" : string.Join(',', codes), bodyState, RequestId(response));
         cancellationToken.ThrowIfCancellationRequested();
-        throw new ProviderReadException("The provider returned an unsuccessful response.", classify(status));
+        throw new ProviderReadException("The provider returned an unsuccessful response.", kind);
     }
 
-    private static async Task<(string Code, string State)> ReadErrorCodeAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private static async Task<(IReadOnlyList<string> Codes, string State)> ReadErrorCodeAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         // Reading an error body must not hide its HTTP status or consume the entire account deadline.
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -124,7 +132,7 @@ public static class ProviderHttpDiagnostics
         {
             if (response.Content.Headers.ContentLength > MaximumErrorBytes)
             {
-                return ("unavailable", "too_large");
+                return ([], "too_large");
             }
             await using var source = await response.Content.ReadAsStreamAsync(deadline.Token);
             using var buffer = new MemoryStream();
@@ -140,13 +148,13 @@ public static class ProviderHttpDiagnostics
             }
             if (buffer.Length > MaximumErrorBytes)
             {
-                return ("unavailable", "too_large");
+                return ([], "too_large");
             }
 
             using var document = JsonDocument.Parse(buffer.ToArray());
             if (!document.RootElement.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object)
             {
-                return ("unrecognized", "parsed");
+                return ([], "parsed");
             }
             var codes = new List<string>();
             AddCode(error, "code", codes);
@@ -158,16 +166,26 @@ public static class ProviderHttpDiagnostics
                     AddCode(entry, "reason", codes);
                 }
             }
-            return (codes.Count == 0 ? "unrecognized" : string.Join(",", codes.Distinct()), "parsed");
+            return (codes.Distinct().ToArray(), "parsed");
         }
         catch (OperationCanceledException)
         {
-            return ("unavailable", "cancelled_or_timeout");
+            return ([], "cancelled_or_timeout");
         }
         catch (Exception)
         {
-            return ("unavailable", "unreadable");
+            return ([], "unreadable");
         }
+    }
+
+    private static TimeSpan? ReadRetryAfter(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("Retry-After", out var values) ||
+            values.FirstOrDefault() is not { Length: <= 128 } value ||
+            !RetryConditionHeaderValue.TryParse(value, out var retry))
+            return null;
+        var delay = retry?.Delta ?? (retry?.Date - DateTimeOffset.UtcNow);
+        return delay is { } duration && duration > TimeSpan.Zero ? duration : null;
     }
 
     private static void AddCode(JsonElement element, string name, List<string> codes)

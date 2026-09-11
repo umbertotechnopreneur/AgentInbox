@@ -128,6 +128,53 @@ public sealed class ProviderDiagnosticsTests
     }
 
     [Fact]
+    public async Task DetailedClassificationReceivesOnlyAllowlistedCodesAndValidRetryDelay()
+    {
+        var logger = new CaptureLogger();
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent("""
+                {"error":{"status":"PERMISSION_DENIED","message":"private-token reader@example.test",
+                "errors":[{"reason":"rateLimitExceeded"},{"reason":"private-token"}]}}
+                """)
+        };
+        response.Headers.TryAddWithoutValidation("Retry-After", "5");
+        ProviderHttpFailure? captured = null;
+
+        var error = await Assert.ThrowsAsync<ProviderReadException>(() => ProviderHttpDiagnostics.EnsureSuccessAsync(
+            response, logger, "gmail.messages.get", _ => ReadFailureKind.AccessDenied, CancellationToken.None,
+            classifyFailure: failure =>
+            {
+                captured = failure;
+                return ReadFailureKind.RateLimited;
+            }));
+
+        Assert.Equal(ReadFailureKind.RateLimited, error.Kind);
+        Assert.NotNull(captured);
+        Assert.Equal(403, captured.StatusCode);
+        Assert.Equal(new[] { "PERMISSION_DENIED", "rateLimitExceeded" }, captured.Codes);
+        Assert.Equal(TimeSpan.FromSeconds(5), captured.RetryAfter);
+        Assert.Contains("category=RateLimited", logger.Text);
+        Assert.DoesNotContain("private-token", logger.Text);
+        Assert.DoesNotContain("example.test", logger.Text);
+    }
+
+    [Fact]
+    public async Task MalformedRetryAfterDoesNotHideTheOriginalHttpFailure()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent("{}") };
+        response.Headers.TryAddWithoutValidation("Retry-After", "invalid-provider-value");
+        var error = await Assert.ThrowsAsync<ProviderReadException>(() => ProviderHttpDiagnostics.EnsureSuccessAsync(
+            response, new CaptureLogger(), "gmail.messages.get", _ => ReadFailureKind.AccessDenied, CancellationToken.None,
+            classifyFailure: failure =>
+            {
+                Assert.Null(failure.RetryAfter);
+                return ReadFailureKind.AccessDenied;
+            }));
+        Assert.Equal(ReadFailureKind.AccessDenied, error.Kind);
+    }
+
+    [Fact]
     public async Task OversizedErrorBodyDoesNotHideHttpFailure()
     {
         var logger = new CaptureLogger();
