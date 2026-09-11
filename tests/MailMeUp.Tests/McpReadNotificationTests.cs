@@ -13,6 +13,21 @@ public sealed class McpReadNotificationTests
     private const string Start = "2026-09-06T00:00:00Z";
     private const string End = "2026-09-07T00:00:00Z";
 
+    [Fact]
+    public async Task StatusReportsDefaultSearchPeriodWithoutReadingTheMailbox()
+    {
+        var reader = new Reader { BeforeRead = () => throw new InvalidOperationException("Status must not read mail.") };
+        var tools = CreateTools(reader, includeHealthy: true, includeFailed: false);
+
+        var result = await tools.GetStatusAsync();
+
+        Assert.False(result.IsError);
+        var payload = Payload(result);
+        Assert.True(payload.GetProperty("read_only").GetBoolean());
+        Assert.Equal(14, payload.GetProperty("mail_search_preferences").GetProperty("default_lookback_days").GetInt32());
+        Assert.True(payload.TryGetProperty("providers", out _));
+    }
+
     [Theory]
     [InlineData("mail")]
     [InlineData("unread")]
@@ -179,7 +194,7 @@ public sealed class McpReadNotificationTests
         {
             accounts.Add(new("google:failed", "google", "Failed sample", "failed@example.test", true, true));
         }
-        return new(new MailMeUpApplication(new AccountStore(accounts), [], [], [], [reader], [reader]));
+        return new(new MailMeUpApplication(new AccountStore(accounts), [], [], [], [reader], [reader], timeProvider: FixedTimeProvider.September2026));
     }
 
     private sealed class AccountStore(IReadOnlyList<Account> accounts) : IAccountStore

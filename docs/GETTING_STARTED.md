@@ -49,4 +49,6 @@ Restart or reload Codex if the new MCP server is not visible. Then try:
 
 MailMeUp returns short results first and reads details only when requested. It cannot send mail, change messages, edit appointments or send invitations.
 
+The current source limits mail searches without dates to the previous 14 days. In the Windows app, open **Sharing → Default mail search period** to choose 1–365 days and save. Longer periods take more time and requests and may hit provider limits. Explicit search dates override this default. This change is included in the locally installed `0.1.1.19` preview; UI and provider validation remain pending.
+
 Remove a local account with `mailmeup accounts remove <account-id>`. This removes local metadata and cached credentials; provider access can be revoked separately in Google or Microsoft account settings.

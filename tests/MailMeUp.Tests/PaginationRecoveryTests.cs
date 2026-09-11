@@ -330,7 +330,7 @@ public sealed class PaginationRecoveryTests
     }
 
     private static MailMeUpApplication Create(MemoryAccounts accounts, IReadOnlyList<IMailReader>? mail = null, IReadOnlyList<ICalendarReader>? calendars = null) =>
-        new(accounts, [], [], [], mail ?? [], calendars ?? []);
+        new(accounts, [], [], [], mail ?? [], calendars ?? [], timeProvider: FixedTimeProvider.September2026);
 
     private static EventSearchRequest Agenda(int limit = 20, string? cursor = null) =>
         new("2026-09-05T00:00:00Z", "2026-09-06T00:00:00Z", Limit: limit, Cursor: cursor);

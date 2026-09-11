@@ -14,6 +14,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private static readonly TimeSpan ProviderReadTimeout = TimeSpan.FromSeconds(30);
     private readonly IAccountStore _accounts;
     private readonly IAccountSharingStore _sharing;
+    private readonly IMailSearchPreferencesStore _mailSearchPreferences;
+    private readonly TimeProvider _timeProvider;
     private readonly IReadOnlyList<ProviderDescriptor> _providers;
     private readonly IReadOnlyDictionary<string, IProviderSetupService> _providerSetupServices;
     private readonly IReadOnlyDictionary<string, IAccountConnector> _accountConnectors;
@@ -31,10 +33,14 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         IEnumerable<IMailReader> mailReaders,
         IEnumerable<ICalendarReader> calendarReaders,
         IAccountSharingStore? sharingStore = null,
-        IEnumerable<IAccountConnectionChecker>? connectionCheckers = null)
+        IEnumerable<IAccountConnectionChecker>? connectionCheckers = null,
+        IMailSearchPreferencesStore? mailSearchPreferencesStore = null,
+        TimeProvider? timeProvider = null)
     {
         _accounts = accounts;
         _sharing = sharingStore ?? new MemoryAccountSharingStore();
+        _mailSearchPreferences = mailSearchPreferencesStore ?? new MemoryMailSearchPreferencesStore();
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _providerSetupServices = providerSetupServices.ToDictionary(service => service.ProviderId, StringComparer.Ordinal);
         _accountConnectors = accountConnectors.ToDictionary(connector => connector.ProviderId, StringComparer.Ordinal);
         _mailReaders = mailReaders.ToDictionary(reader => reader.ProviderId, StringComparer.Ordinal);
@@ -98,6 +104,25 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         var normalized = settings with { CalendarIds = settings.CalendarIds?.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray() };
         await _sharing.SaveAsync(normalized, cancellationToken);
         return normalized;
+    }
+
+    /// <inheritdoc />
+    public async Task<MailSearchPreferences> GetMailSearchPreferencesAsync(CancellationToken cancellationToken = default)
+    {
+        var preferences = await _mailSearchPreferences.GetAsync(cancellationToken);
+        preferences.Validate();
+        return preferences;
+    }
+
+    /// <inheritdoc />
+    public async Task<MailSearchPreferences> SaveMailSearchPreferencesAsync(
+        MailSearchPreferences preferences,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        preferences.Validate();
+        await _mailSearchPreferences.SaveAsync(preferences, cancellationToken);
+        return preferences;
     }
 
     /// <inheritdoc />
@@ -259,7 +284,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             throw new ArgumentException("Mail search requires text or at least one structured filter.", nameof(request));
         }
 
-        var providerQuery = new ProviderMailQuery(
+        var requestedQuery = new ProviderMailQuery(
             query ?? string.Empty,
             sender,
             start,
@@ -270,13 +295,29 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
 
         var sharing = await ReadSharingSnapshotAsync(cancellationToken);
         var allAccounts = sharing.Accounts;
+        var usesDefaultPeriod = start is null && end is null && !MailSearchDateSyntax.HasExplicitDate(query);
+        var preferences = usesDefaultPeriod ? await GetMailSearchPreferencesAsync(cancellationToken) : null;
         MailCursorState state;
         IReadOnlyList<Account> selectedAccounts;
         if (string.IsNullOrWhiteSpace(request.Cursor))
         {
             selectedAccounts = SelectMailAccounts(allAccounts, request.AccountIds);
+            var providerQuery = requestedQuery;
+            if (preferences is not null)
+            {
+                // Freeze both boundaries for every page of this search, including future continuations.
+                var searchTime = _timeProvider.GetUtcNow();
+                providerQuery = requestedQuery with
+                {
+                    Start = searchTime.AddDays(-preferences.DefaultLookbackDays),
+                    End = searchTime
+                };
+            }
+
             state = new MailCursorState(
+                requestedQuery,
                 providerQuery,
+                preferences?.DefaultLookbackDays,
                 selectedAccounts.Select(account => account.Id).ToArray(),
                 selectedAccounts.ToDictionary(
                     account => account.Id,
@@ -291,9 +332,14 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             }
 
             state = _references.Get<MailCursorState>(request.Cursor, "c_").Copy();
-            if (state.Query != providerQuery)
+            if (state.RequestedQuery != requestedQuery)
             {
                 throw new ArgumentException("The mail cursor belongs to a different query.", nameof(request));
+            }
+
+            if (state.DefaultLookbackDaysApplied != preferences?.DefaultLookbackDays)
+            {
+                throw new ArgumentException("The default mail search period changed. Start a new search.", nameof(request));
             }
 
             if (request.AccountIds is { Count: > 0 } &&
@@ -312,12 +358,16 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             pair.Key,
             pair.Value,
             accountsById,
-            providerQuery,
+            state.Query,
             request.Limit,
             accountReadGate,
             cancellationToken));
         await Task.WhenAll(accountReads);
         await EnsureSharingUnchangedAsync(sharing, cancellationToken);
+        if (preferences is not null && await GetMailSearchPreferencesAsync(cancellationToken) != preferences)
+        {
+            throw new InvalidOperationException("The default mail search period changed. Start a new search.");
+        }
 
         var candidates = state.Accounts
             .SelectMany(pair => pair.Value.Items.Select(item => new MailCandidate(pair.Key, item)))
@@ -359,7 +409,10 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             state.AccountIds.Where(id => !sharing.IsHidden(id)).ToArray(),
             failures,
             failures.Length == 0,
-            nextCursor);
+            nextCursor,
+            state.Query.Start,
+            state.Query.End,
+            state.DefaultLookbackDaysApplied);
     }
 
     private async Task ReadMailAccountAsync(
@@ -920,6 +973,24 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    private sealed class MemoryMailSearchPreferencesStore : IMailSearchPreferencesStore
+    {
+        private MailSearchPreferences _preferences = new();
+
+        public Task<MailSearchPreferences> GetAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Volatile.Read(ref _preferences));
+        }
+
+        public Task SaveAsync(MailSearchPreferences preferences, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Volatile.Write(ref _preferences, preferences);
+            return Task.CompletedTask;
+        }
+    }
+
     private static async Task<T> ReadWithDeadlineAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1197,12 +1268,16 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private sealed record EventCandidate(string TargetKey, ProviderEventSummary Event);
 
     private sealed record MailCursorState(
+        ProviderMailQuery RequestedQuery,
         ProviderMailQuery Query,
+        int? DefaultLookbackDaysApplied,
         IReadOnlyList<string> AccountIds,
         Dictionary<string, AccountMailCursorState> Accounts)
     {
         public MailCursorState Copy() => new(
+            RequestedQuery,
             Query,
+            DefaultLookbackDaysApplied,
             AccountIds.ToArray(),
             Accounts.ToDictionary(pair => pair.Key, pair => pair.Value.Copy(), StringComparer.Ordinal));
     }

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MailMeUp.Core;
@@ -15,7 +14,6 @@ namespace MailMeUp.Providers.Google;
 public sealed class GoogleCalendarReader : ICalendarReader
 {
     private const int MaximumJsonBytes = 12 * 1024 * 1024;
-    private static readonly HttpClient HttpClient = new();
     private readonly ILogger<GoogleCalendarReader> _logger;
     private readonly GoogleAccessTokenProvider _tokens;
 
@@ -57,7 +55,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
                     url += "&pageToken=" + Uri.EscapeDataString(cursor);
                 }
 
-                using var document = await GetJsonAsync(url, accessToken, "google.calendars.list", cancellationToken);
+                using var document = await GetJsonAsync(account, url, accessToken, "google.calendars.list", cancellationToken);
                 if (document.RootElement.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var item in items.EnumerateArray())
@@ -147,7 +145,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
                 url += "&pageToken=" + Uri.EscapeDataString(cursor);
             }
 
-            using var document = await GetJsonAsync(url, accessToken, "google.events.list", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, "google.events.list", cancellationToken);
             var events = new List<ProviderEventSummary>();
             if (document.RootElement.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
             {
@@ -203,7 +201,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
             var url = $"https://www.googleapis.com/calendar/v3/calendars/{Uri.EscapeDataString(providerCalendarId)}" +
                       $"/events/{Uri.EscapeDataString(providerEventId)}" +
                       "?fields=id%2Cstatus%2Csummary%2Cdescription%2Clocation%2Cstart%2Cend%2Cattendees(displayName%2Cemail%2CresponseStatus)%2ChangoutLink%2CconferenceData(entryPoints)";
-            using var document = await GetJsonAsync(url, accessToken, "google.events.get", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, "google.events.get", cancellationToken);
             var root = document.RootElement;
             var boundaries = ParseBoundaries(root)
                 ?? throw new ProviderReadException("Google returned an appointment without a valid time.");
@@ -385,13 +383,9 @@ public sealed class GoogleCalendarReader : ICalendarReader
         return null;
     }
 
-    private async Task<JsonDocument> GetJsonAsync(string url, string accessToken, string endpoint, CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return await ProviderHttpDiagnostics.ReadJsonAsync(
-            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken);
-    }
+    private Task<JsonDocument> GetJsonAsync(Account account, string url, string accessToken, string endpoint, CancellationToken cancellationToken) =>
+        GoogleReadRequests.Shared.GetJsonAsync(
+            account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken);
 
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object &&
@@ -435,14 +429,4 @@ public sealed class GoogleCalendarReader : ICalendarReader
     }
 
     private sealed record EventBoundaries(DateTimeOffset SortStart, string Start, string End, bool AllDay);
-    private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
-    {
-        400 => ReadFailureKind.InvalidRequest,
-        401 => ReadFailureKind.SignInRequired,
-        403 => ReadFailureKind.AccessDenied,
-        404 or 410 => ReadFailureKind.ItemUnavailable,
-        408 or 504 => ReadFailureKind.Timeout,
-        429 or >= 500 => ReadFailureKind.ProviderUnavailable,
-        _ => ReadFailureKind.Unknown
-    };
 }

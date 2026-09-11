@@ -43,7 +43,10 @@ public sealed record MailSearchResult(
     IReadOnlyList<string> SearchedAccountIds,
     IReadOnlyList<AccountReadFailure> FailedAccounts,
     bool CoverageComplete,
-    string? NextCursor);
+    string? NextCursor,
+    DateTimeOffset? EffectiveStart = null,
+    DateTimeOffset? EffectiveEnd = null,
+    int? DefaultLookbackDaysApplied = null);
 
 /// <summary>Requests a bounded text segment for one result reference.</summary>
 public sealed record MailReadRequest(string Reference, int Offset = 0, int MaxCharacters = 8_000);

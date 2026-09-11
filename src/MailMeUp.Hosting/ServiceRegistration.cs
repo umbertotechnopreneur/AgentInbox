@@ -16,6 +16,7 @@ public static class ServiceRegistration
     {
         services.AddSingleton<IAccountStore>(_ => new SqliteAccountStore(dataDirectory));
         services.AddSingleton<IAccountSharingStore>(_ => new JsonAccountSharingStore(dataDirectory));
+        services.AddSingleton<IMailSearchPreferencesStore>(_ => new JsonMailSearchPreferencesStore(dataDirectory));
         services.AddSingleton<IProviderConfigurationStore>(_ => new JsonProviderConfigurationStore(dataDirectory));
         services.AddSingleton<ISecretStore>(_ => new OsProtectedSecretStore(dataDirectory));
         services.AddSingleton<IProviderModule, GoogleProviderModule>();
