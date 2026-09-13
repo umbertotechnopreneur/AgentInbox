@@ -18,6 +18,7 @@ public sealed partial class MainWindow
 
     private async Task RunCodexSetupAsync(bool install)
     {
+        if (BlockDemoAction()) return;
         await RunAsync(install ? "Installing the local Codex plugin…" : "Checking local Codex setup…", async token =>
         {
             // Clear stale success and install eligibility before any new operation, including cancellation.

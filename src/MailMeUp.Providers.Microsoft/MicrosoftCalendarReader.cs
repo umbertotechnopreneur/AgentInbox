@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MailMeUp.Core;
@@ -18,12 +17,16 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
     private static readonly HttpClient HttpClient = new();
     private readonly ILogger<MicrosoftCalendarReader> _logger;
     private readonly MicrosoftAccessTokenProvider _tokens;
+    private readonly MicrosoftReadRequests _requests;
 
     /// <summary>Creates a Microsoft calendar reader backed by the protected MSAL cache.</summary>
-    public MicrosoftCalendarReader(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger<MicrosoftCalendarReader>? logger = null)
+    public MicrosoftCalendarReader(
+        IProviderConfigurationStore configurations, ISecretStore secrets,
+        ILogger<MicrosoftCalendarReader>? logger = null, IProviderRequestGovernor? governor = null)
     {
         _logger = logger ?? NullLogger<MicrosoftCalendarReader>.Instance;
         _tokens = new MicrosoftAccessTokenProvider(configurations, secrets, _logger);
+        _requests = new MicrosoftReadRequests(HttpClient, governor);
     }
 
     /// <inheritdoc />
@@ -49,7 +52,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
                     throw new ProviderReadException("Microsoft calendar discovery could not complete within its page limit.");
                 }
 
-                using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.calendars.list", cancellationToken);
+                using var document = await GetJsonAsync(account, url, accessToken, preferText: false, "graph.calendars.list", cancellationToken);
                 if (document.RootElement.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var item in values.EnumerateArray())
@@ -125,7 +128,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
             var url = string.IsNullOrWhiteSpace(cursor)
                 ? CreateEventSearchUrl(providerCalendarId, start, end, limit)
                 : ValidateNextLink(cursor, "/calendarView");
-            using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.events.list", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, preferText: false, "graph.events.list", cancellationToken);
             var events = new List<ProviderEventSummary>();
             if (document.RootElement.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array)
             {
@@ -181,7 +184,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
             var url = $"https://graph.microsoft.com/v1.0/me/calendars/{Uri.EscapeDataString(providerCalendarId)}" +
                       $"/events/{Uri.EscapeDataString(providerEventId)}" +
                       "?%24select=id%2Csubject%2Cbody%2Cstart%2Cend%2CisAllDay%2CisCancelled%2Clocation%2Cattendees%2ConlineMeeting%2ConlineMeetingUrl%2CoriginalStartTimeZone%2CoriginalEndTimeZone";
-            using var document = await GetJsonAsync(url, accessToken, preferText: true, "graph.events.get", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, preferText: true, "graph.events.get", cancellationToken);
             var root = document.RootElement;
             var boundaries = ParseBoundaries(root)
                 ?? throw new ProviderReadException("Microsoft returned an appointment without a valid time.");
@@ -408,24 +411,14 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return uri.AbsoluteUri;
     }
 
-    private async Task<JsonDocument> GetJsonAsync(
+    private Task<JsonDocument> GetJsonAsync(
+        Account account,
         string url,
         string accessToken,
         bool preferText,
         string endpoint,
         CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.TryAddWithoutValidation("Prefer", "outlook.timezone=\"UTC\"");
-        if (preferText)
-        {
-            request.Headers.TryAddWithoutValidation("Prefer", "outlook.body-content-type=\"text\"");
-        }
-
-        return await ProviderHttpDiagnostics.ReadJsonAsync(
-            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken);
-    }
+        => _requests.GetJsonAsync(account, url, accessToken, _logger, endpoint, MaximumJsonBytes, preferText, cancellationToken, preferUtc: true);
 
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object &&
@@ -469,13 +462,4 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
     }
 
     private sealed record EventBoundaries(DateTimeOffset SortStart, string Start, string End, bool AllDay);
-    private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
-    {
-        401 => ReadFailureKind.SignInRequired,
-        403 => ReadFailureKind.AccessDenied,
-        404 or 410 => ReadFailureKind.ItemUnavailable,
-        408 or 504 => ReadFailureKind.Timeout,
-        429 or >= 500 => ReadFailureKind.ProviderUnavailable,
-        _ => ReadFailureKind.Unknown
-    };
 }

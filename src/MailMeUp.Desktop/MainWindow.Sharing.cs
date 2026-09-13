@@ -69,6 +69,7 @@ public sealed partial class MainWindow
             _sharingDirty = false;
             SharingEmptyText.Visibility = ToVisibility(account is null);
             SharingEditor.Visibility = ToVisibility(account is not null);
+            SharingEditorCard.Visibility = ToVisibility(account is not null);
             SaveSharingButton.IsEnabled = false;
             DiscardSharingButton.Visibility = Visibility.Collapsed;
             if (account is null) return;
@@ -80,7 +81,7 @@ public sealed partial class MainWindow
             ShareCalendarsSwitch.IsOn = saved.ShareCalendars && account.CalendarReadEnabled;
             _selectedCalendarIds = saved.CalendarIds?.ToHashSet(StringComparer.Ordinal) ?? new(StringComparer.Ordinal);
             CalendarScope.SelectedIndex = saved.CalendarIds is null ? 0 : 1;
-            SharingSavedText.Text = "Choices saved on this device.";
+            SharingSavedText.Text = IsDemo ? "Choices saved for this preview session." : "Choices saved on this device.";
         }
         finally
         {
@@ -123,7 +124,7 @@ public sealed partial class MainWindow
         if (_sharingDirty) _sharingReviewed = false;
         SaveSharingButton.IsEnabled = _sharingDirty;
         DiscardSharingButton.Visibility = ToVisibility(_sharingDirty);
-        SharingSavedText.Text = _sharingDirty ? "Unsaved changes" : "Choices saved on this device.";
+        SharingSavedText.Text = _sharingDirty ? "Unsaved changes" : IsDemo ? "Choices saved for this preview session." : "Choices saved on this device.";
         UpdateProgress();
     }
 
@@ -175,7 +176,7 @@ public sealed partial class MainWindow
             RenderConnectedAccounts();
             UpdateSharingSummary();
             UpdateProgress();
-            SetNotice("Sharing choices saved", "Applies to future reads. Existing conversations keep information already returned.", InfoBarSeverity.Success);
+            SetNotice("Sharing choices saved", IsDemo ? "Saved for this preview session. Closing the demo resets these choices." : "Applies to future reads. Existing conversations keep information already returned.", InfoBarSeverity.Success);
         });
     }
 

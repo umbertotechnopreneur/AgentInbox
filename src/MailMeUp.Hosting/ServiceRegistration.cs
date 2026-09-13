@@ -16,8 +16,12 @@ public static class ServiceRegistration
     {
         services.AddSingleton<IAccountStore>(_ => new SqliteAccountStore(dataDirectory));
         services.AddSingleton<IAccountSharingStore>(_ => new JsonAccountSharingStore(dataDirectory));
+        services.AddSingleton<IMailSearchPreferencesStore>(_ => new JsonMailSearchPreferencesStore(dataDirectory));
         services.AddSingleton<IProviderConfigurationStore>(_ => new JsonProviderConfigurationStore(dataDirectory));
         services.AddSingleton<ISecretStore>(_ => new OsProtectedSecretStore(dataDirectory));
+        services.AddSingleton<FileReadGuardrails>(_ => new FileReadGuardrails(dataDirectory));
+        services.AddSingleton<IProviderRequestGovernor>(provider => provider.GetRequiredService<FileReadGuardrails>());
+        services.AddSingleton<IReadBudget>(provider => provider.GetRequiredService<FileReadGuardrails>());
         services.AddSingleton<IProviderModule, GoogleProviderModule>();
         services.AddSingleton<IProviderModule, MicrosoftProviderModule>();
         services.AddSingleton<IProviderSetupService, GoogleProviderSetupService>();

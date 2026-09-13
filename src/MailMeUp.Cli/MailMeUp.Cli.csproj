@@ -6,6 +6,7 @@
     <Description>A local, read-only email and calendar bridge for MCP clients.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="MailMeUp.Tests" />
     <ProjectReference Include="../MailMeUp.Hosting/MailMeUp.Hosting.csproj" />
     <ProjectReference Include="../MailMeUp.Application/MailMeUp.Application.csproj" />
     <ProjectReference Include="../MailMeUp.Storage/MailMeUp.Storage.csproj" />

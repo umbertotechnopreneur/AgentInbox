@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using MailMeUp.Desktop.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
+using Windows.ApplicationModel.Activation;
 
 namespace MailMeUp.Desktop;
 
@@ -8,17 +10,40 @@ namespace MailMeUp.Desktop;
 internal static class Program
 {
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
+        if (!SetupLaunchOptions.TryParse(args, out var options))
+        {
+            Console.Error.WriteLine(SetupLaunchOptions.UsageError);
+            return 2;
+        }
+
         try
         {
             WinRT.ComWrappersSupport.InitializeComWrappers();
-            var instance = AppInstance.FindOrRegisterForKey("MailMeUp.Desktop.Setup");
-            if (!instance.IsCurrent) return RedirectToExistingInstance(instance);
+            // Read the activation payload once, before packaged launch data can become unavailable.
+            var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
+            var instance = AppInstance.FindOrRegisterForKey(
+                options.IsDemo ? "MailMeUp.Desktop.Setup.Demo" : "MailMeUp.Desktop.Setup");
+            if (!instance.IsCurrent) return RedirectToExistingInstance(instance, activation);
 
             App? app = null;
-            void OnActivated(object? sender, AppActivationArguments arguments) =>
-                Volatile.Read(ref app)?.ActivateExistingWindow();
+            var activationGate = new object();
+            var pendingActivations = new Queue<SetupLaunchOptions>();
+            void OnActivated(object? sender, AppActivationArguments arguments)
+            {
+                if (!TryParseActivation(arguments, out var requested) || requested.IsDemo != options.IsDemo)
+                {
+                    Console.Error.WriteLine(SetupLaunchOptions.UsageError);
+                    return;
+                }
+
+                lock (activationGate)
+                {
+                    if (app is null) pendingActivations.Enqueue(requested);
+                    else app.ActivateExistingWindow(requested);
+                }
+            }
             instance.Activated += OnActivated;
             try
             {
@@ -26,9 +51,14 @@ internal static class Program
                 {
                     SynchronizationContext.SetSynchronizationContext(
                         new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-                    var setupApp = new App();
-                    Volatile.Write(ref app, setupApp);
+                    var setupApp = new App(options);
                     setupApp.StartSetupWindow();
+                    lock (activationGate)
+                    {
+                        app = setupApp;
+                        while (pendingActivations.TryDequeue(out var pending))
+                            setupApp.ActivateExistingWindow(pending);
+                    }
                 });
             }
             finally
@@ -46,9 +76,43 @@ internal static class Program
         }
     }
 
-    private static int RedirectToExistingInstance(AppInstance instance)
+    private static bool TryParseActivation(AppActivationArguments activation, out SetupLaunchOptions options)
     {
-        var arguments = AppInstance.GetCurrent().GetActivatedEventArgs();
+        options = new();
+        try
+        {
+            var commandLine = activation.Data switch
+            {
+                ILaunchActivatedEventArgs launch => launch.Arguments,
+                ICommandLineActivatedEventArgs command => command.Operation.Arguments,
+                _ => null
+            };
+            if (commandLine is null) return false;
+            if (string.IsNullOrWhiteSpace(commandLine)) return true;
+
+            var buffer = CommandLineToArgvW(commandLine.TrimStart(), out var count);
+            if (buffer == IntPtr.Zero) return false;
+            try
+            {
+                var arguments = new string[count];
+                for (var index = 0; index < count; index++)
+                    arguments[index] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(buffer, index * IntPtr.Size)) ?? "";
+                return SetupLaunchOptions.TryParseActivation(arguments, out options);
+            }
+            finally
+            {
+                LocalFree(buffer);
+            }
+        }
+        catch (Exception)
+        {
+            // Never surface activation payloads, executable paths or untrusted values in diagnostics.
+            return false;
+        }
+    }
+
+    private static int RedirectToExistingInstance(AppInstance instance, AppActivationArguments arguments)
+    {
         AllowSetForegroundWindow(instance.ProcessId);
         var completed = new ManualResetEvent(false);
         var redirect = Task.Run(async () =>
@@ -91,4 +155,10 @@ internal static class Program
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AllowSetForegroundWindow(uint processId);
+
+    [DllImport("shell32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern IntPtr LocalFree(IntPtr memory);
 }

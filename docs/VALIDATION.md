@@ -1,5 +1,45 @@
 # Validation
 
+## Provider and output guardrails — source increment
+
+**2026-09-12 — not built, tested or installed.** Shared profile attempt/read/output ledgers, provider leases and cooldowns, Microsoft 429 retries, adaptive mail hydration, detail/folder caches, smaller default details and Gmail MIME fixes are implemented in source. Synthetic regression sources cover admission/output caps, profile coordination and corruption, retry/cooldown behavior, cache reuse/cancellation/sharing, attachment parsing and resumable search budgets. They have not been compiled or executed.
+
+No tests, builds, formatting, smoke checks, provider reads, UI interactions, installation, push or CI dispatch were performed for this increment. Earlier 291-test results and installed MSIX `0.1.1.20` do not validate or contain these changes. Separate-process runtime enforcement, packaged startup, real provider quota behavior and MCP client ingestion remain to be exercised when requested. See [read guardrails](READ_GUARDRAILS.md).
+
+## Windows installation with CLI screen navigation
+
+**Windows x64, 2026-09-12 — package 0.1.1.20.** Desktop and CLI Release publication, MSIX creation and signing succeeded using the existing publisher `CN=umber`. After the installation tool response was interrupted, an independent `Get-AppxPackage` read confirmed installed version `0.1.1.20`, status `Ok`, and the matching WindowsApps location. The signed MSIX has a valid signature. Installation was not repeated; certificate trust and account configuration were not changed.
+
+This supersedes installed `0.1.1.19` and includes the UI/CLI increment described below. No tests, smoke suite, mailbox checks or native UI interactions were repeated for the install request. The 291-test and CLI/MCP smoke evidence below belongs to the preceding local preview. Build/signing output is in the local ignored `artifacts/msix-build-0.1.1.20.log`. No release was published and no PR was changed.
+
+## CLI screen navigation and isolated desktop preview
+
+**Windows x64, 2026-09-12 — local preview build.** Desktop and CLI Release publication passed. The output is in local ignored `artifacts/ui-preview/desktop`, with the matching executable under `cli/mailmeup.exe`. This increment was not packaged, installed or pushed; installed `0.1.1.19` and the earlier mail-search PR do not contain it.
+
+The requested .NET suite passed **291 tests, zero failures and zero skips** after correcting an xUnit assertion-analyzer failure in a new synthetic test. Added cases cover CLI arguments and executable resolution, desktop activation parsing, demo data and session isolation, unsupported authentication/provider reads, and preference validation. Parser tests do not establish native activation or rendering. Evidence: local ignored `artifacts/test-ui-step-preview.log` and `artifacts/test-results/ui-step-preview.trx`.
+
+The published CLI returned all four screens for `ui --list-steps --json` without creating its isolated data directory. The existing CLI/MCP smoke suite also passed against this executable using temporary data directories, including nine tools and empty reads. Evidence: `artifacts/smoke-ui-step-preview.log`; publication logs are `artifacts/ui-preview-desktop-build.log` and `artifacts/ui-preview-cli-build.log`.
+
+No desktop window was launched or controlled, no real mailbox or credential store was exercised, and no Codex connection was changed. Native layout, focus, small-window behavior, existing-instance navigation, dialog deferral and save/discard interactions remain pending. The demo application uses synthetic `example.test` accounts and in-memory choices; its UI blocks sign-in, provider setup/read checks and real Codex actions.
+
+## Windows update with bounded mail searches and Google recovery
+
+**Windows x64, 2026-09-11 — package 0.1.1.19.** Desktop and CLI Release publication, MSIX creation and signing succeeded. The package uses the existing local publisher `CN=umber` and package family. After the installation tool response was interrupted, an independent package-state read confirmed version `0.1.1.19`, status `Ok`, and a valid package signature; installation was not repeated. It supersedes `0.1.1.18` and contains the search preferences, UI, provider date bounds and rate-limit recovery described in the earlier source record below.
+
+The dedicated packaging script does not compile or run tests. No unit tests, formatter, smoke suite, live mailbox request, desktop launch or UI interaction check was executed for this build/install request. No certificate trust, provider permissions or account configuration was changed. New MCP processes use the installed update through the stable alias; this was not exercised as an alias smoke check. Build evidence is in the local ignored `artifacts/msix-build-0.1.1.19.log`; no private runtime logs or signed binaries are committed.
+
+**Subsequent owner-requested tests, same day:** `dotnet test MailMeUp.slnx -c Release` compiled the synthetic regression project and passed **229 tests, zero failures and zero skips**. This includes default-window/persistence/cursor cases, Google retry/classification/pacing, Microsoft search bounds and MCP status/notifications. Results are in the local ignored `artifacts/test-results/mail-search-limits.trx`. Tests use synthetic data and do not establish real Google/Microsoft behavior or desktop interaction.
+
+The existing synthetic CLI/MCP smoke suite also passed against the actual installed `0.1.1.19` executable, with exit code 0: CLI options, JSON, private stderr logs, nine MCP tools, empty reads, invalid references and a diagnostic-only first run. Every child process used a temporary isolated `MAILMEUP_DATA_DIR`; no real account or UI was accessed. Evidence: local ignored `artifacts/smoke-mail-search-limits-0.1.1.19.log`. This checked the packaged executable directly, not the Windows execution alias. No application source changes were needed after installation.
+
+## Default mail period and request-limit recovery — source changes
+
+**2026-09-11 — not built or installed.** An inspection of existing owner-triggered logs identified a Gmail 403 with `rateLimitExceeded` during a burst of detail reads; other reads succeeded immediately before and after it. The previous status-only classifier presented that response as denied access. This is diagnostic evidence from the earlier operation, not a new live-provider check.
+
+The source now distinguishes request limits, shares per-account Google read pacing/cooldowns and applies bounded retries. Undated mail searches use a persisted 14-day default, configurable from 1 to 365 days in the Windows Sharing page. Search results expose effective dates; continuations retain their window and reject a changed default. Microsoft text/address searches receive date constraints inside KQL in addition to local result filtering. MCP status exposes the saved period without reading a mailbox.
+
+Synthetic regression sources cover quota/permission distinctions, retry limits and cancellation, shared per-account pacing, preference persistence and corruption, date overrides, frozen/invalidation cursor behavior, deterministic fixture dates, Microsoft UTC date boundaries and MCP status disclosure. They have not been compiled or executed. No tests, builds, formatters, smoke checks, mailbox checks, UI launch, packaging, installation or CI dispatch were run for these edits. The installed `0.1.1.18` preview does not contain them. Desktop rendering/save/discard and real-provider compatibility remain pending owner-requested validation.
+
 ## Owner-requested plugin mail reads after the Windows update
 
 **2026-09-07 and 2026-09-08.** After installing `0.1.1.18`, owner-requested reads through the local MailMeUp plugin listed all five shared accounts and returned unread-mail search results with `coverage_complete: true` and no failed accounts. The subsequent review followed a search continuation, queried individual accounts and read selected message bodies successfully. Empty unread results from individual accounts also completed without errors. Reads did not mark messages as read or modify provider data. No account identities or message content are included in this record.

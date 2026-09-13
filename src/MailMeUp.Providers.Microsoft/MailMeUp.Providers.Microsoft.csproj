@@ -6,5 +6,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Client" />
+    <InternalsVisibleTo Include="MailMeUp.Tests" />
   </ItemGroup>
 </Project>

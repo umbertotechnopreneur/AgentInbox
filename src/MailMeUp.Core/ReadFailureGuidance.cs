@@ -26,7 +26,11 @@ public enum ReadFailureKind
     /// <summary>The selected local account or sharing configuration is unavailable.</summary>
     LocalConfiguration,
     /// <summary>The supplied request or local reference is invalid.</summary>
-    InvalidRequest
+    InvalidRequest,
+    /// <summary>The provider rejected a read because a request or usage limit was reached.</summary>
+    RateLimited,
+    /// <summary>A local request or returned-content budget stopped further work.</summary>
+    BudgetExceeded
 }
 
 /// <summary>A plain-English explanation and next step generated from a trusted failure category.</summary>
@@ -41,6 +45,8 @@ public static class ReadFailureGuidance
         ReadFailureKind.SignInRequired => new("sign_in_required", "The account's sign-in has expired, was removed, or needs approval again.", "Open MailMeUp and sign in to the affected account again."),
         ReadFailureKind.AccessDenied => new("access_denied", "The email or calendar provider denied read access.", "Open MailMeUp, check the account permissions and sign in again if needed. A work account may require an administrator's approval."),
         ReadFailureKind.ProviderUnavailable => new("provider_unavailable", "The email or calendar provider is temporarily unavailable or is limiting requests.", "Wait a little and try again."),
+        ReadFailureKind.RateLimited => new("rate_limited", "The email or calendar provider is limiting requests or has exhausted a usage quota.", "Wait before trying again, use a shorter date range and open only the messages you need. Reconnecting the account does not resolve a request limit."),
+        ReadFailureKind.BudgetExceeded => new("read_budget_exceeded", "MailMeUp stopped because a local request or returned-content budget was reached. The requested review may be incomplete.", "Stop additional bulk reads. Use a smaller result count or text window, select fewer accounts, or wait for the configured budget window to reset. Do not retry immediately or reconnect the account."),
         ReadFailureKind.Network => new("network_unavailable", "MailMeUp could not reach the email or calendar provider.", "Check the internet connection and try again."),
         ReadFailureKind.Timeout => new("read_timed_out", "The email or calendar provider took too long to respond and the read timed out.", "Try again, or narrow the search to a shorter date range."),
         ReadFailureKind.LocalCredentialsUnavailable => new("local_credentials_unavailable", "MailMeUp could not open the account's protected sign-in information on this computer.", "Open MailMeUp and try signing in again. If the problem continues, check that the computer's credential storage is available."),

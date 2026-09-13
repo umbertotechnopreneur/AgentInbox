@@ -10,9 +10,12 @@
     <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupModels.cs" Link="Desktop/CodexSetupModels.cs" />
     <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupPresentation.cs" Link="Desktop/CodexSetupPresentation.cs" />
     <Compile Include="../../src/MailMeUp.Desktop/Services/CodexSetupService.cs" Link="Desktop/CodexSetupService.cs" />
+    <Compile Include="../../src/MailMeUp.Desktop/Services/DemoMailMeUpApplication.cs" Link="Desktop/DemoMailMeUpApplication.cs" />
+    <Compile Include="../../src/MailMeUp.Desktop/Services/SetupLaunchOptions.cs" Link="Desktop/SetupLaunchOptions.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/MailMeUp.Application/MailMeUp.Application.csproj" />
+    <ProjectReference Include="../../src/MailMeUp.Cli/MailMeUp.Cli.csproj" />
     <ProjectReference Include="../../src/MailMeUp.Mcp/MailMeUp.Mcp.csproj" />
     <ProjectReference Include="../../src/MailMeUp.Storage/MailMeUp.Storage.csproj" />
     <ProjectReference Include="../../src/MailMeUp.Providers.Google/MailMeUp.Providers.Google.csproj" />

@@ -48,7 +48,7 @@ public sealed record EventSearchResult(
     string? NextCursor);
 
 /// <summary>Requests bounded details for one appointment reference.</summary>
-public sealed record EventReadRequest(string Reference, int MaxDescriptionCharacters = 8_000);
+public sealed record EventReadRequest(string Reference, int MaxDescriptionCharacters = 2_000);
 
 /// <summary>Returns selected appointment details without exposing provider identifiers.</summary>
 public sealed record EventResult(

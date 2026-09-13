@@ -221,7 +221,8 @@ public sealed class ApplicationReadTests
             [],
             [],
             mailReaders,
-            calendarReaders);
+            calendarReaders,
+            timeProvider: FixedTimeProvider.September2026);
 
     private static DateTimeOffset Instant(int hour) =>
         new DateTimeOffset(2026, 9, 5, 0, 0, 0, TimeSpan.Zero).AddHours(hour);

@@ -53,6 +53,7 @@ internal sealed class CliPresentation
         _output.MarkupLine("Read-only access to Google and Microsoft accounts from your AI assistant.");
         _output.WriteLine();
         Section("Get started", "🚀");
+        Command("mailmeup ui", "Open or activate the native Windows setup app, keeping its current page");
         Command("mailmeup setup google <client-json>", "Import your Google Desktop app registration");
         Command("mailmeup setup microsoft <client-id>", "Save your Microsoft app registration");
         Command("mailmeup accounts connect <google|microsoft>", "Sign in with read-only mail and calendar access");
@@ -65,6 +66,12 @@ internal sealed class CliPresentation
         Command("mailmeup accounts remove <account-id>", "Remove local account metadata and credentials");
         Command("mailmeup accounts connect <provider> --mail-only", "Request mail read access only");
         Command("mailmeup accounts connect <provider> --calendar-only", "Request calendar read access only");
+        _output.WriteLine();
+        Section("Explore the setup screens", "🪟");
+        Command("mailmeup ui --list-steps", "List every screen without starting the desktop app");
+        Command("mailmeup ui --step <welcome|accounts|sharing|codex>", "Open a specific setup screen on Windows");
+        Command("mailmeup ui --step sharing --demo", "Preview a screen with sample data and no account access");
+        Command("--desktop-path <MailMeUp.Desktop.exe>", "Use a built desktop executable with mailmeup ui");
         _output.WriteLine();
         Section("Make it yours", "🎛️");
         Command("--json", "Return JSON; automatic when stdout is redirected");
@@ -112,6 +119,23 @@ internal sealed class CliPresentation
 
         switch (result)
         {
+            case UiStepsOutput uiSteps:
+                Section("Desktop setup screens", "🪟");
+                foreach (var step in uiSteps.Steps)
+                {
+                    Command(step.Command, $"{step.Title}: {step.Description}");
+                }
+
+                _output.WriteLine();
+                _output.MarkupLine("[dim]Add --demo to preview with sample data. No account access or configuration changes occur in demo mode.[/]");
+                break;
+            case UiLaunchOutput uiLaunch:
+                Section("Desktop launch requested", "🪟");
+                Field("Screen", uiLaunch.RequestedStep ?? "Keep current page; Welcome for a new window");
+                Field("Mode", uiLaunch.Demo ? "Demo with sample data" : "Your local setup");
+                _output.WriteLine();
+                _output.MarkupLine("[dim]The desktop app will open or activate its existing window.[/]");
+                break;
             case ApplicationStatus status:
                 Section("Bridge status", "🔎");
                 Field("Stage", status.Stage.Replace('_', ' '));

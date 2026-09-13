@@ -36,7 +36,11 @@ The Windows MSIX contains a WinUI setup executable and a separate console MCP ex
 
 Local sharing choices are separate from provider consent. New accounts connected through the UI are stored with sharing disabled; existing CLI accounts retain their previous behavior until configured. Account/category/calendar restrictions are applied by the application facade and reloaded for reads, including cached result references and continuations. Setup-only calendar discovery is not exposed as an MCP tool.
 
+Global mail search preferences are local non-secret settings shared by the UI, CLI and MCP application facade. Undated searches use a configurable 14-day default; explicit dates override it. A continuation retains its original date window and rejects a changed default. Search results report the applied window so callers can describe their scope accurately.
+
 ## Boundaries
+
+The new source [read guardrails](READ_GUARDRAILS.md) put provider attempts and cooldowns behind Core contracts with a Storage file-lease/ledger implementation shared by CLI, MCP and desktop. Application code admits content reads and caches bounded details; MCP accounts for serialized output immediately before delivery. Mail refills load small account pages adaptively, and local budget pauses preserve a resumable mail cursor. This increment is not yet validated or installed.
 
 - Current provider scope is read-only. No write tools are registered or planned for this milestone.
 - Mail searches exclude Spam/Junk and Trash/Deleted Items by default; provider adapters enforce the exclusion before returning results.
@@ -45,7 +49,7 @@ Local sharing choices are separate from provider consent. New accounts connected
 - SQLite stores metadata, never credentials. An empty account list does not create a database. The storage adapter calls SQLitePCL directly so packaged startup does not activate unrelated Windows application-data APIs.
 - Public provider IDs use a small local settings file. Google uses a protected token slot per account; Microsoft uses a protected MSAL multi-account cache. Protection uses DPAPI, macOS Keychain or Linux Secret Service, with no plain-text fallback.
 - Credential refresh, reconnect persistence and removal hold a cross-process session lease. Microsoft cache mutations are persisted after a successful operation; a failed reconnect does not delete existing credentials.
-- Each provider read has a 30-second cancellation budget. Timeouts return partial account coverage; caller cancellation still cancels the whole request. Failed sources stop continuing within that search and require a new search to retry.
+- Each provider read has a 30-second cancellation budget; all mail refills in one search share a 30-second provider-work budget. Timeouts return partial account coverage; caller cancellation still cancels the whole request. Failed sources require a new search, except local budget pauses with a returned resumable mail cursor.
 - Provider readiness must reflect real implementation status.
 - Mail and event content is untrusted data, never instructions.
 

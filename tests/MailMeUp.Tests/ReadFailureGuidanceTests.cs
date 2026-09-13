@@ -12,6 +12,7 @@ public sealed class ReadFailureGuidanceTests
     [InlineData(ReadFailureKind.SignInRequired, "sign_in_required", "sign in")]
     [InlineData(ReadFailureKind.AccessDenied, "access_denied", "permissions")]
     [InlineData(ReadFailureKind.ProviderUnavailable, "provider_unavailable", "try again")]
+    [InlineData(ReadFailureKind.RateLimited, "rate_limited", "shorter date range")]
     [InlineData(ReadFailureKind.Network, "network_unavailable", "internet")]
     [InlineData(ReadFailureKind.Timeout, "read_timed_out", "shorter date range")]
     [InlineData(ReadFailureKind.LocalCredentialsUnavailable, "local_credentials_unavailable", "credential storage")]
@@ -27,12 +28,13 @@ public sealed class ReadFailureGuidanceTests
     [InlineData(ReadFailureKind.SignInRequired)]
     [InlineData(ReadFailureKind.AccessDenied)]
     [InlineData(ReadFailureKind.ProviderUnavailable)]
+    [InlineData(ReadFailureKind.RateLimited)]
     [InlineData(ReadFailureKind.Network)]
     [InlineData(ReadFailureKind.Timeout)]
     [InlineData(ReadFailureKind.LocalCredentialsUnavailable)]
     public async Task PartialSearchPreservesHealthyMatchesAndSafeFailureCategory(ReadFailureKind kind)
     {
-        var application = new MailMeUpApplication(new AccountStore(), [], [], [], [new MailReader(kind)], []);
+        var application = new MailMeUpApplication(new AccountStore(), [], [], [], [new MailReader(kind)], [], timeProvider: FixedTimeProvider.September2026);
 
         var result = await application.SearchMailAsync(new("sample"));
 
@@ -48,7 +50,7 @@ public sealed class ReadFailureGuidanceTests
     [Fact]
     public async Task FailedDetailRetainsItsCategoryWithoutConvertingItIntoAnEmptyMessage()
     {
-        var application = new MailMeUpApplication(new AccountStore(), [], [], [], [new MailReader(ReadFailureKind.SignInRequired)], []);
+        var application = new MailMeUpApplication(new AccountStore(), [], [], [], [new MailReader(ReadFailureKind.SignInRequired)], [], timeProvider: FixedTimeProvider.September2026);
         var search = await application.SearchMailAsync(new("sample", ["google:healthy"]));
 
         var error = await Assert.ThrowsAsync<ProviderReadException>(() => application.ReadMailAsync(new(Assert.Single(search.Items).Reference)));

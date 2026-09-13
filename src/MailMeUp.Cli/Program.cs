@@ -32,6 +32,21 @@ if (options.Command == CliCommand.Version)
     return 0;
 }
 
+if (options.Command == CliCommand.Ui)
+{
+    try
+    {
+        presentation.WriteBanner();
+        presentation.WriteResult(options.UiListSteps ? new UiStepsOutput(UiLauncher.Steps) : UiLauncher.Launch(options));
+        return 0;
+    }
+    catch (UiLaunchException exception)
+    {
+        presentation.WriteError(exception.Message);
+        return 1;
+    }
+}
+
 var dataDirectory = DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
 using var diagnostics = CliLogging.Create(options, dataDirectory);
 var startupLogger = diagnostics.ForContext("SourceContext", "MailMeUp.Cli");
