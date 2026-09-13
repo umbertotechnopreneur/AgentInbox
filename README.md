@@ -36,6 +36,8 @@ MailMeUp is built for that reality. Connect as many supported Google and Microso
 
 Each MailMeUp CLI process in this real Windows Task Manager snapshot uses roughly **7 MB of RAM**. That keeps a multi-process local MCP connection lightweight while it waits for your assistant's next request.
 
+MailMeUp deliberately avoids WebView shells. We have a strong preference for native, portable software: there is no embedded browser engine consuming tens or hundreds of megabytes merely to render a local setup screen. The shared .NET application remains portable, while the current wizard is a native Windows experience.
+
 ![Windows Task Manager showing the highlighted MailMeUp CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/mailmeup-task-manager-lightweight.png)
 
 *Real Task Manager snapshot. MailMeUp is highlighted; unrelated processes were blurred for privacy. Individual MailMeUp processes shown use 7.4–9.6 MB of RAM.*
