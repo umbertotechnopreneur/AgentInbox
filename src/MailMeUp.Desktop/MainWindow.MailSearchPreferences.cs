@@ -78,7 +78,7 @@ public sealed partial class MainWindow
         MailSearchPreferencesSavedText.Text = !valid
             ? $"Enter a whole number from {MailSearchPreferences.MinimumDays} to {MailSearchPreferences.MaximumDays} days."
             : _mailSearchPreferencesDirty ? "Unsaved search period"
-            : "Search period saved on this device.";
+            : IsDemo ? "Search period saved for this preview session." : "Search period saved on this device.";
         MailSearchPreferencesExpander.Header = _mailSearchPreferencesDirty
             ? "Default mail search period · unsaved changes"
             : $"Default mail search period · {_mailSearchPreferences.DefaultLookbackDays} {(_mailSearchPreferences.DefaultLookbackDays == 1 ? "day" : "days")}";
@@ -101,7 +101,7 @@ public sealed partial class MainWindow
             {
                 var result = await _application.SaveMailSearchPreferencesAsync(requested, token);
                 DisplayMailSearchPreferences(result);
-                SetNotice("Search period saved", "Applies to new mail searches without explicit dates on every account.", InfoBarSeverity.Success);
+                SetNotice("Search period saved", IsDemo ? "Saved for this preview session. Closing the demo resets this period." : "Applies to new mail searches without explicit dates on every account.", InfoBarSeverity.Success);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {

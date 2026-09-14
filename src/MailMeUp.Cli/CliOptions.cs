@@ -12,7 +12,8 @@ internal enum CliCommand
     Connect,
     Remove,
     SetupStatus,
-    Setup
+    Setup,
+    Ui
 }
 
 internal sealed record CliOptions(
@@ -24,13 +25,19 @@ internal sealed record CliOptions(
     bool Json = false,
     bool NoColor = false,
     bool NoAnimation = false,
-    LogEventLevel LogLevel = LogEventLevel.Warning)
+    LogEventLevel LogLevel = LogEventLevel.Warning,
+    string? UiStep = null,
+    bool UiDemo = false,
+    bool UiListSteps = false,
+    string? DesktopPath = null)
 {
     internal static CliOptions Parse(string[] args)
     {
         var operands = new List<string>();
         var flags = new HashSet<string>(StringComparer.Ordinal);
         string? level = null;
+        string? uiStep = null;
+        string? desktopPath = null;
         var literal = false;
         for (var index = 0; index < args.Length; index++)
         {
@@ -41,7 +48,8 @@ internal sealed record CliOptions(
                 continue;
             }
 
-            if (!literal && argument is "--json" or "--no-color" or "--no-animation" or "--log-level" or "--mail-only" or "--calendar-only")
+            if (!literal && argument is "--json" or "--no-color" or "--no-animation" or "--log-level" or "--mail-only" or "--calendar-only" or
+                "--step" or "--demo" or "--list-steps" or "--desktop-path")
             {
                 if (!flags.Add(argument))
                 {
@@ -56,6 +64,24 @@ internal sealed record CliOptions(
                     }
 
                     level = args[index];
+                }
+                else if (argument is "--step" or "--desktop-path")
+                {
+                    if (++index == args.Length || string.IsNullOrWhiteSpace(args[index]) || args[index].StartsWith('-'))
+                    {
+                        throw new CliUsageException(argument == "--step"
+                            ? "--step requires welcome, accounts, sharing or codex."
+                            : "--desktop-path requires the path to the desktop executable.");
+                    }
+
+                    if (argument == "--step")
+                    {
+                        uiStep = args[index];
+                    }
+                    else
+                    {
+                        desktopPath = args[index];
+                    }
                 }
             }
             else
@@ -81,7 +107,8 @@ internal sealed record CliOptions(
             ["setup", "status"] => new CliOptions(CliCommand.SetupStatus),
             ["setup", var provider, var source] when (provider is "google" or "microsoft") && !string.IsNullOrWhiteSpace(source) =>
                 new CliOptions(CliCommand.Setup, Provider: provider, Value: source),
-            ["accounts", "--help"] or ["setup", "--help"] => new CliOptions(CliCommand.Help),
+            ["ui"] => new CliOptions(CliCommand.Ui),
+            ["accounts", "--help"] or ["setup", "--help"] or ["ui", "--help"] => new CliOptions(CliCommand.Help),
             _ => throw new CliUsageException("Unknown or incomplete command. Run mailmeup --help. Providers: google, microsoft.")
         };
 
@@ -94,7 +121,23 @@ internal sealed record CliOptions(
 
         if (flags.Contains("--json") && options.Command is CliCommand.Help or CliCommand.Version or CliCommand.Stdio)
         {
-            throw new CliUsageException("--json applies to status, accounts and setup commands. MCP already uses JSON-RPC.");
+            throw new CliUsageException("--json applies to status, accounts, setup and ui commands. MCP already uses JSON-RPC.");
+        }
+
+        var uiFlags = flags.Contains("--step") || flags.Contains("--demo") || flags.Contains("--list-steps") || flags.Contains("--desktop-path");
+        if (uiFlags && options.Command != CliCommand.Ui)
+        {
+            throw new CliUsageException("--step, --demo, --list-steps and --desktop-path apply only to mailmeup ui.");
+        }
+
+        if (uiStep is not null && !UiLauncher.IsKnownStep(uiStep))
+        {
+            throw new CliUsageException("Unknown UI step. Use welcome, accounts, sharing or codex.");
+        }
+
+        if (flags.Contains("--list-steps") && (uiStep is not null || flags.Contains("--demo") || desktopPath is not null))
+        {
+            throw new CliUsageException("Use --list-steps by itself, or choose --step with optional --demo and --desktop-path to open a screen.");
         }
 
         return options with
@@ -104,7 +147,11 @@ internal sealed record CliOptions(
             Json = flags.Contains("--json"),
             NoColor = flags.Contains("--no-color"),
             NoAnimation = flags.Contains("--no-animation"),
-            LogLevel = ParseLogLevel(level ?? Environment.GetEnvironmentVariable("MAILMEUP_LOG_LEVEL"))
+            LogLevel = ParseLogLevel(level ?? Environment.GetEnvironmentVariable("MAILMEUP_LOG_LEVEL")),
+            UiStep = uiStep,
+            UiDemo = flags.Contains("--demo"),
+            UiListSteps = flags.Contains("--list-steps"),
+            DesktopPath = desktopPath
         };
     }
 

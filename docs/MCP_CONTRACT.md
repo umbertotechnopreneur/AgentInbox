@@ -8,7 +8,7 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 
 | Tool | Result |
 | --- | --- |
-| `get_status` | Build stage, read-only mode, provider capabilities and `mail_search_preferences.default_lookback_days` |
+| `get_status` | Build stage, read-only mode, provider capabilities, mail-search preferences, active read limits, aggregate local usage and pending-restart status |
 | `list_accounts` | Shared account IDs, providers, labels and addresses, with effective read categories |
 | `search_mail` | Short matches across selected or all mail-enabled accounts, with optional structured filters |
 | `search_unread_mail` | Unread short matches, with optional date, sender, recipient and attachment filters |
@@ -21,6 +21,8 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 All tools are read-only. A new installation has no accounts. Paths, provider item IDs and credentials are never returned. The original five provider-read tools pass local automated checks; the two structured mail tools and their provider-side filters still need dedicated validation.
 
 Provider registration, interactive account connection and sharing choices belong to the local CLI or Windows setup app. They are deliberately not exposed through MCP. Calendar discovery for the owner's sharing picker is also local-only.
+
+The September 13 source adds `read_guardrail_usage` and `read_guardrail_settings_pending_restart` to `get_status`. Usage is a local profile snapshot with counters and expiry timestamps, not provider quota or token accounting. Unsupported management returns `null` for both fields. Status makes no provider requests and remains available without charging the read/output budgets. Saved limit changes require restarting the participating MailMeUp processes; no settings-write tool is registered. See [read guardrails](READ_GUARDRAILS.md).
 
 The application reloads local sharing choices for every read, including existing references and continuation cursors. It checks access again before releasing a response; a change made during a read discards that response. Hidden accounts are omitted from discovery and continuation coverage. Provider consent and local sharing are independent: consent alone does not override a saved sharing choice.
 
@@ -35,7 +37,7 @@ Attachment content/downloads, sending, edits and invitations are outside the MVP
 
 ## Keep results small and accurate
 
-Omit account IDs to search all eligible accounts, or pass explicit IDs. Calendar selection is separate. Defaults are 20 results globally, 160-character mail previews and 8,000-character detail pages. More results use a short in-memory continuation cursor.
+Omit account IDs to search all eligible accounts, or pass explicit IDs. Calendar selection is separate. Defaults are 20 results globally, 160-character mail previews and 2,000-character detail pages. More results use a short in-memory continuation cursor. The current source adds shared request, admission and MCP output-byte limits; see [read guardrails](READ_GUARDRAILS.md) for defaults, configuration and validation limits. Output bytes are not model tokens.
 
 Mail search accepts common text plus optional sender/recipient contains filters, unread state, attachment presence and received-time boundaries. Each adapter translates those structured filters to Gmail or Microsoft syntax. `search_unread_mail` and `search_mail_by_date` do not require a text query.
 
@@ -49,7 +51,7 @@ Search first, select relevant previews, then read the details needed for the req
 
 References and cursors expire after about 30 minutes or a server restart. Results return coverage and individual account failures; partial coverage is never presented as complete.
 
-Each provider operation has a 30-second cancellation budget. A timeout, removed source account or failed continuation returns partial coverage alongside healthy results. Failed sources require a fresh search to retry. Caller cancellation still cancels the whole request.
+Each provider operation has a 30-second cancellation budget; mail-search refills share a 30-second provider-work deadline. A timeout, removed source account or failed continuation returns partial coverage alongside healthy results. Failed sources require a fresh search, except a local `read_budget_exceeded` pause: a returned mail cursor can resume after the budget window resets. Caller cancellation still cancels the whole request.
 
 Calendar discovery returns at most 100 calendars per account and reports incomplete coverage when more calendars exist. Event searches accept at most 20 calendar references at a time.
 
@@ -81,6 +83,8 @@ For partial coverage, `user_notification.failures` contains `account_id`, `code`
 Google throttling is reported as `rate_limited`, including a 403 with a recognized rate-limit reason. It is not an `access_denied` or expired-login diagnosis. Follow the supplied wait/retry guidance, avoid tight retry loops and do not suggest reconnecting for a rate limit. Genuine permission failures keep `access_denied`. See [request pacing and diagnostics](LOGGING.md).
 
 ## Developer requirements
+
+Microsoft HTTP 429 also produces `rate_limited` and shared retry/cooldown behavior. `read_budget_exceeded` denotes a local admission, provider-attempt or output limit. Stop bulk reads and follow the wait/narrow-request guidance; do not loop or suggest reconnecting. The Windows account check presents local-budget guidance separately from sign-in recovery.
 
 Provider-specific filters need separate translations. Cursors bind to query and scope. References bind messages/events to their source account.
 

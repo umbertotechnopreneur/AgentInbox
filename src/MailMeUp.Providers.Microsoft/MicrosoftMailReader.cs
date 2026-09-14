@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MailMeUp.Core;
@@ -18,12 +17,19 @@ public sealed class MicrosoftMailReader : IMailReader
     private static readonly HttpClient HttpClient = new();
     private readonly ILogger<MicrosoftMailReader> _logger;
     private readonly MicrosoftAccessTokenProvider _tokens;
+    private readonly IProviderConfigurationStore _configurations;
+    private readonly MicrosoftReadRequests _requests;
+    private readonly MicrosoftExcludedFolderCache _excludedFolders = new();
 
     /// <summary>Creates a Microsoft mail reader backed by the protected MSAL cache.</summary>
-    public MicrosoftMailReader(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger<MicrosoftMailReader>? logger = null)
+    public MicrosoftMailReader(
+        IProviderConfigurationStore configurations, ISecretStore secrets,
+        ILogger<MicrosoftMailReader>? logger = null, IProviderRequestGovernor? governor = null)
     {
         _logger = logger ?? NullLogger<MicrosoftMailReader>.Instance;
         _tokens = new MicrosoftAccessTokenProvider(configurations, secrets, _logger);
+        _configurations = configurations;
+        _requests = new MicrosoftReadRequests(HttpClient, governor);
     }
 
     /// <inheritdoc />
@@ -51,11 +57,14 @@ public sealed class MicrosoftMailReader : IMailReader
         try
         {
             var accessToken = await _tokens.GetAsync(account, ["Mail.Read"], cancellationToken);
-            var excludedFolderIds = await ReadExcludedFolderIdsAsync(accessToken, cancellationToken);
+            var configuration = await _configurations.GetAsync("microsoft", cancellationToken)
+                ?? throw new ProviderReadException("Microsoft app setup is missing.", ReadFailureKind.SetupRequired);
+            var excludedFolderIds = await _excludedFolders.GetAsync(configuration.ClientId, account.Id,
+                token => ReadExcludedFolderIdsAsync(account, accessToken, token), cancellationToken);
             var url = string.IsNullOrWhiteSpace(cursor)
                 ? CreateSearchUrl(query, limit, excludedFolderIds)
                 : ValidateNextLink(cursor);
-            using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.messages.list", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, preferText: false, "graph.messages.list", cancellationToken);
             return ParseSearchPage(document.RootElement, query, limit, excludedFolderIds);
         }
         catch (OperationCanceledException)
@@ -93,7 +102,7 @@ public sealed class MicrosoftMailReader : IMailReader
             var accessToken = await _tokens.GetAsync(account, ["Mail.Read"], cancellationToken);
             var url = $"https://graph.microsoft.com/v1.0/me/messages/{Uri.EscapeDataString(providerMessageId)}" +
                       "?%24select=id%2Csubject%2Cfrom%2CtoRecipients%2CccRecipients%2CreceivedDateTime%2Cbody%2CisRead%2ChasAttachments";
-            using var document = await GetJsonAsync(url, accessToken, preferText: true, "graph.messages.get", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, preferText: true, "graph.messages.get", cancellationToken);
             var root = document.RootElement;
             var body = root.TryGetProperty("body", out var bodyProperty)
                 ? GetOptionalString(bodyProperty, "content") ?? string.Empty
@@ -265,6 +274,7 @@ public sealed class MicrosoftMailReader : IMailReader
     }
 
     private async Task<IReadOnlyList<string>> ReadExcludedFolderIdsAsync(
+        Account account,
         string accessToken,
         CancellationToken cancellationToken)
     {
@@ -272,7 +282,7 @@ public sealed class MicrosoftMailReader : IMailReader
         foreach (var folder in new[] { "junkemail", "deleteditems" })
         {
             var url = $"https://graph.microsoft.com/v1.0/me/mailFolders/{folder}?%24select=id";
-            using var document = await GetJsonAsync(url, accessToken, preferText: false, "graph.mailFolders.get", cancellationToken);
+            using var document = await GetJsonAsync(account, url, accessToken, preferText: false, "graph.mailFolders.get", cancellationToken);
             var id = GetOptionalString(document.RootElement, "id");
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -309,24 +319,14 @@ public sealed class MicrosoftMailReader : IMailReader
         return uri.AbsoluteUri;
     }
 
-    private async Task<JsonDocument> GetJsonAsync(
+    private Task<JsonDocument> GetJsonAsync(
+        Account account,
         string url,
         string accessToken,
         bool preferText,
         string endpoint,
         CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.TryAddWithoutValidation("ConsistencyLevel", "eventual");
-        if (preferText)
-        {
-            request.Headers.TryAddWithoutValidation("Prefer", "outlook.body-content-type=\"text\"");
-        }
-
-        return await ProviderHttpDiagnostics.ReadJsonAsync(
-            HttpClient, request, _logger, endpoint, MaximumJsonBytes, ClassifyHttpFailure, cancellationToken);
-    }
+        => _requests.GetJsonAsync(account, url, accessToken, _logger, endpoint, MaximumJsonBytes, preferText, cancellationToken);
 
     private static string ReadSender(JsonElement message)
     {
@@ -417,14 +417,4 @@ public sealed class MicrosoftMailReader : IMailReader
             throw new ArgumentException("The Microsoft message identifier is invalid.", nameof(messageId));
         }
     }
-    private static ReadFailureKind ClassifyHttpFailure(int statusCode) => statusCode switch
-    {
-        400 => ReadFailureKind.InvalidRequest,
-        401 => ReadFailureKind.SignInRequired,
-        403 => ReadFailureKind.AccessDenied,
-        404 or 410 => ReadFailureKind.ItemUnavailable,
-        408 or 504 => ReadFailureKind.Timeout,
-        429 or >= 500 => ReadFailureKind.ProviderUnavailable,
-        _ => ReadFailureKind.Unknown
-    };
 }

@@ -16,12 +16,15 @@ public sealed class GoogleCalendarReader : ICalendarReader
     private const int MaximumJsonBytes = 12 * 1024 * 1024;
     private readonly ILogger<GoogleCalendarReader> _logger;
     private readonly GoogleAccessTokenProvider _tokens;
+    private readonly IProviderRequestGovernor _governor;
 
     /// <summary>Creates a Google Calendar reader backed by protected account tokens.</summary>
-    public GoogleCalendarReader(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger<GoogleCalendarReader>? logger = null)
+    public GoogleCalendarReader(IProviderConfigurationStore configurations, ISecretStore secrets,
+        ILogger<GoogleCalendarReader>? logger = null, IProviderRequestGovernor? governor = null)
     {
         _logger = logger ?? NullLogger<GoogleCalendarReader>.Instance;
         _tokens = new GoogleAccessTokenProvider(configurations, secrets, _logger);
+        _governor = governor ?? InMemoryReadGuardrails.Shared;
     }
 
     /// <inheritdoc />
@@ -385,7 +388,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
 
     private Task<JsonDocument> GetJsonAsync(Account account, string url, string accessToken, string endpoint, CancellationToken cancellationToken) =>
         GoogleReadRequests.Shared.GetJsonAsync(
-            account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken);
+            account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken, governor: _governor);
 
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object &&

@@ -115,7 +115,7 @@ public sealed class MicrosoftMailSearchTests
     [Fact]
     public void GraphBadRequestHasActionableCategory()
     {
-        Assert.Equal(ReadFailureKind.InvalidRequest, Invoke("ClassifyHttpFailure", 400));
+        Assert.Equal(ReadFailureKind.InvalidRequest, MicrosoftReadRequests.ClassifyStatus(400));
     }
 
     private static Dictionary<string, string> SearchParameters(ProviderMailQuery query)

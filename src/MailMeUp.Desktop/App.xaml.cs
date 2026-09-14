@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using MailMeUp.Application;
 using MailMeUp.Desktop.Services;
 using MailMeUp.Hosting;
 using MailMeUp.Storage;
@@ -22,9 +23,16 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly DispatcherQueue _dispatcher = DispatcherQueue.GetForCurrentThread();
     private ILogger<App>? _logger;
     private int _setupStarted;
+    private readonly SetupLaunchOptions _launchOptions;
 
     /// <summary>Initializes WinUI resources.</summary>
-    public App() => InitializeComponent();
+    public App() : this(new SetupLaunchOptions()) { }
+
+    internal App(SetupLaunchOptions launchOptions)
+    {
+        _launchOptions = launchOptions;
+        InitializeComponent();
+    }
 
     /// <inheritdoc />
     protected override void OnLaunched(LaunchActivatedEventArgs args) => StartSetupWindow();
@@ -36,21 +44,28 @@ public partial class App : Microsoft.UI.Xaml.Application
         Logger? diagnostics = null;
         try
         {
-            var dataDirectory = DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
+            var dataDirectory = _launchOptions.IsDemo
+                ? Path.Combine(Path.GetTempPath(), "MailMeUp-ui-demo", Guid.NewGuid().ToString("N"))
+                : DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
             diagnostics = DesktopLogging.Create(dataDirectory);
             var startupLogger = diagnostics.ForContext("SourceContext", "MailMeUp.Desktop");
             startupLogger.Information("Starting desktop setup");
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = [], DisableDefaults = true });
             builder.Logging.ClearProviders();
             builder.Services.AddSerilog(diagnostics, dispose: false);
-            builder.Services.AddMailMeUp(dataDirectory);
+            if (_launchOptions.IsDemo)
+                builder.Services.AddSingleton<IMailMeUpApplication, DemoMailMeUpApplication>();
+            else
+                builder.Services.AddMailMeUp(dataDirectory);
             builder.Services.AddSingleton<CodexSetupService>();
             builder.Services.AddTransient<MainWindow>();
             _host = builder.Build();
             _diagnostics = diagnostics;
             diagnostics = null;
             _logger = _host.Services.GetRequiredService<ILogger<App>>();
-            _window = _host.Services.GetRequiredService<MainWindow>();
+            var setupWindow = _host.Services.GetRequiredService<MainWindow>();
+            setupWindow.RequestStep(_launchOptions.Step);
+            _window = setupWindow;
         }
         catch (Exception exception)
         {
@@ -86,7 +101,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.Activate();
     }
 
-    internal void ActivateExistingWindow() => _dispatcher.TryEnqueue(() =>
+    internal void ActivateExistingWindow(SetupLaunchOptions options) => _dispatcher.TryEnqueue(() =>
     {
         var window = _window;
         if (window is null) return;
@@ -94,6 +109,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             if (window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
                 presenter.Restore();
+            if (window is MainWindow setupWindow)
+                setupWindow.RequestStep(options.Step);
             window.Activate();
             SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(window));
         }

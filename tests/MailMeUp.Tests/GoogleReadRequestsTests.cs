@@ -107,7 +107,7 @@ public sealed class GoogleReadRequestsTests
         var reader = new GoogleReadRequests(client, clock.UtcNow, clock.Delay);
 
         var first = await Assert.ThrowsAsync<ProviderReadException>(() => Read(reader));
-        var second = await Assert.ThrowsAsync<ProviderReadException>(() => Read(reader, "google.events.get"));
+        var second = await Assert.ThrowsAsync<ProviderReadException>(() => Read(reader, "gmail.messages.metadata"));
 
         Assert.Equal(ReadFailureKind.RateLimited, first.Kind);
         Assert.Equal(ReadFailureKind.RateLimited, second.Kind);
@@ -136,7 +136,7 @@ public sealed class GoogleReadRequestsTests
     }
 
     [Fact]
-    public async Task MailAndCalendarShareTheAccountGateAndOtherAccountsRemainIndependent()
+    public async Task MailMetadataAndDetailsShareTheAccountGateAndOtherAccountsRemainIndependent()
     {
         var clock = new AdvancingClock();
         var blocked = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -145,7 +145,7 @@ public sealed class GoogleReadRequestsTests
             Interlocked.Increment(ref calls) == 1 ? blocked.Task : Task.FromResult(Success())));
         var reader = new GoogleReadRequests(client, clock.UtcNow, clock.Delay);
         var first = Read(reader);
-        var queued = Read(reader, "google.events.get");
+        var queued = Read(reader, "gmail.messages.metadata");
         Assert.Equal(1, calls);
 
         using var separate = await Read(reader, account: Account with { Id = "google:other", EmailAddress = "other@example.test" });
@@ -202,6 +202,71 @@ public sealed class GoogleReadRequestsTests
         Assert.Equal(1, calls);
     }
 
+    [Fact]
+    public async Task GmailCooldownDoesNotBlockCalendarForTheSameAccount()
+    {
+        var clock = new AdvancingClock();
+        var calls = 0;
+        using var client = new HttpClient(new Handler((_, _) =>
+        {
+            if (++calls > 1)
+                return Task.FromResult(Success());
+            var response = Failure(HttpStatusCode.TooManyRequests, "userRateLimitExceeded");
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromMinutes(2));
+            return Task.FromResult(response);
+        }));
+        var reader = new GoogleReadRequests(client, clock.UtcNow, clock.Delay);
+
+        var failure = await Assert.ThrowsAsync<ProviderReadException>(() => Read(reader));
+        using var calendar = await Read(reader, "google.events.get");
+
+        Assert.Equal(ReadFailureKind.RateLimited, failure.Kind);
+        Assert.Equal(2, calls);
+        Assert.True(calendar.RootElement.GetProperty("ok").GetBoolean());
+    }
+
+    [Fact]
+    public async Task EveryRetryAcquiresANewLeaseAndPublishesCooldownBeforeRelease()
+    {
+        var governor = new RecordingGovernor();
+        var clock = new AdvancingClock();
+        var calls = 0;
+        using var client = new HttpClient(new Handler((_, _) =>
+        {
+            Assert.True(governor.LeaseHeld);
+            return Task.FromResult(++calls == 1 ? Failure(HttpStatusCode.TooManyRequests, "userRateLimitExceeded") : Success());
+        }));
+        var reader = new GoogleReadRequests(client, clock.UtcNow, async (delay, token) =>
+        {
+            Assert.False(governor.LeaseHeld);
+            await clock.Delay(delay, token);
+        }, governor);
+
+        using var result = await Read(reader);
+
+        Assert.Equal(2, calls);
+        Assert.Equal(["acquire:gmail:detail", "cooldown:RateLimited", "release", "acquire:gmail:detail", "release"], governor.Events);
+        Assert.False(governor.LeaseHeld);
+    }
+
+    [Fact]
+    public async Task MetadataAndCalendarRequestsDeclareTheirOwnServiceAndReadCost()
+    {
+        var governor = new RecordingGovernor();
+        using var client = new HttpClient(new Handler((_, _) => Task.FromResult(Success())));
+        var reader = new GoogleReadRequests(client, governor: governor);
+
+        using var metadata = await Read(reader, "gmail.messages.metadata");
+        using var calendarList = await Read(reader, "google.events.list");
+        using var calendarDetail = await Read(reader, "google.events.get");
+
+        Assert.Equal([
+            "acquire:gmail:metadata", "release",
+            "acquire:google-calendar:metadata", "release",
+            "acquire:google-calendar:detail", "release"
+        ], governor.Events);
+    }
+
     private static Task<JsonDocument> Read(GoogleReadRequests reader, string endpoint = "gmail.messages.get",
         Account? account = null, CancellationToken cancellationToken = default) =>
         reader.GetJsonAsync(account ?? Account, "https://provider.example.test/message", "synthetic-token",
@@ -234,6 +299,43 @@ public sealed class GoogleReadRequestsTests
             Delays.Add(duration);
             _now += duration;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingGovernor : IProviderRequestGovernor
+    {
+        public List<string> Events { get; } = [];
+        public bool LeaseHeld { get; private set; }
+
+        public Task<IProviderRequestLease> AcquireAsync(string service, string accountId, bool detail,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Assert.False(LeaseHeld);
+            Assert.Equal(Account.Id, accountId);
+            LeaseHeld = true;
+            Events.Add($"acquire:{service}:{(detail ? "detail" : "metadata")}");
+            return Task.FromResult<IProviderRequestLease>(new Lease(this));
+        }
+
+        private sealed class Lease(RecordingGovernor owner) : IProviderRequestLease
+        {
+            public Task SetCooldownAsync(TimeSpan delay, ReadFailureKind kind, CancellationToken cancellationToken = default)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Assert.True(owner.LeaseHeld);
+                Assert.True(delay > TimeSpan.Zero);
+                owner.Events.Add("cooldown:" + kind);
+                return Task.CompletedTask;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                Assert.True(owner.LeaseHeld);
+                owner.Events.Add("release");
+                owner.LeaseHeld = false;
+                return ValueTask.CompletedTask;
+            }
         }
     }
 }

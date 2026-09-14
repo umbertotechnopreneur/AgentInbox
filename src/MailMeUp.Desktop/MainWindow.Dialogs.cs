@@ -28,6 +28,7 @@ public sealed partial class MainWindow
         finally
         {
             _dialogOpen = false;
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, ApplyPendingStep);
         }
     }
 
@@ -80,6 +81,7 @@ public sealed partial class MainWindow
 
     private async void ProviderSetupButton_Click(object sender, RoutedEventArgs e)
     {
+        if (BlockDemoAction()) return;
         var content = new StackPanel { Spacing = 16 };
         content.Children.Add(Body("This preview requires your own provider app registration. Configure it once before adding accounts."));
         foreach (var provider in new[] { "google", "microsoft" })
@@ -110,6 +112,7 @@ public sealed partial class MainWindow
 
     private async void ManualSetupButton_Click(object sender, RoutedEventArgs e)
     {
+        if (BlockDemoAction()) return;
         if (_busy || _dialogOpen) return;
         try
         {

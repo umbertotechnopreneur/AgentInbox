@@ -44,7 +44,9 @@ Account information explicitly requested by the owner appears in CLI results or 
 
 For comparison, run **Check connections** in the Windows app, then repeat the failing Codex operation. Compare the same account key across separate operation IDs. Absence of a Codex operation means it did not reach this logging/data context, not that the mailbox failed. `Unknown` does not prove that reconnection is required. Existing MCP processes must restart after an update to emit the new diagnostics.
 
-## Google request limits — current source
+## Google request limits — installed 0.1.1.19/0.1.1.20 behavior
+
+The source-only follow-up replaces the process-local queue below with shared per-service profile guardrails and adds Microsoft throttling recovery. It has not been compiled or run. See [read guardrails](READ_GUARDRAILS.md).
 
 The Google readers classify HTTP 403 using the bounded allowlisted provider reason. A recognized request/quota limit or HTTP 429 produces `RateLimited` and safe `rate_limited` advice; a genuine permission error remains `AccessDenied`. This follows the [Gmail error contract](https://developers.google.com/workspace/gmail/api/guides/handle-errors). The Windows account check offers wait/narrow-search guidance for rate-limit-only failures instead of reconnecting.
 

@@ -49,7 +49,7 @@ public sealed record MailSearchResult(
     int? DefaultLookbackDaysApplied = null);
 
 /// <summary>Requests a bounded text segment for one result reference.</summary>
-public sealed record MailReadRequest(string Reference, int Offset = 0, int MaxCharacters = 8_000);
+public sealed record MailReadRequest(string Reference, int Offset = 0, int MaxCharacters = 2_000);
 
 /// <summary>Returns selected message details with bounded plain text.</summary>
 public sealed record MailMessageResult(

@@ -1,5 +1,33 @@
 # Validation
 
+## Read-limit editor and local usage — source increment
+
+**2026-09-13 — not built, tested or installed.** The Windows Sharing source adds read-budget settings, aggregate usage, manual local refresh, protected drafts and restart guidance. Core/Storage expose validated settings management with an expected-settings comparison and atomic save, plus read-only ledger snapshots. Application/decorator/DI wiring, isolated demo state and MCP status fields are included. Status remains available with an exhausted or small content budget; usage never claims model-token measurement.
+
+Synthetic regression sources cover local status without first-run writes, rolling counts/expiry times, saved versus active settings, concurrent save conflicts, preservation of the usage ledger, invalid/cancelled operations, application delegation, demo isolation and MCP privacy/budget behavior. These cases have not been compiled or executed. No tests, builds, formatting, provider reads, UI launch/control, installation, push or CI dispatch were performed. Installed `0.1.1.20` and earlier 291-test evidence do not contain or validate this increment. Native editor behavior and separate-process restart scenarios remain to be exercised when requested.
+
+## Provider and output guardrails — source increment
+
+**2026-09-12 — not built, tested or installed.** Shared profile attempt/read/output ledgers, provider leases and cooldowns, Microsoft 429 retries, adaptive mail hydration, detail/folder caches, smaller default details and Gmail MIME fixes are implemented in source. Synthetic regression sources cover admission/output caps, profile coordination and corruption, retry/cooldown behavior, cache reuse/cancellation/sharing, attachment parsing and resumable search budgets. They have not been compiled or executed.
+
+No tests, builds, formatting, smoke checks, provider reads, UI interactions, installation, push or CI dispatch were performed for this increment. Earlier 291-test results and installed MSIX `0.1.1.20` do not validate or contain these changes. Separate-process runtime enforcement, packaged startup, real provider quota behavior and MCP client ingestion remain to be exercised when requested. See [read guardrails](READ_GUARDRAILS.md).
+
+## Windows installation with CLI screen navigation
+
+**Windows x64, 2026-09-12 — package 0.1.1.20.** Desktop and CLI Release publication, MSIX creation and signing succeeded using the existing publisher `CN=umber`. After the installation tool response was interrupted, an independent `Get-AppxPackage` read confirmed installed version `0.1.1.20`, status `Ok`, and the matching WindowsApps location. The signed MSIX has a valid signature. Installation was not repeated; certificate trust and account configuration were not changed.
+
+This supersedes installed `0.1.1.19` and includes the UI/CLI increment described below. No tests, smoke suite, mailbox checks or native UI interactions were repeated for the install request. The 291-test and CLI/MCP smoke evidence below belongs to the preceding local preview. Build/signing output is in the local ignored `artifacts/msix-build-0.1.1.20.log`. No release was published and no PR was changed.
+
+## CLI screen navigation and isolated desktop preview
+
+**Windows x64, 2026-09-12 — local preview build.** Desktop and CLI Release publication passed. The output is in local ignored `artifacts/ui-preview/desktop`, with the matching executable under `cli/mailmeup.exe`. This increment was not packaged, installed or pushed; installed `0.1.1.19` and the earlier mail-search PR do not contain it.
+
+The requested .NET suite passed **291 tests, zero failures and zero skips** after correcting an xUnit assertion-analyzer failure in a new synthetic test. Added cases cover CLI arguments and executable resolution, desktop activation parsing, demo data and session isolation, unsupported authentication/provider reads, and preference validation. Parser tests do not establish native activation or rendering. Evidence: local ignored `artifacts/test-ui-step-preview.log` and `artifacts/test-results/ui-step-preview.trx`.
+
+The published CLI returned all four screens for `ui --list-steps --json` without creating its isolated data directory. The existing CLI/MCP smoke suite also passed against this executable using temporary data directories, including nine tools and empty reads. Evidence: `artifacts/smoke-ui-step-preview.log`; publication logs are `artifacts/ui-preview-desktop-build.log` and `artifacts/ui-preview-cli-build.log`.
+
+No desktop window was launched or controlled, no real mailbox or credential store was exercised, and no Codex connection was changed. Native layout, focus, small-window behavior, existing-instance navigation, dialog deferral and save/discard interactions remain pending. The demo application uses synthetic `example.test` accounts and in-memory choices; its UI blocks sign-in, provider setup/read checks and real Codex actions.
+
 ## Windows update with bounded mail searches and Google recovery
 
 **Windows x64, 2026-09-11 — package 0.1.1.19.** Desktop and CLI Release publication, MSIX creation and signing succeeded. The package uses the existing local publisher `CN=umber` and package family. After the installation tool response was interrupted, an independent package-state read confirmed version `0.1.1.19`, status `Ok`, and a valid package signature; installation was not repeated. It supersedes `0.1.1.18` and contains the search preferences, UI, provider date bounds and rate-limit recovery described in the earlier source record below.

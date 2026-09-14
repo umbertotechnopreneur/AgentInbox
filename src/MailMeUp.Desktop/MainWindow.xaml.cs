@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window
     private bool _narrowSharing;
     private bool _showSharingList;
     private bool _highContrastSubscribed;
+    private bool IsDemo => _application is DemoMailMeUpApplication;
 
     /// <summary>Creates the setup window without starting sign-in or reading mailbox content.</summary>
     public MainWindow(IMailMeUpApplication application, CodexSetupService codex, ILogger<MainWindow> logger)
@@ -48,6 +49,9 @@ public sealed partial class MainWindow : Window
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        InitializeReadGuardrails();
+        DemoBanner.IsOpen = IsDemo;
+        if (IsDemo) Title = "MailMeUp — UI preview";
         MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
         MailSearchLookbackDaysBox.Maximum = MailSearchPreferences.MaximumDays;
         MailSearchLookbackDaysBox.RegisterPropertyChangedCallback(NumberBox.TextProperty,
@@ -129,6 +133,7 @@ public sealed partial class MainWindow : Window
         ShowStep(0);
         UpdateLayout();
         await RunAsync("Loading local setup…", RefreshAccountsAsync);
+        ApplyPendingStep();
     }
 
     private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -155,7 +160,27 @@ public sealed partial class MainWindow : Window
         RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
         _narrowSharing = availableWidth < 750;
         MailSearchPreferencesActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
+        UpdateReadGuardrailLayout(availableWidth);
         CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
+        SharingSaveActions.Orientation = availableWidth is < 440 or (>= 750 and < 900) ? Orientation.Vertical : Orientation.Horizontal;
+        var stackActions = availableWidth < 540;
+        WelcomeSharingColumn.Width = WelcomeControlColumn.Width = stackActions ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(WelcomeSharingCard, stackActions ? 0 : 1);
+        Grid.SetRow(WelcomeSharingCard, stackActions ? 1 : 0);
+        Grid.SetColumn(WelcomeControlCard, stackActions ? 0 : 2);
+        Grid.SetRow(WelcomeControlCard, stackActions ? 2 : 0);
+        MicrosoftProviderColumn.Width = stackActions ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(MicrosoftButton, stackActions ? 0 : 1);
+        Grid.SetRow(MicrosoftButton, stackActions ? 1 : 0);
+        AccountCheckColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
+        Grid.SetColumn(CheckConnectionsButton, stackActions ? 0 : 1);
+        Grid.SetRow(CheckConnectionsButton, stackActions ? 1 : 0);
+        CheckConnectionsButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        CodexSharingActionColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
+        Grid.SetColumn(ReviewSharingButton, stackActions ? 0 : 1);
+        Grid.SetRow(ReviewSharingButton, stackActions ? 1 : 0);
+        ReviewSharingButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        PreviewLabel.Visibility = ToVisibility(availableWidth >= 600);
         UpdateSharingLayout();
 
     }
@@ -169,7 +194,13 @@ public sealed partial class MainWindow : Window
         CodexPage.Visibility = ToVisibility(step == 3);
         BackButton.Visibility = ToVisibility(step > 0);
         BackButton.IsEnabled = step > 0 && !_busy;
-        PreviewLabel.Visibility = ToVisibility(step == 0);
+        PreviewLabel.Text = IsDemo ? "Sample data · changes stay in this preview" : step switch
+        {
+            0 => "Your choices stay on this device",
+            1 => "Next, choose what to share",
+            2 => "Save your choices before continuing",
+            _ => "You can return to setup at any time"
+        };
         NextButton.Content = step switch
         {
             0 => "Get started →", 1 => "Choose sharing →", 2 => "Connect to Codex →", _ => "Close setup"
@@ -207,6 +238,13 @@ public sealed partial class MainWindow : Window
             MailSearchLookbackDaysBox.Focus(FocusState.Programmatic);
             return false;
         }
+        if (_readGuardrailsDirty)
+        {
+            ReadGuardrailEditorExpander.IsExpanded = true;
+            SetNotice("Unsaved read limits", "Save or discard your read limit changes before continuing.", InfoBarSeverity.Warning);
+            ReadGuardrailAccountAttemptsBox.Focus(FocusState.Programmatic);
+            return false;
+        }
         return true;
     }
 
@@ -215,7 +253,7 @@ public sealed partial class MainWindow : Window
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
         var contiguous = 0;
         while (contiguous < 3 && completed[contiguous]) contiguous++;
         ProgressLine.Height = contiguous * 52;
@@ -241,13 +279,13 @@ public sealed partial class MainWindow : Window
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty)) return;
+        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty)) return;
         args.Cancel = true;
         if (_busy || _dialogOpen) return;
         var result = await ShowDialogAsync(new ContentDialog
         {
             Title = "Discard unsaved choices?",
-            Content = Body("Your saved sharing choices and default mail search period will stay unchanged."),
+            Content = Body("Your saved sharing choices, default mail search period and read limits will stay unchanged."),
             PrimaryButtonText = "Discard and close",
             CloseButtonText = "Keep editing",
             DefaultButton = ContentDialogButton.Close
@@ -262,6 +300,7 @@ public sealed partial class MainWindow : Window
     private async Task RefreshAccountsAsync(CancellationToken cancellationToken)
     {
         await LoadMailSearchPreferencesAsync(cancellationToken);
+        await LoadReadGuardrailsAsync(cancellationToken);
         var accounts = await _application.ListAccountsAsync(cancellationToken);
         var providers = await _application.ListProviderSetupAsync(cancellationToken);
         var settings = await _application.ListAccountSharingAsync(cancellationToken);
@@ -288,7 +327,7 @@ public sealed partial class MainWindow : Window
     private void RenderConnectedAccounts()
     {
         AccountsCountText.Text = $"{_accounts.Count} {(_accounts.Count == 1 ? "account" : "accounts")}";
-        CheckConnectionsButton.IsEnabled = _accounts.Count > 0;
+        CheckConnectionsButton.IsEnabled = _accounts.Count > 0 && !IsDemo;
         ConnectedAccounts.Children.Clear();
         foreach (var account in _accounts)
         {
@@ -309,6 +348,15 @@ public sealed partial class MainWindow : Window
                     "Read limit reached", $"Read limit reached for {account.EmailAddress}; show guidance",
                     "Wait before trying again. A shorter search period makes fewer requests.",
                     account, ReadRateLimitButton_Click);
+                Grid.SetColumn(limited, 2);
+                row.Children.Add(limited);
+            }
+            else if (GetReadFailures(connection).Contains(ReadFailureKind.BudgetExceeded))
+            {
+                var limited = AccountActionButton(
+                    "Read budget reached", $"Read budget reached for {account.EmailAddress}; show guidance",
+                    "The local request budget has been reached. Wait for its window to reset.",
+                    account, ReadBudgetButton_Click);
                 Grid.SetColumn(limited, 2);
                 row.Children.Add(limited);
             }
@@ -338,7 +386,12 @@ public sealed partial class MainWindow : Window
             });
         }
         if (_accounts.Count == 0)
-            ConnectedAccounts.Children.Add(Body("Add your first account above."));
+        {
+            var empty = new StackPanel { Spacing = 8, Margin = new Thickness(8, 16, 8, 16) };
+            empty.Children.Add(new TextBlock { Text = "Start with one account", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            empty.Children.Add(Body("Choose Google or Microsoft above. You can add more accounts later and choose sharing for each one."));
+            ConnectedAccounts.Children.Add(empty);
+        }
     }
 
     private Grid AccountRow(Account account, bool includeStatus)
@@ -385,7 +438,7 @@ public sealed partial class MainWindow : Window
     }
 
     private static bool NeedsReadAttention(AccountConnectionCheck? check) =>
-        GetReadFailures(check).Any(kind => kind is not (ReadFailureKind.ResultLimit or ReadFailureKind.RateLimited));
+        GetReadFailures(check).Any(kind => kind is not (ReadFailureKind.ResultLimit or ReadFailureKind.RateLimited or ReadFailureKind.BudgetExceeded));
 
     private static IReadOnlyList<ReadFailureKind> GetReadFailures(AccountConnectionCheck? check)
     {
@@ -407,6 +460,9 @@ public sealed partial class MainWindow : Window
             "Your provider is temporarily limiting requests. Wait before trying again, use a shorter mail search period and check read access later. This error does not require reconnecting the account.",
             InfoBarSeverity.Warning);
 
+    private void ReadBudgetButton_Click(object sender, RoutedEventArgs e) =>
+        SetNotice("Read budget reached", ReadFailureGuidance.Describe(ReadFailureKind.BudgetExceeded).Action, InfoBarSeverity.Warning);
+
     private static ImageSource ProviderLogo(string provider) =>
         new SvgImageSource(new Uri($"ms-appx:///Assets/{(provider == "google" ? "Google" : "Microsoft")}.svg"));
 
@@ -427,6 +483,7 @@ public sealed partial class MainWindow : Window
         "Checking read access…",
         async cancellationToken =>
         {
+            if (BlockDemoAction()) return;
             // A failed or cancelled retry must never retain a previous successful result.
             _connectionChecks.Clear();
             RenderConnectedAccounts();
@@ -481,6 +538,7 @@ public sealed partial class MainWindow : Window
 
     private async void RemoveAccountButton_Click(object sender, RoutedEventArgs e)
     {
+        if (BlockDemoAction()) return;
         if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
         if (!CanLeaveSharing()) return;
 
@@ -520,6 +578,7 @@ public sealed partial class MainWindow : Window
 
     private async Task ConnectAsync(string provider, Account? reconnectAccount = null)
     {
+        if (BlockDemoAction()) return;
         var includeMail = reconnectAccount?.MailReadEnabled ?? RequestMail.IsChecked == true;
         var includeCalendar = reconnectAccount?.CalendarReadEnabled ?? RequestCalendars.IsChecked == true;
         if (reconnectAccount is not null && !includeMail && !includeCalendar)
@@ -638,8 +697,16 @@ public sealed partial class MainWindow : Window
                 PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = true;
                 BackButton.IsEnabled = _step > 0;
                 Activity.Visibility = Visibility.Collapsed;
+                ApplyPendingStep();
             }
         }
+    }
+
+    private bool BlockDemoAction()
+    {
+        if (!IsDemo) return false;
+        SetNotice("UI preview", "This action is disabled for sample accounts. Open MailMeUp without --demo to configure real accounts or Codex.", InfoBarSeverity.Informational);
+        return true;
     }
 
     private void SetNotice(string title, string message, InfoBarSeverity severity)

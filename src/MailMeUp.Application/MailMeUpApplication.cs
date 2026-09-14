@@ -16,6 +16,10 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private readonly IAccountSharingStore _sharing;
     private readonly IMailSearchPreferencesStore _mailSearchPreferences;
     private readonly TimeProvider _timeProvider;
+    private readonly IReadBudget _readBudget;
+    private readonly IReadGuardrailManagement? _readGuardrailManagement;
+    private readonly BoundedReadCache<ProviderMailMessage> _mailDetails;
+    private readonly BoundedReadCache<ProviderEvent> _eventDetails;
     private readonly IReadOnlyList<ProviderDescriptor> _providers;
     private readonly IReadOnlyDictionary<string, IProviderSetupService> _providerSetupServices;
     private readonly IReadOnlyDictionary<string, IAccountConnector> _accountConnectors;
@@ -35,12 +39,18 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         IAccountSharingStore? sharingStore = null,
         IEnumerable<IAccountConnectionChecker>? connectionCheckers = null,
         IMailSearchPreferencesStore? mailSearchPreferencesStore = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IReadBudget? readBudget = null,
+        IReadGuardrailManagement? readGuardrailManagement = null)
     {
         _accounts = accounts;
         _sharing = sharingStore ?? new MemoryAccountSharingStore();
         _mailSearchPreferences = mailSearchPreferencesStore ?? new MemoryMailSearchPreferencesStore();
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _readBudget = readBudget ?? new InMemoryReadGuardrails();
+        _readGuardrailManagement = readGuardrailManagement ?? _readBudget as IReadGuardrailManagement;
+        _mailDetails = new(_timeProvider, ProviderContentSize.Mail);
+        _eventDetails = new(_timeProvider, ProviderContentSize.Event);
         _providerSetupServices = providerSetupServices.ToDictionary(service => service.ProviderId, StringComparer.Ordinal);
         _accountConnectors = accountConnectors.ToDictionary(connector => connector.ProviderId, StringComparer.Ordinal);
         _mailReaders = mailReaders.ToDictionary(reader => reader.ProviderId, StringComparer.Ordinal);
@@ -123,6 +133,31 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         preferences.Validate();
         await _mailSearchPreferences.SaveAsync(preferences, cancellationToken);
         return preferences;
+    }
+
+    /// <inheritdoc />
+    public async Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return _readGuardrailManagement is null
+            ? null
+            : await _readGuardrailManagement.GetStatusAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<ReadGuardrailStatus> SaveReadGuardrailLimitsAsync(
+        ReadGuardrailLimits limits,
+        ReadGuardrailLimits expectedLimits,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(expectedLimits);
+        limits.Validate();
+        expectedLimits.Validate();
+        return (_readGuardrailManagement
+            ?? throw new NotSupportedException("Read guardrail settings are unavailable in this host."))
+            .SaveLimitsAsync(limits, expectedLimits, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -350,37 +385,66 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
 
             // Removed or downgraded accounts are reported below without hiding healthy cursor results.
             selectedAccounts = allAccounts.Where(account => state.AccountIds.Contains(account.Id, StringComparer.Ordinal)).ToArray();
+            foreach (var accountState in state.Accounts.Values.Where(account => account.FailureKind == ReadFailureKind.BudgetExceeded))
+            {
+                // A local admission pause is resumable after its window resets; provider failures stay stopped.
+                accountState.Failure = null;
+                accountState.FailureKind = ReadFailureKind.Unknown;
+            }
         }
 
         var accountsById = selectedAccounts.ToDictionary(account => account.Id, StringComparer.Ordinal);
+        if (accountsById.Count > 0)
+            await _readBudget.AdmitReadAsync(detail: false, cancellationToken);
         using var accountReadGate = new SemaphoreSlim(MaximumConcurrentMailAccountReads);
-        var accountReads = state.Accounts.Select(pair => ReadMailAccountAsync(
+        using var workDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        workDeadline.CancelAfter(ProviderReadTimeout);
+        var pagesRead = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
+        var providerPageSize = Math.Min(request.Limit, 10);
+        await Task.WhenAll(state.Accounts.Select(pair => ReadMailAccountAsync(
             pair.Key,
             pair.Value,
             accountsById,
             state.Query,
-            request.Limit,
+            providerPageSize,
             accountReadGate,
-            cancellationToken));
-        await Task.WhenAll(accountReads);
+            pagesRead,
+            workDeadline.Token,
+            cancellationToken)));
+
+        var candidates = new List<MailCandidate>(request.Limit);
+        while (candidates.Count < request.Limit)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var candidate = state.Accounts
+                .SelectMany(pair => pair.Value.Items.Select(item => new MailCandidate(pair.Key, item)))
+                .OrderByDescending(item => item.Item.ReceivedAt)
+                .ThenBy(item => item.AccountId, StringComparer.Ordinal)
+                .ThenBy(item => item.Item.ProviderMessageId, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (candidate is null) break;
+            state.Accounts[candidate.AccountId].Items.Remove(candidate.Item);
+            candidates.Add(candidate);
+            if (candidates.Count == request.Limit) break;
+
+            // Only an exhausted source can hide the next newest item; keep other prefetched buffers intact.
+            await Task.WhenAll(state.Accounts
+                .Where(pair => pair.Value.Items.Count == 0 && pair.Value.Failure is null &&
+                    (!pair.Value.Started || pair.Value.NextProviderCursor is not null))
+                .Select(pair => ReadMailAccountAsync(
+                    pair.Key, pair.Value, accountsById, state.Query, providerPageSize,
+                    accountReadGate, pagesRead, workDeadline.Token, cancellationToken)));
+        }
+
         await EnsureSharingUnchangedAsync(sharing, cancellationToken);
         if (preferences is not null && await GetMailSearchPreferencesAsync(cancellationToken) != preferences)
         {
             throw new InvalidOperationException("The default mail search period changed. Start a new search.");
         }
 
-        var candidates = state.Accounts
-            .SelectMany(pair => pair.Value.Items.Select(item => new MailCandidate(pair.Key, item)))
-            .OrderByDescending(candidate => candidate.Item.ReceivedAt)
-            .ThenBy(candidate => candidate.AccountId, StringComparer.Ordinal)
-            .ThenBy(candidate => candidate.Item.ProviderMessageId, StringComparer.Ordinal)
-            .Take(request.Limit)
-            .ToArray();
-
-        var items = new List<MailSearchItem>(candidates.Length);
+        var items = new List<MailSearchItem>(candidates.Count);
         foreach (var candidate in candidates)
         {
-            state.Accounts[candidate.AccountId].Items.Remove(candidate.Item);
             var reference = _references.Put(
                 "m_",
                 new MailItemAddress(candidate.AccountId, candidate.Item.ProviderMessageId));
@@ -396,7 +460,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
 
         var hasMore = state.Accounts.Values.Any(account =>
-            account.Items.Count > 0 || account.NextProviderCursor is not null);
+            account.Items.Count > 0 || account.NextProviderCursor is not null ||
+            !account.Started && account.FailureKind == ReadFailureKind.BudgetExceeded);
         var nextCursor = hasMore ? _references.Put("c_", state.Copy()) : null;
         var failures = state.Accounts
             .Where(pair => pair.Value.Failure is not null && !sharing.IsHidden(pair.Key))
@@ -420,11 +485,14 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         AccountMailCursorState accountState,
         IReadOnlyDictionary<string, Account> accountsById,
         ProviderMailQuery providerQuery,
-        int limit,
+        int providerPageSize,
         SemaphoreSlim accountReadGate,
+        ConcurrentDictionary<string, int> pagesRead,
+        CancellationToken workCancellationToken,
         CancellationToken cancellationToken)
     {
-        await accountReadGate.WaitAsync(cancellationToken);
+        var enteredGate = false;
+        string? registeredCursorFingerprint = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -438,7 +506,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
                 return;
             }
 
-            if (accountState.Items.Count >= limit || accountState.Started && accountState.NextProviderCursor is null)
+            if (accountState.Items.Count > 0 || accountState.Failure is not null ||
+                accountState.Started && accountState.NextProviderCursor is null)
             {
                 return;
             }
@@ -452,49 +521,53 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
                 return;
             }
 
-            try
+            await accountReadGate.WaitAsync(workCancellationToken);
+            enteredGate = true;
+            while (accountState.Items.Count == 0 &&
+                   (!accountState.Started || accountState.NextProviderCursor is not null))
             {
-                await ReadWithDeadlineAsync(async token =>
+                workCancellationToken.ThrowIfCancellationRequested();
+                if (pagesRead.AddOrUpdate(accountId, 1, (_, count) => count + 1) > MaximumProviderPagesPerRefill)
                 {
-                    var pagesRead = 0;
-                    while (accountState.Items.Count < limit &&
-                           (!accountState.Started || accountState.NextProviderCursor is not null))
-                    {
-                        token.ThrowIfCancellationRequested();
-                        if (++pagesRead > MaximumProviderPagesPerRefill)
-                        {
-                            throw new ProviderPaginationException();
-                        }
+                    throw new ProviderPaginationException();
+                }
 
-                        var providerCursor = accountState.Started ? accountState.NextProviderCursor : null;
-                        RegisterProviderCursor(accountState.SeenProviderCursors, providerCursor);
-                        // Graph next links keep the initial page size; shrinking it could discard returned items.
-                        accountState.ProviderPageSize = accountState.ProviderPageSize == 0
-                            ? limit
-                            : accountState.ProviderPageSize;
-                        var page = await reader.SearchAsync(
-                            account, providerQuery, accountState.ProviderPageSize, providerCursor, token);
-                        var next = ValidateProviderContinuation(accountState.SeenProviderCursors, page.NextCursor);
-                        accountState.Started = true;
-                        accountState.NextProviderCursor = next;
-                        accountState.Items.AddRange(page.Items.Where(item => MatchesMailFilters(providerQuery, item)));
-                        accountState.Failure = null;
-                    }
-
-                    return true;
-                }, cancellationToken);
+                var providerCursor = accountState.Started ? accountState.NextProviderCursor : null;
+                RegisterProviderCursor(accountState.SeenProviderCursors, providerCursor);
+                registeredCursorFingerprint = providerCursor is null ? null : ProviderCursorFingerprint(providerCursor);
+                // Graph next links retain the first page size even when the output limit changes later.
+                accountState.ProviderPageSize = accountState.ProviderPageSize == 0
+                    ? providerPageSize
+                    : accountState.ProviderPageSize;
+                var page = await reader.SearchAsync(
+                    account, providerQuery, accountState.ProviderPageSize, providerCursor, workCancellationToken);
+                var next = ValidateProviderContinuation(accountState.SeenProviderCursors, page.NextCursor);
+                accountState.Started = true;
+                accountState.NextProviderCursor = next;
+                accountState.Items.AddRange(page.Items.Where(item => MatchesMailFilters(providerQuery, item)));
+                accountState.Failure = null;
+                registeredCursorFingerprint = null;
             }
-            catch (Exception exception) when (IsProviderReadFailure(exception, cancellationToken))
+        }
+        catch (Exception exception) when (IsProviderReadFailure(exception, cancellationToken))
+        {
+            accountState.Failure = ReadFailureReason(exception);
+            accountState.FailureKind = GetReadFailureKind(exception);
+            if (accountState.FailureKind == ReadFailureKind.BudgetExceeded)
+            {
+                // This page did not complete; retry exactly this position after the local budget resets.
+                if (registeredCursorFingerprint is not null)
+                    accountState.SeenProviderCursors.Remove(registeredCursorFingerprint);
+            }
+            else
             {
                 accountState.Started = true;
                 accountState.NextProviderCursor = null;
-                accountState.Failure = ReadFailureReason(exception);
-                accountState.FailureKind = GetReadFailureKind(exception);
             }
         }
         finally
         {
-            accountReadGate.Release();
+            if (enteredGate) accountReadGate.Release();
         }
     }
 
@@ -519,9 +592,18 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
 
         ProviderMailMessage message;
+        await _readBudget.AdmitReadAsync(detail: true, cancellationToken);
         try
         {
-            message = await ReadWithDeadlineAsync(token => reader.ReadAsync(account, address.ProviderMessageId, token), cancellationToken);
+            var cacheKey = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                sharing.Fingerprint,
+                account.Id,
+                address.ProviderMessageId
+            });
+            message = await _mailDetails.GetAsync(cacheKey,
+                token => ReadWithDeadlineAsync(inner => reader.ReadAsync(account, address.ProviderMessageId, inner), token),
+                cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -554,6 +636,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         ArgumentNullException.ThrowIfNull(request);
         var sharing = await ReadSharingSnapshotAsync(cancellationToken);
         var accounts = SelectCalendarAccounts(sharing.Accounts, request.AccountIds);
+        if (accounts.Count > 0)
+            await _readBudget.AdmitReadAsync(detail: false, cancellationToken);
         var calendars = new List<CalendarListItem>();
         var failures = new List<AccountReadFailure>();
         foreach (var account in accounts)
@@ -627,6 +711,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         var sharing = await ReadSharingSnapshotAsync(cancellationToken);
         var allAccounts = sharing.Accounts;
         var scopeKey = CreateEventScopeKey(request);
+        if (allAccounts.Any(account => account.CalendarReadEnabled))
+            await _readBudget.AdmitReadAsync(detail: false, cancellationToken);
         EventCursorState state;
         if (string.IsNullOrWhiteSpace(request.Cursor))
         {
@@ -783,13 +869,20 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
 
         ProviderEvent providerEvent;
+        await _readBudget.AdmitReadAsync(detail: true, cancellationToken);
         try
         {
-            providerEvent = await ReadWithDeadlineAsync(token => reader.ReadEventAsync(
-                account,
+            var cacheKey = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                sharing.Fingerprint,
+                account.Id,
                 address.ProviderCalendarId,
-                address.ProviderEventId,
-                token), cancellationToken);
+                address.ProviderEventId
+            });
+            providerEvent = await _eventDetails.GetAsync(cacheKey,
+                token => ReadWithDeadlineAsync(inner => reader.ReadEventAsync(
+                    account, address.ProviderCalendarId, address.ProviderEventId, inner), token),
+                cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
