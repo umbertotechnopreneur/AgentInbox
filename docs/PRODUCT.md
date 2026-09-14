@@ -1,21 +1,21 @@
 # Product overview
 
-MailMeUp brings several email accounts and calendars into one conversation with your AI assistant.
+MailMeUp lets you ask your AI assistant about email and appointments across several accounts at once.
 
-You choose the accounts. The assistant can then find relevant messages, read selected details and show your appointments.
+Looking for a client message but can't remember which inbox it went to? Choose the accounts to include, ask your assistant, and open the matching message. You can do the same with unread mail or upcoming meetings.
 
-## Current scope: read-only
+## You're in control
 
-Reading and searching only. No sending, editing, deleting, invitations or changes to your provider accounts. Any future write features need a separate decision.
+MailMeUp only reads and searches. It can't send email, change or delete messages, edit appointments or send invitations. Adding those actions would need a separate decision.
 
-Local account setup and cache management can still save data on your computer.
+It runs on your computer, where it saves local settings and protects your sign-in tokens. Information you ask for can still reach your assistant's AI service. See [privacy](PRIVACY.md).
 
-## Services in scope
+## Accounts you can connect
 
 - Gmail and Google Workspace
 - Outlook.com and Microsoft 365
 - Google Calendar and Microsoft calendars
 
-The validated foundation provides the executable and connection checks. Current source adds account sign-in and read-only message/appointment access; local automated checks pass and a real-provider pilot remains.
+MailMeUp is an early preview, with testing focused on Windows x64 and Codex. You still need to [register an app with Google or Microsoft](APP_REGISTRATION.md) before signing in. Earlier versions have been tried with real accounts; see the [test record](VALIDATION.md) for details and remaining checks.
 
-See the [roadmap](ROADMAP.md) for the next steps.
+Start with [getting started](GETTING_STARTED.md), or take a look at [what's next](ROADMAP.md).

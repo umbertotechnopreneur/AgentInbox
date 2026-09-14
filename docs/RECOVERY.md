@@ -1,12 +1,31 @@
-# Account recovery
+# Fix an account connection
 
-**Pre-alpha, read-only.** Recovery changes passed synthetic Windows tests, including failed reconnect and cross-process credential locking. Deliberate real revocation and reconnect remain untested.
+If an account stops returning results, start with the steps below. MailMeUp can still return results from other accounts, so check which ones were searched before treating an empty list as no mail or appointments.
 
-- **Temporary error:** in the Windows setup UI, open Accounts and choose **Check read access** again, or repeat the search. Healthy accounts can still return results; check the reported coverage before treating an empty result as no mail or appointments.
-- **Expired or revoked authorization:** choose **Reconnect** on the affected account in the Windows setup UI, select the same account in the browser and complete sign-in. This updates its local connection and keeps saved sharing choices. The CLI equivalent is `mailmeup accounts connect google` or `mailmeup accounts connect microsoft`.
-- **Local removal:** choose **Remove** on the account row in the Windows setup UI and confirm **Remove from device**, or use `mailmeup accounts list` followed by `mailmeup accounts remove <account-id>`. This removes the local account and its cached credentials. It does not change mail, calendar data or the provider grant.
-- **Credentials unavailable:** check access to the operating-system credential store and that CLI and MCP use the same `MAILMEUP_DATA_DIR`.
+## Try again after a temporary error
 
-Refresh and removal coordinate across local processes running the updated build. Restart older CLI/MCP processes before checking this behavior; older builds do not use the new session locks. An already running read may finish; subsequent reads require an available account and credentials. A failed search continuation stops using the failed source; start a new search after recovery.
+Open **Accounts** in the Windows app and choose **Check read access** again, or repeat the search. If Google or Microsoft asks MailMeUp to wait because of request limits, let that pause pass before trying again.
 
-Next, check real token expiry, revoked access and recovery. Use synthetic data for removal/refresh fault simulation. Real-account checks are manual and require at least two connected accounts; see [validation](VALIDATION.md).
+## Sign in again
+
+If access has expired or been revoked, choose **Reconnect** for that account. In the browser, pick the same account and finish sign-in. Your saved sharing choices stay in place.
+
+From the command line, use `mailmeup accounts connect google` or `mailmeup accounts connect microsoft` and choose the same account.
+
+After reconnecting, start a new search. Asking for the next page of an old, failed search won't bring the recovered account back into it.
+
+## Remove an account from this device
+
+Choose **Remove** for the account and confirm **Remove from device**. From the command line, use `mailmeup accounts list` to find its ID, then `mailmeup accounts remove <account-id>`.
+
+This removes the local account and its saved sign-in tokens. Your mail and calendars stay as they are. To revoke the app's access too, use your Google or Microsoft account settings.
+
+## If saved sign-in information can't be opened
+
+Check that your operating system's credential store is available. If you've set `MAILMEUP_DATA_DIR`, make sure the command-line app and your assistant's MailMeUp process use the same folder.
+
+Restart older MailMeUp processes after an update. Updated versions coordinate token refresh and removal; older ones don't use the same locks. A read that's already running may finish after removal, but later reads need an available account and credentials.
+
+## What has been tested
+
+Recovery changes passed Windows tests with made-up accounts, including failed sign-in and several processes accessing credentials. Deliberately expiring or revoking access and reconnecting real accounts still need testing. Those checks are manual, need at least two connected accounts and run only when the owner asks. See the [test record](VALIDATION.md).

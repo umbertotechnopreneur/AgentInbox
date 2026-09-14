@@ -1,21 +1,25 @@
 # Privacy
 
-The current source can sign in and read selected mail/calendar data from providers. It does not call an AI service directly, has no analytics integration and does not cache mail or calendar content on disk.
+MailMeUp reads the email and calendars you've chosen to share. It doesn't call an AI service itself, use analytics or save copies of your messages and appointments to disk.
 
-## Read-only scope
+## What MailMeUp can do
 
-Provider access is limited to reading and searching. MailMeUp will not send messages, modify provider data, delete messages or appointments, or send invitations.
+It can search and read. It can't send messages, change or delete mail or appointments, or send invitations.
 
-Local provider setup uses a small settings file and operating-system protected credential storage.
+Your app settings are saved locally. Sign-in tokens are protected by your operating system.
 
-## Local does not mean offline
+## What your assistant receives
 
-Credentials stay on your computer in protected storage. Information requested through MailMeUp is returned to the assistant, which may send it to its AI service. Short result references and pagination state remain in memory for about 30 minutes.
+When you ask for a message or appointment, MailMeUp returns that information to your assistant. The assistant may send it to its AI service. Running MailMeUp on your computer doesn't make the conversation offline.
 
-Email text, event titles, attendees and meeting links can all be sensitive. Return only what is needed.
+Message text, meeting titles, attendees and joining links can contain private information. Choose which accounts and calendars to share, and ask for the details you need.
 
-## Storage
+## What stays on your computer
 
-SQLite is for account identity, granted read categories and optional future caches, not tokens or provider app secrets. The database is not encrypted; use a private user directory. No message or calendar cache exists yet.
+The local database stores account names, addresses and the types of read access you've granted. It doesn't contain tokens or app secrets, and it isn't encrypted, so keep the data folder private to your Windows user.
 
-Logs exclude message content, meeting details, provider responses and credentials. Account removal deletes local metadata and cached credentials; revoking the provider grant remains a separate action in Google or Microsoft account settings.
+Search references and the information needed to fetch another page stay in memory for about 30 minutes. The newer, untested [read-limit changes](READ_GUARDRAILS.md) also keep small copies of message and event details in memory for up to two minutes. Neither is saved to disk.
+
+Logs leave out message content, meeting details, full provider responses and sign-in secrets. They can include error codes and an account key that helps connect related errors; treat logs as private when sharing them. See [logging details](LOGGING.md).
+
+Removing an account from MailMeUp deletes its local record and cached sign-in tokens. To revoke the app's access as well, use your Google or Microsoft account settings.

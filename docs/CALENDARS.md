@@ -1,8 +1,8 @@
 # Calendars and appointments
 
-**Read-only and pre-alpha.** Windows checks passed across seven real calendars. Date boundaries and pagination passed synthetic tests; real recurrence, cancellation and time-zone examples still need independent comparison.
+Ask your assistant for appointments across the calendars you've chosen to share. MailMeUp shows a short agenda first. It fetches descriptions, attendees and meeting links when you ask for more detail.
 
-MailMeUp uses Google Calendar for Google accounts and Microsoft Graph for Microsoft calendars. An account must include calendar read consent.
+You need to allow calendar access when connecting each account. Email access alone doesn't include calendars. MailMeUp reads Google Calendar and Microsoft calendars through their APIs.
 
 ## Example requests
 
@@ -10,18 +10,20 @@ MailMeUp uses Google Calendar for Google accounts and Microsoft Graph for Micros
 - "Find meetings with Alex next week."
 - "Open the details of this appointment."
 
-You choose the accounts and calendars. The first result is a short agenda; descriptions, attendees and meeting links are retrieved only when needed.
+You choose which accounts and calendars to include. Each search can cover up to 31 days and 20 selected calendars.
 
-## What needs careful handling
+## When reading the results
 
-Time zones, daylight-saving changes, all-day events, recurring meetings and cancellations must remain accurate. The same meeting may appear in several accounts; its sources must stay visible.
+Check the dates and time zones, especially for all-day events, recurring meetings and daylight-saving changes. The same meeting can appear in more than one account, so its calendar source needs to stay visible.
 
-If a calendar cannot be searched, MailMeUp must say so. A missing result must not be presented as a free day.
+If a calendar couldn't be searched, the answer must say so. An empty list only means a free day when all the calendars you asked for were checked.
 
-## What is excluded
+## Reading only
 
-No creating, editing or deleting appointments, sending invitations, changing attendees or replying to invitations. Those actions are outside the current read-only scope.
+MailMeUp can't create, edit or delete appointments, send or reply to invitations, or change attendees.
 
-Current source tools: `list_calendars`, `search_events`, `read_event`. Searches cover at most 31 days and 20 selected calendars per request. See [the tool contract](MCP_CONTRACT.md).
+This is still an early preview. Windows checks passed across seven real calendars, and tests with made-up data cover date boundaries and fetching more pages. Real recurring meetings, cancellations and time-zone examples still need comparison with Google or Microsoft.
+
+For developers, the tools are `list_calendars`, `search_events` and `read_event`. See [the tool reference](MCP_CONTRACT.md).
 
 API references: [Google Calendar](https://developers.google.com/workspace/calendar/api/v3/reference/events/list), [Microsoft calendar view](https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0).

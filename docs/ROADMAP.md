@@ -1,28 +1,30 @@
 # Roadmap
 
-**All planned provider features are read-only.** Write actions require a separate future decision.
+We're working toward a preview you can install, connect to your accounts and use with confidence. All planned account features are read-only. Sending mail or changing calendars would need a separate decision.
 
-For the practical steps and completion checks, see the [MVP delivery plan](MVP_PLAN.md).
+The [plan for the first usable version](MVP_PLAN.md) lists the work and checks for each step.
 
 | Step | Result |
 | --- | --- |
-| 0. Foundation | Repository, brand, executable, discovery tools, tests and packaging |
-| 1. Account setup | Browser sign-in, multiple accounts and protected credentials |
-| 2. Email reads | Provider search and selected-message reading |
-| 3. Unified mail tools | Search across accounts with short results and clear coverage |
-| 3C. Calendars | Calendar discovery, appointment search and a unified agenda |
-| 4. Public preview | Simple installation, provider registration readiness and platform checks |
+| 0. Foundation | Set up the repository, app, branding, tests and packages |
+| 1. Account setup | Sign in through a browser, add several accounts and protect sign-in tokens |
+| 2. Email reads | Search for messages and open the ones you need |
+| 3. Unified mail tools | Search across accounts and show clearly which ones were checked |
+| 3C. Calendars | Find calendars, search appointments and show one combined agenda |
+| 4. Public preview | Make installation easier, prepare Google and Microsoft registration, and check supported platforms |
 
-Each step needs working tests before it is advertised as available.
+Each step needs passing tests before we call it available.
 
-The September 13 source adds Windows read-limit editing, aggregate local usage, safe concurrent saves and explicit restart guidance, with isolated demo behavior and read-only MCP status fields. It is not built, tested or installed. See [read guardrails](READ_GUARDRAILS.md).
+## Where things stand
 
-The subsequent September 12 source increment adds shared provider and MCP output guardrails, bounded read caches and adaptive mail hydration. It has not been built, tested or installed. Local configuration and the remaining UI/token-accounting work are described in [read guardrails](READ_GUARDRAILS.md).
+The latest recorded local Windows x64 installation is **`0.1.1.20`, from September 12**. It adds commands to open individual setup screens, a demo with made-up accounts and layout improvements. The preceding local preview passed 291 automated tests and basic CLI/MCP checks. Desktop interactions still need checking.
 
-The September 12 increment adds CLI screen navigation, an isolated UI demo and setup-layout refinements. Windows x64 MSIX `0.1.1.20` is built, signed and locally installed. The preceding local preview passed 291 synthetic tests and CLI/MCP smoke; native UI interaction remains pending.
+Newer code adds limits on requests and assistant output, small in-memory read caches, and a Windows editor for limits and usage. The September 12–13 changes have **not been built, tested or installed**. See [read limits](READ_GUARDRAILS.md) for details, including restart requirements and the remaining work.
 
-The September 11 increment adds configurable recent-mail defaults and Google request-limit handling. Windows x64 MSIX `0.1.1.19` is built, signed and locally installed, and all 229 .NET tests passed. Desktop interactions and live-provider checks remain pending. See [validation](VALIDATION.md) for the evidence and earlier preview records below.
+Earlier versions passed real reads across four accounts and several Windows installation, command and UI checks. The [test record](VALIDATION.md) keeps the version-by-version results; those results don't cover newer code automatically.
 
-The current source passed 113 synthetic tests and the Desktop Release build. Step 4 includes Windows MSIX / WinUI 3 preview `0.1.1.10`, locally installed with the Acrylic wizard, progressive disclosure, account connection checks and single-instance implementation. The upgrade, synthetic native-window launch without diagnostics and installed alias CLI/MCP smoke passed; the redesigned desktop's visual and interaction checks remain with the owner. The earlier CLI build passed real reads across four accounts. Next, when requested: validate desktop interactions, clean-machine installation, UI sign-in/Codex plugin setup, deliberate real recovery scenarios and a small pilot.
+## What's next
 
-A bundled local Codex plugin is included in the Windows setup scope. No public marketplace publication, web dashboard or hosted service is planned.
+When the owner requests the checks: try the desktop interactions, install on a clean Windows machine, sign in through the UI, set up the Codex plugin, and test recovery after real account access is revoked. Then run a small pilot.
+
+The Windows setup includes a local Codex plugin. A public marketplace release, web dashboard and hosted service aren't planned.

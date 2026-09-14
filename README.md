@@ -6,90 +6,94 @@
 
 **All your inboxes. One conversation.**
 
-Connect as many supported Google and Microsoft email accounts as you need to any compatible AI assistant through one local, read-only bridge. MailMeUp combines an MCP server, a CLI and a Windows desktop setup app. The first-class setup today focuses on OpenAI Codex; ChatGPT Desktop is not yet a direct local MailMeUp integration.
+Work email here, personal email there, client messages somewhere else. MailMeUp lets you search your Google and Microsoft accounts and check your calendars from one conversation with your AI assistant.
+
+It runs on your computer. You choose which accounts to share, and it only reads: it can't send emails, change messages or edit your calendar. Setup currently focuses on Codex.
 
 [![CI](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 [![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-F6C453)](docs/ROADMAP.md)
 
 > [!WARNING]
-> **MailMeUp is pre-alpha software.** It is intended for development and supervised testing. Commands, setup steps and stored local data may change before the first stable release.
+> **MailMeUp is still an early preview.** Try it while keeping an eye on the results. Commands, setup steps and local data formats may change before a stable release.
 
-> **Read-only by design for the current scope.** MailMeUp will help you find and read information. It will not send email, change messages, create or edit appointments, delete anything from your accounts, or send invitations.
+> **Your assistant may send the information you request to its AI service.** MailMeUp runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
 
-## A clear four-screen setup flow
+## A look at setup
 
 ![MailMeUp setup flow: Welcome and connect accounts](docs/assets/branding/mailmeup-setup-flow-welcome-accounts.png)
 
 ![MailMeUp setup flow: choose what to share and connect to Codex](docs/assets/branding/mailmeup-setup-flow-sharing-codex.png)
 
 > [!NOTE]
-> These product-flow concepts are based on the implemented Windows wizard. They show the intended experience, not pixel-perfect screenshots of the current UI.
+> These illustrations show the four setup steps. They're based on the Windows app, but aren't screenshots of the current version.
 
 ## Why MailMeUp?
 
-Built-in Gmail and Outlook integrations are useful when one connection is enough. The frustration begins when email is split across personal, company, client and project accounts. Multi-account availability varies by app, account, plan, workspace and client, so bringing every relevant inbox into the same request is not always a predictable experience.
+If you use several email addresses, finding one message can mean checking several inboxes. MailMeUp gives your assistant one place to search the accounts you've chosen.
 
-MailMeUp is built for that reality. Connect as many supported Google and Microsoft accounts as you choose, decide which accounts participate and search them together from one conversation. It gives professionals, and anyone managing more than one address, a modern local bridge without creating another hosted inbox.
+Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
 
-## Extremely lightweight
+## Small and native
 
-Each MailMeUp CLI process in this real Windows Task Manager snapshot uses roughly **7 MB of RAM**. That keeps a multi-process local MCP connection lightweight while it waits for your assistant's next request.
+The MailMeUp command-line processes in the Task Manager snapshot below use **7.4–9.6 MB of RAM each** while waiting for requests. That's one snapshot, so memory use will vary with the work you're doing.
 
-MailMeUp deliberately avoids WebView shells. We have a strong preference for native, portable software: there is no embedded browser engine consuming tens or hundreds of megabytes merely to render a local setup screen. The shared .NET application remains portable, while the current wizard is a native Windows experience.
+We like small, native apps. The Windows setup window doesn't need an embedded browser to draw its screens. The shared .NET code is portable; the setup app is built for Windows. Other platforms still need testing.
 
 ![Windows Task Manager showing the highlighted MailMeUp CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/mailmeup-task-manager-lightweight.png)
 
-*Real Task Manager snapshot. MailMeUp is highlighted; unrelated processes were blurred for privacy. Individual MailMeUp processes shown use 7.4–9.6 MB of RAM.*
+*MailMeUp is highlighted. Other processes are blurred for privacy.*
 
-## What it will do
+## What you can try
 
 - Search across Gmail, Google Workspace, Outlook.com and Microsoft 365 inboxes.
 - List unread messages or messages in a received-time range, with optional sender, recipient and attachment filters.
 - Show appointments from Google Calendar and Microsoft calendars.
-- Let you choose which accounts and calendars to include.
+- Choose which accounts and calendars to include.
 - Return short results first, then open the details you need.
 
-MailMeUp runs on your computer. Each user connects their own accounts. No marketplace or hosted service is required.
+Each person connects their own accounts. You don't need a hosted MailMeUp service or a public marketplace.
 
-## What works today
+## Before you start
 
-**The current pre-alpha build is usable for supervised testing on Windows x64. It is not a stable release.**
+**Windows x64 is the current test platform.** The preview includes browser sign-in, multiple accounts, mail search and a combined calendar agenda. Searches skip Spam/Junk and Trash/Deleted Items by default.
 
 > [!IMPORTANT]
-> **Provider setup is currently required.** To connect Google or Microsoft accounts, each user must currently register their own OAuth desktop application and configure its Client ID locally. Google also requires the downloaded desktop client configuration file; Microsoft requires its Application (client) ID. No provider credentials are bundled with MailMeUp. Follow the [provider setup and CLI guide](docs/APP_REGISTRATION.md). We are actively working on a simpler onboarding experience.
+> **There's still some setup to do.** For now, you need to register your own app with Google or Microsoft before connecting an account. Google gives you a configuration file; Microsoft gives you an Application (client) ID. The [registration guide](docs/APP_REGISTRATION.md) walks you through it. Making this easier is part of the work ahead.
 
-The current source includes local provider setup, interactive multi-account sign-in, a per-account read-access check in the Windows wizard, compact cross-account mail search and a combined calendar agenda. The check exercises actual searches and sample detail reads, reports Mail and Calendar independently and distinguishes missing samples from failures; it never returns their content. A passing sample is not a guarantee for every future search. Mail searches exclude Spam/Junk and Trash/Deleted Items by default. Client credentials and account token caches use operating-system protection. Earlier read-only flows were exercised with real Google and Microsoft accounts without including account content in validation output; see the [validation record](docs/VALIDATION.md) for version-specific evidence.
+The Windows app helps you connect accounts, choose what to share and set up Codex. Its **Check read access** button tries sample searches and reads for mail and calendars separately. It helps spot connection problems; it doesn't guarantee every future search will work.
+
+Your sign-in tokens stay on your computer, protected by the operating system. Earlier builds have been tried with real Google and Microsoft accounts. Newer changes still need checks; the [validation record](docs/VALIDATION.md) lists what was tested in each version.
 
 ![MailMeUp cross-account mail search in an AI conversation, with example addresses redacted](docs/assets/branding/mailmeup-chat-search.png)
 
-*Example conversation with redacted addresses. MailMeUp searches selected accounts without modifying messages.*
+*An example search, with email addresses hidden.*
 
 ## AI assistant support
 
-The Windows setup preview adds a centered WinUI 3 wizard for accounts, sharing choices and a local Codex plugin. The MSIX declares a stable command alias so updates do not require a new executable path. See [Windows setup and packaging](docs/WINDOWS_SETUP.md) for its current validation limits.
+Codex is the main focus today. You can use the [Windows setup app](docs/WINDOWS_SETUP.md) to prepare its local plugin, or follow the [manual setup guide](docs/CODEX_SETUP.md).
 
-Development currently focuses on OpenAI's Codex. MailMeUp uses the standard Model Context Protocol (MCP) over stdio, so it may also work with other compatible clients, including Claude. Other-client compatibility has not been tested. ChatGPT custom MCP connections currently require a remote server, so ChatGPT Desktop is not yet a direct local client for MailMeUp.
+MailMeUp uses MCP, a standard way for an assistant to use tools, through a local process. Other clients, including Claude, may work if they support this kind of connection, but haven't been tested. ChatGPT Desktop isn't supported as a direct local connection yet.
 
-Contributors interested in Claude are welcome to help with compatibility testing, setup documentation and any necessary integration work. See [how to contribute](CONTRIBUTING.md).
+If you'd like to help try another client and document the setup, see [how to contribute](CONTRIBUTING.md).
 
-## Platform status
+## Where it runs
 
-- **Windows x64:** current MVP target; the MSIX preview was built, signed and locally installed, with alias and About UI checks passed. Clean-machine installation and upgrade checks remain.
-- **Windows ARM64:** package builds, but has not been executed on ARM64 hardware.
-- **macOS and Linux:** not tested, including browser OAuth sign-in and protected token storage. Support is not claimed for the current MVP.
+- **Windows x64:** the preview has been built, signed and installed locally. Some command and UI checks passed on earlier versions; a clean-machine installation and the remaining setup and update checks are still needed.
+- **Windows ARM64:** the package builds, but hasn't been run on ARM64 hardware.
+- **macOS and Linux:** not tested or supported in this preview, including sign-in and secure token storage.
 
 ## How it fits together
 
 ![Planned email workflow: accounts connect to MailMeUp on your device, then to Codex](docs/assets/branding/mailmeup-concept.png)
 
-*Concept artwork for the email workflow. Calendars are also in scope. Information requested by your assistant may be sent to its AI service; running locally does not mean all processing is offline.*
+*Concept artwork showing how your accounts connect to your assistant through MailMeUp. Calendars work through the same connection. Requested information may reach your assistant's AI service.*
 
 ## Explore the project
 
 - [Short product overview](docs/PRODUCT.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Steps to a testable MVP](docs/MVP_PLAN.md)
+- [Plan for the first usable version](docs/MVP_PLAN.md)
 - [Getting started](docs/GETTING_STARTED.md)
 - [Calendars and appointments](docs/CALENDARS.md)
 - [Accounts and credentials](docs/AUTHENTICATION.md)
@@ -98,8 +102,8 @@ Contributors interested in Claude are welcome to help with compatibility testing
 - [Connect to Codex](docs/CODEX_SETUP.md)
 - [Build and contribute](docs/DEVELOPMENT.md)
 
-For developers: [architecture](docs/ARCHITECTURE.md), [MCP tools](docs/MCP_CONTRACT.md), [release process](docs/RELEASING.md) and [validation results](docs/VALIDATION.md).
+For developers: [how the code fits together](docs/ARCHITECTURE.md), [MCP tools](docs/MCP_CONTRACT.md), [release process](docs/RELEASING.md) and [test results](docs/VALIDATION.md).
 
 Created by [Umberto Giacobbi](https://github.com/umbertotechnopreneur). [MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no endorsement by OpenAI, Google or Microsoft.
 
-Brand assets and generation prompts: [brand guide](docs/BRAND.md).
+Artwork, source prompts and writing style: [brand guide](docs/BRAND.md).

@@ -1,9 +1,9 @@
 # Security policy
 
-MailMeUp is pre-alpha. No production security guarantee or support SLA is offered. The foundation does not authenticate with providers or persist credentials.
+MailMeUp is an early preview. It isn't offered with a production security guarantee or a promised response time for support.
 
-Use the repository's **Security → Report a vulnerability** action for a private report when available. If private reporting is unavailable, open an issue requesting a private contact channel without including vulnerability details, credentials or mailbox data. Do not publish exploit details or secrets in an issue.
+If you find a security problem, use **Security → Report a vulnerability** on GitHub to report it privately, if that option is available. Otherwise, open an issue asking how to contact the maintainer privately. Keep the vulnerability details, credentials and mailbox data out of that public issue.
 
-Reports should identify the affected commit/version, operating system, synthetic reproduction and impact. Review [the authentication design](docs/AUTHENTICATION.md) and [privacy boundaries](docs/PRIVACY.md) before contributing auth or mail code.
+Include the version or commit, your operating system, steps to reproduce the problem with made-up data, and what could go wrong. That makes the report easier to investigate without exposing anyone's accounts.
 
-Future releases must keep refresh tokens and MSAL cache blobs in OS-protected storage, reject plaintext fallback, isolate accounts, redact diagnostics and keep email content outside the instruction boundary.
+If you're changing sign-in or mail code, read [accounts and credentials](docs/AUTHENTICATION.md) and [privacy](docs/PRIVACY.md) first. Tokens must stay in operating-system protected storage, with no plain-text fallback. Keep accounts separate and private content out of logs. Treat email and calendar content as data to read, never as instructions for the application or assistant.

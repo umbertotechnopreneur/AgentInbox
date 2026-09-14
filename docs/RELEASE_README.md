@@ -1,29 +1,33 @@
-# MailMeUp — portable read-only MVP build
+# MailMeUp portable preview
 
 All your inboxes. One conversation.
 
-This pre-alpha build connects multiple Google and Microsoft accounts, searches mail and shows a combined calendar agenda through an MCP stdio endpoint. Account and provider setup remains a local CLI action.
+Use MailMeUp to search your Google and Microsoft inboxes and check your calendars from an AI conversation. This ZIP or archive contains the command-line app. You'll use it to set up Google or Microsoft, sign in, then connect to Codex through MCP, the protocol assistants use to call tools.
 
-Windows x64 is the current tested target. Windows ARM64 is build-only. macOS and Linux have not been tested and are not supported by the current MVP.
+This is an early preview. Windows x64 is the tested platform. The Windows ARM64 package builds but hasn't been run on ARM64 hardware. macOS and Linux haven't been tested and aren't supported in this preview.
 
-Current scope is read-only: no sending mail, changing or deleting provider data, creating appointments or sending invitations.
+MailMeUp only reads. It can't send mail, change or delete anything in your accounts, create appointments or send invitations. Information you request can reach your assistant's AI service, even though MailMeUp runs on your computer.
 
-Run `mailmeup --help`, `mailmeup setup status` or `mailmeup accounts list` (use `mailmeup.exe` on Windows). Register the Google and Microsoft desktop apps first, then use `mailmeup accounts connect <google|microsoft>`. A new installation has no accounts.
+Start with `mailmeup --help` (use `mailmeup.exe` on Windows). Follow the setup guide below to register an app with Google or Microsoft, then run `mailmeup accounts connect <google|microsoft>`. Use `mailmeup setup status` and `mailmeup accounts list` to see what's configured. A fresh installation has no accounts.
 
-Client configuration and token caches use the operating system credential store. A self-contained build does not require the .NET SDK, but still requires a compatible Windows version.
+App secrets and saved sign-in tokens use your operating system's protected storage. The .NET runtime is included, so you don't need the .NET SDK. You still need a compatible Windows version.
 
-Register the executable using an absolute path:
+Add MailMeUp to Codex using the full path to your executable:
 
 ```text
 codex mcp add mailmeup -- /absolute/path/mailmeup --stdio
 ```
 
-Use the Windows executable path when applicable. Codex launches and controls the process; do not run a second server manually. The available tools are `get_status`, `list_accounts`, `search_mail`, `search_unread_mail`, `search_mail_by_date`, `read_mail`, `list_calendars`, `search_events` and `read_event`.
+On Windows, replace the example with a path such as `C:\Tools\MailMeUp\mailmeup.exe`. Codex starts MailMeUp for you, so there's no need to start another server. Try asking for unread mail or next week's appointments.
 
-`MAILMEUP_DATA_DIR` optionally selects an absolute private data directory. No tokens or real mailbox data are included. Native library extraction requires a writable local location. See BUILD_INFO.txt for version, commit and whether this archive received a native smoke test. These pre-alpha binaries are unsigned.
+For reference, the tools are `get_status`, `list_accounts`, `search_mail`, `search_unread_mail`, `search_mail_by_date`, `read_mail`, `list_calendars`, `search_events` and `read_event`.
 
-Setup guide: https://github.com/umbertotechnopreneur/MailMeUp/blob/main/docs/GETTING_STARTED.md
+If you want a different data folder, set `MAILMEUP_DATA_DIR` to its full path and keep it private. The archive contains no account tokens or real mailbox data. The app needs a writable local folder to unpack its native libraries.
 
-Documentation and source: https://github.com/umbertotechnopreneur/MailMeUp
+These portable preview binaries are unsigned. BUILD_INFO.txt lists the version, commit and whether this archive was given a basic startup and command check on its target platform.
+
+[Setup guide](https://github.com/umbertotechnopreneur/MailMeUp/blob/main/docs/GETTING_STARTED.md)
+
+[Documentation and source](https://github.com/umbertotechnopreneur/MailMeUp)
 
 Copyright (c) 2026 Umberto Giacobbi. MIT license; dependency licenses are included separately.

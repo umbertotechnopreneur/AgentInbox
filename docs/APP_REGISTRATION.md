@@ -1,29 +1,29 @@
-# Provider setup and first sign-in
+# Set up Google or Microsoft
 
 > [!IMPORTANT]
-> **Temporary early-build requirement.** MailMeUp does not yet provide a shared provider-registration or one-click onboarding flow. Until that changes, each user must create their own Google and/or Microsoft desktop app registration before connecting an account. We are actively working to make this simpler.
+> **This is the fiddly part for now.** Before connecting an account, you need to register your own desktop app with Google or Microsoft. A simpler setup is still on the to-do list. You only need to follow the section for the service you use.
 
 > [!WARNING]
-> **Platform limit as of 2026-09-05.** Google and Microsoft browser sign-in has been exercised on Windows x64 only. The OAuth flow and protected token storage on macOS and Linux are not yet verified and must be tested before support can be claimed.
+> **Use Windows x64 for this preview.** That's where Google and Microsoft sign-in has been tried. Sign-in and secure token storage on macOS and Linux still need testing.
 
 ## Why this is needed
 
-Google and Microsoft do not allow a desktop program to read a mailbox just because the program is installed. OAuth is the consent process that opens the provider's sign-in page, shows the requested read-only permissions, and lets the account owner approve or decline them.
+Google and Microsoft need your permission before MailMeUp can read an account. You'll sign in on their website, see which permissions MailMeUp asks for, and decide whether to allow them. This sign-in process is called OAuth.
 
-A **Client ID** identifies the local MailMeUp desktop app to the provider. It is not an account password. Google gives you a downloadable desktop-client JSON file; keep that file private because it includes the app configuration. Microsoft gives you an **Application (client) ID**; a Microsoft desktop app does not need a client secret.
+A **Client ID** tells Google or Microsoft which app is asking. It isn't your account password. Google gives you a downloadable JSON configuration file; keep it private. Microsoft gives you an **Application (client) ID** and doesn't need a client secret for this desktop setup.
 
-The two provider flows are independent. Configure and connect only the providers you plan to use. Each account signs in separately, and MailMeUp stores its tokens only in protected operating-system storage.
+Set up Google, Microsoft or both. You'll sign in to each account separately. MailMeUp saves the resulting sign-in tokens using your operating system's protected storage.
 
 ## Before you begin
 
-Use the full path to your local executable. In these examples, replace the path with the folder where you installed or built MailMeUp:
+Open PowerShell and point it to your copy of MailMeUp. Replace this example path with your own:
 
 ```powershell
 $MailMeUp = 'C:\Tools\MailMeUp\mailmeup.exe'
 & $MailMeUp --help
 ```
 
-The commands below use `$MailMeUp` so that you do not need to change into the executable's folder. Never paste JSON contents, tokens, refresh tokens, or client secrets into a terminal transcript, a chat, or GitHub.
+The commands below use `$MailMeUp`, so you can run them from any folder. Keep JSON contents, tokens and client secrets out of chats, GitHub and terminal output you share.
 
 ## Google: register the app and connect an account
 
@@ -32,9 +32,9 @@ The commands below use `$MailMeUp` so that you do not need to change into the ex
 3. Open **Google Auth Platform**:
    - set the app name and contact email;
    - choose **External** if personal or other Google accounts will sign in;
-   - keep the app in **Testing** for the pilot;
+   - keep the app in **Testing** while trying MailMeUp;
    - add the exact Google accounts that may test the app.
-4. Under **Data Access**, add only these scopes:
+4. Under **Data Access**, add these permissions (Google calls them scopes):
 
    ```text
    openid
@@ -46,7 +46,7 @@ The commands below use `$MailMeUp` so that you do not need to change into the ex
    ```
 
 5. Under **Clients**, create a **Desktop app** client named **MailMeUp Desktop**. Download its JSON file and keep it in a private local folder.
-6. Import that file into MailMeUp, then open the browser consent flow:
+6. Import the file into MailMeUp, then start sign-in:
 
    ```powershell
    & $MailMeUp setup google 'C:\Private\client_secret.json'
@@ -56,13 +56,13 @@ The commands below use `$MailMeUp` so that you do not need to change into the ex
 
 7. Sign in with one of the configured Google test users and approve the read-only permissions. Run the last command again for every additional Google account.
 
-Do not publish the Google OAuth app, create API keys, use service accounts, or request Gmail write/send scopes or calendar write scopes for this pilot.
+Keep the Google app in Testing for this preview. You don't need to publish it, create API keys or use service accounts. Leave out permissions to send email or change mail and calendars.
 
 ## Microsoft: register the app and connect an account
 
 1. Open [Microsoft Entra](https://entra.microsoft.com/) with a directory where you can register applications. Go to **Entra ID > App registrations > New registration**.
 2. Name the app **MailMeUp Desktop**.
-3. To support both Outlook.com and Microsoft 365, choose **Accounts in any organizational directory and personal Microsoft accounts**. Choose a narrower audience only when you deliberately want to limit who can sign in.
+3. To use both Outlook.com and Microsoft 365, choose **Accounts in any organizational directory and personal Microsoft accounts**. Choose a more limited option if you only want certain accounts to sign in.
 4. In **Authentication**, add the **Mobile and desktop applications** platform with this redirect URI:
 
    ```text
@@ -85,9 +85,9 @@ Do not publish the Google OAuth app, create API keys, use service accounts, or r
    & $MailMeUp accounts connect microsoft
    ```
 
-8. Choose the Microsoft account in the browser and approve the delegated read-only permissions. Run the last command again for each additional Microsoft account.
+8. Choose your Microsoft account in the browser and approve the read-only permissions. Run the last command again for each additional Microsoft account.
 
-Some work or school directories apply their own consent policy. Do not try to bypass that policy; ask the directory administrator if the provider blocks consent.
+Your workplace or school may limit which apps you can connect. If sign-in is blocked for that reason, ask your administrator for help.
 
 ## Check connected accounts
 
@@ -95,6 +95,6 @@ Some work or school directories apply their own consent policy. Do not try to by
 & $MailMeUp accounts list
 ```
 
-Use `--mail-only` or `--calendar-only` with `accounts connect` when you want to grant just one read category. Use `accounts remove <account-id>` to remove local account metadata and the protected cached credentials; revoke the provider grant separately in the Google or Microsoft account settings.
+Add `--mail-only` or `--calendar-only` to `accounts connect` if you only want to share email or calendars. Use `accounts remove <account-id>` to remove an account and its saved sign-in tokens from this device. To revoke the app's access too, use your Google or Microsoft account settings.
 
-MailMeUp remains read-only for this milestone: it does not send email, edit or delete messages, create or edit calendar events, or send invitations.
+MailMeUp only reads. It can't send email, change or delete messages, create or edit appointments, or send invitations.

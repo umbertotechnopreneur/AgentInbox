@@ -1,57 +1,57 @@
 # Windows setup preview
 
-**Latest recorded local update: `0.1.1.20`, September 12.** Desktop/CLI Release publication, signing and installation completed with Windows status `Ok` and a valid package signature. It includes CLI screen navigation, isolated demo mode and the refined setup screens. The preceding local preview passed 291 synthetic tests and CLI/MCP smoke; native UI interaction remains pending. The subsequent provider/output guardrail source increment has not been built or installed. See [validation](VALIDATION.md).
+The Windows app walks you through connecting accounts, choosing what to share and adding MailMeUp to Codex. It's a native Windows app, packaged as an MSIX installer.
 
-**Previous local update: `0.1.1.19`, September 11.** Desktop/CLI Release publication, signing and the upgrade from `0.1.1.18` completed; Windows reported `Ok` and a valid package signature. It includes the default search-period editor and Google request-limit recovery. A subsequent owner-requested run passed all 229 .NET tests. Post-install UI and live-provider checks remained pending. Earlier validation below is historical evidence.
+**The latest recorded local installation is `0.1.1.20`, from September 12.** It was built, signed and installed successfully. It includes the updated setup screens and a demo with sample accounts. The preceding local preview passed 291 automated tests and basic CLI/MCP checks; desktop interaction checks are still pending.
 
-MailMeUp includes a WinUI 3 setup window and MSIX packaging. Windows x64 preview `0.1.1.10` was built, signed and installed as an upgrade on 2026-09-06. Release build, 113 shared .NET tests, the installed alias CLI/MCP smoke and a synthetic native-window launch without diagnostics passed. The update adds an explicit account connection check, fixes the WinUI vector-source error, an entry-point omission that left the setup process running without a window, an unavailable optional high-contrast change event, and replaces dark Mica with visible Desktop Acrylic. The owner will review the redesigned UI; its interactions and single-instance activation have not yet been exercised. Clean-machine installation, browser sign-in from the UI and Codex plugin loading still need runtime validation.
+The newer read-limit code hasn't been built, tested or installed. Installation on a clean machine, sign-in through the Windows app and the guided Codex setup also need checks. See the [test record](VALIDATION.md) for earlier versions and exact results.
 
 ## Setup
 
-The installed update uses native Desktop Acrylic, unnumbered visual progress, compact account pages and one sharing editor at a time. Additional desktop launches are designed to activate the existing setup window. See [wizard implementation](WIZARD_UI.md) and [validation](VALIDATION.md) for runtime coverage.
+Open MailMeUp and follow the four screens. The app is designed to bring the existing setup window forward if you launch it again; that behavior still needs a desktop check.
 
-1. **Welcome:** understand read-only access and which requested information may reach the assistant's AI service. Tokens stay protected on the device.
-2. **Connect accounts:** choose Google or Microsoft and finish sign-in in the browser. Repeat to add more accounts. **Check read access** exercises actual searches and sample detail reads for each enabled capability. Rows stay compact: a red **Try to reconnect** action appears for read failures, while the account menu contains Reconnect and Remove from device. Missing samples and limited checks are not presented as connection failures. Detailed outcomes go only to the local [diagnostic log](LOGGING.md); there are no verbose status rows or check-result banners. This preview still requires [your own provider app registration](APP_REGISTRATION.md); Google imports the downloaded Desktop client JSON, and Microsoft accepts the Application (client) ID.
-3. **Choose what to share:** enable each account, mail and calendars. Choose all calendars or load calendar names and select individual ones. Save each account's choices. New accounts connected here start unshared; reconnecting preserves existing choices.
-4. **Connect to Codex:** refresh configuration status and install the bundled local plugin. The UI offers manual preparation and commands if the native Codex CLI is unavailable. Existing direct MCP registrations require an explicit migration to avoid duplicate tools. See [Codex setup](CODEX_SETUP.md).
+1. **Welcome:** read how MailMeUp accesses your accounts and what may reach your assistant's AI service. Sign-in tokens stay protected on your device.
+2. **Connect accounts:** choose Google or Microsoft and sign in through your browser. Repeat for more accounts. For now, you'll need [your own app registration](APP_REGISTRATION.md): import Google's Desktop client JSON file or enter Microsoft's Application (client) ID.
+3. **Choose what to share:** turn on each account you want your assistant to use, then choose mail, calendars or both. You can share all calendars or load their names and pick individual ones. Save each account's choices. New accounts start with sharing off; reconnecting keeps your saved choices.
+4. **Connect to Codex:** check the setup status and install the included local plugin. If automatic setup isn't available, the page gives you manual steps. If you've already added MailMeUp directly to Codex, choose whether to keep that connection or switch to the plugin. See [Codex setup](CODEX_SETUP.md).
 
-The interface is English-only. A persistent **Privacy & terms** entry opens the website and the MailMeUp, Google and Microsoft policy links. **About & support** remains available throughout setup. The welcome keeps the essential read-only and AI-service disclosures visible; further explanations appear on request.
+On **Accounts**, use **Check read access** to try sample searches and detail reads for mail and calendars. A **Try to reconnect** action appears when a read failure calls for it. A lack of sample messages or appointments isn't treated as a broken connection. Longer explanations go to the local [diagnostic log](LOGGING.md). The account menu also offers Reconnect and Remove from device.
 
-The September 11 update adds **Sharing → Default mail search period**, a global setting from 1 to 365 days, initially 14. Save or discard explicitly; navigation and closing protect unsaved edits. The UI explains that longer periods take more time, make more requests and may hit provider limits, and that explicit search dates override the setting. It also distinguishes rate-limit-only account checks from reconnect actions. These changes are included in the locally installed `0.1.1.19` preview but have not been exercised in the desktop UI.
+Under **Sharing → Default mail search period**, choose how far back undated mail searches should go: 1–365 days, starting at 14. Longer periods take more time and may reach Google's or Microsoft's request limits. Dates in your request take priority. Choose Save or Discard when you're done; the app asks about unsaved edits if you leave. This setting was added in `0.1.1.19`, and its desktop interactions still need checking.
 
-Closing the setup window does not stop an MCP process started by Codex. Changes affect future reads, including previously issued local result references. They cannot retract data already returned in a conversation. The UI cannot grant read access that was not requested during provider sign-in; reconnect with that category selected first.
+Closing the setup window leaves Codex's MailMeUp connection running. Sharing changes apply to later reads, including requests to open earlier results. They can't take back information already returned in a conversation. If you didn't allow mail or calendar access when signing in, reconnect with that option selected before sharing it here.
 
-The **About & Support** button is available throughout setup. It shows a generated MailMeUp banner, the installed package version, the creator's website, the project repository and its GitHub support issues. Users can copy a small version/platform summary for a support request and follow the invitation to star the project on GitHub. Opening the dialog does not open a browser or submit information.
+The app is in English. **Privacy & terms** gives you links to the MailMeUp, Google and Microsoft policies. **About & Support** shows your installed version and links to the project, its creator and GitHub issues. You can copy a short version/platform summary for a support request. Opening that dialog doesn't launch a browser or send information.
 
-## Stable command
+## Keep Codex connected after updates
 
-MSIX installs into a versioned directory. Codex uses the package's console execution alias instead:
+Windows puts each package version in a different folder. MailMeUp provides a command shortcut, called an app execution alias, so Codex can keep using the same path:
 
 ```text
 %LOCALAPPDATA%\Microsoft\WindowsApps\mailmeup.exe --stdio
 ```
 
-The plugin writes the expanded absolute path, not a literal environment-variable expression. Keep the same package identity, publisher and alias across upgrades. Windows routes the alias to the installed version; a Codex process already running may need to reload to start the new version. If another app owns the alias or it is disabled, select MailMeUp under Windows **App execution aliases**.
+The plugin fills in the full path for your user. Windows points it to the installed version, as long as updates keep the same package identity, publisher and alias. Reload Codex to start a new MailMeUp process after an update. If the command is disabled or another app uses it, select MailMeUp under Windows **App execution aliases**.
 
-## Local data
+## Your data when updating or uninstalling
 
-The setup window and console bridge share the same `MAILMEUP_DATA_DIR`, or the existing per-user `MailMeUp` data directory by default. MSIX file write virtualization is disabled so existing protected credentials and local plugin files remain visible to both executables and Codex. Registry virtualization remains unchanged.
+The setup window and command-line app share the same data folder: `MAILMEUP_DATA_DIR` if you set it, or the usual per-user `MailMeUp` folder. The package is configured so both apps and Codex can still access the local files they need. Registry handling is unchanged.
 
-An upgrade preserves this data. Uninstalling the MSIX does not erase the external data directory or remove an already installed Codex plugin. Remove the plugin in Codex and use the account-removal command before uninstalling if you also want to remove local account credentials. Local removal does not revoke consent at Google or Microsoft.
+Updates keep your local data. Uninstalling the Windows package leaves the data folder and any installed Codex plugin in place. If you want to remove local sign-in tokens too, remove your accounts and the Codex plugin before uninstalling. Revoke the app's access separately in Google or Microsoft account settings.
 
-## Build the installer
+## For developers: build the installer
 
-Use the dedicated [Windows packaging script](../scripts/package-msix.ps1). It publishes a self-contained desktop app and CLI, creates MSIX logo assets from the existing logo, includes dependency notices, and optionally signs with an existing certificate. It does not execute tests or smoke checks, install the package, change certificate trust, or publish a release.
+The [Windows packaging script](../scripts/package-msix.ps1) builds the desktop and command-line apps with the .NET runtime included, creates installer logos and adds dependency notices. It can sign the package with an existing certificate. It doesn't run tests, install the result, change certificate trust or publish a release.
 
 ```powershell
 pwsh -NoProfile -File scripts/package-msix.ps1 -Architecture x64
 ```
 
-Without signing parameters the result is marked `.unsigned.msix` and is not ready for normal installation. See [MSIX developer details](../packaging/windows/README.md) for signing and platform prerequisites. Build the UI using `MailMeUp.Windows.slnx`; the original solution remains cross-platform.
+Without signing options, the file ends in `.unsigned.msix` and isn't ready for normal installation. See [packaging details](../packaging/windows/README.md) for signing and requirements. Use `MailMeUp.Windows.slnx` to build the UI; the original solution keeps the shared cross-platform code.
 
-Before distribution, validate the published, installed executable and alias with synthetic accounts and an isolated data directory, then clean install/update behavior. A successful package build alone does not validate OAuth, sharing, plugin loading or ARM64 execution.
+Before distributing a package, the installed app and command alias need checks with made-up accounts and a separate data folder, followed by clean installation and update checks. A package that builds successfully can still have problems with sign-in, sharing, plugin loading or ARM64 execution. Run these checks only when the owner asks.
 
-The installed-desktop regression check creates a temporary schema-version-2 registry containing only an `example.test` account, launches the actual packaged executable and fails if the process exits during startup:
+The desktop startup check below creates a temporary version-2 account database with one `example.test` account. It launches the installed executable and fails if the process exits during startup:
 
 ```powershell
 $desktop = Join-Path (Get-AppxPackage MailMeUp.Desktop).InstallLocation 'MailMeUp.Desktop.exe'

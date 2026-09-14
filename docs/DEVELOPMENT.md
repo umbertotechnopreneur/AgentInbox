@@ -1,22 +1,26 @@
 # Development
 
-Requirements: .NET SDK from `global.json`, PowerShell 7 and Python 3.10+. End users will not need these development tools.
+To work on MailMeUp, you'll need the .NET SDK listed in `global.json`, PowerShell 7 and Python 3.10+. People using a packaged build don't need these development tools.
 
-Install the repository hook once after cloning:
+After cloning, install the Git hook once:
 
 ```powershell
 pwsh -NoProfile -File scripts/install-git-hooks.ps1
 ```
 
-The hook applies `dotnet format` to staged C# files before every commit and stages the resulting style fixes. It stops when a C# file is only partially staged so it cannot include unrelated edits accidentally.
+Before each commit, the hook runs `dotnet format` on staged C# files and stages the formatting changes. If you've staged only part of a C# file, it stops so it doesn't accidentally include your other edits.
+
+When you're ready to run the full checks:
 
 ```powershell
 pwsh -NoProfile -File scripts/validate.ps1
 ```
 
-This restores locked dependencies, applies formatting, builds with warnings as errors, runs tests and verifies the real CLI/MCP process. It also checks dependency notices and local document links. No real account credentials are used. Use `scripts/format.ps1 -Check` when a read-only formatting check is needed; CI uses the equivalent validation switch.
+This restores the dependencies pinned in the lock files, formats code, builds with warnings treated as errors, runs tests and checks the actual CLI/MCP process. It also checks dependency notices and local documentation links. It uses no real account credentials. To check formatting without changing files, use `scripts/format.ps1 -Check`; CI uses the matching validation option.
 
-To run the built app:
+Agents working in this repository run checks only when the owner explicitly asks, as described in [AGENTS.md](../AGENTS.md).
+
+To run an app you've already built:
 
 ```sh
 dotnet run --project src/MailMeUp.Cli -c Release --no-build -- status
@@ -24,7 +28,7 @@ dotnet run --project src/MailMeUp.Cli -c Release --no-build -- status
 
 ## Dependency updates
 
-Versions live in `Directory.Packages.props`. After an intentional update:
+Package versions are in `Directory.Packages.props`. After changing a version:
 
 ```powershell
 dotnet restore MailMeUp.slnx --force-evaluate
@@ -32,8 +36,8 @@ python scripts/export-notices.py
 pwsh -NoProfile -File scripts/update-portable-locks.ps1
 ```
 
-Review the standard lock files and `eng/locks/<runtime>/`. Portable builds have separate graphs because they add runtime targets and packaging tools.
+Review both the standard lock files and `eng/locks/<runtime>/`. Portable builds have their own dependency lists because they also include platform runtimes and packaging tools.
 
-Use `MAILMEUP_DATA_DIR` for isolated experiments. Keep code and documents in English. Provider features remain read-only; local metadata storage can still write.
+Point `MAILMEUP_DATA_DIR` at a separate folder when experimenting. Keep code and docs in English. Google and Microsoft access stays read-only; local settings and account storage can still save files.
 
 See [contribution guidance](../CONTRIBUTING.md) and [release steps](RELEASING.md).

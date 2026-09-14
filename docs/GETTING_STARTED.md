@@ -1,12 +1,14 @@
 # Getting started
 
-MailMeUp is a local, read-only MCP program. The current tested target is Windows x64. Keep the extracted folder in a stable private location.
+This guide gets MailMeUp connected to your accounts and Codex on Windows x64. It's still an early preview, so keep an eye on the results as you try it.
 
-## Preview the Windows setup screens
+If you installed the Windows app, start with the [four setup screens](WINDOWS_SETUP.md#setup). If you're using the ZIP, extract it into a private folder you plan to keep, such as `C:\Tools\MailMeUp`. The command-line steps are below.
 
-The September 13 source adds read limits and local usage to Sharing, with explicit Save/Discard and restart guidance. These controls are not included in the installed `0.1.1.20` preview described below. See [read guardrails](READ_GUARDRAILS.md).
+## Take a look around first
 
-The locally installed Windows x64 `0.1.1.20` preview provides commands to list and open each setup screen. Build and synthetic checks passed; native interaction checks remain pending.
+You can try the Windows setup with sample accounts before connecting your own:
+
+These commands are included in preview `0.1.1.20`. Build and automated checks passed for this feature; clicks and navigation in the Windows app still need checking.
 
 ```powershell
 mailmeup ui --list-steps
@@ -14,25 +16,25 @@ mailmeup ui --list-steps --json
 mailmeup ui --step sharing --demo
 ```
 
-Choose `welcome`, `accounts`, `sharing` or `codex` with `--step`. `--demo` opens a separate preview with sample accounts: sign-in, provider reads and real Codex actions are disabled. Sharing and search-period changes stay in memory and reset when the demo window closes. The preview does not load your real accounts or credentials.
+Use `--step` to choose `welcome`, `accounts`, `sharing` or `codex`. With `--demo`, the window uses made-up accounts. It won't sign in, read your mailbox or change Codex. Any sharing or search-period changes disappear when you close the demo.
 
-Omit `--demo` to open your local setup. Plain `mailmeup ui` opens Welcome in a new window or brings the current page forward. Explicit screen changes protect unsaved sharing and search-period edits. Listing screens starts no UI or account services.
+Leave out `--demo` to open your own setup. `mailmeup ui` opens Welcome, or brings the existing window forward. If you change screens with unsaved sharing or search-period edits, the app asks you what to do with them. Listing screens doesn't open a window or load accounts.
 
-Opening screens requires Windows and a built desktop executable. When it is not packaged with the CLI, provide its path:
+The desktop app needs to be available alongside the command-line app. If you built it in another folder, give its path:
 
 ```powershell
 mailmeup ui --step accounts --demo --desktop-path 'C:\Build\MailMeUp.Desktop.exe'
 ```
 
-See [wizard implementation](WIZARD_UI.md) for preview behavior and current validation limits.
+The September 13 code also adds read limits and usage information to Sharing. Those controls aren't in the installed `0.1.1.20` preview and haven't been tested yet. See [read limits](READ_GUARDRAILS.md) and [setup details for developers](WIZARD_UI.md).
 
-## 1. Register the provider apps
+## 1. Set up Google or Microsoft
 
-Follow the short [Google and Microsoft registration guide](APP_REGISTRATION.md). Keep the Google JSON file private. Microsoft supplies a public Application (client) ID.
+Follow the [registration guide](APP_REGISTRATION.md) for the service you use. For now, this means creating your own app registration. Google gives you a JSON configuration file to keep private; Microsoft gives you an Application (client) ID.
 
 ## 2. Configure MailMeUp
 
-Windows example:
+Open PowerShell in the folder where you extracted MailMeUp. Run the setup command for each service you want to use:
 
 ```powershell
 .\mailmeup.exe setup google 'C:\Private\client_secret.json'
@@ -40,7 +42,7 @@ Windows example:
 .\mailmeup.exe setup status
 ```
 
-macOS and Linux are not tested because no test machines are available, so the current MVP does not claim support for them. Windows ARM64 builds but has not been executed on ARM64 hardware.
+This guide is for Windows x64. The Windows ARM64 package builds but hasn't been run on ARM64 hardware. macOS and Linux haven't been tested and aren't supported in this preview.
 
 ## 3. Connect accounts
 
@@ -52,7 +54,7 @@ Run the command once for each account:
 .\mailmeup.exe accounts list
 ```
 
-Add `--mail-only` or `--calendar-only` when you want only one read category.
+Your browser will open for sign-in. Add `--mail-only` or `--calendar-only` if you only want to share email or calendars.
 
 ## 4. Add it to Codex
 
@@ -61,7 +63,7 @@ codex mcp add mailmeup -- 'C:\Tools\MailMeUp\mailmeup.exe' --stdio
 codex mcp list
 ```
 
-Restart or reload Codex if the new MCP server is not visible. Then try:
+Replace the example path with your own. If MailMeUp doesn't appear in Codex, restart or reload Codex. Then try:
 
 > Use MailMeUp to search all my connected inboxes for the quarterly plan.
 
@@ -71,8 +73,14 @@ Restart or reload Codex if the new MCP server is not visible. Then try:
 
 > Use MailMeUp to show appointments from all my connected calendars for the next seven days.
 
-MailMeUp returns short results first and reads details only when requested. It cannot send mail, change messages, edit appointments or send invitations.
+You'll get a short list first, then you can ask to open a message or appointment. MailMeUp can't send mail, change messages, edit appointments or send invitations.
 
-The current source limits mail searches without dates to the previous 14 days. In the Windows app, open **Sharing → Default mail search period** to choose 1–365 days and save. Longer periods take more time and requests and may hit provider limits. Explicit search dates override this default. This change was introduced in `0.1.1.19` and is included in the locally installed `0.1.1.20` preview; UI and provider validation remain pending.
+## Choose how far back to search
 
-Remove a local account with `mailmeup accounts remove <account-id>`. This removes local metadata and cached credentials; provider access can be revoked separately in Google or Microsoft account settings.
+Without dates in your request, mail searches use the past 14 days. In the Windows app, open **Sharing → Default mail search period**, choose 1–365 days and save. Searching further back takes longer and makes more requests to Google or Microsoft, which may ask MailMeUp to wait. Dates in your request take priority over this setting.
+
+This setting was added in `0.1.1.19` and is included in `0.1.1.20`. The desktop controls and searches against real accounts still need checking for this change.
+
+## Remove an account
+
+Use `mailmeup accounts list` to find its ID, then `mailmeup accounts remove <account-id>`. This removes the account and its saved sign-in tokens from this device. To revoke the app's access too, use your Google or Microsoft account settings.

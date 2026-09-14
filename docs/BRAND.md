@@ -6,11 +6,19 @@ Name: **MailMeUp**. Preserve capitalization; do not use spaces in the product na
 
 Tagline: **All your inboxes. One conversation.**
 
-One-line description: **A local email bridge that brings multiple accounts into your AI conversation.**
+One-line description: **Search your email accounts from one conversation with your AI assistant.**
 
-Expanded product description: **Email and calendars from multiple accounts, available through one local MCP bridge.**
+Expanded product description: **Find mail and check appointments across your Google and Microsoft accounts. MailMeUp runs on your computer and only reads what you choose to share.**
 
-The identity shares the practical, personal naming rhythm of PromptMeUp and TrackMeUp. The visual idea is convergence: several envelopes become one useful conversation.
+The name follows the same personal style as PromptMeUp and TrackMeUp. The artwork brings several envelopes together into one conversation.
+
+## Writing style
+
+Write as if you're helping a friend try the app. Start with what they want to do, then explain the next step. Use short sentences, everyday words and natural contractions.
+
+Say "connect your accounts" instead of "configure multi-account access," and "choose what to share" instead of "manage sharing capabilities." Keep exact command names and button labels. Explain terms such as MCP or Client ID when the reader first needs them.
+
+Be clear about what works, what's still being tried and what hasn't been tested. Keep privacy information close to the action it affects. Put build history and implementation details in the developer references. Label concept artwork and keep its source prompts and creation notes.
 
 ## Visual vocabulary
 
