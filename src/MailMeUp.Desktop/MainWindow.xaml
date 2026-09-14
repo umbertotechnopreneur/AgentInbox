@@ -119,6 +119,43 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Expander>
+                            <Border Style="{StaticResource SetupCard}" Padding="18">
+                                <StackPanel Spacing="14">
+                                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Read limits and usage" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Shared across MailMeUp processes using this local profile." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel><Button x:Name="RefreshReadGuardrailsButton" Grid.Column="1" Style="{StaticResource QuietButton}" Click="RefreshReadGuardrailsButton_Click" VerticalAlignment="Top" AutomationProperties.Name="Refresh local read usage"><FontIcon Glyph="&#xE72C;" FontSize="16" /><ToolTipService.ToolTip>Refresh local usage</ToolTipService.ToolTip></Button></Grid>
+                                    <TextBlock x:Name="ReadGuardrailLoadText" Text="Loading local limits and usage…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                    <StackPanel x:Name="ReadGuardrailUsagePanel" Spacing="12" Visibility="Collapsed">
+                                        <StackPanel x:Name="ReadGuardrailUsageRows" Spacing="12" />
+                                        <TextBlock x:Name="ReadGuardrailActiveText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock x:Name="ReadGuardrailCooldownText" FontSize="12" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="ReadGuardrailUpdatedText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                    <InfoBar x:Name="ReadGuardrailRestartNotice" Title="Restart needed" Message="Saved limits differ from those active in this window. Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply them to all processes. Saving does not clear usage or provider pauses." Severity="Warning" IsOpen="False" IsClosable="False" />
+                                    <Expander x:Name="ReadGuardrailEditorExpander" Header="Adjust read limits" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsEnabled="False">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="Higher limits allow more provider traffic and more content to reach your assistant. Keep searches short and open only the details you need." Style="{StaticResource BodyText}" />
+                                            <Grid x:Name="ReadGuardrailFields" ColumnSpacing="16" RowSpacing="12">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="ReadGuardrailFieldRightColumn" Width="*" /></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                                <NumberBox x:Name="ReadGuardrailAccountAttemptsBox" Header="Attempts / account and service / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per account and service per minute" />
+                                                <NumberBox x:Name="ReadGuardrailProfileAttemptsBox" Grid.Column="1" Header="Attempts / profile / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per profile per minute" />
+                                                <NumberBox x:Name="ReadGuardrailContentReadsBox" Grid.Row="1" Header="Content reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Content reads per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailDetailReadsBox" Grid.Row="1" Grid.Column="1" Header="Detail reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="5" AutomationProperties.Name="Detail reads per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailWindowBox" Grid.Row="2" Header="Rolling window (seconds)" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="60" LargeChange="300" AutomationProperties.Name="Rolling read window in seconds, 60 to 3600" />
+                                                <TextBox x:Name="ReadGuardrailResponseBytesBox" Grid.Row="2" Grid.Column="1" Header="Maximum response (KiB)" AutomationProperties.Name="Maximum KiB in one assistant response" />
+                                                <TextBox x:Name="ReadGuardrailOutputBytesBox" Grid.Row="3" Header="Maximum output / window (KiB)" AutomationProperties.Name="Maximum assistant output KiB per rolling window" />
+                                            </Grid>
+                                            <TextBlock Text="Use whole numbers for attempts, reads and seconds. KiB values may include decimals that represent whole bytes. Details count toward content reads. Output includes the serialized MCP response; 1 KiB = 1,024 bytes. These limits do not measure model tokens. Existing request spacing and wait limits are kept when saving." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock x:Name="ReadGuardrailDraftText" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                            <StackPanel x:Name="ReadGuardrailSaveActions" Orientation="Horizontal" Spacing="8">
+                                                <Button x:Name="SaveReadGuardrailsButton" Content="Save limits" Style="{StaticResource AccentButtonStyle}" Click="SaveReadGuardrailsButton_Click" IsEnabled="False" />
+                                                <Button x:Name="DiscardReadGuardrailsButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardReadGuardrailsButton_Click" Visibility="Collapsed" />
+                                                <Button x:Name="DefaultReadGuardrailsButton" Content="Use defaults" Style="{StaticResource QuietButton}" Click="DefaultReadGuardrailsButton_Click" />
+                                            </StackPanel>
+                                            <TextBlock Text="Saved limits apply after restarting MailMeUp processes. Usage remains in the rolling windows; saving or restoring defaults does not reset it." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
                             <StackPanel Spacing="8"><TextBlock Text="Changes apply to future reads. Existing conversations keep what was already shared." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><Button Style="{StaticResource QuietButton}" Click="SharingInfoButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="What reaches your assistant" /></StackPanel></Button></StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="CodexPage" Spacing="20" Visibility="Collapsed">

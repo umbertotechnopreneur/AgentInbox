@@ -216,6 +216,32 @@ public abstract class ReadGuardrails : IProviderRequestGovernor, IReadBudget
     /// <summary>Applies an atomic ledger transaction; persists only admitted changes.</summary>
     protected abstract Task<T> UpdateStateAsync<T>(Func<GuardrailState, (T Result, bool Save)> update, CancellationToken cancellationToken);
 
+    /// <summary>Evaluates aggregate usage without pruning or modifying the supplied ledger.</summary>
+    protected ReadGuardrailUsage CaptureUsage(GuardrailState state)
+    {
+        ValidateState(state);
+        var capturedAt = _utcNow();
+        var now = capturedAt.ToUnixTimeMilliseconds();
+        var readWindow = (long)Limits.ReadWindowSeconds * 1000;
+        var attempts = state.ProviderAttempts.Where(value => value > now - 60_000).ToArray();
+        var content = state.ContentReads.Where(value => value > now - readWindow).ToArray();
+        var details = state.DetailReads.Where(value => value > now - readWindow).ToArray();
+        var output = state.Output.Where(value => value.At > now - readWindow).ToArray();
+        var cooldowns = state.Scopes.Values.Where(scope => scope.CooldownUntil > now).ToArray();
+        return new ReadGuardrailUsage(capturedAt, attempts.Length, content.Length, details.Length,
+            output.Sum(charge => (long)charge.Bytes), cooldowns.Length,
+            NextExpiry(attempts, 60_000), NextExpiry(content, readWindow), NextExpiry(details, readWindow),
+            NextExpiry(output.Select(charge => charge.At), readWindow),
+            cooldowns.Length == 0 ? null : DateTimeOffset.FromUnixTimeMilliseconds(cooldowns.Max(scope => scope.CooldownUntil)));
+    }
+
+    private static DateTimeOffset? NextExpiry(IEnumerable<long> charges, long windowMilliseconds)
+    {
+        var earliest = charges.Select(value => (long?)value).Min();
+        return earliest is null ? null : DateTimeOffset.FromUnixTimeMilliseconds(
+            Math.Min(MaximumTimestamp, earliest.Value + windowMilliseconds));
+    }
+
     /// <summary>Validates deserialized state before it can authorize further reads.</summary>
     protected static void ValidateState(GuardrailState state)
     {

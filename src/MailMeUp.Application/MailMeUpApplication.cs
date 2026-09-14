@@ -17,6 +17,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
     private readonly IMailSearchPreferencesStore _mailSearchPreferences;
     private readonly TimeProvider _timeProvider;
     private readonly IReadBudget _readBudget;
+    private readonly IReadGuardrailManagement? _readGuardrailManagement;
     private readonly BoundedReadCache<ProviderMailMessage> _mailDetails;
     private readonly BoundedReadCache<ProviderEvent> _eventDetails;
     private readonly IReadOnlyList<ProviderDescriptor> _providers;
@@ -39,13 +40,15 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         IEnumerable<IAccountConnectionChecker>? connectionCheckers = null,
         IMailSearchPreferencesStore? mailSearchPreferencesStore = null,
         TimeProvider? timeProvider = null,
-        IReadBudget? readBudget = null)
+        IReadBudget? readBudget = null,
+        IReadGuardrailManagement? readGuardrailManagement = null)
     {
         _accounts = accounts;
         _sharing = sharingStore ?? new MemoryAccountSharingStore();
         _mailSearchPreferences = mailSearchPreferencesStore ?? new MemoryMailSearchPreferencesStore();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _readBudget = readBudget ?? new InMemoryReadGuardrails();
+        _readGuardrailManagement = readGuardrailManagement ?? _readBudget as IReadGuardrailManagement;
         _mailDetails = new(_timeProvider, ProviderContentSize.Mail);
         _eventDetails = new(_timeProvider, ProviderContentSize.Event);
         _providerSetupServices = providerSetupServices.ToDictionary(service => service.ProviderId, StringComparer.Ordinal);
@@ -130,6 +133,31 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         preferences.Validate();
         await _mailSearchPreferences.SaveAsync(preferences, cancellationToken);
         return preferences;
+    }
+
+    /// <inheritdoc />
+    public async Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return _readGuardrailManagement is null
+            ? null
+            : await _readGuardrailManagement.GetStatusAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<ReadGuardrailStatus> SaveReadGuardrailLimitsAsync(
+        ReadGuardrailLimits limits,
+        ReadGuardrailLimits expectedLimits,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(expectedLimits);
+        limits.Validate();
+        expectedLimits.Validate();
+        return (_readGuardrailManagement
+            ?? throw new NotSupportedException("Read guardrail settings are unavailable in this host."))
+            .SaveLimitsAsync(limits, expectedLimits, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -569,7 +597,9 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         {
             var cacheKey = System.Text.Json.JsonSerializer.Serialize(new
             {
-                sharing.Fingerprint, account.Id, address.ProviderMessageId
+                sharing.Fingerprint,
+                account.Id,
+                address.ProviderMessageId
             });
             message = await _mailDetails.GetAsync(cacheKey,
                 token => ReadWithDeadlineAsync(inner => reader.ReadAsync(account, address.ProviderMessageId, inner), token),
@@ -844,7 +874,10 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         {
             var cacheKey = System.Text.Json.JsonSerializer.Serialize(new
             {
-                sharing.Fingerprint, account.Id, address.ProviderCalendarId, address.ProviderEventId
+                sharing.Fingerprint,
+                account.Id,
+                address.ProviderCalendarId,
+                address.ProviderEventId
             });
             providerEvent = await _eventDetails.GetAsync(cacheKey,
                 token => ReadWithDeadlineAsync(inner => reader.ReadEventAsync(

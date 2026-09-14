@@ -13,6 +13,11 @@ public sealed class DemoMailMeUpApplication : IMailMeUpApplication
     private readonly Dictionary<string, AccountSharingSettings> _sharing;
     private readonly Dictionary<string, IReadOnlyList<ProviderCalendar>> _calendars;
     private MailSearchPreferences _mailSearchPreferences = new();
+    private readonly ReadGuardrailLimits _activeReadGuardrailLimits = new();
+    private ReadGuardrailLimits _savedReadGuardrailLimits = new();
+    private readonly ReadGuardrailUsage _sampleReadGuardrailUsage = new(
+        new DateTimeOffset(2026, 9, 13, 9, 0, 0, TimeSpan.Zero),
+        24, 12, 4, 48 * 1024, 0, null, null, null, null, null);
 
     /// <summary>Creates fresh sample accounts and sharing choices that last only for this preview session.</summary>
     public DemoMailMeUpApplication()
@@ -139,6 +144,32 @@ public sealed class DemoMailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Returns fixed illustrative counters and this session's in-memory limits, never real usage.</summary>
+    public Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_sync)
+            return Task.FromResult<ReadGuardrailStatus?>(CreateReadGuardrailStatus());
+    }
+
+    /// <summary>Previews a settings save and pending restart in memory without changing files or active limits.</summary>
+    public Task<ReadGuardrailStatus> SaveReadGuardrailLimitsAsync(
+        ReadGuardrailLimits limits, ReadGuardrailLimits expectedLimits, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(expectedLimits);
+        limits.Validate();
+        expectedLimits.Validate();
+        lock (_sync)
+        {
+            if (_savedReadGuardrailLimits != expectedLimits)
+                throw new InvalidOperationException("Read guardrail settings changed. Reload the settings before saving again.");
+            _savedReadGuardrailLimits = limits;
+            return Task.FromResult(CreateReadGuardrailStatus());
+        }
+    }
+
     /// <summary>Returns clearly labeled sample calendar names for the local calendar picker.</summary>
     public Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(
         string accountId, CancellationToken cancellationToken = default)
@@ -214,6 +245,9 @@ public sealed class DemoMailMeUpApplication : IMailMeUpApplication
         return _accounts.SingleOrDefault(account => string.Equals(account.Id, accountId, StringComparison.Ordinal))
             ?? throw new ArgumentException("The sample account is no longer available in this preview.", nameof(accountId));
     }
+
+    private ReadGuardrailStatus CreateReadGuardrailStatus() =>
+        new(_activeReadGuardrailLimits, _savedReadGuardrailLimits, _sampleReadGuardrailUsage);
 
     private static AccountSharingSettings CopySharing(AccountSharingSettings settings) =>
         settings with { CalendarIds = settings.CalendarIds?.ToArray() };

@@ -17,6 +17,56 @@ public sealed class ReadOutputBudgetTests
     private const string End = "2026-09-13T00:00:00Z";
 
     [Fact]
+    public async Task StatusReportsAggregateUsageAndPendingSettingsWithoutSpendingContentBudget()
+    {
+        var now = new DateTimeOffset(2026, 9, 13, 0, 0, 0, TimeSpan.Zero);
+        var limits = new ReadGuardrailLimits();
+        var application = new SampleApplication
+        {
+            GuardrailStatus = new(limits, limits with { DetailReadsPerWindow = 10 },
+                new(now, 42, 9, 3, 8192, 1, now.AddSeconds(10), now.AddMinutes(2),
+                    now.AddMinutes(3), now.AddMinutes(4), now.AddSeconds(30)))
+        };
+        var budget = new RecordingBudget(new() { ResponseBytes = 1024, OutputBytesPerWindow = 1024 })
+        {
+            RejectCharges = true
+        };
+
+        var result = await new MailTools(application, budget).GetStatusAsync();
+
+        Assert.False(result.IsError);
+        var payload = Payload(result);
+        Assert.True(payload.GetProperty("read_guardrail_settings_pending_restart").GetBoolean());
+        var usage = payload.GetProperty("read_guardrail_usage");
+        Assert.Equal(42, usage.GetProperty("provider_attempts_in_minute").GetInt32());
+        Assert.Equal(8192, usage.GetProperty("output_bytes_in_window").GetInt64());
+        Assert.Equal(now, usage.GetProperty("captured_at").GetDateTimeOffset());
+        Assert.Empty(budget.AttemptedCharges);
+        Assert.Equal(1, application.UsageReads);
+    }
+
+    [Fact]
+    public async Task UnavailableUsageIsNullRatherThanAnInventedZero()
+    {
+        var result = await new MailTools(new SampleApplication()).GetStatusAsync();
+
+        Assert.False(result.IsError);
+        Assert.Equal(JsonValueKind.Null, Payload(result).GetProperty("read_guardrail_usage").ValueKind);
+        Assert.Equal(JsonValueKind.Null, Payload(result).GetProperty("read_guardrail_settings_pending_restart").ValueKind);
+    }
+
+    [Fact]
+    public async Task CorruptUsageReturnsSafeLocalConfigurationAdvice()
+    {
+        var result = await new MailTools(new SampleApplication { FailUsage = true }).GetStatusAsync();
+
+        Assert.True(result.IsError);
+        var payload = Payload(result);
+        Assert.Equal("local_configuration", payload.GetProperty("error").GetProperty("code").GetString());
+        Assert.DoesNotContain(PrivateDiagnostic, payload.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ChargeCoversStructuredAndTextRepresentationsWithUnicodeAndEscaping()
     {
         var application = new SampleApplication { Body = string.Concat(Enumerable.Repeat("Résumé 界 📬 \"quoted\"\n", 40)) };
@@ -215,6 +265,16 @@ public sealed class ReadOutputBudgetTests
     private sealed class SampleApplication : IMailMeUpApplication
     {
         internal string Body { get; init; } = "Synthetic message";
+        internal ReadGuardrailStatus? GuardrailStatus { get; init; }
+        internal bool FailUsage { get; init; }
+        internal int UsageReads { get; private set; }
+        public Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            UsageReads++;
+            if (FailUsage) throw new ProviderReadException(PrivateDiagnostic, ReadFailureKind.LocalConfiguration);
+            return Task.FromResult(GuardrailStatus);
+        }
         public ApplicationStatus GetStatus() => new("synthetic", "stdio", true, false, []);
         public Task<MailSearchPreferences> GetMailSearchPreferencesAsync(CancellationToken cancellationToken = default) => Task.FromResult(new MailSearchPreferences());
         public Task<IReadOnlyList<Account>> ListSharedAccountsAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Account>>([]);

@@ -8,7 +8,7 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 
 | Tool | Result |
 | --- | --- |
-| `get_status` | Build stage, read-only mode, provider capabilities, `mail_search_preferences.default_lookback_days` and active `read_guardrails` limits |
+| `get_status` | Build stage, read-only mode, provider capabilities, mail-search preferences, active read limits, aggregate local usage and pending-restart status |
 | `list_accounts` | Shared account IDs, providers, labels and addresses, with effective read categories |
 | `search_mail` | Short matches across selected or all mail-enabled accounts, with optional structured filters |
 | `search_unread_mail` | Unread short matches, with optional date, sender, recipient and attachment filters |
@@ -21,6 +21,8 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 All tools are read-only. A new installation has no accounts. Paths, provider item IDs and credentials are never returned. The original five provider-read tools pass local automated checks; the two structured mail tools and their provider-side filters still need dedicated validation.
 
 Provider registration, interactive account connection and sharing choices belong to the local CLI or Windows setup app. They are deliberately not exposed through MCP. Calendar discovery for the owner's sharing picker is also local-only.
+
+The September 13 source adds `read_guardrail_usage` and `read_guardrail_settings_pending_restart` to `get_status`. Usage is a local profile snapshot with counters and expiry timestamps, not provider quota or token accounting. Unsupported management returns `null` for both fields. Status makes no provider requests and remains available without charging the read/output budgets. Saved limit changes require restarting the participating MailMeUp processes; no settings-write tool is registered. See [read guardrails](READ_GUARDRAILS.md).
 
 The application reloads local sharing choices for every read, including existing references and continuation cursors. It checks access again before releasing a response; a change made during a read discards that response. Hidden accounts are omitted from discovery and continuation coverage. Provider consent and local sharing are independent: consent alone does not override a saved sharing choice.
 

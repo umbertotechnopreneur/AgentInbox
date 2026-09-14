@@ -26,6 +26,23 @@ public interface IMailMeUpApplication
     /// <summary>Saves the global default mail search period; for local setup adapters only.</summary>
     Task<MailSearchPreferences> SaveMailSearchPreferencesAsync(MailSearchPreferences preferences, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns local read limits and aggregate usage, or null when this host cannot manage guardrails.</summary>
+    Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<ReadGuardrailStatus?>(null);
+    }
+
+    /// <summary>Saves local read limits against the last loaded settings; reserved for local setup, never an MCP write tool.</summary>
+    Task<ReadGuardrailStatus> SaveReadGuardrailLimitsAsync(
+        ReadGuardrailLimits limits,
+        ReadGuardrailLimits expectedLimits,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromException<ReadGuardrailStatus>(new NotSupportedException("Read guardrail settings are unavailable in this host."));
+    }
+
     /// <summary>Discovers calendar names for local setup even before assistant sharing is enabled; never expose as an MCP tool.</summary>
     Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(string accountId, CancellationToken cancellationToken = default);
 

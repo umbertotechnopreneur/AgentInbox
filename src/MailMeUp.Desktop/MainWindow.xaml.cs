@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        InitializeReadGuardrails();
         DemoBanner.IsOpen = IsDemo;
         if (IsDemo) Title = "MailMeUp — UI preview";
         MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
@@ -159,6 +160,7 @@ public sealed partial class MainWindow : Window
         RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
         _narrowSharing = availableWidth < 750;
         MailSearchPreferencesActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
+        UpdateReadGuardrailLayout(availableWidth);
         CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
         SharingSaveActions.Orientation = availableWidth is < 440 or (>= 750 and < 900) ? Orientation.Vertical : Orientation.Horizontal;
         var stackActions = availableWidth < 540;
@@ -236,6 +238,13 @@ public sealed partial class MainWindow : Window
             MailSearchLookbackDaysBox.Focus(FocusState.Programmatic);
             return false;
         }
+        if (_readGuardrailsDirty)
+        {
+            ReadGuardrailEditorExpander.IsExpanded = true;
+            SetNotice("Unsaved read limits", "Save or discard your read limit changes before continuing.", InfoBarSeverity.Warning);
+            ReadGuardrailAccountAttemptsBox.Focus(FocusState.Programmatic);
+            return false;
+        }
         return true;
     }
 
@@ -244,7 +253,7 @@ public sealed partial class MainWindow : Window
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
         var contiguous = 0;
         while (contiguous < 3 && completed[contiguous]) contiguous++;
         ProgressLine.Height = contiguous * 52;
@@ -270,13 +279,13 @@ public sealed partial class MainWindow : Window
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty)) return;
+        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty)) return;
         args.Cancel = true;
         if (_busy || _dialogOpen) return;
         var result = await ShowDialogAsync(new ContentDialog
         {
             Title = "Discard unsaved choices?",
-            Content = Body("Your saved sharing choices and default mail search period will stay unchanged."),
+            Content = Body("Your saved sharing choices, default mail search period and read limits will stay unchanged."),
             PrimaryButtonText = "Discard and close",
             CloseButtonText = "Keep editing",
             DefaultButton = ContentDialogButton.Close
@@ -291,6 +300,7 @@ public sealed partial class MainWindow : Window
     private async Task RefreshAccountsAsync(CancellationToken cancellationToken)
     {
         await LoadMailSearchPreferencesAsync(cancellationToken);
+        await LoadReadGuardrailsAsync(cancellationToken);
         var accounts = await _application.ListAccountsAsync(cancellationToken);
         var providers = await _application.ListProviderSetupAsync(cancellationToken);
         var settings = await _application.ListAccountSharingAsync(cancellationToken);

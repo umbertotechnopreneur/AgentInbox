@@ -1,6 +1,6 @@
 # Read guardrails
 
-**September 12 source increment: not built, tested or installed.** Installed MSIX `0.1.1.20` predates these controls. See [validation](VALIDATION.md).
+**September 12–13 source increments: not built, tested or installed.** Installed MSIX `0.1.1.20` predates these controls and the budget editor. See [validation](VALIDATION.md).
 
 MailMeUp bounds provider work and the content returned through MCP. These local limits do not measure the provider's remaining quota or the AI model's tokens.
 
@@ -28,7 +28,7 @@ Content admission happens before application searches, calendar discovery or det
 
 The MCP adapter measures a compact UTF-8 JSON result envelope containing both `structuredContent` and the compatibility `content[].text` copy, including JSON escaping and result fields. This is a conservative local serialization measurement, not a wire-traffic metric: JSON-RPC framing and client-added context are excluded. It makes no assumption about whether an assistant feeds one or both representations into a model.
 
-A response exceeding the single-response or remaining cumulative limit is replaced by a fixed `read_budget_exceeded` notification; oversized content is not delivered. Status and empty results do not consume cumulative output. Fixed recovery notifications remain available after exhaustion. Provider work may already have happened before output size is known, and concurrent admitted calls can finish provider work before their output is rejected.
+A response exceeding the single-response or remaining cumulative limit is replaced by a fixed `read_budget_exceeded` notification; oversized content is not delivered. Status and empty results do not consume cumulative output. Local status is also exempt from the single-response limit so the owner can inspect controls after exhaustion or with a very small content cap. Fixed recovery notifications remain available after exhaustion. Provider work may already have happened before output size is known, and concurrent admitted calls can finish provider work before their output is rejected.
 
 The caller should stop bulk reads, disclose incomplete coverage and wait for the rolling window or narrow the request. A smaller response may fit the remaining output budget; reconnecting cannot reset a local budget. Local provider-attempt exhaustion can return partial mail results and a resumable cursor preserving buffered matches and the failed page position. Retry after the window resets. Other provider failures retain fresh-search recovery. Coverage never means that all pages or bodies were examined.
 
@@ -42,7 +42,21 @@ Message and event details have separate in-memory caches lasting up to two minut
 
 Microsoft exclusion-folder IDs have a separate five-minute, 128-entry cache keyed by application and account. Expired or failed refreshes do not serve stale exclusions. Gmail previews request MIME structure through `format=full` with a field projection omitting body data, fixing ordinary attachment filtering. Excessive MIME nesting and separately stored text bodies return incomplete-read errors rather than false empty content. Binary and named text attachments are not decoded as message text.
 
-## Local configuration
+## Windows controls and usage
+
+The source adds a read-limits and usage section on **Sharing**, alongside the existing mail-search period. It shows aggregate HTTP attempts in the last minute, content and detail admissions in the active read window, and serialized output in KiB. Usage includes MailMeUp processes sharing this profile. Refresh reads only the local ledger; it makes no provider request and consumes no admission or output budget. The timestamp identifies the snapshot rather than implying continuously updated measurements.
+
+The editor has explicit Save, Discard and default-value actions. Loading defaults changes only the draft. Increasing limits allows more traffic and more assistant context. Output values use KiB (1,024 bytes), not estimated model tokens. Validation preserves the relationship between detail and total reads, and between per-response and cumulative output caps. Unsaved limits are protected when navigating away or closing the window.
+
+Saved settings and the running process's active settings are separate. After saving changed limits, restart MailMeUp and reconnect the assistant so all CLI/MCP/desktop processes load the same configuration. Saving does not reset usage counters or cooldowns and does not automatically terminate processes. A save based on stale settings is rejected; refresh and explicitly discard or reapply the draft instead of overwriting another window's changes.
+
+Usage times identify the earliest recorded charge that expires, not a simultaneous reset of every rolling counter or a promise that a read will then succeed. Active provider cooldowns are reported separately. Another process, another budget or a provider response can still delay the next read. Counts and expiry times use this process's active limits; they may differ from another process awaiting restart with different settings.
+
+`get_status` exposes `read_guardrail_usage` and `read_guardrail_settings_pending_restart` alongside `read_guardrails`. Unavailable management is represented as `null`, not invented zero usage. Only aggregate counters and timestamps are returned; no account identities, hashed scopes, file paths or content enter the usage snapshot. Settings writes remain local UI operations and are not exposed as MCP tools.
+
+The isolated UI demo uses illustrative counters and in-memory limit settings. The preview label identifies this data as synthetic; it never reads the production ledger or changes its settings.
+
+## Local configuration file
 
 Optional `read-guardrails.json` belongs directly under the runtime data directory selected by `MAILMEUP_DATA_DIR` or the normal application profile. MCP cannot change it. Complete defaults:
 
@@ -61,10 +75,10 @@ Optional `read-guardrails.json` belongs directly under the runtime data director
 }
 ```
 
-Omitted properties use defaults. Unknown, duplicate, malformed or out-of-range settings fail closed. Restart all CLI/MCP/desktop processes using the profile after a change; mixed running configurations can apply different thresholds to the shared ledger. Raising thresholds permits more provider traffic and more assistant context. These controls do not yet have a Windows editor; the existing 14-day search default remains configurable on the Sharing screen.
+Omitted properties use defaults. Unknown, duplicate, malformed or out-of-range settings fail closed. Restart all CLI/MCP/desktop processes using the profile after a change; mixed running configurations can apply different thresholds to the shared ledger. The Windows editor persists this same file atomically. The existing 14-day search default remains separate and applies to new undated searches without a restart.
 
 Usage state under `read-guardrails/` contains timestamps, byte counts and hashed account/service keys, never message content or tokens. File leases coordinate processes, ledger replacement is atomic, and corrupt state blocks new reads. Restarting a process does not reset the rolling budgets. Constructing services or querying an empty profile creates no usage state. Local filesystem changes can reset a profile, so these are operational controls, not protection against a hostile local user.
 
 ## Next iteration
 
-Exercise the new synthetic regressions and published executable when requested. Remaining work includes a Windows budget editor and usage presentation, OAuth refresh failure backoff, provider/project quota-unit accounting, more explicit Graph search completeness and ordering, and client-specific token metering. Live quota and multi-process behavior still need dedicated validation; this increment makes no new live-provider claim.
+Exercise the new synthetic regressions, native editor interactions and published executable when requested. Remaining work includes OAuth refresh failure backoff, provider/project quota-unit accounting, more explicit Graph search completeness and ordering, and client-specific token metering. Live quota and multi-process behavior still need dedicated validation; these increments make no new live-provider claim.

@@ -2,7 +2,9 @@
 
 The wizard follows the [approved concepts](design/wizard-2026-09-06/README.md). The earlier `0.1.1.10` package passed its Release build, 113 shared .NET tests, installed CLI/MCP smoke and a synthetic native-window startup check. Subsequent package records and current limits are in [validation](VALIDATION.md).
 
-The current source adds CLI screen selection, an isolated UI preview and further layout refinements. Windows x64 desktop/CLI publication, 291 synthetic .NET tests and published CLI/MCP smoke passed on September 12, 2026. Native rendering and interaction remain untested. These changes are included in the locally installed Windows x64 MSIX `0.1.1.20`; its signature is valid and Windows reports package status `Ok`.
+The September 12 UI increment adds CLI screen selection, an isolated UI preview and further layout refinements. Windows x64 desktop/CLI publication, 291 synthetic .NET tests and published CLI/MCP smoke passed on September 12, 2026. Native rendering and interaction remain untested. These changes are included in the locally installed Windows x64 MSIX `0.1.1.20`; its signature is valid and Windows reports package status `Ok`.
+
+The September 13 source additionally provides local read-budget controls and usage on Sharing. This increment has not been built, tested or installed.
 
 ## Open screens from the CLI
 
@@ -48,6 +50,12 @@ Each connected-account row also exposes **Reconnect** and **Remove** actions. Re
 Calendar discovery occurs only after choosing individual calendars. The picker filters and pages names in memory, retains saved IDs absent from discovery, and only returns a draft selection. An empty discovery cannot silently replace saved choices. Saving the account applies that draft; OAuth grants and provider data remain unchanged.
 
 Privacy/terms, sharing explanations, provider registration and manual Codex commands open dedicated dialogs. Essential AI-service disclosure remains on Welcome. The Codex page exposes individual command, CLI, marketplace, plugin and direct MCP findings inside expandable connection details. It distinguishes an added marketplace, installed configuration and tools loaded by a running session. Blocked installation offers state-specific guidance. Each attempt clears stale results; safe results can be copied without raw command output, credentials or account identities. Manual commands remain a fallback; no CLI prompt is executed. Plugin preparation and installation require explicit UI actions and are disabled in demo mode. Native visual validation remains pending.
+
+## Read limits and usage
+
+Sharing includes an expandable budget editor and aggregate local usage for provider attempts, content/detail admissions and serialized assistant output. A manual refresh reads only local counters and displays a snapshot time. Progress reflects the active process's limits; cooldown and charge-expiry times are not presented as a guaranteed full reset. Output uses KiB, with an explicit distinction from model tokens.
+
+Save persists validated settings through `IMailMeUpApplication`; Discard restores the saved values, and defaults only populate a draft. Drafts survive refresh failures and are protected during navigation and closing. A concurrent settings edit rejects a stale save. Saved changes require restarting MailMeUp and reconnecting the assistant; the UI distinguishes saved values from active limits and does not reset counters or stop processes. Demo settings and illustrative usage remain in memory. See [guardrail details](READ_GUARDRAILS.md).
 
 ## Desktop instance lifetime
 

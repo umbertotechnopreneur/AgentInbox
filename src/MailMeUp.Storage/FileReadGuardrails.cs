@@ -5,27 +5,87 @@ using MailMeUp.Core;
 namespace MailMeUp.Storage;
 
 /// <summary>Shares non-secret read counters and provider pauses across processes in one local profile.</summary>
-public sealed class FileReadGuardrails : ReadGuardrails
+public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagement
 {
     private const int MaximumStateBytes = 8 * 1024 * 1024;
+    private const int MaximumSettingsBytes = 16 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         MaxDepth = 12
     };
+    private readonly string _dataDirectory;
     private readonly string _directory;
     private readonly string _statePath;
+    private readonly string _settingsPath;
 
-    /// <summary>Reads optional bounded settings without creating directories or usage state.</summary>
-    public FileReadGuardrails(string dataDirectory) : base(ReadLimits(dataDirectory))
+    /// <summary>Reads optional bounded settings without creating state, with optional deterministic clock seams.</summary>
+    public FileReadGuardrails(string dataDirectory, Func<DateTimeOffset>? utcNow = null,
+        Func<TimeSpan, CancellationToken, Task>? delay = null) : base(ReadLimits(dataDirectory), utcNow, delay)
     {
         try
         {
-            _directory = Path.Combine(Path.GetFullPath(dataDirectory), "read-guardrails");
+            _dataDirectory = Path.GetFullPath(dataDirectory);
+            _directory = Path.Combine(_dataDirectory, "read-guardrails");
             _statePath = Path.Combine(_directory, "ledger.json");
+            _settingsPath = Path.Combine(_dataDirectory, "read-guardrails.json");
         }
         catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            throw InvalidState();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ReadGuardrailStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var savedLimits = ReadLimits(_dataDirectory);
+            var state = await ReadStateAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ReadGuardrailStatus(Limits, savedLimits, CaptureUsage(state));
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            throw InvalidState();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ReadGuardrailStatus> SaveLimitsAsync(ReadGuardrailLimits limits, ReadGuardrailLimits expectedLimits,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(expectedLimits);
+        limits.Validate();
+        expectedLimits.Validate();
+        cancellationToken.ThrowIfCancellationRequested();
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        wait.CancelAfter(TimeSpan.FromSeconds(Limits.LeaseWaitSeconds));
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            await using var settingsLease = await OpenExclusiveAsync(Path.Combine(_directory, "settings.lock"), wait.Token);
+            var savedLimits = ReadLimits(_dataDirectory);
+            if (savedLimits != expectedLimits)
+                throw new InvalidOperationException("The saved read limits changed. Reload them before saving again.");
+            // A damaged ledger must not be hidden by changing settings or resetting usage.
+            var state = await ReadStateAsync(wait.Token);
+            var status = new ReadGuardrailStatus(Limits, limits, CaptureUsage(state));
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(limits, JsonOptions);
+            if (bytes.Length > MaximumSettingsBytes) throw InvalidState();
+            await WriteAtomicAsync(_dataDirectory, _settingsPath, bytes, wait.Token);
+            // The atomic rename commits the save. Do not report a later read or cancellation as a failed save.
+            return status;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw Exhausted();
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
             throw InvalidState();
         }
@@ -37,8 +97,8 @@ public sealed class FileReadGuardrails : ReadGuardrails
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
             var path = Path.Combine(Path.GetFullPath(dataDirectory), "read-guardrails.json");
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            if (stream.Length > 16 * 1024) throw InvalidState();
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            if (stream.Length > MaximumSettingsBytes) throw InvalidState();
             using var document = JsonDocument.Parse(stream, new JsonDocumentOptions { MaxDepth = 4 });
             RequireObject(document.RootElement);
             var limits = document.RootElement.Deserialize<ReadGuardrailLimits>(JsonOptions) ?? throw InvalidState();
@@ -98,10 +158,11 @@ public sealed class FileReadGuardrails : ReadGuardrails
         FileStream stream;
         try
         {
-            stream = new FileStream(_statePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            stream = new FileStream(_statePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
                 4096, FileOptions.Asynchronous);
         }
         catch (FileNotFoundException) { return new(); }
+        catch (DirectoryNotFoundException) { return new(); }
         await using var ownedStream = stream;
         if (stream.Length > MaximumStateBytes) throw InvalidState();
         using var document = await JsonDocument.ParseAsync(stream, new JsonDocumentOptions { MaxDepth = 12 }, cancellationToken);
@@ -132,7 +193,12 @@ public sealed class FileReadGuardrails : ReadGuardrails
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
         if (bytes.Length > MaximumStateBytes) throw Exhausted();
-        var temporary = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".tmp");
+        await WriteAtomicAsync(_directory, _statePath, bytes, cancellationToken);
+    }
+
+    private static async Task WriteAtomicAsync(string directory, string targetPath, byte[] bytes, CancellationToken cancellationToken)
+    {
+        var temporary = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
@@ -142,7 +208,7 @@ public sealed class FileReadGuardrails : ReadGuardrails
                 await stream.FlushAsync(cancellationToken);
             }
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, _statePath, overwrite: true);
+            File.Move(temporary, targetPath, overwrite: true);
         }
         finally
         {

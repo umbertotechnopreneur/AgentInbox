@@ -4,6 +4,8 @@ MailMeUp is a local, read-only MCP program. The current tested target is Windows
 
 ## Preview the Windows setup screens
 
+The September 13 source adds read limits and local usage to Sharing, with explicit Save/Discard and restart guidance. These controls are not included in the installed `0.1.1.20` preview described below. See [read guardrails](READ_GUARDRAILS.md).
+
 The locally installed Windows x64 `0.1.1.20` preview provides commands to list and open each setup screen. Build and synthetic checks passed; native interaction checks remain pending.
 
 ```powershell

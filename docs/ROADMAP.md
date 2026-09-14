@@ -15,6 +15,8 @@ For the practical steps and completion checks, see the [MVP delivery plan](MVP_P
 
 Each step needs working tests before it is advertised as available.
 
+The September 13 source adds Windows read-limit editing, aggregate local usage, safe concurrent saves and explicit restart guidance, with isolated demo behavior and read-only MCP status fields. It is not built, tested or installed. See [read guardrails](READ_GUARDRAILS.md).
+
 The subsequent September 12 source increment adds shared provider and MCP output guardrails, bounded read caches and adaptive mail hydration. It has not been built, tested or installed. Local configuration and the remaining UI/token-accounting work are described in [read guardrails](READ_GUARDRAILS.md).
 
 The September 12 increment adds CLI screen navigation, an isolated UI demo and setup-layout refinements. Windows x64 MSIX `0.1.1.20` is built, signed and locally installed. The preceding local preview passed 291 synthetic tests and CLI/MCP smoke; native UI interaction remains pending.

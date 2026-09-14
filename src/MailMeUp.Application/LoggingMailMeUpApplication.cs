@@ -42,6 +42,15 @@ public sealed class LoggingMailMeUpApplication(
         RunAsync("save_mail_search_preferences", () => application.SaveMailSearchPreferencesAsync(preferences, cancellationToken), cancellationToken);
 
     /// <inheritdoc />
+    public Task<ReadGuardrailStatus?> GetReadGuardrailStatusAsync(CancellationToken cancellationToken = default) =>
+        RunAsync("get_read_guardrail_status", () => application.GetReadGuardrailStatusAsync(cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ReadGuardrailStatus> SaveReadGuardrailLimitsAsync(
+        ReadGuardrailLimits limits, ReadGuardrailLimits expectedLimits, CancellationToken cancellationToken = default) =>
+        RunAsync("save_read_guardrail_limits", () => application.SaveReadGuardrailLimitsAsync(limits, expectedLimits, cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<ProviderCalendar>> ListAvailableCalendarsAsync(string accountId, CancellationToken cancellationToken = default) =>
         RunAsync("discover_calendars_for_setup", () => application.ListAvailableCalendarsAsync(accountId, cancellationToken), cancellationToken);
 

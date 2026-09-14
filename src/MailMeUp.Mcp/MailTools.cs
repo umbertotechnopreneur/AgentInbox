@@ -18,12 +18,13 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
 
     /// <summary>Reports readiness without disclosing local paths or credentials.</summary>
     [McpServerTool(Name = "get_status", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Report MailMeUp readiness, provider capabilities, the default mail-search period and enforced local read_guardrails. Output budgets count serialized bytes, not model tokens.")]
+    [Description("Report MailMeUp readiness, provider capabilities, the default mail-search period, enforced local read_guardrails and aggregate local read_guardrail_usage when available. No mailbox request is made. Usage is a snapshot for this local profile, not the provider's quota or model tokens. A pending settings change requires restarting MailMeUp and reconnecting the assistant.")]
     public Task<CallToolResult> GetStatusAsync(CancellationToken cancellationToken = default) =>
         ReadAsync(async () =>
         {
             var status = application.GetStatus();
             var preferences = await application.GetMailSearchPreferencesAsync(cancellationToken);
+            var guardrails = await application.GetReadGuardrailStatusAsync(cancellationToken);
             return new
             {
                 status.Stage,
@@ -32,9 +33,11 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 status.CanConnectAccounts,
                 status.Providers,
                 MailSearchPreferences = preferences,
-                ReadGuardrails = _readBudget.Limits
+                ReadGuardrails = _readBudget.Limits,
+                ReadGuardrailUsage = guardrails?.Usage,
+                ReadGuardrailSettingsPendingRestart = guardrails?.RequiresRestart
             };
-        }, cancellationToken);
+        }, cancellationToken, enforceOutputBudget: false);
 
     /// <summary>Lists shared account metadata without reading message contents.</summary>
     [McpServerTool(Name = "list_accounts", ReadOnly = true, Destructive = false, OpenWorld = false)]
@@ -176,7 +179,8 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 new EventReadRequest(reference, maxDescriptionCharacters),
                 cancellationToken),
             cancellationToken);
-    private async Task<CallToolResult> ReadAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
+    private async Task<CallToolResult> ReadAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken,
+        bool enforceOutputBudget = true)
     {
         try
         {
@@ -224,9 +228,10 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = content.GetRawText() })
             };
             var encodedBytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions).Length;
-            if (encodedBytes > _readBudget.Limits.ResponseBytes)
+            // Local status remains readable even when the owner selected a very small content limit.
+            if (enforceOutputBudget && encodedBytes > _readBudget.Limits.ResponseBytes)
                 throw new ProviderReadException("The serialized response exceeds the local output limit.", ReadFailureKind.BudgetExceeded);
-            if (ContainsReadContent(payload))
+            if (enforceOutputBudget && ContainsReadContent(payload))
                 await _readBudget.ChargeOutputAsync(encodedBytes, cancellationToken);
             return CreateToolResult(payload, allFailed);
         }

@@ -1,5 +1,11 @@
 # Validation
 
+## Read-limit editor and local usage — source increment
+
+**2026-09-13 — not built, tested or installed.** The Windows Sharing source adds read-budget settings, aggregate usage, manual local refresh, protected drafts and restart guidance. Core/Storage expose validated settings management with an expected-settings comparison and atomic save, plus read-only ledger snapshots. Application/decorator/DI wiring, isolated demo state and MCP status fields are included. Status remains available with an exhausted or small content budget; usage never claims model-token measurement.
+
+Synthetic regression sources cover local status without first-run writes, rolling counts/expiry times, saved versus active settings, concurrent save conflicts, preservation of the usage ledger, invalid/cancelled operations, application delegation, demo isolation and MCP privacy/budget behavior. These cases have not been compiled or executed. No tests, builds, formatting, provider reads, UI launch/control, installation, push or CI dispatch were performed. Installed `0.1.1.20` and earlier 291-test evidence do not contain or validate this increment. Native editor behavior and separate-process restart scenarios remain to be exercised when requested.
+
 ## Provider and output guardrails — source increment
 
 **2026-09-12 — not built, tested or installed.** Shared profile attempt/read/output ledgers, provider leases and cooldowns, Microsoft 429 retries, adaptive mail hydration, detail/folder caches, smaller default details and Gmail MIME fixes are implemented in source. Synthetic regression sources cover admission/output caps, profile coordination and corruption, retry/cooldown behavior, cache reuse/cancellation/sharing, attachment parsing and resumable search budgets. They have not been compiled or executed.

@@ -42,6 +42,8 @@ Global mail search preferences are local non-secret settings shared by the UI, C
 
 The new source [read guardrails](READ_GUARDRAILS.md) put provider attempts and cooldowns behind Core contracts with a Storage file-lease/ledger implementation shared by CLI, MCP and desktop. Application code admits content reads and caches bounded details; MCP accounts for serialized output immediately before delivery. Mail refills load small account pages adaptively, and local budget pauses preserve a resumable mail cursor. This increment is not yet validated or installed.
 
+Guardrail management also crosses the application facade: local UI saves use an expected-settings comparison and atomic file replacement; local usage snapshots read existing state without creating files or consuming budgets. Each process retains its startup limits until restart. MCP exposes only aggregate usage and pending-restart status, with no settings-write capability. The demo provides a separate in-memory management implementation.
+
 - Current provider scope is read-only. No write tools are registered or planned for this milestone.
 - Mail searches exclude Spam/Junk and Trash/Deleted Items by default; provider adapters enforce the exclusion before returning results.
 - MCP stdout contains protocol messages only; diagnostics go to stderr.
