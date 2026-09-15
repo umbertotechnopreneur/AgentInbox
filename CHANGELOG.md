@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Clear the repository `artifacts/` directory before packaging or validation builds, with a shared cleanup script that refuses links and junctions. Document the same cleanup step for manual builds. Execution checks have not been run.
+
+- Redesign all four Windows setup screens with a compact sidebar, fixed page headings, fewer cards and a shared Help menu. Welcome uses one introduction; Accounts adds providers through a centered dialog; Sharing shows saved account summaries and opens a focused editor; Codex presents one primary action with detailed diagnostics in a dialog. Separate Search, Usage and Limits into settings tabs, preserve save/discard and sequential calendar selection, and keep native scrolling/input and responsive spacing. Source changes only; not built, tested or installed.
+
 - Add source-only Inbox scoping for mail search. MCP unread search now defaults to Inbox, unread state and the applied date range, with an explicit opt-out for broader searches. Gmail filters by `INBOX` before preview retrieval; Microsoft uses the Inbox collection. Return `inbox_only` and bind continuations to the selected scope. All Inbox categories and senders remain eligible. This increment is not built, tested or installed.
 
 - Add source-only Windows Sharing controls for read limits and aggregate usage, with draft validation, Save/Discard/defaults, stale-save protection and separate saved/active settings. Refresh reads local counters without provider traffic; changing settings preserves usage and requires restarting participating processes. Extend the isolated demo and MCP status with synthetic/local usage respectively. Regression sources are added but not run; this increment is not built or installed.

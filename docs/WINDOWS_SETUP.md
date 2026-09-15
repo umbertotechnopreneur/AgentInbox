@@ -6,22 +6,24 @@ The Windows app walks you through connecting accounts, choosing what to share an
 
 The newer read-limit code hasn't been built, tested or installed. Installation on a clean machine, sign-in through the Windows app and the guided Codex setup also need checks. See the [test record](VALIDATION.md) for earlier versions and exact results.
 
+The September 15 source redesigns all four screens with fixed headings and a smaller sidebar. **Add account** and account sharing open centered dialogs; the Sharing list summarizes each account's saved choices. **Search and read settings** has Search, Usage and Limits tabs, and Codex keeps diagnostics behind **Connection details**. Scrollbars hide outside the active window, with keyboard, touch and high-contrast support. These source changes have not been built, tested or installed.
+
 ## Setup
 
 Open MailMeUp and follow the four screens. The app is designed to bring the existing setup window forward if you launch it again; that behavior still needs a desktop check.
 
 1. **Welcome:** read how MailMeUp accesses your accounts and what may reach your assistant's AI service. Sign-in tokens stay protected on your device.
-2. **Connect accounts:** choose Google or Microsoft and sign in through your browser. Repeat for more accounts. For now, you'll need [your own app registration](APP_REGISTRATION.md): import Google's Desktop client JSON file or enter Microsoft's Application (client) ID.
-3. **Choose what to share:** turn on each account you want your assistant to use, then choose mail, calendars or both. You can share all calendars or load their names and pick individual ones. Save each account's choices. New accounts start with sharing off; reconnecting keeps your saved choices.
+2. **Connect accounts:** in the newer source, choose **Add account**, then Google or Microsoft and sign in through your browser. Repeat for more accounts. For now, you'll need [your own app registration](APP_REGISTRATION.md): import Google's Desktop client JSON file or enter Microsoft's Application (client) ID.
+3. **Choose what to share:** in the newer source, select an account row to open its sharing dialog. Turn on sharing, then choose mail, calendars or both. You can share all calendars or load their names and pick individual ones. Save each account's choices. New accounts start with sharing off; reconnecting keeps your saved choices.
 4. **Connect to Codex:** check the setup status and install the included local plugin. If automatic setup isn't available, the page gives you manual steps. If you've already added MailMeUp directly to Codex, choose whether to keep that connection or switch to the plugin. See [Codex setup](CODEX_SETUP.md).
 
-On **Accounts**, use **Check read access** to try sample searches and detail reads for mail and calendars. A **Try to reconnect** action appears when a read failure calls for it. A lack of sample messages or appointments isn't treated as a broken connection. Longer explanations go to the local [diagnostic log](LOGGING.md). The account menu also offers Reconnect and Remove from device.
+On **Accounts**, use **Check access** (**Check read access** in earlier packages) to try sample searches and detail reads for mail and calendars. A **Try to reconnect** action appears when a read failure calls for it. A lack of sample messages or appointments isn't treated as a broken connection. Longer explanations go to the local [diagnostic log](LOGGING.md). The account menu also offers Reconnect and Remove from device.
 
-Under **Sharing → Default mail search period**, choose how far back undated mail searches should go: 1–365 days, starting at 14. Longer periods take more time and may reach Google's or Microsoft's request limits. Dates in your request take priority. Choose Save or Discard when you're done; the app asks about unsaved edits if you leave. This setting was added in `0.1.1.19`, and its desktop interactions still need checking.
+In the newer source, open **Sharing → Search and read settings → Search** to choose how far back undated searches should go: 1–365 days, starting at 14. Earlier packages show the period directly on Sharing. Longer periods take more time and may reach Google's or Microsoft's request limits. Dates in your request take priority. Save or discard edits before closing settings. The setting was added in `0.1.1.19`; the new dialog and its interactions still need checking.
 
 Closing the setup window leaves Codex's MailMeUp connection running. Sharing changes apply to later reads, including requests to open earlier results. They can't take back information already returned in a conversation. If you didn't allow mail or calendar access when signing in, reconnect with that option selected before sharing it here.
 
-The app is in English. **Privacy & terms** gives you links to the MailMeUp, Google and Microsoft policies. **About & Support** shows your installed version and links to the project, its creator and GitHub issues. You can copy a short version/platform summary for a support request. Opening that dialog doesn't launch a browser or send information.
+The app is in English. The newer sidebar groups information under **Help & about**. **Privacy & terms** gives you links to the MailMeUp, Google and Microsoft policies. **About & Support** shows your installed version and links to the project, its creator and GitHub issues. You can copy a short version/platform summary for a support request. Opening that dialog doesn't launch a browser or send information.
 
 ## Keep Codex connected after updates
 

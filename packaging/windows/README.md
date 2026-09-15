@@ -10,7 +10,7 @@ pwsh -NoProfile -File scripts/package-msix.ps1
 
 The script publishes self-contained .NET and Windows App SDK payloads, creates package logos from the existing artwork, copies dependency notices and calls MakeAppx. It does not run tests or launch MailMeUp. Restore creates or updates dedicated graphs under `eng/locks/msix/win-<architecture>/`, preserving the normal cross-platform and portable package lock files. Review the MSIX graph changes before committing. Windows x64 is the default; pass `-Architecture arm64` for an ARM64 package. ARM64 runtime support remains untested.
 
-Output goes into `artifacts/msix/mailmeup-<version>-win-<architecture>/`. Existing output is preserved. The default file ends in `.unsigned.msix` and cannot be installed normally. The script does not create certificates, change trust stores, install packages, contact accounts, register plugins, or publish releases.
+Output goes into `artifacts/msix/mailmeup-<version>-win-<architecture>/`. Before building, the script clears the entire repository `artifacts/` directory, including previous packages and logs. Copy anything you want to retain elsewhere first, and do not run builds concurrently in the same checkout. The default file ends in `.unsigned.msix` and cannot be installed normally. The script does not create certificates, change trust stores, install packages, contact accounts, register plugins, or publish releases.
 
 To sign during an explicitly authorized package build, supply an existing code-signing certificate in `CurrentUser\My`, its exact subject as `Publisher`, and an RFC 3161 timestamp service:
 

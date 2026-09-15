@@ -37,8 +37,7 @@ public sealed partial class MainWindow : Window
     private bool _sharingReviewed;
     private bool _sharingDirty;
     private int _step;
-    private bool _narrowSharing;
-    private bool _showSharingList;
+    private bool _stackAccountActions;
     private bool _highContrastSubscribed;
     private bool IsDemo => _application is DemoMailMeUpApplication;
 
@@ -49,7 +48,9 @@ public sealed partial class MainWindow : Window
         _codex = codex;
         _logger = logger;
         InitializeComponent();
+        InitializePageScrolling();
         InitializeReadGuardrails();
+        SettingsContent.SizeChanged += (_, _) => UpdateSettingsLayout();
         DemoBanner.IsOpen = IsDemo;
         if (IsDemo) Title = "MailMeUp — UI preview";
         MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
@@ -86,6 +87,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Closing += AppWindow_Closing;
         Closed += (_, _) =>
         {
+            StopObservingDisplayRoot();
             if (_highContrastSubscribed)
                 _accessibility.HighContrastChanged -= Accessibility_HighContrastChanged;
             _lifetime.Cancel();
@@ -108,6 +110,11 @@ public sealed partial class MainWindow : Window
 
     private void UpdateTitleBar()
     {
+        var scale = Root.XamlRoot?.RasterizationScale
+            ?? GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;
+        if (scale <= 0) scale = 1;
+        AppTitleBar.Padding = new Thickness(20 + AppWindow.TitleBar.LeftInset / scale, 0,
+            Math.Max(16, AppWindow.TitleBar.RightInset / scale + 12), 0);
         AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
         AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
         AppWindow.TitleBar.ButtonForegroundColor = _accessibility.HighContrast
@@ -127,6 +134,7 @@ public sealed partial class MainWindow : Window
 
     private async void Root_Loaded(object sender, RoutedEventArgs e)
     {
+        ObserveDisplayRoot();
         if (_loaded) return;
         _loaded = true;
         Steps.SelectedIndex = 0;
@@ -138,56 +146,65 @@ public sealed partial class MainWindow : Window
 
     private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_loaded) UpdateLayout();
+        if (_loaded && !_displayRefreshQueued) UpdateLayout();
     }
 
     private void UpdateLayout()
     {
-        var compact = Root.ActualWidth < 1000;
-        RailColumn.Width = new GridLength(compact ? 76 : 220);
-        RailLayout.Padding = new Thickness(compact ? 6 : 14, 16, compact ? 6 : 14, 16);
-        foreach (var label in new[] { RailTagline, WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, PrivacyLabel, AboutLabel, ReadOnlyLabel })
+        var compact = Root.ActualWidth < 900;
+        RailColumn.Width = new GridLength(compact ? 68 : 184);
+        RailLayout.Padding = new Thickness(compact ? 6 : 12, 28, compact ? 6 : 12, 20);
+        foreach (var label in new[] { RailCaption, WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, HelpLabel, ReadOnlyLabel })
             label.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        RailArtwork.Visibility = compact || Root.ActualHeight < 700 || _accessibility.HighContrast
-            ? Visibility.Collapsed : Visibility.Visible;
-        ContentLayout.Padding = new Thickness(compact ? 20 : 32, 16, compact ? 20 : 32, 20);
-        var availableWidth = Math.Max(0, Root.ActualWidth - RailColumn.Width.Value - ContentLayout.Padding.Left - ContentLayout.Padding.Right);
-        var showHero = availableWidth >= 730 && Root.ActualHeight >= 690 && !_accessibility.HighContrast;
-        WelcomeArtwork.Visibility = showHero ? Visibility.Visible : Visibility.Collapsed;
-        HeroColumn.Width = showHero ? new GridLength(0.9, GridUnitType.Star) : new GridLength(0);
-        WelcomeHero.MinHeight = showHero ? 300 : 250;
-        WelcomeHeading.FontSize = availableWidth < 500 ? 32 : 40;
-        RequestAccessLabel.Visibility = availableWidth < 440 ? Visibility.Collapsed : Visibility.Visible;
-        _narrowSharing = availableWidth < 750;
-        MailSearchPreferencesActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
-        UpdateReadGuardrailLayout(availableWidth);
+        ContentLayout.Padding = new Thickness(compact ? 24 : 40, 28, compact ? 24 : 40, 24);
+        var availableWidth = Math.Max(0, Math.Min(1080, Root.ActualWidth - RailColumn.Width.Value)
+            - ContentLayout.Padding.Left - ContentLayout.Padding.Right);
+        var showHero = availableWidth >= 690 && Root.ActualHeight >= 650 && !_accessibility.HighContrast;
+        WelcomeArtwork.Visibility = ToVisibility(showHero);
+        HeroColumn.Width = new GridLength(showHero ? 280 : 0);
+        WelcomeHero.MinHeight = showHero ? 250 : 220;
+        PageTitle.FontSize = _step == 0 ? (availableWidth < 500 ? 30 : 36) : (availableWidth < 500 ? 26 : 30);
+        UpdateSettingsLayout();
+        UpdateAddAccountLayout();
         CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
-        SharingSaveActions.Orientation = availableWidth is < 440 or (>= 750 and < 900) ? Orientation.Vertical : Orientation.Horizontal;
-        var stackActions = availableWidth < 540;
-        WelcomeSharingColumn.Width = WelcomeControlColumn.Width = stackActions ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        Grid.SetColumn(WelcomeSharingCard, stackActions ? 0 : 1);
-        Grid.SetRow(WelcomeSharingCard, stackActions ? 1 : 0);
-        Grid.SetColumn(WelcomeControlCard, stackActions ? 0 : 2);
-        Grid.SetRow(WelcomeControlCard, stackActions ? 2 : 0);
-        MicrosoftProviderColumn.Width = stackActions ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        Grid.SetColumn(MicrosoftButton, stackActions ? 0 : 1);
-        Grid.SetRow(MicrosoftButton, stackActions ? 1 : 0);
-        AccountCheckColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
-        Grid.SetColumn(CheckConnectionsButton, stackActions ? 0 : 1);
-        Grid.SetRow(CheckConnectionsButton, stackActions ? 1 : 0);
-        CheckConnectionsButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        CodexSecondaryActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
+        var stackActions = availableWidth < 520;
+        AccountsActionsColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
+        Grid.SetColumn(AccountsToolbarActions, stackActions ? 0 : 1);
+        Grid.SetRow(AccountsToolbarActions, stackActions ? 1 : 0);
+        AccountsToolbarActions.Orientation = availableWidth < 320 ? Orientation.Vertical : Orientation.Horizontal;
         CodexSharingActionColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
         Grid.SetColumn(ReviewSharingButton, stackActions ? 0 : 1);
         Grid.SetRow(ReviewSharingButton, stackActions ? 1 : 0);
         ReviewSharingButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         PreviewLabel.Visibility = ToVisibility(availableWidth >= 600);
+        if (_stackAccountActions != stackActions)
+        {
+            _stackAccountActions = stackActions;
+            RenderConnectedAccounts();
+        }
         UpdateSharingLayout();
-
+        UpdateActiveDialogLayout();
+        RefreshPageScrollChrome();
     }
 
     private void ShowStep(int step)
     {
         _step = step;
+        PageTitle.Text = step switch
+        {
+            0 => "All your inboxes.\nOne conversation.",
+            1 => "Your accounts",
+            2 => "What you share",
+            _ => "Connect to Codex"
+        };
+        PageSubtitle.Text = step switch
+        {
+            0 => "Bring your mail and calendars into Codex.",
+            1 => "Connect personal, work and client accounts.",
+            2 => "Choose what Codex can read from each account.",
+            _ => "Make your shared accounts available in your conversations."
+        };
         WelcomePage.Visibility = ToVisibility(step == 0);
         AccountsPage.Visibility = ToVisibility(step == 1);
         SharingPage.Visibility = ToVisibility(step == 2);
@@ -203,11 +220,12 @@ public sealed partial class MainWindow : Window
         };
         NextButton.Content = step switch
         {
-            0 => "Get started →", 1 => "Choose sharing →", 2 => "Connect to Codex →", _ => "Close setup"
+            0 => "Get started", 1 => "Choose sharing", 2 => "Connect to Codex", _ => "Done"
         };
         NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
             step == 3 ? "DefaultButtonStyle" : "AccentButtonStyle"];
         PageScroll.ChangeView(null, 0, null, true);
+        UpdateLayout();
         UpdateProgress();
     }
 
@@ -228,21 +246,17 @@ public sealed partial class MainWindow : Window
     {
         if (_sharingDirty)
         {
-            SetNotice("Unsaved sharing choices", "Save or discard this account's changes before continuing.", InfoBarSeverity.Warning);
+            if (_sharingDialog is null) _ = ShowSharingEditorAsync();
             return false;
         }
         if (_mailSearchPreferencesDirty)
         {
-            MailSearchPreferencesExpander.IsExpanded = true;
-            SetNotice("Unsaved search period", "Save or discard the default mail search period before continuing.", InfoBarSeverity.Warning);
-            MailSearchLookbackDaysBox.Focus(FocusState.Programmatic);
+            _ = ShowSharingSettingsAsync();
             return false;
         }
         if (_readGuardrailsDirty)
         {
-            ReadGuardrailEditorExpander.IsExpanded = true;
-            SetNotice("Unsaved read limits", "Save or discard your read limit changes before continuing.", InfoBarSeverity.Warning);
-            ReadGuardrailAccountAttemptsBox.Focus(FocusState.Programmatic);
+            _ = ShowSharingSettingsAsync();
             return false;
         }
         return true;
@@ -250,13 +264,15 @@ public sealed partial class MainWindow : Window
 
     private void UpdateProgress()
     {
+        UpdateSharingSettingsSummary();
+        if (_step == 2 && !IsDemo)
+            PreviewLabel.Text = _sharingDirty || _mailSearchPreferencesDirty || _readGuardrailsDirty
+                ? "You have unsaved changes"
+                : "You control what Codex can read";
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
         bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
-        var contiguous = 0;
-        while (contiguous < 3 && completed[contiguous]) contiguous++;
-        ProgressLine.Height = contiguous * 52;
         for (var index = 0; index < icons.Length; index++)
         {
             var active = index == _step;
@@ -328,6 +344,9 @@ public sealed partial class MainWindow : Window
     {
         AccountsCountText.Text = $"{_accounts.Count} {(_accounts.Count == 1 ? "account" : "accounts")}";
         CheckConnectionsButton.IsEnabled = _accounts.Count > 0 && !IsDemo;
+        CheckConnectionsButton.Visibility = ToVisibility(_accounts.Count > 0);
+        AddAccountButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
+            _accounts.Count == 0 ? "AccentButtonStyle" : "DefaultButtonStyle"];
         ConnectedAccounts.Children.Clear();
         foreach (var account in _accounts)
         {
@@ -339,7 +358,7 @@ public sealed partial class MainWindow : Window
                     "Try to reconnect", $"Try to reconnect {account.EmailAddress}",
                     "Try to reconnect", account, ReconnectAccountButton_Click);
                 reconnect.Foreground = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
-                Grid.SetColumn(reconnect, 2);
+                PlaceAccountNotice(reconnect);
                 row.Children.Add(reconnect);
             }
             else if (GetReadFailures(connection).Contains(ReadFailureKind.RateLimited))
@@ -348,7 +367,7 @@ public sealed partial class MainWindow : Window
                     "Read limit reached", $"Read limit reached for {account.EmailAddress}; show guidance",
                     "Wait before trying again. A shorter search period makes fewer requests.",
                     account, ReadRateLimitButton_Click);
-                Grid.SetColumn(limited, 2);
+                PlaceAccountNotice(limited);
                 row.Children.Add(limited);
             }
             else if (GetReadFailures(connection).Contains(ReadFailureKind.BudgetExceeded))
@@ -357,7 +376,7 @@ public sealed partial class MainWindow : Window
                     "Read budget reached", $"Read budget reached for {account.EmailAddress}; show guidance",
                     "The local request budget has been reached. Wait for its window to reset.",
                     account, ReadBudgetButton_Click);
-                Grid.SetColumn(limited, 2);
+                PlaceAccountNotice(limited);
                 row.Children.Add(limited);
             }
             var menu = new MenuFlyout();
@@ -382,21 +401,32 @@ public sealed partial class MainWindow : Window
             ConnectedAccounts.Children.Add(new Border
             {
                 Child = row, BorderThickness = new Thickness(0, 0, 0, 1),
-                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"), Padding = new Thickness(8, 8, 8, 8)
+                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"), Padding = new Thickness(0, 12, 0, 12)
             });
         }
         if (_accounts.Count == 0)
         {
-            var empty = new StackPanel { Spacing = 8, Margin = new Thickness(8, 16, 8, 16) };
-            empty.Children.Add(new TextBlock { Text = "Start with one account", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            empty.Children.Add(Body("Choose Google or Microsoft above. You can add more accounts later and choose sharing for each one."));
+            var empty = new StackPanel { Spacing = 12, Margin = new Thickness(0, 28, 0, 28) };
+            empty.Children.Add(new FontIcon { Glyph = "\uE715", FontSize = 36, HorizontalAlignment = HorizontalAlignment.Left, Foreground = ThemeBrush("TextFillColorSecondaryBrush") });
+            empty.Children.Add(new TextBlock { Text = "Start with one account", FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            empty.Children.Add(Body("Choose Add account to connect Google or Microsoft."));
             ConnectedAccounts.Children.Add(empty);
         }
     }
 
+    private void PlaceAccountNotice(FrameworkElement notice)
+    {
+        Grid.SetColumn(notice, _stackAccountActions ? 1 : 2);
+        Grid.SetRow(notice, _stackAccountActions ? 1 : 0);
+        Grid.SetColumnSpan(notice, _stackAccountActions ? 2 : 1);
+        notice.HorizontalAlignment = HorizontalAlignment.Left;
+    }
+
     private Grid AccountRow(Account account, bool includeStatus)
     {
-        var row = new Grid { ColumnSpacing = 12 };
+        var row = new Grid { ColumnSpacing = 14, RowSpacing = 6, MinHeight = 36 };
+        row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -526,8 +556,6 @@ public sealed partial class MainWindow : Window
         account.MailReadEnabled ? ReadFailureKind.Unknown : null, account.CalendarReadEnabled ? false : null,
         account.CalendarReadEnabled ? ReadFailureKind.Unknown : null);
 
-    private async void GoogleButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("google");
-    private async void MicrosoftButton_Click(object sender, RoutedEventArgs e) => await ConnectAsync("microsoft");
 
     private async void ReconnectAccountButton_Click(object sender, RoutedEventArgs e)
     {
@@ -669,10 +697,12 @@ public sealed partial class MainWindow : Window
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _operation = operation;
         operation.CancelAfter(timeout ?? TimeSpan.FromSeconds(60));
-        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = false;
+        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = false;
         ActivityText.Text = activity;
         Activity.Visibility = Visibility.Visible;
         Notice.IsOpen = false;
+        UpdateSettingsActivity(activity);
+        UpdateSharingActivity(activity);
         try
         {
             await action(operation.Token);
@@ -694,9 +724,11 @@ public sealed partial class MainWindow : Window
             _busy = false;
             if (!_lifetime.IsCancellationRequested)
             {
-                PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = true;
+                PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = true;
                 BackButton.IsEnabled = _step > 0;
                 Activity.Visibility = Visibility.Collapsed;
+                UpdateSettingsActivity(string.Empty);
+                UpdateSharingActivity(string.Empty);
                 ApplyPendingStep();
             }
         }
@@ -711,10 +743,13 @@ public sealed partial class MainWindow : Window
 
     private void SetNotice(string title, string message, InfoBarSeverity severity)
     {
-        Notice.Title = title;
-        Notice.Message = message;
-        Notice.Severity = severity;
-        Notice.IsOpen = true;
+        var notice = _settingsDialog is not null ? _settingsNotice
+            : _sharingDialog is not null ? _sharingNotice
+            : _addAccountDialog is not null ? _addAccountNotice : Notice;
+        notice.Title = title;
+        notice.Message = message;
+        notice.Severity = severity;
+        notice.IsOpen = true;
     }
 
     private static Visibility ToVisibility(bool value) => value ? Visibility.Visible : Visibility.Collapsed;

@@ -25,6 +25,7 @@ MailMeUp is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All re
 ## Validation and handoff
 
 - Use `rg` for searches and `pwsh -NoProfile` for PowerShell scripts.
+- Start every authorized build with an empty repository `artifacts/` directory. The packaging and validation scripts run `scripts/clean-artifacts.ps1` automatically; run it once before a manual build. Keep packages or logs that must survive another build outside `artifacts/`, and do not run builds concurrently in the same checkout.
 - Do not run tests, builds, formatters, linters, smoke tests, repository preflight or other verification on your own initiative.
 - Finish the requested work first, then explain which tests or checks would be useful. Run them only when the owner explicitly asks. In Italian, use wording such as: "Ci sarebbero i test da lanciare."
 - Do not dispatch CI or push changes merely to trigger verification without an explicit request. This working agreement does not itself change the existing GitHub Actions configuration.

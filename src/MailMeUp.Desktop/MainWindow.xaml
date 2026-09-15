@@ -6,109 +6,171 @@
     <Window.SystemBackdrop><DesktopAcrylicBackdrop /></Window.SystemBackdrop>
     <Grid x:Name="Root" Background="Transparent" SizeChanged="Root_SizeChanged">
         <Grid.RowDefinitions><RowDefinition Height="48" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-        <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="220" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Grid x:Name="AppTitleBar" Grid.ColumnSpan="2" Background="Transparent" Padding="24,0,144,0">
+        <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="184" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Grid x:Name="AppTitleBar" Grid.ColumnSpan="2" Background="Transparent" Padding="20,0,144,0">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <Image Source="Assets/Logo.png" Width="28" Height="28" AutomationProperties.AccessibilityView="Raw" />
-                <TextBlock Text="MailMeUp" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Image Source="Assets/Logo.png" Width="24" Height="24" AutomationProperties.AccessibilityView="Raw" />
+                <TextBlock Text="MailMeUp" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
         <Border Grid.Row="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
-            <Grid x:Name="RailLayout" Padding="14,16,14,16">
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                <TextBlock x:Name="RailTagline" Text="All your inboxes.&#x0a;One conversation." Style="{StaticResource BodyText}" Margin="12,0,0,24" />
-                <Grid Grid.Row="1">
-                    <Border Width="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" HorizontalAlignment="Left" Margin="25,26,0,26" IsHitTestVisible="False" />
-                    <Border x:Name="ProgressLine" Width="2" Height="0" Background="{ThemeResource WizardAccentBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="25,26,0,0" IsHitTestVisible="False" />
-                    <ListBox x:Name="Steps" SelectionChanged="Steps_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource WizardStep}" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Setup progress">
-                        <ListBoxItem ToolTipService.ToolTip="Welcome"><StackPanel Orientation="Horizontal" Spacing="14"><Border CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Width="24" Height="24"><FontIcon x:Name="WelcomeIcon" Glyph="&#xE80F;" FontSize="18" /></Border><TextBlock x:Name="WelcomeLabel" Text="Welcome" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
-                        <ListBoxItem ToolTipService.ToolTip="Accounts"><StackPanel Orientation="Horizontal" Spacing="14"><Border CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Width="24" Height="24"><FontIcon x:Name="AccountsIcon" Glyph="&#xE77B;" FontSize="18" /></Border><TextBlock x:Name="AccountsLabel" Text="Accounts" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
-                        <ListBoxItem ToolTipService.ToolTip="Sharing"><StackPanel Orientation="Horizontal" Spacing="14"><Border CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Width="24" Height="24"><FontIcon x:Name="SharingIcon" Glyph="&#xE716;" FontSize="18" /></Border><TextBlock x:Name="SharingLabel" Text="Sharing" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
-                        <ListBoxItem ToolTipService.ToolTip="Connect to Codex"><StackPanel Orientation="Horizontal" Spacing="14"><Border CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Width="24" Height="24"><FontIcon x:Name="CodexIcon" Glyph="&#xE943;" FontSize="18" /></Border><TextBlock x:Name="CodexLabel" Text="Connect to Codex" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
-                    </ListBox>
-                </Grid>
-                <Image x:Name="RailArtwork" Grid.Row="2" Source="Assets/WizardRail.png" Stretch="Uniform" MaxHeight="190" VerticalAlignment="Bottom" Margin="-8,16,-8,12" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
-                <StackPanel Grid.Row="3" Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0,0,6" ToolTipService.ToolTip="Read-only by design"><FontIcon Glyph="&#xEA18;" FontSize="18" /><TextBlock x:Name="ReadOnlyLabel" Text="Read-only by design" FontSize="12" VerticalAlignment="Center" /></StackPanel>
-                    <Button x:Name="PrivacyButton" Style="{StaticResource QuietButton}" Click="PrivacyButton_Click" AutomationProperties.Name="Privacy and terms" ToolTipService.ToolTip="Privacy &amp; terms"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE72E;" FontSize="16" /><TextBlock x:Name="PrivacyLabel" Text="Privacy &amp; terms" /></StackPanel></Button>
-                    <Button x:Name="AboutButton" Style="{StaticResource QuietButton}" Click="AboutButton_Click" AutomationProperties.Name="About and support" ToolTipService.ToolTip="About &amp; support"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE946;" FontSize="16" /><TextBlock x:Name="AboutLabel" Text="About &amp; support" /></StackPanel></Button>
+            <Grid x:Name="RailLayout" Padding="12,28,12,20">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <TextBlock x:Name="RailCaption" Text="SETUP" FontSize="11" CharacterSpacing="100" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="12,0,0,16" />
+                <ListBox x:Name="Steps" Grid.Row="1" VerticalAlignment="Top" SelectionChanged="Steps_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource WizardStep}" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Setup navigation">
+                    <ListBoxItem ToolTipService.ToolTip="Welcome"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="WelcomeIcon" Glyph="&#xE80F;" FontSize="18" /><TextBlock x:Name="WelcomeLabel" Text="Welcome" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
+                    <ListBoxItem ToolTipService.ToolTip="Accounts"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="AccountsIcon" Glyph="&#xE77B;" FontSize="18" /><TextBlock x:Name="AccountsLabel" Text="Accounts" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
+                    <ListBoxItem ToolTipService.ToolTip="Sharing"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="SharingIcon" Glyph="&#xE716;" FontSize="18" /><TextBlock x:Name="SharingLabel" Text="Sharing" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
+                    <ListBoxItem ToolTipService.ToolTip="Connect to Codex"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="CodexIcon" Glyph="&#xE943;" FontSize="18" /><TextBlock x:Name="CodexLabel" Text="Codex" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
+                </ListBox>
+                <StackPanel Grid.Row="2" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,0,0,0" ToolTipService.ToolTip="Read-only by design"><FontIcon Glyph="&#xEA18;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><TextBlock x:Name="ReadOnlyLabel" Text="Read-only by design" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" /></StackPanel>
+                    <Button x:Name="HelpButton" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Padding="12,8" AutomationProperties.Name="Help and information" ToolTipService.ToolTip="Help and information">
+                        <StackPanel Orientation="Horizontal" Spacing="12"><FontIcon Glyph="&#xE946;" FontSize="18" /><TextBlock x:Name="HelpLabel" Text="Help &amp; about" /></StackPanel>
+                        <Button.Flyout><MenuFlyout><MenuFlyoutItem Text="How sharing works" Click="SharingInfoButton_Click" />
+                            <MenuFlyoutSeparator />
+<MenuFlyoutItem x:Name="PrivacyButton" Text="Privacy &amp; terms" Click="PrivacyButton_Click" />
+                            <MenuFlyoutItem x:Name="AboutButton" Text="About &amp; support" Click="AboutButton_Click" />
+                        </MenuFlyout></Button.Flyout>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
-        <Grid x:Name="ContentLayout" Grid.Row="1" Grid.Column="1" Padding="32,16,32,20">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-            <InfoBar x:Name="DemoBanner" IsOpen="False" IsClosable="False" Severity="Informational" Title="UI preview" Message="Sample accounts only. Sign-in, provider reads and Codex changes are disabled; edits last for this preview session." Margin="0,0,0,16" />
-            <!-- Ordinary pages fit the viewport; scrolling remains an accessibility fallback. -->
-            <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="ContentLayout" Grid.Row="1" Grid.Column="1" Padding="40,28,40,24" MaxWidth="1080">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <InfoBar x:Name="DemoBanner" IsOpen="False" IsClosable="False" Severity="Informational" Title="UI preview" Message="Sample accounts. Changes last for this session." Margin="0,0,0,16" />
+            <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,28">
+                <TextBlock x:Name="PageTitle" Text="All your inboxes.&#x0a;One conversation." FontSize="36" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock x:Name="PageSubtitle" Text="Bring your mail and calendars into Codex." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <!-- The title and actions stay in place; only page content scrolls. -->
+            <ScrollViewer x:Name="PageScroll" Grid.Row="2" Margin="0,0,-20,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ContentControl x:Name="PageHost" IsTabStop="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                    <Grid x:Name="Pages" Margin="0,0,4,12">
-                        <StackPanel x:Name="WelcomePage" Spacing="22">
-                            <Grid x:Name="WelcomeHero" MinHeight="300">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="HeroColumn" Width="0.9*" /></Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Spacing="18">
-                                    <TextBlock Text="LET'S GET YOU SET UP" FontSize="12" CharacterSpacing="120" Foreground="{ThemeResource WizardAccentBrush}" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="WelcomeHeading" Text="Your inboxes.&#x0a;One conversation." FontSize="40" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Connect your mail and calendars to Codex. Choose the accounts and information you want to share." Style="{StaticResource BodyText}" MaxWidth="390" HorizontalAlignment="Left" />
-                                    <StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.Name="Google"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Google.svg" /></Image.Source></Image><Image Width="24" Height="24" AutomationProperties.Name="Microsoft"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Microsoft.svg" /></Image.Source></Image><TextBlock Text="Google &amp; Microsoft" VerticalAlignment="Center" FontSize="13" /></StackPanel>
+                    <Grid x:Name="Pages" Margin="0,0,20,24">
+                        <StackPanel x:Name="WelcomePage" Spacing="24">
+                            <Grid x:Name="WelcomeHero" ColumnSpacing="32" MinHeight="250">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="HeroColumn" Width="280" /></Grid.ColumnDefinitions>
+                                <StackPanel Spacing="24" VerticalAlignment="Center">
+                                    <StackPanel Spacing="20">
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE77B;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Connect your accounts" FontWeight="SemiBold" /><TextBlock Text="Google and Microsoft, together." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE716;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Choose what to share" FontWeight="SemiBold" /><TextBlock Text="Mail, calendars, or both." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE943;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Continue in Codex" FontWeight="SemiBold" /><TextBlock Text="Find messages and upcoming plans." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                    </StackPanel>
                                 </StackPanel>
-                                <Image x:Name="WelcomeArtwork" Grid.Column="1" Source="Assets/WizardHero.png" MaxHeight="300" Stretch="Uniform" Margin="8,0,-8,0" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+                                <Image x:Name="WelcomeArtwork" Grid.Column="1" Source="Assets/WizardHero.png" MaxHeight="280" Stretch="Uniform" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
                             </Grid>
-                            <Grid ColumnSpacing="16" RowSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="WelcomeSharingColumn" Width="*" /><ColumnDefinition x:Name="WelcomeControlColumn" Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <Border Style="{StaticResource SetupCard}" Padding="16"><StackPanel Spacing="8"><FontIcon Glyph="&#xE715;" FontSize="22" HorizontalAlignment="Left" Foreground="{ThemeResource WizardAccentBrush}" /><TextBlock Text="Find what matters" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Search mail and see upcoming appointments." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel></Border>
-                                <Border x:Name="WelcomeSharingCard" Grid.Column="1" Style="{StaticResource SetupCard}" Padding="16"><StackPanel Spacing="8"><FontIcon Glyph="&#xE716;" FontSize="22" HorizontalAlignment="Left" Foreground="{ThemeResource WizardAccentBrush}" /><TextBlock Text="Choose what to share" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Personal, work and client accounts, together." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel></Border>
-                                <Border x:Name="WelcomeControlCard" Grid.Column="2" Style="{StaticResource SetupCard}" Padding="16"><StackPanel Spacing="8"><FontIcon Glyph="&#xEA18;" FontSize="22" HorizontalAlignment="Left" Foreground="{ThemeResource WizardAccentBrush}" /><TextBlock Text="Keep control" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Read-only access. Nothing sent or changed." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel></Border>
-                            </Grid>
-                            <StackPanel Spacing="8"><Button Style="{StaticResource QuietButton}" Click="SharingInfoButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="How sharing works" /></StackPanel></Button><TextBlock Text="Requested content may reach your AI service. Sign-in tokens stay on this device." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel>
+                            <StackPanel Spacing="10" MaxWidth="620" HorizontalAlignment="Left">
+                                <TextBlock Text="Read-only access. Nothing sent or changed. Requested content may reach your AI service; sign-in tokens stay on this device." Style="{StaticResource SubtleText}" />
+                                <Button Style="{StaticResource QuietButton}" Padding="0,6" Content="How sharing works" Click="SharingInfoButton_Click" />
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel x:Name="AccountsPage" Spacing="18" Visibility="Collapsed">
-                            <StackPanel Spacing="6"><TextBlock Text="Connect your accounts" Style="{StaticResource SectionTitle}" /><TextBlock Text="Add personal, work or client accounts." Style="{StaticResource BodyText}" /></StackPanel>
-                            <Grid x:Name="ProviderButtons" ColumnSpacing="12" RowSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="MicrosoftProviderColumn" Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <Button x:Name="GoogleButton" Click="GoogleButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Google"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Google.svg" /></Image.Source></Image><TextBlock Text="Connect Google" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
-                                <Button x:Name="MicrosoftButton" Grid.Column="1" Click="MicrosoftButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Microsoft"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Microsoft.svg" /></Image.Source></Image><TextBlock Text="Connect Microsoft" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
-                            </Grid>
-                            <StackPanel Orientation="Horizontal" Spacing="16"><TextBlock x:Name="RequestAccessLabel" Text="Read access" VerticalAlignment="Center" /><CheckBox x:Name="RequestMail" Content="Mail" IsChecked="True" /><CheckBox x:Name="RequestCalendars" Content="Calendars" IsChecked="True" /></StackPanel>
-                            <Button Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="ProviderSetupButton_Click"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE713;" FontSize="20" /><StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Provider setup" /><TextBlock x:Name="ProviderStatusText" Text="Loading provider setup…" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel><FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" /></Grid></Button>
-                            <Border Style="{StaticResource SetupCard}" Padding="18">
-                                <StackPanel Spacing="12">
-                                    <Grid x:Name="ConnectedAccountsHeader" ColumnSpacing="12" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="AccountCheckColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel Spacing="3"><TextBlock Text="Connected on this device" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="AccountsCountText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel><Button x:Name="CheckConnectionsButton" Grid.Column="1" Click="CheckConnectionsButton_Click" Style="{StaticResource QuietButton}" Padding="12,6" VerticalAlignment="Center" AutomationProperties.Name="Check mail and calendar read access"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE72C;" FontSize="14" /><TextBlock Text="Check read access" /></StackPanel></Button></Grid>
-                                    <StackPanel x:Name="ConnectedAccounts" Spacing="2" />
-                                    <TextBlock Text="New accounts start with sharing off. Choose what to share in the next step." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel x:Name="AccountsPage" Spacing="20" Visibility="Collapsed">
+                            <Grid x:Name="AccountsToolbar" ColumnSpacing="12" RowSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="AccountsActionsColumn" Width="Auto" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock x:Name="AccountsCountText" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" />
+                                <StackPanel x:Name="AccountsToolbarActions" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="CheckConnectionsButton" Click="CheckConnectionsButton_Click" Style="{StaticResource QuietButton}" AutomationProperties.Name="Check mail and calendar read access"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE72C;" FontSize="14" /><TextBlock Text="Check access" /></StackPanel></Button>
+                                    <Button x:Name="AddAccountButton" Click="AddAccountButton_Click"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14" /><TextBlock Text="Add account" /></StackPanel></Button>
                                 </StackPanel>
+                            </Grid>
+                            <StackPanel x:Name="ConnectedAccounts" Spacing="0" />
+                            <TextBlock Text="New accounts stay private until you choose to share them." Style="{StaticResource SubtleText}" />
+                        </StackPanel>
+                        <StackPanel x:Name="SharingPage" Spacing="20" Visibility="Collapsed">
+                            <TextBlock x:Name="SharingSummaryText" Text="No accounts shared" Style="{StaticResource SectionLabel}" />
+                            <StackPanel x:Name="SharingAccounts" Spacing="0" />
+                            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
+                                <Button x:Name="SharingSettingsButton" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,8" Click="SharingSettingsButton_Click">
+                                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE713;" FontSize="18" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Search and read settings" /><TextBlock x:Name="SharingSettingsSummary" Text="Search period, read limits and usage" Style="{StaticResource SubtleText}" AutomationProperties.LiveSetting="Polite" /></StackPanel><FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" /></Grid>
+                                </Button>
                             </Border>
                         </StackPanel>
-                        <StackPanel x:Name="SharingPage" Spacing="18" Visibility="Collapsed">
-                            <StackPanel Spacing="6"><TextBlock Text="Choose what to share" Style="{StaticResource SectionTitle}" /><TextBlock Text="Select an account, then choose what Codex can read." Style="{StaticResource BodyText}" /></StackPanel>
-                            <Grid x:Name="SharingLayout" ColumnSpacing="24">
-                                <Grid.ColumnDefinitions><ColumnDefinition x:Name="SharingListColumn" Width="0.85*" /><ColumnDefinition x:Name="SharingDetailColumn" Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel x:Name="SharingListRegion" Spacing="10">
-                                    <TextBlock Text="Your accounts" FontWeight="SemiBold" />
-                                    <StackPanel x:Name="SharingAccounts" Spacing="4" />
+                        <StackPanel x:Name="CodexPage" Spacing="28" Visibility="Collapsed">
+                            <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Width="48" Height="48" CornerRadius="12" Background="{ThemeResource WizardSelectionBrush}" VerticalAlignment="Top"><FontIcon x:Name="CodexStatusIcon" Glyph="&#xE943;" FontSize="24" Foreground="{ThemeResource WizardAccentBrush}" /></Border>
+                                <StackPanel Grid.Column="1" Spacing="10">
+                                    <TextBlock x:Name="CodexStatusTitle" Text="Check your setup" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                    <TextBlock x:Name="CodexStatusText" Text="Check this device, then follow the next step." Style="{StaticResource BodyText}" />
+                                    <TextBlock x:Name="CodexStatusCaption" Text="Local configuration only. Your mailbox is not read." Style="{StaticResource SubtleText}" />
+                                    <StackPanel x:Name="CodexActions" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                                        <Button x:Name="InstallPluginButton" Content="Install local plugin" Click="InstallPluginButton_Click" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" IsEnabled="False" />
+                                        <Button x:Name="CodexHelpButton" Content="Review next steps" Click="CodexHelpButton_Click" Visibility="Collapsed" />
+                                        <Button x:Name="RefreshCodexButton" Content="Check setup" Click="RefreshCodexButton_Click" Style="{StaticResource AccentButtonStyle}" />
+                                    </StackPanel>
                                 </StackPanel>
-                                <StackPanel x:Name="SharingDetailRegion" Grid.Column="1" Spacing="14">
-                                    <Button x:Name="ChooseAccountButton" Content="← Choose account" Style="{StaticResource QuietButton}" Click="ChooseAccountButton_Click" Visibility="Collapsed" />
-                                    <TextBlock x:Name="SharingEmptyText" Text="Connect an account to choose what to share." Style="{StaticResource BodyText}" />
-                                    <Border x:Name="SharingEditorCard" Style="{StaticResource SetupCard}" Padding="18" Visibility="Collapsed"><StackPanel x:Name="SharingEditor" Spacing="14" Visibility="Collapsed">
-                                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Image x:Name="SelectedProviderLogo" Width="26" Height="26" AutomationProperties.AccessibilityView="Raw" /><TextBlock x:Name="SelectedAccountText" Grid.Column="1" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" /></Grid>
-                                        <ToggleSwitch x:Name="ShareAccountSwitch" Header="Share this account" Toggled="SharingSwitch_Toggled" />
+                            </Grid>
+                            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,20,0,0">
+                                <Grid ColumnSpacing="12" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="CodexSharingActionColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                    <StackPanel Spacing="4"><TextBlock Text="Shared with Codex" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="CodexSharingText" Text="No accounts shared yet." Style="{StaticResource SubtleText}" /></StackPanel>
+                                    <Button x:Name="ReviewSharingButton" Grid.Column="1" Content="Change sharing" Style="{StaticResource QuietButton}" Click="ReviewSharingButton_Click" />
+                                </Grid>
+                            </Border>
+                            <StackPanel x:Name="CodexSecondaryActions" Orientation="Horizontal" Spacing="16">
+                                <Button Content="Connection details" Style="{StaticResource QuietButton}" Padding="0,8" Click="CodexDetailsButton_Click" />
+                                <Button Content="Manual setup" Style="{StaticResource QuietButton}" Padding="0,8" Click="ManualSetupButton_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </ContentControl>
+            </ScrollViewer>
+            <StackPanel Grid.Row="3" Spacing="8" Margin="0,0,0,12">
+                <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
+                <Grid x:Name="Activity" ColumnSpacing="12" Visibility="Collapsed"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><ProgressRing Width="20" Height="20" IsActive="True" /><TextBlock x:Name="ActivityText" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" /><Button Grid.Column="2" Content="Cancel" Click="CancelButton_Click" /></Grid>
+            </StackPanel>
+            <Border Grid.Row="4" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,20,0,0">
+                <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Button x:Name="BackButton" Content="Back" Style="{StaticResource QuietButton}" Click="BackButton_Click" /><TextBlock x:Name="PreviewLabel" Grid.Column="1" Text="Your choices stay on this device" Style="{StaticResource SubtleText}" VerticalAlignment="Center" HorizontalAlignment="Center" /><Button x:Name="NextButton" Grid.Column="2" Content="Get started" MinWidth="144" Padding="20,10" Click="NextButton_Click" Style="{StaticResource AccentButtonStyle}" /></Grid>
+            </Border>
+        </Grid>
+        <Border x:Name="AddAccountParkingHost" Visibility="Collapsed">
+            <StackPanel x:Name="AddAccountContent" Spacing="20">
+                <TextBlock Text="Choose a provider to sign in through your browser." Style="{StaticResource BodyText}" />
+<Grid x:Name="ProviderButtons" ColumnSpacing="12" RowSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="MicrosoftProviderColumn" Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <Button x:Name="GoogleButton" Click="AddGoogleAccountButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Google"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Google.svg" /></Image.Source></Image><TextBlock Text="Connect Google" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
+                                <Button x:Name="MicrosoftButton" Grid.Column="1" Click="AddMicrosoftAccountButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Microsoft"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Microsoft.svg" /></Image.Source></Image><TextBlock Text="Connect Microsoft" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
+                            </Grid>
+                            
+                <StackPanel Spacing="8"><TextBlock x:Name="RequestAccessLabel" Text="Read access" Style="{StaticResource SectionLabel}" /><StackPanel Orientation="Horizontal" Spacing="20"><CheckBox x:Name="RequestMail" Content="Mail" IsChecked="True" /><CheckBox x:Name="RequestCalendars" Content="Calendars" IsChecked="True" /></StackPanel></StackPanel>
+                <TextBlock Text="Sharing starts off. You choose what Codex can read in the next step." Style="{StaticResource SubtleText}" />
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0"><Button Content="Provider setup" Style="{StaticResource QuietButton}" Padding="0,8" Click="AddAccountProviderSetupButton_Click" /></Border>
+<TextBlock x:Name="ProviderStatusText" Text="Loading provider setup…" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </Border>
+        <Border x:Name="SharingEditorParkingHost" Visibility="Collapsed">
+<Border x:Name="SharingEditorCard" Visibility="Collapsed" Padding="0"><StackPanel x:Name="SharingEditor" Spacing="14" Visibility="Collapsed">
+                                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Image x:Name="SelectedProviderLogo" Width="26" Height="26" AutomationProperties.AccessibilityView="Raw" /><TextBlock x:Name="SelectedAccountText" Grid.Column="1" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" /></Grid>
+                                        <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Share this account" VerticalAlignment="Center" TextWrapping="Wrap" /><ToggleSwitch x:Name="ShareAccountSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="SharingSwitch_Toggled" AutomationProperties.Name="Share this account" /></Grid>
                                         <TextBlock x:Name="SharingOffText" Text="Turn on sharing to choose mail and calendars." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                         <StackPanel x:Name="SharingCategories" Spacing="12">
                                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ToggleSwitch x:Name="ShareMailSwitch" Header="Mail" Toggled="SharingSwitch_Toggled" /><ToggleSwitch x:Name="ShareCalendarsSwitch" Grid.Column="1" Header="Calendars" Toggled="SharingSwitch_Toggled" /></Grid>
+                                            <Grid ColumnSpacing="12" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><TextBlock Text="Mail" VerticalAlignment="Center" /><ToggleSwitch x:Name="ShareMailSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="SharingSwitch_Toggled" AutomationProperties.Name="Share mail" /><TextBlock Grid.Row="1" Text="Calendars" VerticalAlignment="Center" /><ToggleSwitch x:Name="ShareCalendarsSwitch" Grid.Row="1" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="SharingSwitch_Toggled" AutomationProperties.Name="Share calendars" /></Grid>
                                             <TextBlock x:Name="MissingConsentText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed" />
                                             <StackPanel x:Name="CalendarChoices" Spacing="8">
                                                 <ComboBox x:Name="CalendarScope" HorizontalAlignment="Stretch" SelectionChanged="CalendarScope_SelectionChanged" AutomationProperties.Name="Calendar sharing scope"><ComboBoxItem Content="All current and future calendars" /><ComboBoxItem Content="Selected calendars only" /></ComboBox>
                                                 <TextBlock x:Name="CalendarSelectionText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                <Button Content="Choose individual calendars" Style="{StaticResource QuietButton}" Click="ChooseCalendarsButton_Click" />
+                                                <Button x:Name="ChooseCalendarsButton" Content="Choose calendars…" Style="{StaticResource QuietButton}" Click="ChooseCalendarsButton_Click" />
                                             </StackPanel>
                                         </StackPanel>
-                                        <TextBlock x:Name="SharingSavedText" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                                        <StackPanel x:Name="SharingSaveActions" Orientation="Horizontal" Spacing="8"><Button x:Name="SaveSharingButton" Content="Save choices" Style="{StaticResource AccentButtonStyle}" Click="SaveSharingButton_Click" IsEnabled="False" /><Button x:Name="DiscardSharingButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardSharingButton_Click" Visibility="Collapsed" /></StackPanel>
+                                        <TextBlock x:Name="SharingSavedText" Visibility="Collapsed" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                        <StackPanel x:Name="SharingSaveActions" Visibility="Collapsed" Orientation="Horizontal" Spacing="8"><Button x:Name="SaveSharingButton" Content="Save changes" Style="{StaticResource AccentButtonStyle}" Click="SaveSharingButton_Click" IsEnabled="False" /><Button x:Name="DiscardSharingButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardSharingButton_Click" Visibility="Collapsed" /></StackPanel>
                                     </StackPanel></Border>
-                                </StackPanel>
-                            </Grid>
-                            <Expander x:Name="MailSearchPreferencesExpander" Header="Default mail search period" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                                <StackPanel Spacing="10">
-                                    <TextBlock Text="Applies to every account when a mail search has no dates. Explicit search dates override this setting." Style="{StaticResource BodyText}" />
+                                
+        </Border>
+        <Border x:Name="CodexDetailsParkingHost" Visibility="Collapsed">
+            <StackPanel x:Name="CodexDetailsContent" Spacing="20">
+                <TextBlock x:Name="CodexDiagnosticText" Text="Check setup to inspect the local connection." Style="{StaticResource BodyText}" />
+<StackPanel x:Name="CodexChecks" Spacing="4" />
+                                <TextBlock x:Name="CodexCheckedText" Text="Not checked yet." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.LiveSetting="Polite" />
+                                <Button x:Name="CopyCodexResultsButton" Content="Copy setup results" Click="CopyCodexResultsButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
+                            
+                <TextBlock Text="This reports local configuration. Codex sign-in, runtime connection and mailbox access have not been tested." Style="{StaticResource SubtleText}" />
+            </StackPanel>
+        </Border>
+        <Border x:Name="SettingsParkingHost" Visibility="Collapsed">
+            <StackPanel x:Name="SettingsContent" Spacing="20">
+                <StackPanel x:Name="SearchSettingsSection" Spacing="16">
+<StackPanel Spacing="10" x:Name="MailSearchPreferencesExpander">
+                                    <TextBlock x:Name="MailSearchPreferencesHeading" Text="Mail search" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Used across all accounts when your search has no dates. Dates in your request take priority." Style="{StaticResource BodyText}" />
                                     <NumberBox x:Name="MailSearchLookbackDaysBox" Header="Days to look back" Width="200" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="7" ValidationMode="Disabled" IsEnabled="False" AutomationProperties.Name="Default mail search period in days" AutomationProperties.HelpText="Enter a whole number from 1 to 365. The default is 14 days. Explicit search dates override this setting." />
                                     <TextBlock Text="Longer periods take more time, make more requests and may hit your email provider's limits. The default is 14 days." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock x:Name="MailSearchPreferencesSavedText" Text="Loading the saved search period…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
@@ -118,78 +180,50 @@
                                         <Button x:Name="ReloadMailSearchPreferencesButton" Content="Retry loading" Style="{StaticResource QuietButton}" Click="ReloadMailSearchPreferencesButton_Click" Visibility="Collapsed" />
                                     </StackPanel>
                                 </StackPanel>
-                            </Expander>
-                            <Border Style="{StaticResource SetupCard}" Padding="18">
-                                <StackPanel Spacing="14">
-                                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Read limits and usage" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Shared across MailMeUp processes using this local profile." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel><Button x:Name="RefreshReadGuardrailsButton" Grid.Column="1" Style="{StaticResource QuietButton}" Click="RefreshReadGuardrailsButton_Click" VerticalAlignment="Top" AutomationProperties.Name="Refresh local read usage"><FontIcon Glyph="&#xE72C;" FontSize="16" /><ToolTipService.ToolTip>Refresh local usage</ToolTipService.ToolTip></Button></Grid>
-                                    <TextBlock x:Name="ReadGuardrailLoadText" Text="Loading local limits and usage…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                            
+                </StackPanel>
+                <StackPanel x:Name="UsageSettingsSection" Spacing="16">
+                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Read usage" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+<Button x:Name="RefreshReadGuardrailsButton" Grid.Column="1" Style="{StaticResource QuietButton}" Click="RefreshReadGuardrailsButton_Click" VerticalAlignment="Top" AutomationProperties.Name="Refresh local read usage"><FontIcon Glyph="" FontSize="16" /><ToolTipService.ToolTip>Refresh local usage</ToolTipService.ToolTip></Button>
+                    </Grid>
+<TextBlock x:Name="ReadGuardrailLoadText" Text="Loading local limits and usage…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                                     <StackPanel x:Name="ReadGuardrailUsagePanel" Spacing="12" Visibility="Collapsed">
-                                        <StackPanel x:Name="ReadGuardrailUsageRows" Spacing="12" />
+                                        <Grid x:Name="ReadGuardrailUsageRows" ColumnSpacing="20" RowSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="ReadGuardrailUsageRightColumn" Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions></Grid>
+                                        <Expander x:Name="ReadGuardrailDetailsExpander" Header="Usage details" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><StackPanel Spacing="8">
                                         <TextBlock x:Name="ReadGuardrailActiveText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                         <TextBlock x:Name="ReadGuardrailCooldownText" FontSize="12" TextWrapping="Wrap" />
                                         <TextBlock x:Name="ReadGuardrailUpdatedText" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel></Expander>
                                     </StackPanel>
-                                    <InfoBar x:Name="ReadGuardrailRestartNotice" Title="Restart needed" Message="Saved limits differ from those active in this window. Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply them to all processes. Saving does not clear usage or provider pauses." Severity="Warning" IsOpen="False" IsClosable="False" />
-                                    <Expander x:Name="ReadGuardrailEditorExpander" Header="Adjust read limits" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsEnabled="False">
-                                        <StackPanel Spacing="12">
-                                            <TextBlock Text="Higher limits allow more provider traffic and more content to reach your assistant. Keep searches short and open only the details you need." Style="{StaticResource BodyText}" />
+                                    
+                </StackPanel>
+                <StackPanel x:Name="LimitsSettingsSection" Spacing="16">
+<InfoBar x:Name="ReadGuardrailRestartNotice" Title="Restart needed" Message="Saved limits differ from those active in this window. Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply them to all processes. Saving does not clear usage or provider pauses." Severity="Warning" IsOpen="False" IsClosable="False" />
+                                    <ContentControl x:Name="ReadGuardrailEditorExpander" IsEnabled="False" HorizontalContentAlignment="Stretch"><StackPanel Spacing="12">
+                                            <TextBlock x:Name="ReadGuardrailEditorHeading" Text="Read limits" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Limit requests and the content shared with your assistant. Higher limits allow more traffic and content." Style="{StaticResource BodyText}" />
                                             <Grid x:Name="ReadGuardrailFields" ColumnSpacing="16" RowSpacing="12">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="ReadGuardrailFieldRightColumn" Width="*" /></Grid.ColumnDefinitions>
                                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                                <NumberBox x:Name="ReadGuardrailAccountAttemptsBox" Header="Attempts / account and service / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per account and service per minute" />
+                                                <NumberBox x:Name="ReadGuardrailAccountAttemptsBox" Header="Attempts / account &amp; service / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per account and service per minute" />
                                                 <NumberBox x:Name="ReadGuardrailProfileAttemptsBox" Grid.Column="1" Header="Attempts / profile / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per profile per minute" />
                                                 <NumberBox x:Name="ReadGuardrailContentReadsBox" Grid.Row="1" Header="Content reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Content reads per rolling window" />
                                                 <NumberBox x:Name="ReadGuardrailDetailReadsBox" Grid.Row="1" Grid.Column="1" Header="Detail reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="5" AutomationProperties.Name="Detail reads per rolling window" />
-                                                <NumberBox x:Name="ReadGuardrailWindowBox" Grid.Row="2" Header="Rolling window (seconds)" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="60" LargeChange="300" AutomationProperties.Name="Rolling read window in seconds, 60 to 3600" />
-                                                <TextBox x:Name="ReadGuardrailResponseBytesBox" Grid.Row="2" Grid.Column="1" Header="Maximum response (KiB)" AutomationProperties.Name="Maximum KiB in one assistant response" />
-                                                <TextBox x:Name="ReadGuardrailOutputBytesBox" Grid.Row="3" Header="Maximum output / window (KiB)" AutomationProperties.Name="Maximum assistant output KiB per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailWindowBox" Grid.Row="2" Header="Window / seconds" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="60" LargeChange="300" AutomationProperties.Name="Rolling read window in seconds, 60 to 3600" />
+                                                <TextBox x:Name="ReadGuardrailResponseBytesBox" Grid.Row="2" Grid.Column="1" Header="Output / response (KiB)" AutomationProperties.Name="Maximum KiB in one assistant response" />
+                                                <TextBox x:Name="ReadGuardrailOutputBytesBox" Grid.Row="3" Header="Output / window (KiB)" AutomationProperties.Name="Maximum assistant output KiB per rolling window" />
                                             </Grid>
-                                            <TextBlock Text="Use whole numbers for attempts, reads and seconds. KiB values may include decimals that represent whole bytes. Details count toward content reads. Output includes the serialized MCP response; 1 KiB = 1,024 bytes. These limits do not measure model tokens. Existing request spacing and wait limits are kept when saving." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Text="Use whole numbers for attempts, reads and seconds. Details count toward content reads. Output measures response data, not model tokens; 1 KiB = 1,024 bytes." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                             <TextBlock x:Name="ReadGuardrailDraftText" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                                             <StackPanel x:Name="ReadGuardrailSaveActions" Orientation="Horizontal" Spacing="8">
                                                 <Button x:Name="SaveReadGuardrailsButton" Content="Save limits" Style="{StaticResource AccentButtonStyle}" Click="SaveReadGuardrailsButton_Click" IsEnabled="False" />
                                                 <Button x:Name="DiscardReadGuardrailsButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardReadGuardrailsButton_Click" Visibility="Collapsed" />
                                                 <Button x:Name="DefaultReadGuardrailsButton" Content="Use defaults" Style="{StaticResource QuietButton}" Click="DefaultReadGuardrailsButton_Click" />
                                             </StackPanel>
-                                            <TextBlock Text="Saved limits apply after restarting MailMeUp processes. Usage remains in the rolling windows; saving or restoring defaults does not reset it." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Text="Restart MailMeUp and reload its connection in your assistant to apply new limits. Saving keeps existing usage." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                         </StackPanel>
-                                    </Expander>
-                                </StackPanel>
-                            </Border>
-                            <StackPanel Spacing="8"><TextBlock Text="Changes apply to future reads. Existing conversations keep what was already shared." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><Button Style="{StaticResource QuietButton}" Click="SharingInfoButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="What reaches your assistant" /></StackPanel></Button></StackPanel>
-                        </StackPanel>
-                        <StackPanel x:Name="CodexPage" Spacing="20" Visibility="Collapsed">
-                            <StackPanel Spacing="6"><TextBlock Text="Connect to Codex" Style="{StaticResource SectionTitle}" /><TextBlock Text="Make your shared accounts available in your conversations." Style="{StaticResource BodyText}" /></StackPanel>
-                            <Border Style="{StaticResource SetupCard}" Padding="18">
-                                <StackPanel Spacing="12">
-                                    <TextBlock x:Name="CodexStatusTitle" Text="Check your setup" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                                    <TextBlock x:Name="CodexStatusText" Text="Check this device for the MailMeUp connection, then follow the next step. No mailbox content is read during setup." Style="{StaticResource BodyText}" />
-                                    <StackPanel x:Name="CodexActions" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="InstallPluginButton" Content="Install local plugin" Click="InstallPluginButton_Click" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" IsEnabled="False" />
-                                        <Button x:Name="CodexHelpButton" Content="Review next steps" Click="CodexHelpButton_Click" Visibility="Collapsed" />
-                                        <Button x:Name="RefreshCodexButton" Content="Check setup" Click="RefreshCodexButton_Click" Style="{StaticResource AccentButtonStyle}" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                            <Expander x:Name="CodexDetails" Header="Connection details" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><StackPanel Spacing="12">
-                                <StackPanel x:Name="CodexChecks" Spacing="4" />
-                                <TextBlock x:Name="CodexCheckedText" Text="Not checked yet." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.LiveSetting="Polite" />
-                                <Button x:Name="CopyCodexResultsButton" Content="Copy setup results" Click="CopyCodexResultsButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
-                            </StackPanel></Expander>
-                            <Border Style="{StaticResource SetupCard}" Padding="16"><Grid x:Name="CodexSharingSummary" ColumnSpacing="12" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="CodexSharingActionColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel Spacing="4"><TextBlock Text="Your sharing choices" FontWeight="SemiBold" /><TextBlock x:Name="CodexSharingText" Text="No accounts shared yet." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel><Button x:Name="ReviewSharingButton" Grid.Column="1" Content="Review sharing →" Style="{StaticResource QuietButton}" Click="ReviewSharingButton_Click" /></Grid></Border>
-                            <TextBlock Text="Configuration is not a connection test. No prompt is run, no mailbox is read, and no existing connection is removed by this check." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Button Style="{StaticResource QuietButton}" Click="ManualSetupButton_Click"><StackPanel Orientation="Horizontal" Spacing="10"><FontIcon Glyph="&#xE76C;" FontSize="12" /><TextBlock Text="Manual setup (fallback)" TextWrapping="Wrap" /></StackPanel></Button>
-                        </StackPanel>
-                    </Grid>
-                </ContentControl>
-            </ScrollViewer>
-            <StackPanel Grid.Row="2" Spacing="8" Margin="0,4,0,10">
-                <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
-                <Grid x:Name="Activity" ColumnSpacing="12" Visibility="Collapsed"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><ProgressRing Width="20" Height="20" IsActive="True" /><TextBlock x:Name="ActivityText" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" /><Button Grid.Column="2" Content="Cancel" Click="CancelButton_Click" /></Grid>
+                                    
+                </ContentControl></StackPanel>
             </StackPanel>
-            <Border Grid.Row="3" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
-                <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Button x:Name="BackButton" Content="← Back" Click="BackButton_Click" /><TextBlock x:Name="PreviewLabel" Grid.Column="1" Text="Your choices stay on this device" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" /><Button x:Name="NextButton" Grid.Column="2" Content="Get started →" HorizontalAlignment="Right" Padding="22,10" Click="NextButton_Click" Style="{StaticResource AccentButtonStyle}" /></Grid>
-            </Border>
-        </Grid>
+        </Border>
     </Grid>
 </Window>

@@ -22,7 +22,7 @@ Local Windows example, from a clean committed checkout:
 pwsh -NoProfile -File scripts/package.ps1 -Runtime win-x64
 ```
 
-Output is under `artifacts/`. Existing packages are not overwritten.
+Output is under `artifacts/`. Packaging clears that directory before building, including previous packages and logs. Copy anything you want to retain elsewhere first; build one target at a time in each checkout.
 
 ## Publish later
 

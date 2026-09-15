@@ -20,6 +20,8 @@ This restores the dependencies pinned in the lock files, formats code, builds wi
 
 Agents working in this repository run checks only when the owner explicitly asks, as described in [AGENTS.md](../AGENTS.md).
 
+Each validation or package run clears `artifacts/` before building. Before a manual `dotnet build` or `dotnet publish`, run `pwsh -NoProfile -File scripts/clean-artifacts.ps1` once. Keep any packages or logs you want to retain outside `artifacts/`; do not run builds concurrently in the same checkout.
+
 To run an app you've already built:
 
 ```sh

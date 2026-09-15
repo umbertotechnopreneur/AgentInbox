@@ -9,6 +9,7 @@ $env:DOTNET_CLI_UI_LANGUAGE = 'en'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
+    & (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
     dotnet restore MailMeUp.slnx --locked-mode
     if ($LASTEXITCODE -ne 0) { throw 'Restore failed.' }
     if ($CheckFormatting) {

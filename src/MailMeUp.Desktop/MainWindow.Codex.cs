@@ -27,7 +27,10 @@ public sealed partial class MainWindow
             CopyCodexResultsButton.Visibility = CodexHelpButton.Visibility = InstallPluginButton.Visibility = Visibility.Collapsed;
             InstallPluginButton.IsEnabled = false;
             CodexStatusTitle.Text = install ? "Installing local plugin…" : "Checking local setup…";
-            CodexStatusText.Text = "Waiting for local configuration results. No prompt or mailbox check is running.";
+            CodexStatusText.Text = install ? "Adding MailMeUp to this device's Codex setup." : "Looking for MailMeUp in this device's Codex setup.";
+            CodexStatusCaption.Text = "Local configuration only";
+            CodexStatusIcon.Glyph = "\uE895";
+            CodexDiagnosticText.Text = "Waiting for local configuration results. No prompt or mailbox check is running.";
             CodexCheckedText.Text = "Check in progress…";
             RenderCodexChecks(CodexSetupCheck.Pending());
             UpdateProgress();
@@ -64,17 +67,29 @@ public sealed partial class MainWindow
     {
         _codexStatus = status;
         var view = CodexSetupPresentation.FromStatus(status);
+        var configured = status.Code == "PluginConfigured";
+        var retry = status.Code is "CheckInterrupted" or "ConfigurationUnknown" or "PluginStatusUnknown"
+            or "MarketplaceStatusUnknown" or "InstallationIncomplete";
         CodexStatusTitle.Text = view.Title;
-        CodexStatusText.Text = status.Message;
+        CodexStatusText.Text = CodexStatusSummary(status);
+        CodexStatusCaption.Text = configured ? "Local plugin enabled · Live connection not tested"
+            : status.Code == "ReadyToInstall" ? "Local setup checked · Ready to install"
+            : retry ? "Local setup needs another check"
+            : "Local setup needs your attention";
+        CodexStatusIcon.Glyph = configured ? "\uE73E" : status.Code == "ReadyToInstall" ? "\uE943" : "\uE946";
+        CodexDiagnosticText.Text = status.Message;
         InstallPluginButton.IsEnabled = status.CanInstall;
         InstallPluginButton.Visibility = ToVisibility(status.CanInstall);
         InstallPluginButton.Content = status.IsPluginConfigured ? "Update local plugin" : "Install local plugin";
+        InstallPluginButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
+            status.CanInstall && !configured ? "AccentButtonStyle" : "QuietButton"];
         CodexHelpButton.Content = view.HelpLabel;
         CodexHelpButton.Visibility = Visibility.Visible;
         CodexHelpButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
-            status.CanInstall ? "DefaultButtonStyle" : "AccentButtonStyle"];
+            configured || (!status.CanInstall && !retry) ? "AccentButtonStyle" : "QuietButton"];
         RefreshCodexButton.Content = "Refresh status";
-        RefreshCodexButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"];
+        RefreshCodexButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
+            retry ? "AccentButtonStyle" : "QuietButton"];
         var checks = status.Checks.Count > 0 ? status.Checks : CodexSetupCheck.Pending();
         RenderCodexChecks(checks);
         CodexCheckedText.Text = $"Last attempt: {DateTimeOffset.Now:HH:mm:ss} · Local configuration only";
@@ -85,6 +100,42 @@ public sealed partial class MainWindow
         CopyCodexResultsButton.Content = "Copy setup results";
         CopyCodexResultsButton.Visibility = Visibility.Visible;
         UpdateProgress();
+    }
+
+    private static string CodexStatusSummary(CodexSetupStatus status) => status.Code switch
+    {
+        "ReadyToInstall" => "Add MailMeUp to Codex, then start a new task.",
+        "PluginConfigured" => "Start a new Codex task to load MailMeUp's tools.",
+        "DirectRegistrationExists" => status.IsPluginConfigured
+            ? "Choose one MailMeUp connection in Codex to avoid duplicate tools."
+            : "You can keep your existing connection or review how to switch to the plugin.",
+        "PluginDisabled" => "Enable MailMeUp in Codex's plugin settings, then refresh here.",
+        "OtherPluginExists" => "Review the existing MailMeUp plugin before adding this local copy.",
+        "AliasUnavailable" => "Enable mailmeup.exe in Windows app execution aliases to continue.",
+        "CodexUnavailable" => "Automatic setup needs the Codex CLI. Open setup help for your options.",
+        "MarketplaceConflict" => "Review the existing local marketplace before installing MailMeUp.",
+        "CheckInterrupted" => "The operation was interrupted. Refresh status before trying again.",
+        "ConfigurationUnknown" => "Setup could not be confirmed. Refresh status to try again.",
+        "PluginStatusUnknown" => "The plugin could not be checked. Refresh status or review the details.",
+        "MarketplaceStatusUnknown" => "The plugin source could not be checked. Refresh status to try again.",
+        "InstallationIncomplete" => "Installation was not confirmed. Refresh status before trying again.",
+        _ => "Review the setup details and next steps to continue."
+    };
+
+    private async void CodexDetailsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _dialogOpen) return;
+        CodexDetailsParkingHost.Child = null;
+        var dialog = DetailsDialog("Connection details", CodexDetailsContent);
+        try
+        {
+            await ShowDialogAsync(dialog);
+        }
+        finally
+        {
+            if (dialog.Content is ScrollViewer scroll) scroll.Content = null;
+            CodexDetailsParkingHost.Child = CodexDetailsContent;
+        }
     }
 
     private void RenderCodexChecks(IReadOnlyList<CodexSetupCheck> checks)
