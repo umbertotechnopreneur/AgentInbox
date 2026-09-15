@@ -38,6 +38,8 @@ Local sharing choices are separate from provider consent. New accounts connected
 
 Global mail search preferences are local non-secret settings shared by the UI, CLI and MCP application facade. Undated searches use a configurable 14-day default; explicit dates override it. A continuation retains its original date window and rejects a changed default. Search results report the applied window so callers can describe their scope accurately.
 
+The September 14 source adds an Inbox-only scope through the shared mail-search contracts. MCP unread search enables it by default; general and date-range searches expose it as an opt-in. Gmail filters by `INBOX` before message hydration, and Microsoft uses the Inbox message collection without traversing child folders. All Inbox categories and senders remain eligible. The application binds continuations to this scope and reports it in results. This increment has not been built, tested or installed; earlier installation and test records do not validate it.
+
 ## Boundaries
 
 The new source [read guardrails](READ_GUARDRAILS.md) put provider attempts and cooldowns behind Core contracts with a Storage file-lease/ledger implementation shared by CLI, MCP and desktop. Application code admits content reads and caches bounded details; MCP accounts for serialized output immediately before delivery. Mail refills load small account pages adaptively, and local budget pauses preserve a resumable mail cursor. This increment is not yet validated or installed.

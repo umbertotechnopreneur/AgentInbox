@@ -46,9 +46,9 @@ public sealed class MicrosoftMailReader : IMailReader
         ValidateMailAccount(account);
         using var diagnostics = ReadDiagnostics.Begin(_logger, account, "search_mail");
         ArgumentNullException.ThrowIfNull(query);
-        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
+        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; inbox={InboxOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
             !string.IsNullOrWhiteSpace(query.Text), query.Sender is not null, query.RecipientContains is not null,
-            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.HasAttachments.HasValue, cursor is not null, limit);
+            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.InboxOnly, query.HasAttachments.HasValue, cursor is not null, limit);
         if (query.Text.Length > 500 || query.Text.Any(char.IsControl) || limit is < 1 or > 50)
         {
             throw new ArgumentException("The Microsoft mail search page is invalid.");
@@ -57,13 +57,17 @@ public sealed class MicrosoftMailReader : IMailReader
         try
         {
             var accessToken = await _tokens.GetAsync(account, ["Mail.Read"], cancellationToken);
-            var configuration = await _configurations.GetAsync("microsoft", cancellationToken)
-                ?? throw new ProviderReadException("Microsoft app setup is missing.", ReadFailureKind.SetupRequired);
-            var excludedFolderIds = await _excludedFolders.GetAsync(configuration.ClientId, account.Id,
-                token => ReadExcludedFolderIdsAsync(account, accessToken, token), cancellationToken);
+            IReadOnlyList<string> excludedFolderIds = [];
+            if (!query.InboxOnly)
+            {
+                var configuration = await _configurations.GetAsync("microsoft", cancellationToken)
+                    ?? throw new ProviderReadException("Microsoft app setup is missing.", ReadFailureKind.SetupRequired);
+                excludedFolderIds = await _excludedFolders.GetAsync(configuration.ClientId, account.Id,
+                    token => ReadExcludedFolderIdsAsync(account, accessToken, token), cancellationToken);
+            }
             var url = string.IsNullOrWhiteSpace(cursor)
                 ? CreateSearchUrl(query, limit, excludedFolderIds)
-                : ValidateNextLink(cursor);
+                : ValidateNextLink(cursor, query.InboxOnly);
             using var document = await GetJsonAsync(account, url, accessToken, preferText: false, "graph.messages.list", cancellationToken);
             return ParseSearchPage(document.RootElement, query, limit, excludedFolderIds);
         }
@@ -221,7 +225,8 @@ public sealed class MicrosoftMailReader : IMailReader
             parameters.Add("%24orderby=receivedDateTime%20DESC");
         }
 
-        return "https://graph.microsoft.com/v1.0/me/messages?" + string.Join('&', parameters);
+        var collection = query.InboxOnly ? "/v1.0/me/mailFolders/inbox/messages" : "/v1.0/me/messages";
+        return "https://graph.microsoft.com" + collection + "?" + string.Join('&', parameters);
     }
 
     private static ProviderMailSearchPage ParseSearchPage(
@@ -305,13 +310,15 @@ public sealed class MicrosoftMailReader : IMailReader
 
     private static string EscapeSearchValue(string value) => value.Replace("\"", string.Empty, StringComparison.Ordinal);
 
-    private static string ValidateNextLink(string cursor)
+    internal static string ValidateNextLink(string cursor, bool inboxOnly)
     {
+        var expectedPath = inboxOnly ? "/v1.0/me/mailFolders/inbox/messages" : "/v1.0/me/messages";
         if (cursor.Length > 8_192 ||
             !Uri.TryCreate(cursor, UriKind.Absolute, out var uri) ||
             uri.Scheme != Uri.UriSchemeHttps ||
             !string.Equals(uri.Host, "graph.microsoft.com", StringComparison.OrdinalIgnoreCase) ||
-            !uri.AbsolutePath.StartsWith("/v1.0/me/messages", StringComparison.Ordinal))
+            !uri.IsDefaultPort || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Fragment) ||
+            !string.Equals(uri.AbsolutePath, expectedPath, StringComparison.OrdinalIgnoreCase))
         {
             throw new ProviderReadException("The Microsoft mail continuation is invalid.");
         }

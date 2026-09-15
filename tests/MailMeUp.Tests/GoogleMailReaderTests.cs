@@ -8,6 +8,89 @@ namespace MailMeUp.Tests;
 
 public sealed class GoogleMailReaderTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("synthetic-next+/=&")]
+    public void InboxListFiltersBeforeHydrationAndPreservesUnreadDatesAndPaging(string? cursor)
+    {
+        var start = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.FromHours(7));
+        var end = start.AddDays(14);
+        var request = new ProviderMailQuery("from:sender@example.test OR label:GitHub", null, start, end,
+            UnreadOnly: true, InboxOnly: true);
+
+        var uri = new Uri(GoogleMailReader.CreateListRequestUrl(request, 10, cursor));
+        var parameters = uri.Query.TrimStart('?').Split('&')
+            .Select(part => part.Split('=', 2))
+            .ToDictionary(pair => Uri.UnescapeDataString(pair[0]), pair => Uri.UnescapeDataString(pair[1]));
+
+        Assert.Equal("/gmail/v1/users/me/messages", uri.AbsolutePath);
+        Assert.Equal("INBOX", parameters["labelIds"]);
+        Assert.Equal("false", parameters["includeSpamTrash"]);
+        Assert.Equal("10", parameters["maxResults"]);
+        Assert.Contains("is:unread", parameters["q"], StringComparison.Ordinal);
+        Assert.Contains($"after:{start.ToUnixTimeSeconds()}", parameters["q"], StringComparison.Ordinal);
+        Assert.Contains($"before:{end.ToUnixTimeSeconds()}", parameters["q"], StringComparison.Ordinal);
+        Assert.Contains("from:sender@example.test OR label:GitHub", parameters["q"], StringComparison.Ordinal);
+        if (cursor is null)
+            Assert.DoesNotContain("pageToken", parameters.Keys);
+        else
+            Assert.Equal(cursor, parameters["pageToken"]);
+    }
+
+    [Fact]
+    public void BroadSearchDoesNotRestrictLabels()
+    {
+        var uri = new Uri(GoogleMailReader.CreateListRequestUrl(
+            new ProviderMailQuery("", null, null, null, UnreadOnly: true), 10, null));
+
+        Assert.DoesNotContain("labelIds", uri.Query, StringComparison.Ordinal);
+        Assert.Contains("includeSpamTrash=false", uri.Query, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("UNREAD")]
+    [InlineData("UNREAD,Label_GitHub")]
+    [InlineData("INBOX,UNREAD,SPAM")]
+    [InlineData("INBOX,UNREAD,TRASH")]
+    public void InboxSearchOmitsMessagesMovedOutBeforeHydration(string? labels)
+    {
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(new
+        {
+            labelIds = labels?.Split(','),
+            payload = new { mimeType = "text/plain" }
+        }));
+
+        Assert.Null(GoogleMailReader.ParseSearchSummary("abc123", document.RootElement, inboxOnly: true));
+    }
+
+    [Fact]
+    public void InboxSearchKeepsMessagesWithBothInboxAndCustomLabels()
+    {
+        using var document = JsonDocument.Parse("""
+            { "labelIds": ["INBOX", "UNREAD", "Label_GitHub"],
+              "payload": { "mimeType": "text/plain" } }
+            """);
+
+        var summary = GoogleMailReader.ParseSearchSummary("abc123", document.RootElement, inboxOnly: true);
+
+        Assert.NotNull(summary);
+        Assert.False(summary.IsRead);
+    }
+
+    [Fact]
+    public void BroadSearchStillReturnsArchivedUnreadMessages()
+    {
+        using var document = JsonDocument.Parse("""
+            { "labelIds": ["UNREAD", "Label_GitHub"], "payload": { "mimeType": "text/plain" } }
+            """);
+
+        var summary = GoogleMailReader.ParseSearchSummary("abc123", document.RootElement, inboxOnly: false);
+
+        Assert.NotNull(summary);
+        Assert.False(summary.IsRead);
+    }
+
     [Fact]
     public void SummaryRequestSelectsMimeStructureWithoutDownloadingBodies()
     {

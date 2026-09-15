@@ -11,7 +11,7 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 | `get_status` | Build stage, read-only mode, provider capabilities, mail-search preferences, active read limits, aggregate local usage and pending-restart status |
 | `list_accounts` | Shared account IDs, providers, labels and addresses, with effective read categories |
 | `search_mail` | Short matches across selected or all mail-enabled accounts, with optional structured filters |
-| `search_unread_mail` | Unread short matches, with optional date, sender, recipient and attachment filters |
+| `search_unread_mail` | Unread Inbox matches by default, with optional date, sender, recipient and attachment filters |
 | `search_mail_by_date` | Short matches in an inclusive/exclusive received-time range, with optional unread, sender, recipient and attachment filters |
 | `read_mail` | Bounded plain text for one selected message reference |
 | `list_calendars` | Calendars with short local references |
@@ -40,6 +40,10 @@ Attachment content/downloads, sending, edits and invitations are outside the MVP
 Omit account IDs to search all eligible accounts, or pass explicit IDs. Calendar selection is separate. Defaults are 20 results globally, 160-character mail previews and 2,000-character detail pages. More results use a short in-memory continuation cursor. The current source adds shared request, admission and MCP output-byte limits; see [read guardrails](READ_GUARDRAILS.md) for defaults, configuration and validation limits. Output bytes are not model tokens.
 
 Mail search accepts common text plus optional sender/recipient contains filters, unread state, attachment presence and received-time boundaries. Each adapter translates those structured filters to Gmail or Microsoft syntax. `search_unread_mail` and `search_mail_by_date` do not require a text query.
+
+The September 14 source adds `inboxOnly`: it defaults to `true` for `search_unread_mail` and `false` for `search_mail` and `search_mail_by_date`. For an unread Inbox briefing, combine `search_unread_mail` with the required date range. Pass `inboxOnly: false` explicitly to include unread archived or moved messages, while retaining Spam/Junk and Trash/Deleted exclusions. Inbox scope includes all Gmail Inbox categories, not only Primary; it does not exclude senders. A custom Gmail label does not itself remove a message from Inbox.
+
+Inbox filtering happens at the provider before preview retrieval: Gmail requires the `INBOX` label, and Microsoft queries the Inbox message collection without traversing child folders. Results report `inbox_only` alongside their effective dates. Continuations retain this scope and reject a changed `inboxOnly` value. This source increment has not been built, tested or installed.
 
 In the current source, searches without explicit dates cover the previous 14 days by default. The Windows Sharing page can save a global default from 1 to 365 days. Longer periods take more time, require more provider requests and can hit provider limits. An explicit start, end or recognized native provider date expression overrides the default; older mail remains available when requested explicitly. Calendar windows are unchanged.
 

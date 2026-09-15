@@ -1,5 +1,6 @@
 using MailMeUp.Application;
 using MailMeUp.Core;
+using MailMeUp.Mcp;
 using Xunit;
 
 namespace MailMeUp.Tests;
@@ -134,6 +135,92 @@ public sealed class ApplicationReadTests
         Assert.Equal("team@example.test", google.LastQuery?.RecipientContains);
         Assert.True(google.LastQuery?.UnreadOnly == true);
         Assert.True(google.LastQuery?.HasAttachments == true);
+    }
+
+    [Fact]
+    public async Task InboxOnlyIsAValidStructuredSearchAndUsesTheDefaultDateWindow()
+    {
+        var account = new Account("google:test", "google", "Google", "google@example.test", true, false);
+        var reader = new FakeMailReader("google");
+        var application = CreateApplication([account], [reader], []);
+
+        var result = await application.SearchMailAsync(new(InboxOnly: true));
+
+        Assert.True(result.InboxOnly);
+        Assert.True(reader.LastQuery?.InboxOnly == true);
+        Assert.NotNull(result.EffectiveStart);
+        Assert.NotNull(result.EffectiveEnd);
+        Assert.Equal(14, result.DefaultLookbackDaysApplied);
+        Assert.Equal(result.EffectiveStart, reader.LastQuery?.Start);
+        Assert.Equal(result.EffectiveEnd, reader.LastQuery?.End);
+        Assert.True(result.CoverageComplete);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MailContinuationRejectsAChangedFolderScope(bool inboxOnly)
+    {
+        var account = new Account("google:test", "google", "Google", "google@example.test", true, false);
+        var reader = new FakeMailReader("google", new ProviderMailSearchPage(
+        [
+            new("new", "Newest", "sender@example.test", Instant(10), "Preview", IsRead: false),
+            new("old", "Older", "sender@example.test", Instant(9), "Preview", IsRead: false)
+        ], null));
+        var application = CreateApplication([account], [reader], []);
+        var request = new MailSearchRequest(UnreadOnly: true, InboxOnly: inboxOnly, Limit: 1,
+            Start: "2026-09-05T00:00:00Z", End: "2026-09-06T00:00:00Z");
+
+        var first = await application.SearchMailAsync(request);
+        Assert.NotNull(first.NextCursor);
+        Assert.Equal(inboxOnly, first.InboxOnly);
+        var originalQuery = reader.LastQuery;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => application.SearchMailAsync(
+            request with { Cursor = first.NextCursor, InboxOnly = !inboxOnly }));
+        Assert.Same(originalQuery, reader.LastQuery);
+
+        var continued = await application.SearchMailAsync(request with { Cursor = first.NextCursor });
+        Assert.Equal(inboxOnly, continued.InboxOnly);
+        Assert.Equal("Older", Assert.Single(continued.Items).Subject);
+        Assert.Null(continued.NextCursor);
+    }
+
+    [Theory]
+    [InlineData("unread", true)]
+    [InlineData("unread-all-folders", false)]
+    [InlineData("search", false)]
+    [InlineData("search-inbox", true)]
+    [InlineData("date", false)]
+    [InlineData("date-inbox", true)]
+    public async Task MailToolsApplyAndReportTheRequestedInboxScope(string tool, bool expectedInboxOnly)
+    {
+        var account = new Account("google:test", "google", "Google", "google@example.test", true, false);
+        var reader = new FakeMailReader("google", new ProviderMailSearchPage(
+            [new("match", "Match", "sender@example.test", Instant(10), "Preview", IsRead: false)], null));
+        var tools = new MailTools(CreateApplication([account], [reader], []));
+        const string start = "2026-09-05T00:00:00Z";
+        const string end = "2026-09-06T00:00:00Z";
+
+        var response = tool switch
+        {
+            "unread" => await tools.SearchUnreadMailAsync(start: start, end: end),
+            "unread-all-folders" => await tools.SearchUnreadMailAsync(start: start, end: end, inboxOnly: false),
+            "search" => await tools.SearchMailAsync("sample", start: start, end: end),
+            "search-inbox" => await tools.SearchMailAsync("sample", start: start, end: end, inboxOnly: true),
+            "date" => await tools.SearchMailByDateAsync(start, end),
+            "date-inbox" => await tools.SearchMailByDateAsync(start, end, inboxOnly: true),
+            _ => throw new ArgumentException("Unknown synthetic tool case.", nameof(tool))
+        };
+
+        Assert.False(response.IsError == true);
+        Assert.Equal(expectedInboxOnly, reader.LastQuery?.InboxOnly);
+        Assert.Equal(tool.StartsWith("unread", StringComparison.Ordinal), reader.LastQuery?.UnreadOnly);
+        Assert.Equal(Instant(0), reader.LastQuery?.Start);
+        Assert.Equal(Instant(24), reader.LastQuery?.End);
+        var payload = Assert.IsType<System.Text.Json.JsonElement>(response.StructuredContent);
+        Assert.Equal(expectedInboxOnly, payload.GetProperty("inbox_only").GetBoolean());
+        Assert.Equal(1, payload.GetProperty("items").GetArrayLength());
     }
 
     [Fact]

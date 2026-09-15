@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add source-only Inbox scoping for mail search. MCP unread search now defaults to Inbox, unread state and the applied date range, with an explicit opt-out for broader searches. Gmail filters by `INBOX` before preview retrieval; Microsoft uses the Inbox collection. Return `inbox_only` and bind continuations to the selected scope. All Inbox categories and senders remain eligible. This increment is not built, tested or installed.
+
 - Add source-only Windows Sharing controls for read limits and aggregate usage, with draft validation, Save/Discard/defaults, stale-save protection and separate saved/active settings. Refresh reads local counters without provider traffic; changing settings preserves usage and requires restarting participating processes. Extend the isolated demo and MCP status with synthetic/local usage respectively. Regression sources are added but not run; this increment is not built or installed.
 
 - Add source-only shared provider request limits, cross-process cooldowns, Microsoft 429 recovery, cumulative read/MCP output budgets and 2,000-character default details. Reduce eager cross-account mail hydration, cache recent details and Microsoft folder identities, and fix Gmail preview attachment metadata and incomplete external text handling. Local controls are configurable through `read-guardrails.json`; the UI distinguishes budget exhaustion from reconnect failures. Synthetic regression sources are added but not compiled or run; these changes are not in installed `0.1.1.20`. See [read guardrails](docs/READ_GUARDRAILS.md).

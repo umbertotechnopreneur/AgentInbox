@@ -1,5 +1,13 @@
 # Validation
 
+## Inbox-scoped unread search — source increment
+
+**2026-09-14 — not built, tested or installed.** Shared search contracts now carry an Inbox-only scope. MCP `search_unread_mail` defaults to this scope; general and date-range tools retain broader defaults and expose the same option. Gmail applies `INBOX` before preview retrieval, and Microsoft selects the Inbox collection. Results disclose `inbox_only`, and continuations bind to the selected scope. Date and unread filters still apply; all Inbox categories and senders remain eligible.
+
+Synthetic regression sources cover provider request URLs, Inbox/date/unread combinations, messages carrying both Inbox and custom labels, archived and moved-message exclusion, broader opt-out, MCP defaults and reported scope, and continuation scope mismatch handling. They have not been compiled or executed.
+
+No tests, builds, formatting, smoke checks, provider reads, installation or CI dispatch were performed for this increment. Earlier source, installed-package and test records below are historical evidence and do not establish validation of this change. Microsoft Inbox continuations currently require the same well-known Inbox collection path; a provider response that substitutes a canonical folder-ID path is rejected. Confirm real continuation URLs during owner-requested provider validation before broadening accepted paths. Published-executable and live-provider checks require an owner request.
+
 ## Read-limit editor and local usage — source increment
 
 **2026-09-13 — not built, tested or installed.** The Windows Sharing source adds read-budget settings, aggregate usage, manual local refresh, protected drafts and restart guidance. Core/Storage expose validated settings management with an expected-settings comparison and atomic save, plus read-only ledger snapshots. Application/decorator/DI wiring, isolated demo state and MCP status fields are included. Status remains available with an exhausted or small content budget; usage never claims model-token measurement.

@@ -14,6 +14,77 @@ public sealed class MicrosoftMailSearchTests
     private static readonly DateTimeOffset End = Start.AddDays(1);
 
     [Theory]
+    [InlineData("", null, true)]
+    [InlineData("invoice OR contract", null, true)]
+    [InlineData("", "sender@example.test", true)]
+    [InlineData("", null, false)]
+    [InlineData("invoice OR contract", null, false)]
+    public void FolderScopeAppliesToStructuredAndTextSearch(string text, string? sender, bool inboxOnly)
+    {
+        var query = new ProviderMailQuery(text, sender, Start, End, UnreadOnly: true, InboxOnly: inboxOnly);
+        var url = (string)Invoke("CreateSearchUrl", query, 3, inboxOnly ? Array.Empty<string>() : ExcludedFolders)!;
+
+        Assert.Equal(inboxOnly ? "/v1.0/me/mailFolders/inbox/messages" : "/v1.0/me/messages", new Uri(url).AbsolutePath);
+        var parameters = SearchParameters(query);
+        if (text.Length == 0 && sender is null)
+        {
+            Assert.Contains("isRead eq false", parameters["$filter"]);
+            Assert.Contains("receivedDateTime ge 2026-09-04T17:00:00Z", parameters["$filter"]);
+            Assert.Contains("receivedDateTime lt 2026-09-05T17:00:00Z", parameters["$filter"]);
+            if (inboxOnly)
+                Assert.DoesNotContain("parentFolderId", parameters["$filter"]);
+        }
+        else
+        {
+            Assert.Contains("$search", parameters.Keys);
+            Assert.DoesNotContain("$filter", parameters.Keys);
+        }
+    }
+
+    [Theory]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?%24skiptoken=synthetic%2Bnext")]
+    [InlineData(false, "https://graph.microsoft.com/v1.0/me/messages?%24skiptoken=synthetic%2Bnext")]
+    public void ContinuationRetainsItsExactMailCollectionAndProviderQuery(bool inboxOnly, string cursor)
+    {
+        Assert.Equal(cursor, MicrosoftMailReader.ValidateNextLink(cursor, inboxOnly));
+    }
+
+    [Theory]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/messages?%24skiptoken=next")]
+    [InlineData(false, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?%24skiptoken=next")]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/mailFolders/archive/messages?%24skiptoken=next")]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/abc123")]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messagesOther?%24skiptoken=next")]
+    [InlineData(false, "https://graph.microsoft.com/v1.0/me/messagesOther?%24skiptoken=next")]
+    [InlineData(true, "https://graph.microsoft.com:8443/v1.0/me/mailFolders/inbox/messages")]
+    [InlineData(true, "https://other.example.test/v1.0/me/mailFolders/inbox/messages")]
+    [InlineData(true, "http://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages")]
+    [InlineData(true, "https://user@graph.microsoft.com/v1.0/me/mailFolders/inbox/messages")]
+    [InlineData(true, "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages#fragment")]
+    public void ContinuationCannotWidenOrChangeTheRequestedCollection(bool inboxOnly, string cursor)
+    {
+        Assert.Throws<ProviderReadException>(() => MicrosoftMailReader.ValidateNextLink(cursor, inboxOnly));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("invoice")]
+    public void InboxPageKeepsExactUnreadAndDateConstraints(string text)
+    {
+        const string nextLink = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?%24skiptoken=synthetic-next";
+        var page = ParsePage([
+                Message("start", Start),
+                Message("before", Start.AddTicks(-1)),
+                Message("end", End),
+                Message("read", Start, isRead: true),
+                Message("last", End.AddTicks(-1))
+            ], new(text, null, Start, End, UnreadOnly: true, InboxOnly: true), nextLink);
+
+        Assert.Equal(["start", "last"], page.Items.Select(item => item.ProviderMessageId));
+        Assert.Equal(nextLink, page.NextCursor);
+    }
+
+    [Theory]
     [InlineData("Microsoft", null, null)]
     [InlineData("", "sender@example.test", null)]
     [InlineData("", null, "recipient@example.test")]
@@ -120,7 +191,7 @@ public sealed class MicrosoftMailSearchTests
 
     private static Dictionary<string, string> SearchParameters(ProviderMailQuery query)
     {
-        var url = (string)Invoke("CreateSearchUrl", query, 3, ExcludedFolders)!;
+        var url = (string)Invoke("CreateSearchUrl", query, 3, query.InboxOnly ? Array.Empty<string>() : ExcludedFolders)!;
         return new Uri(url).Query.TrimStart('?').Split('&')
             .Select(part => part.Split('=', 2))
             .ToDictionary(pair => Uri.UnescapeDataString(pair[0]), pair => Uri.UnescapeDataString(pair[1]));
@@ -144,7 +215,8 @@ public sealed class MicrosoftMailSearchTests
             ["value"] = messages,
             ["@odata.nextLink"] = nextLink
         }));
-        return (ProviderMailSearchPage)Invoke("ParseSearchPage", document.RootElement, query, 50, ExcludedFolders)!;
+        return (ProviderMailSearchPage)Invoke("ParseSearchPage", document.RootElement, query, 50,
+            query.InboxOnly ? Array.Empty<string>() : ExcludedFolders)!;
     }
 
     private static object? Invoke(string name, params object?[] arguments)

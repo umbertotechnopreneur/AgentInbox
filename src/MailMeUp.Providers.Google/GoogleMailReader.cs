@@ -44,9 +44,9 @@ public sealed class GoogleMailReader : IMailReader
         ValidateMailAccount(account);
         using var diagnostics = ReadDiagnostics.Begin(_logger, account, "search_mail");
         ArgumentNullException.ThrowIfNull(query);
-        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
+        _logger.LogDebug("Mail request shape: text={HasText}; sender={HasSender}; recipient={HasRecipient}; start={HasStart}; end={HasEnd}; unread={UnreadOnly}; inbox={InboxOnly}; attachments={HasAttachmentFilter}; continuation={HasContinuation}; limit={Limit}",
             !string.IsNullOrWhiteSpace(query.Text), query.Sender is not null, query.RecipientContains is not null,
-            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.HasAttachments.HasValue, cursor is not null, limit);
+            query.Start.HasValue, query.End.HasValue, query.UnreadOnly, query.InboxOnly, query.HasAttachments.HasValue, cursor is not null, limit);
         if (query.Text.Length > 500 || query.Text.Any(char.IsControl) || limit is < 1 or > 50 || cursor is { Length: > 4_096 })
         {
             throw new ArgumentException("The Gmail search page is invalid.");
@@ -55,16 +55,7 @@ public sealed class GoogleMailReader : IMailReader
         try
         {
             var accessToken = await _tokens.GetAsync(account, cancellationToken);
-            var url = new StringBuilder("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=")
-                .Append(limit.ToString(CultureInfo.InvariantCulture))
-                .Append("&q=").Append(Uri.EscapeDataString(CreateProviderQuery(query)))
-                .Append("&includeSpamTrash=false")
-                .Append("&fields=messages(id%2CthreadId)%2CnextPageToken%2CresultSizeEstimate")
-                .ToString();
-            if (!string.IsNullOrWhiteSpace(cursor))
-            {
-                url += "&pageToken=" + Uri.EscapeDataString(cursor);
-            }
+            var url = CreateListRequestUrl(query, limit, cursor);
 
             using var page = await GetJsonAsync(account, url, accessToken, "gmail.messages.list", cancellationToken);
             var summaries = new List<ProviderMailSummary>();
@@ -83,7 +74,11 @@ public sealed class GoogleMailReader : IMailReader
                         continue;
                     }
 
-                    summaries.Add(await ReadSummaryAsync(account, id, accessToken, cancellationToken));
+                    var summary = await ReadSummaryAsync(account, id, accessToken, query.InboxOnly, cancellationToken);
+                    if (summary is not null)
+                    {
+                        summaries.Add(summary);
+                    }
                 }
             }
 
@@ -162,16 +157,49 @@ public sealed class GoogleMailReader : IMailReader
         }
     }
 
-    private async Task<ProviderMailSummary> ReadSummaryAsync(
+    private async Task<ProviderMailSummary?> ReadSummaryAsync(
         Account account,
         string messageId,
         string accessToken,
+        bool inboxOnly,
         CancellationToken cancellationToken)
     {
         ValidateMessageId(messageId);
         var url = CreateSummaryRequestUrl(messageId);
         using var document = await GetJsonAsync(account, url, accessToken, "gmail.messages.metadata", cancellationToken);
-        return ParseSummary(messageId, document.RootElement);
+        return ParseSearchSummary(messageId, document.RootElement, inboxOnly);
+    }
+
+    internal static string CreateListRequestUrl(ProviderMailQuery query, int limit, string? cursor)
+    {
+        var url = new StringBuilder("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=")
+            .Append(limit.ToString(CultureInfo.InvariantCulture))
+            .Append("&q=").Append(Uri.EscapeDataString(CreateProviderQuery(query)))
+            .Append("&includeSpamTrash=false")
+            .Append("&fields=messages(id%2CthreadId)%2CnextPageToken%2CresultSizeEstimate");
+        if (query.InboxOnly)
+        {
+            // A separate label constraint also applies when free-text search contains an OR.
+            url.Append("&labelIds=INBOX");
+        }
+
+        if (!string.IsNullOrWhiteSpace(cursor))
+        {
+            url.Append("&pageToken=").Append(Uri.EscapeDataString(cursor));
+        }
+
+        return url.ToString();
+    }
+
+    internal static ProviderMailSummary? ParseSearchSummary(string messageId, JsonElement root, bool inboxOnly)
+    {
+        // A rule or another client can move the message after the IDs were listed.
+        if (inboxOnly && (!HasLabel(root, "INBOX") || HasLabel(root, "SPAM") || HasLabel(root, "TRASH")))
+        {
+            return null;
+        }
+
+        return ParseSummary(messageId, root);
     }
 
     internal static string CreateSummaryRequestUrl(string messageId) =>
