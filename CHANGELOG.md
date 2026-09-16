@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Add complete Windows x64/ARM64 portable ZIPs with the native setup app, CLI/MCP tools, bundled runtimes, license notices and checksums. Portable Codex setup selects the executable from the extracted folder instead of the installed MSIX alias. Refresh stale CLI dependency graphs, including the missing Diagnostics and Hosting modules, and add separate desktop portable graphs. Packaging and runtime validation are pending for this increment.
+- Add complete Windows x64/ARM64 portable ZIPs with the native setup app, CLI/MCP tools, bundled runtimes, license notices and checksums. Portable Codex setup selects the executable from the extracted folder instead of the installed MSIX alias. Refresh stale CLI dependency graphs, including the missing Diagnostics and Hosting modules, and add separate desktop portable graphs. Both ZIPs built locally; x64 CLI/MCP checks passed before and after extraction, and the extracted desktop opened an isolated demo window. ARM64 runtime and clean-machine behavior remain untested.
+- Allow portable release drafts when MSIX signing secrets are absent; a partial signing configuration still fails explicitly. Tag reruns update existing draft assets without replacing published releases or removing locally attached installers.
 
 - Restrict GitHub Windows releases to x64 and ARM64 ZIP archives plus a signed x64 MSIX. The MSIX signing certificate is imported from repository secrets only for the release runner, then removed; tag releases create a draft for review. MSIX packages now include a SHA-256 checksum. The workflow has not run from this source.
 
