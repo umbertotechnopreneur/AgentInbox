@@ -135,8 +135,11 @@ public sealed class GoogleReadRequestsTests
         Assert.Equal(2, calls);
     }
 
-    [Fact]
-    public async Task MailMetadataAndDetailsShareTheAccountGateAndOtherAccountsRemainIndependent()
+    [Theory]
+    [InlineData("gmail.messages.get", "gmail.messages.metadata", 200)]
+    [InlineData("gmail.messages.metadata", "gmail.messages.get", 1000)]
+    public async Task MailMetadataAndDetailsShareTheAccountGateAndOtherAccountsRemainIndependent(
+        string firstEndpoint, string queuedEndpoint, int expectedIntervalMilliseconds)
     {
         var clock = new AdvancingClock();
         var blocked = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -144,18 +147,20 @@ public sealed class GoogleReadRequestsTests
         using var client = new HttpClient(new Handler((_, _) =>
             Interlocked.Increment(ref calls) == 1 ? blocked.Task : Task.FromResult(Success())));
         var reader = new GoogleReadRequests(client, clock.UtcNow, clock.Delay);
-        var first = Read(reader);
-        var queued = Read(reader, "gmail.messages.metadata");
+        var first = Read(reader, firstEndpoint);
+        var queued = Read(reader, queuedEndpoint);
         Assert.Equal(1, calls);
+        Assert.False(queued.IsCompleted);
 
         using var separate = await Read(reader, account: Account with { Id = "google:other", EmailAddress = "other@example.test" });
         Assert.Equal(2, calls);
+        Assert.Empty(clock.Delays);
         blocked.SetResult(Success());
         using var firstResult = await first;
         using var queuedResult = await queued;
 
         Assert.Equal(3, calls);
-        Assert.Equal(TimeSpan.FromSeconds(1), Assert.Single(clock.Delays));
+        Assert.Equal(TimeSpan.FromMilliseconds(expectedIntervalMilliseconds), Assert.Single(clock.Delays));
     }
 
     [Fact]

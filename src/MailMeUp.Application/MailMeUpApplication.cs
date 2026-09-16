@@ -313,7 +313,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
 
         var hasStructuredFilter = sender is not null || recipient is not null || start is not null || end is not null ||
-                                   request.UnreadOnly || request.HasAttachments is not null;
+                                   request.UnreadOnly || request.HasAttachments is not null || request.InboxOnly;
         if (query is null && !hasStructuredFilter)
         {
             throw new ArgumentException("Mail search requires text or at least one structured filter.", nameof(request));
@@ -326,7 +326,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             end,
             recipient,
             request.UnreadOnly,
-            request.HasAttachments);
+            request.HasAttachments,
+            request.InboxOnly);
 
         var sharing = await ReadSharingSnapshotAsync(cancellationToken);
         var allAccounts = sharing.Accounts;
@@ -477,7 +478,8 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             nextCursor,
             state.Query.Start,
             state.Query.End,
-            state.DefaultLookbackDaysApplied);
+            state.DefaultLookbackDaysApplied,
+            state.Query.InboxOnly);
     }
 
     private async Task ReadMailAccountAsync(

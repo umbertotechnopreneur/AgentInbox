@@ -154,6 +154,11 @@ def main():
                               "search_mail_by_date", "read_mail", "list_calendars", "search_events", "read_event"}
             check({tool["name"] for tool in tools} == expected_tools, "Unexpected tool surface")
             check(all(tool["annotations"]["readOnlyHint"] for tool in tools), "Missing read-only hints")
+            for tool in tools:
+                if tool["name"] in {"search_mail", "search_unread_mail", "search_mail_by_date"}:
+                    schema = tool["inputSchema"]
+                    check("inboxOnly" in schema["properties"], f"Missing Inbox filter in {tool['name']}")
+                    check("inboxOnly" not in schema.get("required", []), "Inbox scope must have a default")
             send({"id": 3, "method": "tools/call", "params": {"name": "get_status", "arguments": {}}})
             check(content(receive(3))["can_connect_accounts"] is True, "Incorrect MCP readiness")
             send({"id": 4, "method": "tools/call", "params": {"name": "list_accounts", "arguments": {}}})
@@ -161,13 +166,26 @@ def main():
             send({"id": 5, "method": "tools/call", "params": {"name": "search_mail", "arguments": {"query": "private-query-sentinel@example.test"}}})
             mail = content(receive(5))
             check(mail["items"] == [] and mail["coverage_complete"] is True, "Unexpected empty mail search")
+            check(mail["inbox_only"] is False, "General mail search must retain its broad default")
             send({"id": 6, "method": "tools/call", "params": {"name": "search_unread_mail", "arguments": {}}})
             unread = content(receive(6))
             check(unread["items"] == [] and unread["coverage_complete"] is True, "Unexpected empty unread mail search")
+            check(unread["inbox_only"] is True, "Unread mail search must default to Inbox")
             send({"id": 7, "method": "tools/call", "params": {"name": "search_mail_by_date", "arguments": {
                 "start": "2026-09-05T00:00:00+07:00", "end": "2026-09-06T00:00:00+07:00"}}})
             dated = content(receive(7))
             check(dated["items"] == [] and dated["coverage_complete"] is True, "Unexpected empty date mail search")
+            check(dated["inbox_only"] is False, "Date mail search must retain its broad default")
+            for identifier, name, arguments, expected_scope in (
+                    (12, "search_unread_mail", {"inboxOnly": False}, False),
+                    (13, "search_mail_by_date", {"start": "2026-09-05T00:00:00+07:00",
+                                                  "end": "2026-09-06T00:00:00+07:00", "inboxOnly": True}, True),
+                    (14, "search_mail", {"query": "synthetic", "inboxOnly": True}, True)):
+                send({"id": identifier, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+                scoped = content(receive(identifier))
+                check(scoped["inbox_only"] is expected_scope, f"Explicit Inbox scope not applied by {name}")
+                check(scoped["items"] == [] and scoped["coverage_complete"] is True,
+                      f"Unexpected empty scoped mail result for {name}")
             send({"id": 8, "method": "tools/call", "params": {"name": "list_calendars", "arguments": {}}})
             calendars = content(receive(8))
             check(calendars["calendars"] == [] and calendars["coverage_complete"] is True, "Unexpected empty calendar list")
@@ -202,7 +220,7 @@ def main():
         check("private-query-sentinel" not in diagnostics and "m_private-reference-sentinel" not in diagnostics,
               "Verbose MCP diagnostics disclosed request arguments")
         check("\x1b" not in diagnostics, "MCP diagnostics contain ANSI escapes")
-    print("PASS: CLI options, JSON, private stderr logs, nine MCP tools, empty reads, invalid references, and diagnostic-only first run.")
+    print("PASS: CLI options, JSON, private stderr logs, nine MCP tools, Inbox scope schema/defaults/overrides, empty reads, invalid references, and diagnostic-only first run.")
 
 
 if __name__ == "__main__":

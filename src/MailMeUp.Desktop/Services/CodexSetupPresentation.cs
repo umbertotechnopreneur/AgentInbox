@@ -3,17 +3,49 @@ namespace MailMeUp.Desktop.Services;
 // Kept independent of WinUI so state-specific guidance can use synthetic regression tests.
 internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IReadOnlyList<string> Steps)
 {
+    internal static bool IsLocalSetupReady(CodexSetupStatus? status) => status is
+    { Code: "PluginConfigured", IsPluginConfigured: true, HasDirectRegistration: false }
+        or
+    {
+        Code: "DirectConfigured", HasDirectRegistration: true, DirectRegistrationCount: 1,
+        IsDirectRegistrationEnabled: true, IsPluginConfigured: false
+    };
+
+    internal static string ConnectionInstructions(CodexSetupStatus status, bool keepPlugin)
+    {
+        if (keepPlugin)
+        {
+            var entries = status.DirectRegistrationCount > 1 ? "the direct MailMeUp entries" : "the direct MailMeUp entry";
+            return $"In Codex Settings > MCP servers, remove {entries}. "
+                + (status.IsPluginConfigured ? "Keep the MailMeUp plugin enabled, then select Check again."
+                    : "Then select Check again to continue with the local plugin setup.");
+        }
+
+        var next = status.DirectRegistrationCount > 1
+            ? "In Codex Settings > MCP servers, keep one MailMeUp entry and make sure it is enabled."
+            : status.IsDirectRegistrationEnabled == false
+                ? "In Codex Settings > MCP servers, enable the MailMeUp entry."
+                : status.IsDirectRegistrationEnabled is null
+                    ? "In Codex Settings > MCP servers, review the MailMeUp entry and make sure it is enabled."
+                    : "Keep your direct MailMeUp entry enabled in Codex Settings > MCP servers.";
+        return "In Codex's plugin settings, disable any enabled MailMeUp plugin. " + next + " Then select Check again.";
+    }
+
     internal static CodexSetupPresentation FromStatus(CodexSetupStatus status) => status.Code switch
     {
         "ReadyToInstall" => new("Ready to install", "What happens next?",
-            ["Install the local plugin using the button on this page. This adds MailMeUp's local marketplace and plugin to Codex.",
-             "Start a new Codex task after installation. In its composer, use /mcp to review loaded servers."]),
-        "PluginConfigured" => new("Plugin installed and enabled", "How to use it",
+            ["Select Install plugin to add MailMeUp to Codex. Your saved sharing choices are kept.",
+             "After installation, start a new Codex task to try the connection."]),
+        "PluginConfigured" => new("Local setup ready", "How to use it",
             ["Start a new Codex task to load the MailMeUp plugin. In its composer, use /mcp to review loaded servers.",
              "Choose MailMeUp when asking about your shared mail or calendars. This setup check has not tested a live connection.",
              "Use Update local plugin only when refreshing the plugin files or configuration."]),
+        "DirectConfigured" => new("Local setup ready", "How to use it",
+            ["Codex reports one direct MailMeUp connection enabled, with no enabled MailMeUp plugin.",
+             "Start a new Codex task to load MailMeUp. This setup check has not tested a live connection."]),
         "DirectRegistrationExists" => new(
-            status.IsPluginConfigured ? "Two connection methods found" : "Direct MCP setup found",
+            status.DirectRegistrationCount > 1 ? "Several connection entries found"
+                : status.IsPluginConfigured ? "Two connection entries found" : "Direct connection needs review",
             "Review connections",
             ["Open Codex Settings > MCP servers and review the MailMeUp entry. A direct MCP registration is an alternative to the plugin, not a mailbox sign-in error.",
              status.IsPluginConfigured

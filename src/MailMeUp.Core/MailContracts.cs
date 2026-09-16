@@ -1,6 +1,6 @@
 namespace MailMeUp.Core;
 
-/// <summary>Requests a compact mail search across selected accounts or all mail-enabled accounts.</summary>
+/// <summary>Requests a compact mail search across selected accounts; InboxOnly excludes archives and other folders.</summary>
 public sealed record MailSearchRequest(
     string? Query = null,
     IReadOnlyList<string>? AccountIds = null,
@@ -11,9 +11,10 @@ public sealed record MailSearchRequest(
     string? End = null,
     string? RecipientContains = null,
     bool UnreadOnly = false,
-    bool? HasAttachments = null);
+    bool? HasAttachments = null,
+    bool InboxOnly = false);
 
-/// <summary>Provider-neutral mail criteria translated by each provider adapter.</summary>
+/// <summary>Provider-neutral mail criteria; InboxOnly requires provider filtering before retrieving message summaries.</summary>
 public sealed record ProviderMailQuery(
     string Text,
     string? Sender,
@@ -21,7 +22,8 @@ public sealed record ProviderMailQuery(
     DateTimeOffset? End,
     string? RecipientContains = null,
     bool UnreadOnly = false,
-    bool? HasAttachments = null);
+    bool? HasAttachments = null,
+    bool InboxOnly = false);
 
 /// <summary>One short mail match suitable for an MCP response.</summary>
 public sealed record MailSearchItem(
@@ -37,7 +39,7 @@ public sealed record MailSearchItem(
 /// <summary>Identifies an account that could not be covered by a multi-account read.</summary>
 public sealed record AccountReadFailure(string AccountId, string Reason, ReadFailureKind Kind = ReadFailureKind.Unknown);
 
-/// <summary>Returns compact matches, search coverage and an optional short continuation cursor.</summary>
+/// <summary>Returns compact matches, coverage, a continuation and InboxOnly to report the applied folder scope.</summary>
 public sealed record MailSearchResult(
     IReadOnlyList<MailSearchItem> Items,
     IReadOnlyList<string> SearchedAccountIds,
@@ -46,7 +48,8 @@ public sealed record MailSearchResult(
     string? NextCursor,
     DateTimeOffset? EffectiveStart = null,
     DateTimeOffset? EffectiveEnd = null,
-    int? DefaultLookbackDaysApplied = null);
+    int? DefaultLookbackDaysApplied = null,
+    bool InboxOnly = false);
 
 /// <summary>Requests a bounded text segment for one result reference.</summary>
 public sealed record MailReadRequest(string Reference, int Offset = 0, int MaxCharacters = 2_000);

@@ -6,17 +6,19 @@ Connect MailMeUp once, then ask Codex to find mail or show appointments from the
 
 After installing the Windows app and choosing what to share, open **Connect to Codex**:
 
-1. Select **Check setup** (or **Refresh status**) to see what's ready.
-2. Review the results for the MailMeUp command, Codex command-line app, local marketplace, plugin and any direct MCP connection. Adding a marketplace only tells Codex where to find the plugin; the plugin still needs to be installed.
-3. Select **Install local plugin**, or follow the help shown if something needs attention. Then start a new Codex task to load the tools.
+1. Select **Check setup** to inspect this device. If the plugin can be added, select **Install plugin**. If a direct connection needs review, the page shows the plugin and direct connection choices with instructions for the selected method.
+2. Follow those instructions to keep one MailMeUp connection in Codex. Change existing connections in Codex yourself, then select **Check again** to refresh the local status. Selecting a method in MailMeUp doesn't change Codex settings. A ready direct connection also offers **Switch to the MailMeUp plugin** in the expandable section.
+3. When local setup is ready, copy the suggested first-task prompt and start a new Codex task to try the tools. Select **Finish setup** to close the wizard, or **Finish later** while setup still needs attention.
 
-If setup doesn't work, **Copy setup results** gives you a short diagnostic summary to share. The page shows when it last checked and clears old results when you try again. Failed, unfinished or unavailable checks aren't shown as success. Open **Manual setup (fallback)** for the preparation step and commands to run yourself.
+Plugin maintenance, detailed checks and manual setup are available in the expandable section. **Copy setup results** gives you a short diagnostic summary to share. The page shows when it last checked and clears old results when you try again. Failed, unfinished or unavailable checks aren't shown as success. Adding a marketplace only tells Codex where to find the plugin; the plugin still needs to be installed.
+
+These final-step changes are in the September 16 source only and have not been built, tested or installed. Earlier packages use different labels and a separate **Review connections** action.
 
 Setup uses the native Codex command-line app to copy the plugin into `%LOCALAPPDATA%\MailMeUp\codex-plugin`, add its local marketplace and install `mailmeup@mailmeup-local`. If you set `MAILMEUP_DATA_DIR`, the plugin goes there instead, and Codex's MailMeUp process uses the same data folder. Nothing is published to a public marketplace.
 
 If setup can't find the native Codex executable, use the manual preparation button, then run the displayed commands in a terminal where `codex` works. This also applies when your Codex command is installed as a script.
 
-If you've already added MailMeUp directly to Codex, guided plugin installation pauses so you don't end up with duplicate tools. Use **Review connections** to keep the direct connection or switch to the plugin. Remove the old entry in Codex's MCP settings yourself if you choose to switch. The page shows both connections if it finds both; setup won't remove one or change other plugins for you.
+If you've already added MailMeUp directly to Codex, guided plugin installation pauses so you don't end up with duplicate tools. Select the method you want to keep and follow its inline instructions. Remove the old direct entry in Codex's MCP settings yourself if you choose to switch to the plugin; disable the plugin in Codex if you keep the direct connection. Direct setup is ready only when inspection confirms one enabled direct registration without a conflicting active plugin. Unknown status remains unresolved.
 
 **An installed plugin still needs a first connection.** Start a new Codex task and ask it to show MailMeUp's status and connected accounts. A successful setup check alone doesn't show that Codex has talked to MailMeUp. The guided Windows setup still needs testing; see [Windows setup](WINDOWS_SETUP.md) and the [test record](VALIDATION.md).
 
@@ -28,7 +30,7 @@ Setup instead uses Windows' `mailmeup.exe` command shortcut, called an app execu
 
 If Windows disables the alias, enable MailMeUp under **Settings > Apps > Advanced app settings > App execution aliases**. Reinstalling a different package identity or uninstalling MailMeUp can require setup again.
 
-A new MailMeUp process uses the updated executable through that shortcut. If the plugin's own files or connection settings change, select **Install plugin** again and start a new Codex task.
+A new MailMeUp process uses the updated executable through that shortcut. If the plugin's own files or connection settings change, use the plugin installation/update action in the expandable section and start a new Codex task.
 
 ## Connect manually without a plugin
 

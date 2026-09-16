@@ -150,7 +150,7 @@ if ($CertificateThumbprint) {
 
 $packageName = "mailmeup-$PackageVersion-$runtime"
 $artifactRoot = Join-Path $repoRoot "artifacts/msix/$packageName"
-if (Test-Path -LiteralPath $artifactRoot) { throw "Artifact directory already exists: $artifactRoot. Choose a newer version or move it aside before packaging again." }
+& (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
 $payload = Join-Path $artifactRoot 'payload'
 $cliPayload = Join-Path $payload 'cli'
 New-Item -ItemType Directory -Path $cliPayload -Force | Out-Null
@@ -225,6 +225,8 @@ try {
     } else {
         Write-Output "Created unsigned MSIX: $packagePath. It cannot be installed normally until signed with a certificate trusted by the target device."
     }
+    $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $(Split-Path -Leaf $packagePath)" | Set-Content -LiteralPath "$packagePath.sha256" -Encoding utf8NoBOM
 } finally {
     Pop-Location
     $env:DOTNET_CLI_UI_LANGUAGE = $previousCliLanguage

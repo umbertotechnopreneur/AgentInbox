@@ -13,7 +13,6 @@ $version = $properties.SelectSingleNode('/Project/PropertyGroup/Version').InnerT
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $packageName = "mailmeup-$version-$Runtime"
 $payload = Join-Path $artifactRoot $packageName
-if (Test-Path -LiteralPath $payload) { throw "Package directory already exists: $payload. Move it aside before packaging again." }
 
 $hostOs = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
 if (-not $Runtime.StartsWith("$hostOs-")) { throw 'Package on the target operating system to preserve archive and executable behavior.' }
@@ -33,6 +32,7 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $runtimeLocks "$($module.Name).json"))) { throw "Missing portable dependency graph for $($module.Name)." }
     }
 
+    & (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
     dotnet publish src/MailMeUp.Cli/MailMeUp.Cli.csproj -c Release -r $Runtime --self-contained true `
         -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false `
         -p:DebugType=None -p:DebugSymbols=false -p:GenerateDocumentationFile=false `

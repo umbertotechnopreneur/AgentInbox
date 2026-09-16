@@ -7,14 +7,26 @@ namespace MailMeUp.Desktop;
 
 public sealed partial class MainWindow
 {
+    private ContentDialog? _activeSetupDialog;
+    private double _activeDialogScrollHeight;
+
     private async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
         if (_dialogOpen || _lifetime.IsCancellationRequested) return ContentDialogResult.None;
         _dialogOpen = true;
+        _activeSetupDialog = dialog;
+        var scroll = dialog.Content as ScrollViewer;
+        _activeDialogScrollHeight = scroll is not null && double.IsFinite(scroll.MaxHeight) ? scroll.MaxHeight : 440;
         try
         {
             dialog.XamlRoot = Root.XamlRoot;
             dialog.RequestedTheme = Root.ActualTheme;
+            UpdateActiveDialogLayout();
+            if (scroll is not null)
+            {
+                TrackSettingsScrollViewer(scroll);
+                dialog.Opened += (_, _) => SetSettingsScrollPointerSurface(dialog);
+            }
             using var registration = _lifetime.Token.Register(() => DispatcherQueue.TryEnqueue(() => dialog.Hide()));
             return await dialog.ShowAsync();
         }
@@ -27,9 +39,17 @@ public sealed partial class MainWindow
         }
         finally
         {
+            if (scroll is not null) UntrackSettingsScrollViewer(scroll);
+            _activeSetupDialog = null;
             _dialogOpen = false;
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, ApplyPendingStep);
         }
+    }
+
+    private void UpdateActiveDialogLayout()
+    {
+        if (_activeSetupDialog?.Content is ScrollViewer scroll)
+            scroll.MaxHeight = Math.Min(_activeDialogScrollHeight, Math.Max(120, Root.ActualHeight - 260));
     }
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e) => await ShowDialogAsync(new AboutDialog());
@@ -79,7 +99,10 @@ public sealed partial class MainWindow
         return new PivotItem { Header = title, Content = panel };
     }
 
-    private async void ProviderSetupButton_Click(object sender, RoutedEventArgs e)
+    private async void ProviderSetupButton_Click(object sender, RoutedEventArgs e) =>
+        await ConfigureProvidersAsync();
+
+    private async Task ConfigureProvidersAsync()
     {
         if (BlockDemoAction()) return;
         var content = new StackPanel { Spacing = 16 };
@@ -178,7 +201,7 @@ public sealed partial class MainWindow
         }
     }
 
-    private static ContentDialog DetailsDialog(string title, UIElement content)
+    private ContentDialog DetailsDialog(string title, UIElement content)
     {
         var dialog = new ContentDialog
         {
@@ -186,6 +209,7 @@ public sealed partial class MainWindow
             Content = new ScrollViewer
             {
                 Content = content, MaxHeight = 440,
+                Padding = new Thickness(0, 0, 16, 0),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
             }

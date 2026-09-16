@@ -25,6 +25,7 @@ public sealed partial class MainWindow
 
     private void InitializeReadGuardrails()
     {
+        SaveReadGuardrailsButton.Visibility = Visibility.Collapsed;
         foreach (var box in ReadGuardrailBoxes.OfType<NumberBox>())
             box.RegisterPropertyChangedCallback(NumberBox.TextProperty, (_, _) => UpdateReadGuardrailsDirty());
         ReadGuardrailResponseBytesBox.TextChanged += (_, _) => UpdateReadGuardrailsDirty();
@@ -56,12 +57,14 @@ public sealed partial class MainWindow
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             ReadGuardrailLoadText.Text = "Refresh stopped. Any displayed usage is the previous snapshot; your draft is kept.";
+            UpdateReadGuardrailsDirty();
             throw;
         }
         catch (Exception exception)
         {
             _logger.LogWarning("Local read guardrails could not load ({ErrorType})", exception.GetType().Name);
             ReadGuardrailLoadText.Text = "Could not refresh local limits. Any displayed usage is the previous snapshot. Check local storage and retry; your draft is kept.";
+            UpdateReadGuardrailsDirty();
         }
     }
 
@@ -80,21 +83,25 @@ public sealed partial class MainWindow
             limits.DetailReadsPerWindow, usage.NextDetailCapacityAt);
         AddReadGuardrailUsage($"Assistant output · last {window}", usage.OutputBytesInWindow,
             limits.OutputBytesPerWindow, usage.NextOutputCapacityAt, outputBytes: true);
-        ReadGuardrailActiveText.Text = $"Active in this window: {limits.ProviderAttemptsPerAccountServicePerMinute:N0} attempts per account/service each minute; {limits.ResponseBytes / 1024m:0.##########} KiB per response. Output is measured in bytes, not model tokens.";
+        ReadGuardrailActiveText.Text = $"This window allows {limits.ProviderAttemptsPerAccountServicePerMinute:N0} attempts per account/service each minute and {limits.ResponseBytes / 1024m:0.##########} KiB per response. Output measures bytes, not model tokens.";
         ReadGuardrailCooldownText.Text = usage.ActiveCooldowns == 0
             ? "No provider pauses in this snapshot."
             : $"{usage.ActiveCooldowns:N0} active provider {(usage.ActiveCooldowns == 1 ? "pause" : "pauses")}."
               + (usage.LatestCooldownEndsAt is { } ends ? $" Latest recorded end: {ReadGuardrailTime(ends)}." : string.Empty);
-        ReadGuardrailUpdatedText.Text = $"Snapshot: {ReadGuardrailTime(usage.CapturedAt)} (local time). Refresh to update. Capacity returns gradually as entries leave each window; times are not a full reset.";
+        ReadGuardrailUpdatedText.Text = $"Snapshot: {ReadGuardrailTime(usage.CapturedAt)} (local time). Refresh to update. Capacity returns gradually; the recorded times are not a full reset.";
         ReadGuardrailLoadText.Text = IsDemo
             ? "Preview only · sample usage and settings stay in this demo session."
-            : "Local profile totals, compared with this window's active limits. Other running processes may still use earlier limits.";
+            : "Usage across this local profile, against this window's limits. Other processes may use earlier limits.";
+        ReadGuardrailDetailsExpander.Header = usage.ActiveCooldowns == 0
+            ? "Usage details"
+            : $"Usage details · {usage.ActiveCooldowns:N0} provider {(usage.ActiveCooldowns == 1 ? "pause" : "pauses")}";
         ReadGuardrailUsagePanel.Visibility = Visibility.Visible;
         ReadGuardrailEditorExpander.IsEnabled = true;
         ReadGuardrailRestartNotice.IsOpen = status.RequiresRestart;
         ReadGuardrailRestartNotice.Message = IsDemo
             ? "Preview only: saved limits differ from the simulated active limits. The real app requires restarting MailMeUp and reconnecting your assistant's MailMeUp connection. Closing the demo resets its sample choices."
             : "Saved limits differ from those active in this window. Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply them to all processes. Saving does not clear usage or provider pauses.";
+        UpdateSharingSettingsSummary();
     }
 
     private void AddReadGuardrailUsage(string label, long used, long limit, DateTimeOffset? nextCapacity, bool outputBytes = false)
@@ -102,9 +109,17 @@ public sealed partial class MainWindow
         var counts = outputBytes
             ? $"{used / 1024m:0.##} / {limit / 1024m:0.##} KiB"
             : $"{used:N0} / {limit:N0}";
-        var row = new StackPanel { Spacing = 4 };
-        var heading = new TextBlock { Text = $"{label} · {counts}", TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-        row.Children.Add(heading);
+        var row = new StackPanel { Spacing = 6 };
+        row.Children.Add(new TextBlock
+        {
+            Text = label, TextWrapping = TextWrapping.Wrap, FontSize = 12,
+            Foreground = ThemeBrush("TextFillColorSecondaryBrush")
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = counts, TextWrapping = TextWrapping.Wrap, FontSize = 20,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
         var progress = new ProgressBar { Minimum = 0, Maximum = limit, Value = Math.Min(used, limit), IsIndeterminate = false };
         AutomationProperties.SetName(progress, $"{label}, {counts}");
         row.Children.Add(progress);
@@ -114,10 +129,24 @@ public sealed partial class MainWindow
                 Text = $"Next recorded capacity release: {ReadGuardrailTime(next)}.",
                 FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = ThemeBrush("TextFillColorSecondaryBrush")
             });
-        ReadGuardrailUsageRows.Children.Add(row);
+        var tile = row;
+        var index = ReadGuardrailUsageRows.Children.Count;
+        var narrow = ReadGuardrailUsageRightColumn.Width.Value == 0;
+        Grid.SetColumn(tile, narrow ? 0 : index % 2);
+        Grid.SetRow(tile, narrow ? index : index / 2);
+        ReadGuardrailUsageRows.Children.Add(tile);
     }
 
     private static string ReadGuardrailTime(DateTimeOffset time) => time.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
+
+    private void UpdateSharingSettingsSummary()
+    {
+        SharingSettingsSummary.Text = _mailSearchPreferencesDirty || _readGuardrailsDirty
+            ? "Unsaved search or read settings"
+            : _readGuardrailStatus?.RequiresRestart == true
+                ? "Saved read limits · restart needed"
+                : "Search period, read limits and usage";
+    }
 
     private void DisplayReadGuardrailDraft(ReadGuardrailLimits limits)
     {
@@ -187,17 +216,26 @@ public sealed partial class MainWindow
 
     private void UpdateReadGuardrailsDirty()
     {
-        if (_loadingReadGuardrails || _readGuardrailExpectedLimits is null) return;
+        if (_loadingReadGuardrails) return;
+        if (_readGuardrailExpectedLimits is null)
+        {
+            ReadGuardrailDraftText.Text = "Open Usage and choose Refresh to load read limits.";
+            ReadGuardrailDraftText.Visibility = Visibility.Visible;
+            return;
+        }
         var valid = TryGetReadGuardrailDraft(out var draft, out var error);
         _readGuardrailsDirty = !valid || draft != _readGuardrailExpectedLimits;
         if (_readGuardrailsDirty) _sharingReviewed = false;
         SaveReadGuardrailsButton.IsEnabled = _readGuardrailsAvailable && valid && _readGuardrailsDirty && !_readGuardrailsConflict;
+        SaveReadGuardrailsButton.Visibility = ToVisibility(_readGuardrailsDirty);
         DiscardReadGuardrailsButton.Visibility = ToVisibility(_readGuardrailsDirty || _readGuardrailsConflict);
         ReadGuardrailDraftText.Text = _readGuardrailsConflict
             ? "Limits changed in another process. Refresh usage, then discard your draft to load the latest saved limits before editing again."
             : !valid ? error : _readGuardrailsDirty ? "Unsaved limits · saving requires restarting MailMeUp processes."
-            : IsDemo ? "Saved for this preview session." : "Saved limits on this device. Active limits are shown above.";
-        ReadGuardrailEditorExpander.Header = _readGuardrailsDirty ? "Adjust read limits · unsaved changes" : "Adjust read limits";
+            : IsDemo ? "Saved for this preview session." : "Saved on this device. Current usage appears in the Usage tab.";
+        ReadGuardrailDraftText.Visibility = ToVisibility(_readGuardrailsDirty || _readGuardrailsConflict || IsDemo);
+        ReadGuardrailEditorHeading.Text = "Read limits";
+        UpdateSharingSettingsSummary();
         UpdateProgress();
     }
 
@@ -266,7 +304,19 @@ public sealed partial class MainWindow
 
     private void UpdateReadGuardrailLayout(double availableWidth)
     {
-        var narrow = availableWidth < 620;
+        var usageWidth = _settingsTabs?.SelectedIndex == 1 && ReadGuardrailUsageRows.ActualWidth > 0
+            ? ReadGuardrailUsageRows.ActualWidth : availableWidth;
+        var narrowUsage = usageWidth < 420;
+        ReadGuardrailUsageRightColumn.Width = narrowUsage ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        for (var index = 0; index < ReadGuardrailUsageRows.Children.Count; index++)
+        {
+            var tile = (FrameworkElement)ReadGuardrailUsageRows.Children[index];
+            Grid.SetColumn(tile, narrowUsage ? 0 : index % 2);
+            Grid.SetRow(tile, narrowUsage ? index : index / 2);
+        }
+        var editorWidth = _settingsTabs?.SelectedIndex == 2 && ReadGuardrailEditorExpander.ActualWidth > 0
+            ? ReadGuardrailEditorExpander.ActualWidth : availableWidth;
+        var narrow = editorWidth < 520;
         ReadGuardrailFieldRightColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         var boxes = ReadGuardrailBoxes;
         for (var index = 0; index < boxes.Length; index++)
@@ -274,6 +324,6 @@ public sealed partial class MainWindow
             Grid.SetColumn(boxes[index], narrow ? 0 : index % 2);
             Grid.SetRow(boxes[index], narrow ? index : index / 2);
         }
-        ReadGuardrailSaveActions.Orientation = availableWidth < 540 ? Orientation.Vertical : Orientation.Horizontal;
+        ReadGuardrailSaveActions.Orientation = editorWidth < 420 ? Orientation.Vertical : Orientation.Horizontal;
     }
 }

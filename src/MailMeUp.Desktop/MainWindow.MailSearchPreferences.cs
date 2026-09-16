@@ -20,7 +20,9 @@ public sealed partial class MainWindow
         _mailSearchPreferencesLoaded = false;
         MailSearchLookbackDaysBox.IsEnabled = false;
         SaveMailSearchPreferencesButton.IsEnabled = false;
+        SaveMailSearchPreferencesButton.Visibility = Visibility.Collapsed;
         ReloadMailSearchPreferencesButton.Visibility = Visibility.Collapsed;
+        MailSearchPreferencesSavedText.Visibility = Visibility.Visible;
         MailSearchPreferencesSavedText.Text = "Loading the saved search period…";
         try
         {
@@ -30,7 +32,7 @@ public sealed partial class MainWindow
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            MailSearchPreferencesExpander.Header = "Default mail search period · not loaded";
+            MailSearchPreferencesHeading.Text = "Search period not loaded";
             MailSearchPreferencesSavedText.Text = "Loading stopped. Retry to read the saved search period.";
             ReloadMailSearchPreferencesButton.Visibility = Visibility.Visible;
             throw;
@@ -38,7 +40,7 @@ public sealed partial class MainWindow
         catch (Exception exception)
         {
             _logger.LogWarning("Default mail search period could not load ({ErrorType})", exception.GetType().Name);
-            MailSearchPreferencesExpander.Header = "Default mail search period · unavailable";
+            MailSearchPreferencesHeading.Text = "Search period unavailable";
             MailSearchPreferencesSavedText.Text = "Could not load the saved search period. Check local storage access and retry.";
             ReloadMailSearchPreferencesButton.Visibility = Visibility.Visible;
         }
@@ -74,14 +76,15 @@ public sealed partial class MainWindow
         _mailSearchPreferencesDirty = !valid || days != _mailSearchPreferences.DefaultLookbackDays;
         if (_mailSearchPreferencesDirty) _sharingReviewed = false;
         SaveMailSearchPreferencesButton.IsEnabled = valid && _mailSearchPreferencesDirty;
+        SaveMailSearchPreferencesButton.Visibility = ToVisibility(_mailSearchPreferencesDirty);
         DiscardMailSearchPreferencesButton.Visibility = ToVisibility(_mailSearchPreferencesDirty);
         MailSearchPreferencesSavedText.Text = !valid
             ? $"Enter a whole number from {MailSearchPreferences.MinimumDays} to {MailSearchPreferences.MaximumDays} days."
             : _mailSearchPreferencesDirty ? "Unsaved search period"
-            : IsDemo ? "Search period saved for this preview session." : "Search period saved on this device.";
-        MailSearchPreferencesExpander.Header = _mailSearchPreferencesDirty
-            ? "Default mail search period · unsaved changes"
-            : $"Default mail search period · {_mailSearchPreferences.DefaultLookbackDays} {(_mailSearchPreferences.DefaultLookbackDays == 1 ? "day" : "days")}";
+            : IsDemo ? "Saved for this preview session." : "Saved on this device.";
+        MailSearchPreferencesSavedText.Visibility = ToVisibility(_mailSearchPreferencesDirty || IsDemo);
+        MailSearchPreferencesHeading.Text = "Default search period";
+        UpdateSharingSettingsSummary();
         UpdateProgress();
     }
 
@@ -115,7 +118,7 @@ public sealed partial class MainWindow
     {
         if (_busy || !_mailSearchPreferencesLoaded) return;
         DisplayMailSearchPreferences(_mailSearchPreferences);
-        Notice.IsOpen = false;
+        _settingsNotice.IsOpen = false;
     }
 
     private async void ReloadMailSearchPreferencesButton_Click(object sender, RoutedEventArgs e) =>
