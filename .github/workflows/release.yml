@@ -61,7 +61,7 @@ jobs:
         run: dotnet restore MailMeUp.slnx --locked-mode
       - name: Publish and archive
         shell: pwsh
-        run: pwsh -NoProfile -File scripts/package.ps1 -Runtime '${{ matrix.rid }}'
+        run: pwsh -NoProfile -File scripts/package-windows-portable.ps1 -Runtime '${{ matrix.rid }}'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: package-${{ matrix.rid }}
@@ -80,11 +80,29 @@ jobs:
       MSIX_PUBLISHER_DISPLAY_NAME: ${{ secrets.MSIX_PUBLISHER_DISPLAY_NAME }}
       MSIX_TIMESTAMP_SERVER: ${{ secrets.MSIX_TIMESTAMP_SERVER }}
     steps:
+      - name: Check optional MSIX signing configuration
+        id: signing
+        shell: pwsh
+        run: |
+          $required = @('MSIX_CERTIFICATE_BASE64', 'MSIX_CERTIFICATE_PASSWORD', 'MSIX_PUBLISHER', 'MSIX_PUBLISHER_DISPLAY_NAME', 'MSIX_TIMESTAMP_SERVER')
+          $configured = @($required | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          if ($configured.Count -eq 0) {
+            'available=false' >> $env:GITHUB_OUTPUT
+            Write-Warning 'MSIX signing is not configured. Release portable ZIPs and attach a locally signed installer separately if needed.'
+          } elseif ($configured.Count -ne $required.Count) {
+            $missing = $required | Where-Object { $_ -notin $configured }
+            throw "Incomplete MSIX signing configuration. Missing GitHub secrets: $($missing -join ', ')"
+          } else {
+            'available=true' >> $env:GITHUB_OUTPUT
+          }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.signing.outputs.available == 'true'
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        if: steps.signing.outputs.available == 'true'
         with:
           global-json-file: global.json
       - name: Import release signing certificate
+        if: steps.signing.outputs.available == 'true'
         id: certificate
         shell: pwsh
         run: |
@@ -99,6 +117,7 @@ jobs:
           "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
           "path=$certificatePath" >> $env:GITHUB_OUTPUT
       - name: Build and sign x64 MSIX
+        if: steps.signing.outputs.available == 'true'
         shell: pwsh
         env:
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
@@ -107,7 +126,7 @@ jobs:
           $version = $props.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
           pwsh -NoProfile -File scripts/package-msix.ps1 -Architecture x64 -PackageVersion "$version.0" -Publisher $env:MSIX_PUBLISHER -PublisherDisplayName $env:MSIX_PUBLISHER_DISPLAY_NAME -CertificateThumbprint $env:CERTIFICATE_THUMBPRINT -TimestampServer $env:MSIX_TIMESTAMP_SERVER
       - name: Remove imported signing material
-        if: always()
+        if: always() && steps.signing.outputs.available == 'true'
         shell: pwsh
         env:
           CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
@@ -116,6 +135,7 @@ jobs:
           if ($env:CERTIFICATE_THUMBPRINT) { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue }
           if ($env:CERTIFICATE_PATH) { Remove-Item -LiteralPath $env:CERTIFICATE_PATH -Force -ErrorAction SilentlyContinue }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.signing.outputs.available == 'true'
         with:
           name: package-msix-x64
           path: |
@@ -140,4 +160,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --draft --generate-notes --title "MailMeUp $RELEASE_TAG"
+        run: |
+          existing=$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft 2>/dev/null || true)
+          if [ "$existing" = 'true' ]; then
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          elif [ "$existing" = 'false' ]; then
+            echo 'The release is already published; its assets must not be replaced by this workflow.' >&2
+            exit 1
+          else
+            gh release create "$RELEASE_TAG" dist/* --verify-tag --draft --prerelease --generate-notes --title "MailMeUp $RELEASE_TAG"
+          fi

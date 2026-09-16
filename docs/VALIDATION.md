@@ -1,5 +1,11 @@
 # Validation
 
+## Complete Windows portable preview
+
+**2026-09-16 — local packaging from `2489f68`.** Complete Windows x64 and ARM64 ZIPs were built using locked desktop/CLI graphs. The x64 published executable and the executable extracted from the ZIP passed the CLI/MCP smoke suite, including nine tools, Inbox scope defaults/overrides, synthetic empty reads, invalid references and diagnostic-only initial state. The extracted desktop created a native window in isolated `--demo` mode with `MAILMEUP_DATA_DIR` outside the normal profile; it emitted no stderr. This checks startup, not visual layout or full interaction. No real provider or Codex connection was opened. ARM64 was compiled and archived only.
+
+PR CI passed validation on Windows, Linux and macOS for that source; CI's existing `-SkipUnitTests` option means those checks do not execute the three new executable-selection unit tests. The preceding tag run passed the existing synthetic test suite before this portable increment. Clean-machine deployment, ARM64 execution, real-account setup, folder-move recovery and a live Codex session remain untested. The updated optional-signing and draft-update workflow awaits its own completed run.
+
 ## Codex final-step guidance — source increment
 
 **2026-09-16 — local test/build/install run.** The final Windows setup step shows plugin/direct connection choices with contextual instructions and a manual **Check again** action. Selecting a method does not change Codex configuration. Unresolved setup offers **Finish later**; confirmed local setup offers a copyable first-task prompt and **Finish setup**. Plugin maintenance, detailed checks and manual setup are grouped in an expandable section.

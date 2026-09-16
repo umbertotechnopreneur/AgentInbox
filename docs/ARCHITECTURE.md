@@ -34,6 +34,8 @@ Calendar reads share account selection and coverage reporting through the applic
 
 The Windows MSIX contains a WinUI setup executable and a separate console MCP executable. The `mailmeup.exe` Windows app execution alias targets the console process, preserving stdio and a stable command across package upgrades. The UI never hosts the MCP server.
 
+The complete Windows portable ZIP contains the same two processes without an MSIX installation. A `mailmeup-portable.txt` marker makes desktop setup use the adjacent `cli/mailmeup.exe` through an absolute path, even when an installed alias exists. Installed packages retain the Windows-managed alias. Moving a portable folder requires updating its Codex connection. Both editions keep account data in the configured local profile and use OS-protected credentials.
+
 Local sharing choices are separate from provider consent. New accounts connected through the UI are stored with sharing disabled; existing CLI accounts retain their previous behavior until configured. Account/category/calendar restrictions are applied by the application facade and reloaded for reads, including cached result references and continuations. Setup-only calendar discovery is not exposed as an MCP tool.
 
 Global mail search preferences are local non-secret settings shared by the UI, CLI and MCP application facade. Undated searches use a configurable 14-day default; explicit dates override it. A continuation retains its original date window and rejects a changed default. Search results report the applied window so callers can describe their scope accurately.

@@ -34,9 +34,9 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "IBf7lbovvjGWVWXZX5cJ/cO0WXbId0Zq4BuSeT94mGZuOAP66oMeH9PTBZ9Jpp3Jb6jtK0qm/NyUbPRo1gC/wQ=="
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "xi+BDjFpW+Sb+MHFHaH6Y/gV9I8BluFwRXc1QyCdoZbIK26eNiBeFuMTe/FMwc33G1wdHCyDg7CVTmb8OdQrMQ=="
       },
       "Serilog.Extensions.Hosting": {
         "type": "Direct",
@@ -58,6 +58,15 @@
         "contentHash": "8jbqgjUyZlfCuSTaJk6lOca465OndqOz3KZP6Cryt/IqZYybyBu7GP0fE/AXBzrrQB3EBmQntBFAvMVz1COvAA==",
         "dependencies": {
           "Serilog": "4.0.0"
+        }
+      },
+      "Serilog.Sinks.File": {
+        "type": "Direct",
+        "requested": "[7.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
+        "dependencies": {
+          "Serilog": "4.2.0"
         }
       },
       "Spectre.Console": {
@@ -83,14 +92,6 @@
         "contentHash": "P2nFbC0SsnUe8sGjhpCLs6CHIWFzURgUS2M9l9aUV1vJjVXpesRbegEYZS/dLKehcgx8twDP7xA5OMGygMD55g==",
         "dependencies": {
           "Newtonsoft.Json": "13.0.4"
-        }
-      },
-      "Microsoft.Data.Sqlite.Core": {
-        "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "hubA20AGenQ4Sx0ElWaPpB8DISjXpdx463+1zOGRslsT0e/t/06ITv+pHsop8CcJ0d8PZLfgnT7juCDVD79Dkw==",
-        "dependencies": {
-          "SQLitePCLRaw.core": "2.1.12"
         }
       },
       "Microsoft.Extensions.AI.Abstractions": {
@@ -386,15 +387,6 @@
         "resolved": "0.57.2",
         "contentHash": "Y1+u73shwP+JYHmrkdN6bSt2kaGBEAafhi2nrecczbXdFRey+k7J/WF9YPfcB0rqivv2S8fmif6FSBq9m/AFvw=="
       },
-      "SQLitePCLRaw.bundle_e_sqlite3": {
-        "type": "Transitive",
-        "resolved": "2.1.12",
-        "contentHash": "mAgscpQMLw5/nfA1Q5oJVAT29yROUo1ifZGbbTpx/lwZpSxMUGoYbKfmvdm8oXER+RzxqBmmQzeBEVKfeHv2nw==",
-        "dependencies": {
-          "SQLitePCLRaw.lib.e_sqlite3": "2.1.12",
-          "SQLitePCLRaw.provider.e_sqlite3": "2.1.12"
-        }
-      },
       "SQLitePCLRaw.core": {
         "type": "Transitive",
         "resolved": "2.1.12",
@@ -439,17 +431,36 @@
       "mailmeup.application": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.0-alpha.1, )",
+          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
       },
       "mailmeup.core": {
         "type": "Project"
       },
+      "mailmeup.diagnostics": {
+        "type": "Project",
+        "dependencies": {
+          "MailMeUp.Core": "[0.1.1, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
+        }
+      },
+      "mailmeup.hosting": {
+        "type": "Project",
+        "dependencies": {
+          "MailMeUp.Application": "[0.1.1, )",
+          "MailMeUp.Providers.Google": "[0.1.1, )",
+          "MailMeUp.Providers.Microsoft": "[0.1.1, )",
+          "MailMeUp.Security": "[0.1.1, )",
+          "MailMeUp.Storage": "[0.1.1, )",
+          "Microsoft.Extensions.Hosting": "[10.0.11, )"
+        }
+      },
       "mailmeup.mcp": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Application": "[0.1.0-alpha.1, )",
+          "MailMeUp.Application": "[0.1.1, )",
           "ModelContextProtocol": "[2.2.0, )"
         }
       },
@@ -457,30 +468,32 @@
         "type": "Project",
         "dependencies": {
           "Google.Apis.Auth": "[1.76.0, )",
-          "MailMeUp.Core": "[0.1.0-alpha.1, )",
-          "MailMeUp.Security": "[0.1.0-alpha.1, )"
+          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
+          "MailMeUp.Security": "[0.1.1, )"
         }
       },
       "mailmeup.providers.microsoft": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.0-alpha.1, )",
-          "MailMeUp.Security": "[0.1.0-alpha.1, )",
+          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Diagnostics": "[0.1.1, )",
+          "MailMeUp.Security": "[0.1.1, )",
           "Microsoft.Identity.Client": "[4.88.0, )"
         }
       },
       "mailmeup.security": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.0-alpha.1, )",
+          "MailMeUp.Core": "[0.1.1, )",
           "Microsoft.Identity.Client.Extensions.Msal": "[4.88.0, )"
         }
       },
       "mailmeup.storage": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.0-alpha.1, )",
-          "Microsoft.Data.Sqlite": "[10.0.11, )"
+          "MailMeUp.Core": "[0.1.1, )",
+          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       },
       "Google.Apis.Auth": {
@@ -492,17 +505,6 @@
           "Google.Apis": "1.76.0",
           "Google.Apis.Core": "1.76.0",
           "System.Management": "7.0.2"
-        }
-      },
-      "Microsoft.Data.Sqlite": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "7je7UELzm131GiLYc4PpZvfKXIgIyzPM+v+tjcd/nbnuWRfgcONYKzDTqJlURxwVCFsVnlpmq6y6yn4qvR8QXQ==",
-        "dependencies": {
-          "Microsoft.Data.Sqlite.Core": "10.0.11",
-          "SQLitePCLRaw.bundle_e_sqlite3": "2.1.12",
-          "SQLitePCLRaw.core": "2.1.12"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {
@@ -542,6 +544,16 @@
           "Microsoft.Extensions.Caching.Abstractions": "10.0.10",
           "Microsoft.Extensions.Hosting.Abstractions": "10.0.10",
           "ModelContextProtocol.Core": "[2.2.0]"
+        }
+      },
+      "SQLitePCLRaw.bundle_e_sqlite3": {
+        "type": "CentralTransitive",
+        "requested": "[2.1.12, )",
+        "resolved": "2.1.12",
+        "contentHash": "mAgscpQMLw5/nfA1Q5oJVAT29yROUo1ifZGbbTpx/lwZpSxMUGoYbKfmvdm8oXER+RzxqBmmQzeBEVKfeHv2nw==",
+        "dependencies": {
+          "SQLitePCLRaw.lib.e_sqlite3": "2.1.12",
+          "SQLitePCLRaw.provider.e_sqlite3": "2.1.12"
         }
       }
     },

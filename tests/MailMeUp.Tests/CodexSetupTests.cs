@@ -7,6 +7,32 @@ namespace MailMeUp.Tests;
 public sealed class CodexSetupTests
 {
     [Fact]
+    public void PortableSetupUsesItsOwnCliEvenWhenAnInstalledAliasExists()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-portable"));
+        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-local"));
+        var expected = Path.Combine(root, "cli", "mailmeup.exe");
+        Assert.Equal(expected, CodexSetupService.ResolveExecutablePath(root, local, _ => true));
+    }
+
+    [Fact]
+    public void IncompletePortableFolderDoesNotFallBackToInstalledMailMeUp()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-portable"));
+        var marker = Path.Combine(root, "mailmeup-portable.txt");
+        Assert.Equal(Path.Combine(root, "cli", "mailmeup.exe"),
+            CodexSetupService.ResolveExecutablePath(root, Path.GetTempPath(), path => path == marker));
+    }
+
+    [Fact]
+    public void InstalledSetupKeepsTheWindowsManagedAlias()
+    {
+        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-local"));
+        Assert.Equal(Path.Combine(local, "Microsoft", "WindowsApps", "mailmeup.exe"),
+            CodexSetupService.ResolveExecutablePath(Path.GetTempPath(), local, _ => false));
+    }
+
+    [Fact]
     public void PendingChecksDoNotClaimThatComponentsAreMissingOrReady()
     {
         var checks = CodexSetupCheck.Pending();
