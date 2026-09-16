@@ -1,5 +1,11 @@
 # Validation
 
+## Codex final-step guidance — source increment
+
+**2026-09-16 — local test/build/install run.** The final Windows setup step shows plugin/direct connection choices with contextual instructions and a manual **Check again** action. Selecting a method does not change Codex configuration. Unresolved setup offers **Finish later**; confirmed local setup offers a copyable first-task prompt and **Finish setup**. Plugin maintenance, detailed checks and manual setup are grouped in an expandable section.
+
+Direct readiness requires a confirmed single enabled direct registration without a conflicting active plugin; unknown observations do not establish success. Local readiness does not prove that a Codex task has connected to MailMeUp. `dotnet test MailMeUp.slnx -c Release` passed all 492 tests with zero failures or skips. The x64 MSIX `0.1.1.28` was published, packed, signed as `CN=umber`, and installed as an update; Windows reports package status `Ok`. The packaging script does not run a smoke suite, and no desktop interaction, live Codex connection, provider read, CI dispatch, formatting or clean-machine test was run. Native selection/guidance, refresh and cancellation, duplicate/disabled/unknown connections, clipboard feedback and narrow/high-DPI layouts remain to be exercised when the owner requests checks.
+
 ## Inbox-scoped unread search — source increment
 
 **2026-09-14 — not built, tested or installed.** Shared search contracts now carry an Inbox-only scope. MCP `search_unread_mail` defaults to this scope; general and date-range tools retain broader defaults and expose the same option. Gmail applies `INBOX` before preview retrieval, and Microsoft selects the Inbox collection. Results disclose `inbox_only`, and continuations bind to the selected scope. Date and unread filters still apply; all Inbox categories and senders remain eligible.

@@ -2,9 +2,13 @@
 
 ## Unreleased
 
+- Restrict GitHub Windows releases to x64 and ARM64 ZIP archives plus a signed x64 MSIX. The MSIX signing certificate is imported from repository secrets only for the release runner, then removed; tag releases create a draft for review. MSIX packages now include a SHA-256 checksum. The workflow has not run from this source.
+
+- Refine the final Windows Codex step with visible plugin/direct connection choices, contextual instructions and **Check again** after changes in Codex. Use **Finish later** while unresolved; offer a copyable first-task prompt and **Finish setup** when local configuration is ready. Group plugin maintenance, detailed checks and manual setup in an expandable section. Require a confirmed single enabled direct registration without a conflicting active plugin before reporting direct setup ready; method selection does not change Codex configuration. The owner-requested local run passed 492 synthetic tests and installed signed MSIX `0.1.1.28`; native interaction and first Codex connection remain pending.
+
 - Clear the repository `artifacts/` directory before packaging or validation builds, with a shared cleanup script that refuses links and junctions. Document the same cleanup step for manual builds. Execution checks have not been run.
 
-- Redesign all four Windows setup screens with a compact sidebar, fixed page headings, fewer cards and a shared Help menu. Welcome uses one introduction; Accounts adds providers through a centered dialog; Sharing shows saved account summaries and opens a focused editor; Codex presents one primary action with detailed diagnostics in a dialog. Separate Search, Usage and Limits into settings tabs, preserve save/discard and sequential calendar selection, and keep native scrolling/input and responsive spacing. Source changes only; not built, tested or installed.
+- Redesign all four Windows setup screens with a compact sidebar, fixed page headings, fewer cards and a shared Help menu. Welcome uses one introduction; Accounts adds providers through a centered dialog; Sharing shows saved account summaries and opens a focused editor; Codex presents one primary action with inline guidance and expandable diagnostics. Separate Search, Usage and Limits into settings tabs, preserve save/discard and sequential calendar selection, and keep native scrolling/input and responsive spacing. Source changes only; not built, tested or installed.
 
 - Add source-only Inbox scoping for mail search. MCP unread search now defaults to Inbox, unread state and the applied date range, with an explicit opt-out for broader searches. Gmail filters by `INBOX` before preview retrieval; Microsoft uses the Inbox collection. Return `inbox_only` and bind continuations to the selected scope. All Inbox categories and senders remain eligible. This increment is not built, tested or installed.
 

@@ -225,6 +225,8 @@ try {
     } else {
         Write-Output "Created unsigned MSIX: $packagePath. It cannot be installed normally until signed with a certificate trusted by the target device."
     }
+    $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $(Split-Path -Leaf $packagePath)" | Set-Content -LiteralPath "$packagePath.sha256" -Encoding utf8NoBOM
 } finally {
     Pop-Location
     $env:DOTNET_CLI_UI_LANGUAGE = $previousCliLanguage

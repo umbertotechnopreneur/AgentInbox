@@ -8,6 +8,8 @@ The newer read-limit code hasn't been built, tested or installed. Installation o
 
 The September 15 source redesigns all four screens with fixed headings and a smaller sidebar. **Add account** and account sharing open centered dialogs; the Sharing list summarizes each account's saved choices. **Search and read settings** has Search, Usage and Limits tabs, and Codex keeps diagnostics behind **Connection details**. Scrollbars hide outside the active window, with keyboard, touch and high-contrast support. These source changes have not been built, tested or installed.
 
+The September 16 source refines the final Codex step with visible plugin/direct connection choices, instructions for the selected method and **Check again** after you make changes in Codex. Unresolved setup offers **Finish later**; confirmed local setup offers a copyable first-task prompt and **Finish setup**. Plugin maintenance, detailed checks and manual setup sit in an expandable section. This increment has not been built, tested or installed.
+
 ## Setup
 
 Open MailMeUp and follow the four screens. The app is designed to bring the existing setup window forward if you launch it again; that behavior still needs a desktop check.
@@ -15,7 +17,7 @@ Open MailMeUp and follow the four screens. The app is designed to bring the exis
 1. **Welcome:** read how MailMeUp accesses your accounts and what may reach your assistant's AI service. Sign-in tokens stay protected on your device.
 2. **Connect accounts:** in the newer source, choose **Add account**, then Google or Microsoft and sign in through your browser. Repeat for more accounts. For now, you'll need [your own app registration](APP_REGISTRATION.md): import Google's Desktop client JSON file or enter Microsoft's Application (client) ID.
 3. **Choose what to share:** in the newer source, select an account row to open its sharing dialog. Turn on sharing, then choose mail, calendars or both. You can share all calendars or load their names and pick individual ones. Save each account's choices. New accounts start with sharing off; reconnecting keeps your saved choices.
-4. **Connect to Codex:** check the setup status and install the included local plugin. If automatic setup isn't available, the page gives you manual steps. If you've already added MailMeUp directly to Codex, choose whether to keep that connection or switch to the plugin. See [Codex setup](CODEX_SETUP.md).
+4. **Connect to Codex:** in the newer source, choose the recommended local plugin or a direct connection and follow the inline instructions. Make any changes to existing connections in Codex, then select **Check again**. When local setup is ready, copy the first-task prompt to try in a new Codex task. **Finish later** leaves unresolved setup for another time. See [Codex setup](CODEX_SETUP.md).
 
 On **Accounts**, use **Check access** (**Check read access** in earlier packages) to try sample searches and detail reads for mail and calendars. A **Try to reconnect** action appears when a read failure calls for it. A lack of sample messages or appointments isn't treated as a broken connection. Longer explanations go to the local [diagnostic log](LOGGING.md). The account menu also offers Reconnect and Remove from device.
 

@@ -58,7 +58,10 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         var installed = false;
         var enabled = false;
         var hasDirectRegistration = false;
+        int? directRegistrationCount = null;
+        bool? directRegistrationEnabled = null;
         var otherPlugin = false;
+        var otherPluginEnabled = false;
         var collision = false;
         var marketplaceRegistered = false;
 
@@ -69,6 +72,8 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 logger.LogInformation("Codex setup check={SetupCheck}; result={CheckResult}", check.Key, check.Value);
             return new(code, message, canInstall, installed && enabled, hasDirectRegistration)
             {
+                DirectRegistrationCount = directRegistrationCount,
+                IsDirectRegistrationEnabled = directRegistrationEnabled,
                 Checks = checks.Select(check => new CodexSetupCheck(check.Key, check.Value)).ToArray()
             };
         }
@@ -116,17 +121,30 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             // Inspect each component independently so one failure does not hide the other findings.
             var mcpKnown = await InspectAsync(executable, "Direct MCP connection", ["mcp", "list", "--json"], output =>
             {
-                if (!TryReadDirectRegistration(output, out var observedDirect)) return false;
-                hasDirectRegistration = observedDirect;
-                checks["Direct MCP connection"] = hasDirectRegistration ? "Registration found (may be disabled)" : "Not registered";
+                if (!TryReadDirectRegistration(output, out var observedCount, out var observedEnabled)) return false;
+                directRegistrationCount = observedCount;
+                directRegistrationEnabled = observedEnabled;
+                hasDirectRegistration = observedCount > 0;
+                checks["Direct MCP connection"] = observedCount switch
+                {
+                    0 => "Not registered",
+                    1 => observedEnabled switch
+                    {
+                        true => "Registered and enabled",
+                        false => "Registered but disabled",
+                        null => "Registration found (enabled state unknown)"
+                    },
+                    _ => $"{observedCount} registrations found"
+                };
                 return true;
             });
             var pluginsKnown = await InspectAsync(executable, "MailMeUp plugin", ["plugin", "list", "--json"], output =>
             {
-                if (!TryReadPluginState(output, out var observedInstalled, out var observedEnabled, out var observedOther)) return false;
+                if (!TryReadPluginState(output, out var observedInstalled, out var observedEnabled, out var observedOther, out var observedOtherEnabled)) return false;
                 installed = observedInstalled;
                 enabled = observedEnabled;
                 otherPlugin = observedOther;
+                otherPluginEnabled = observedOtherEnabled;
                 checks["MailMeUp plugin"] = installed
                     ? enabled ? "Installed and enabled" : "Installed but disabled"
                     : "Not installed";
@@ -148,10 +166,18 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 return Finish("ConfigurationUnknown", "The direct MCP check did not finish. Installation is paused because duplicate MailMeUp tools cannot be ruled out.");
             if (!pluginsKnown)
                 return Finish("PluginStatusUnknown", "The plugin check did not finish. Review the result below, update Codex if needed, then refresh status. No installation was attempted.");
+            if (IsDirectConfigurationReady(directRegistrationCount, directRegistrationEnabled, pluginsKnown, installed && enabled, otherPluginEnabled))
+                return Finish("DirectConfigured", "Codex reports one direct MailMeUp connection enabled and no enabled MailMeUp plugin. Start a new Codex task to load its tools; no live connection was tested.");
             if (hasDirectRegistration)
                 return Finish("DirectRegistrationExists", installed && enabled
                     ? "A direct MCP registration and the enabled local plugin were both found. Review the two methods before installing or updating."
-                    : "MailMeUp already has a direct MCP registration. You can keep that setup; adding the plugin is optional. Review connections if you want to switch.");
+                    : otherPluginEnabled
+                        ? "A direct MCP registration and an enabled MailMeUp plugin from another source were found. Keep one enabled connection method in Codex, then check again."
+                        : directRegistrationCount.GetValueOrDefault() > 1
+                            ? "Several direct MailMeUp registrations were found. Keep one enabled entry in Codex, then check again."
+                            : directRegistrationEnabled == false
+                                ? "The direct MailMeUp connection is disabled. Enable it in Codex to keep that setup, or remove it before installing the local plugin."
+                                : "A direct MailMeUp registration was found, but its enabled state could not be confirmed. Review it in Codex, then check again.");
             if (otherPlugin)
                 return Finish("OtherPluginExists", "A MailMeUp plugin from another marketplace was found. Review that source before adding this local copy.");
             if (!marketplaceKnown)
@@ -356,9 +382,14 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return exceeded ? null : text.ToString();
     }
 
-    private static bool TryReadDirectRegistration(string output, out bool exists)
+    internal static bool IsDirectConfigurationReady(int? registrationCount, bool? registrationEnabled,
+        bool pluginsKnown, bool localPluginEnabled, bool otherPluginEnabled) =>
+        registrationCount == 1 && registrationEnabled == true && pluginsKnown && !localPluginEnabled && !otherPluginEnabled;
+
+    internal static bool TryReadDirectRegistration(string output, out int count, out bool? enabled)
     {
-        exists = false;
+        count = 0;
+        enabled = null;
         using var document = JsonDocument.Parse(output);
         if (document.RootElement.ValueKind != JsonValueKind.Array)
         {
@@ -372,16 +403,13 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 return false;
             }
 
-            if (string.Equals(name, "mailmeup", StringComparison.OrdinalIgnoreCase))
-            {
-                exists = true;
-            }
+            var matches = string.Equals(name, "mailmeup", StringComparison.OrdinalIgnoreCase);
 
             if (server.TryGetProperty("transport", out var transport) && TryString(transport, "command", out var command)
                 && (string.Equals(Path.GetFileName(command), "mailmeup.exe", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(Path.GetFileName(command), "mailmeup", StringComparison.OrdinalIgnoreCase)))
             {
-                exists = true;
+                matches = true;
             }
 
             if (server.TryGetProperty("transport", out transport) && transport.ValueKind == JsonValueKind.Object
@@ -389,18 +417,29 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 && arguments.EnumerateArray().Any(argument => argument.ValueKind == JsonValueKind.String
                     && string.Equals(Path.GetFileName(argument.GetString()), "mailmeup.dll", StringComparison.OrdinalIgnoreCase)))
             {
-                exists = true;
+                matches = true;
             }
+
+            if (!matches) continue;
+            count++;
+            enabled = count == 1 && server.TryGetProperty("enabled", out var enabledValue)
+                && enabledValue.ValueKind is JsonValueKind.True or JsonValueKind.False
+                    ? enabledValue.GetBoolean()
+                    : null;
         }
 
         return true;
     }
 
     internal static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin)
+        => TryReadPluginState(output, out installed, out enabled, out otherPlugin, out _);
+
+    internal static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin, out bool otherPluginEnabled)
     {
         installed = false;
         enabled = false;
         otherPlugin = false;
+        otherPluginEnabled = false;
         using var document = JsonDocument.Parse(output);
         if (document.RootElement.ValueKind != JsonValueKind.Object
             || !document.RootElement.TryGetProperty("installed", out var entries) || entries.ValueKind != JsonValueKind.Array)
@@ -424,11 +463,18 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 }
 
                 installed = true;
-                enabled = enabledValue.GetBoolean();
+                enabled |= enabledValue.GetBoolean();
             }
             else if (string.Equals(name, "mailmeup", StringComparison.OrdinalIgnoreCase))
             {
+                if (!entry.TryGetProperty("enabled", out var enabledValue)
+                    || enabledValue.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                {
+                    return false;
+                }
+
                 otherPlugin = true;
+                otherPluginEnabled |= enabledValue.GetBoolean();
             }
         }
 

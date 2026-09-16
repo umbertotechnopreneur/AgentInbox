@@ -24,6 +24,12 @@ public sealed record CodexSetupStatus(
     bool IsPluginConfigured,
     bool HasDirectRegistration)
 {
+    /// <summary>Gets the number of matching direct entries, or null when their configuration could not be inspected.</summary>
+    public int? DirectRegistrationCount { get; init; }
+
+    /// <summary>Gets the explicit enabled flag for one matching direct entry; null means no single known enabled state.</summary>
+    public bool? IsDirectRegistrationEnabled { get; init; }
+
     /// <summary>Gets safe, individual observations; an unperformed check is never reported as absent or successful.</summary>
     public IReadOnlyList<CodexSetupCheck> Checks { get; init; } = [];
 }

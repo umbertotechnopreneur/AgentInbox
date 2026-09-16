@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
             UpdateTitleBar();
             if (_loaded)
             {
+                RenderCodexPage();
                 UpdateProgress();
                 RenderSharingAccounts();
             }
@@ -128,6 +129,7 @@ public sealed partial class MainWindow : Window
             if (!_lifetime.IsCancellationRequested)
             {
                 UpdateTitleBar();
+                RenderCodexPage();
                 UpdateLayout();
             }
         });
@@ -167,7 +169,16 @@ public sealed partial class MainWindow : Window
         UpdateSettingsLayout();
         UpdateAddAccountLayout();
         CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
-        CodexSecondaryActions.Orientation = availableWidth < 440 ? Orientation.Vertical : Orientation.Horizontal;
+        FooterActions.Orientation = availableWidth < 420 ? Orientation.Vertical : Orientation.Horizontal;
+        NextButton.MinWidth = availableWidth < 360 ? 120 : 144;
+        var stackCodexBadges = availableWidth < 560;
+        CodexPluginBadgeColumn.Width = CodexDirectBadgeColumn.Width = stackCodexBadges ? new GridLength(0) : GridLength.Auto;
+        foreach (var badge in new[] { CodexPluginChoiceStatus, CodexDirectChoiceStatus })
+        {
+            Grid.SetColumn(badge, stackCodexBadges ? 0 : 1);
+            Grid.SetRow(badge, stackCodexBadges ? 1 : 0);
+            badge.MaxWidth = stackCodexBadges ? double.PositiveInfinity : 140;
+        }
         var stackActions = availableWidth < 520;
         AccountsActionsColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
         Grid.SetColumn(AccountsToolbarActions, stackActions ? 0 : 1);
@@ -177,7 +188,7 @@ public sealed partial class MainWindow : Window
         Grid.SetColumn(ReviewSharingButton, stackActions ? 0 : 1);
         Grid.SetRow(ReviewSharingButton, stackActions ? 1 : 0);
         ReviewSharingButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
-        PreviewLabel.Visibility = ToVisibility(availableWidth >= 600);
+        PreviewLabel.Visibility = ToVisibility(_step != 3 && availableWidth >= 600);
         if (_stackAccountActions != stackActions)
         {
             _stackAccountActions = stackActions;
@@ -196,14 +207,14 @@ public sealed partial class MainWindow : Window
             0 => "All your inboxes.\nOne conversation.",
             1 => "Your accounts",
             2 => "What you share",
-            _ => "Connect to Codex"
+            _ => "Finish connecting to Codex"
         };
         PageSubtitle.Text = step switch
         {
             0 => "Bring your mail and calendars into Codex.",
             1 => "Connect personal, work and client accounts.",
             2 => "Choose what Codex can read from each account.",
-            _ => "Make your shared accounts available in your conversations."
+            _ => "Make your selected accounts available in new Codex tasks."
         };
         WelcomePage.Visibility = ToVisibility(step == 0);
         AccountsPage.Visibility = ToVisibility(step == 1);
@@ -220,10 +231,12 @@ public sealed partial class MainWindow : Window
         };
         NextButton.Content = step switch
         {
-            0 => "Get started", 1 => "Choose sharing", 2 => "Connect to Codex", _ => "Done"
+            0 => "Get started", 1 => "Choose sharing", 2 => "Connect to Codex", _ => "Check setup"
         };
-        NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
-            step == 3 ? "DefaultButtonStyle" : "AccentButtonStyle"];
+        NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
+        RenderCodexPage();
+        UpdateCodexPageHeading();
+        UpdateCodexFooter();
         PageScroll.ChangeView(null, 0, null, true);
         UpdateLayout();
         UpdateProgress();
@@ -272,7 +285,7 @@ public sealed partial class MainWindow : Window
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, _codexStatus is { Code: "PluginConfigured", IsPluginConfigured: true }];
+        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, IsCodexSetupReady];
         for (var index = 0; index < icons.Length; index++)
         {
             var active = index == _step;
@@ -287,10 +300,22 @@ public sealed partial class MainWindow : Window
     private void BackButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = Math.Max(0, _step - 1);
     private void ReviewSharingButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = 2;
 
-    private void NextButton_Click(object sender, RoutedEventArgs e)
+    private async void NextButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_step == 3) Close();
-        else Steps.SelectedIndex = _step + 1;
+        if (_busy || _dialogOpen) return;
+        if (_step != 3)
+        {
+            Steps.SelectedIndex = _step + 1;
+            return;
+        }
+
+        if (IsCodexSetupReady) Close();
+        else await RunCodexSetupAsync(install: _codexStatus is { CanInstall: true });
+    }
+
+    private void FinishLaterButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_busy && !_dialogOpen) Close();
     }
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -506,7 +531,8 @@ public sealed partial class MainWindow : Window
     private void UpdateSharingSummary()
     {
         var shared = _accounts.Count(IsShared);
-        CodexSharingText.Text = shared == 0 ? "No accounts shared yet." : $"Sharing: {shared} {(shared == 1 ? "account" : "accounts")}";
+        CodexSharingText.Text = shared == 0 ? "No accounts selected for sharing"
+            : $"{shared} {(shared == 1 ? "account" : "accounts")} selected for sharing";
     }
 
     private async void CheckConnectionsButton_Click(object sender, RoutedEventArgs e) => await RunAsync(
@@ -697,7 +723,7 @@ public sealed partial class MainWindow : Window
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _operation = operation;
         operation.CancelAfter(timeout ?? TimeSpan.FromSeconds(60));
-        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = false;
+        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = FinishLaterButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = false;
         ActivityText.Text = activity;
         Activity.Visibility = Visibility.Visible;
         Notice.IsOpen = false;
@@ -729,6 +755,7 @@ public sealed partial class MainWindow : Window
                 Activity.Visibility = Visibility.Collapsed;
                 UpdateSettingsActivity(string.Empty);
                 UpdateSharingActivity(string.Empty);
+                UpdateCodexFooter();
                 ApplyPendingStep();
             }
         }
