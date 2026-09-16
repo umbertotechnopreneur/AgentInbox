@@ -13,6 +13,8 @@ param(
     [uri]$TimestampServer
 )
 
+throw 'MSIX packaging is temporarily disabled while MailMeUp prepares a distribution code-signing certificate. Use the Windows portable package instead.'
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'MSIX packaging requires Windows.' }

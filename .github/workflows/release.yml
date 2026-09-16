@@ -69,83 +69,9 @@ jobs:
             artifacts/*.zip
             artifacts/*.sha256
           if-no-files-found: error
-  package-msix:
-    needs: [quality, tests]
-    runs-on: windows-latest
-    timeout-minutes: 30
-    env:
-      MSIX_CERTIFICATE_BASE64: ${{ secrets.MSIX_CERTIFICATE_BASE64 }}
-      MSIX_CERTIFICATE_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
-      MSIX_PUBLISHER: ${{ secrets.MSIX_PUBLISHER }}
-      MSIX_PUBLISHER_DISPLAY_NAME: ${{ secrets.MSIX_PUBLISHER_DISPLAY_NAME }}
-      MSIX_TIMESTAMP_SERVER: ${{ secrets.MSIX_TIMESTAMP_SERVER }}
-    steps:
-      - name: Check optional MSIX signing configuration
-        id: signing
-        shell: pwsh
-        run: |
-          $required = @('MSIX_CERTIFICATE_BASE64', 'MSIX_CERTIFICATE_PASSWORD', 'MSIX_PUBLISHER', 'MSIX_PUBLISHER_DISPLAY_NAME', 'MSIX_TIMESTAMP_SERVER')
-          $configured = @($required | Where-Object { -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
-          if ($configured.Count -eq 0) {
-            'available=false' >> $env:GITHUB_OUTPUT
-            Write-Warning 'MSIX signing is not configured. Release portable ZIPs and attach a locally signed installer separately if needed.'
-          } elseif ($configured.Count -ne $required.Count) {
-            $missing = $required | Where-Object { $_ -notin $configured }
-            throw "Incomplete MSIX signing configuration. Missing GitHub secrets: $($missing -join ', ')"
-          } else {
-            'available=true' >> $env:GITHUB_OUTPUT
-          }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.signing.outputs.available == 'true'
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        if: steps.signing.outputs.available == 'true'
-        with:
-          global-json-file: global.json
-      - name: Import release signing certificate
-        if: steps.signing.outputs.available == 'true'
-        id: certificate
-        shell: pwsh
-        run: |
-          foreach ($name in 'MSIX_CERTIFICATE_BASE64', 'MSIX_CERTIFICATE_PASSWORD', 'MSIX_PUBLISHER', 'MSIX_PUBLISHER_DISPLAY_NAME', 'MSIX_TIMESTAMP_SERVER') {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) { throw "Missing required GitHub secret: $name" }
-          }
-          $certificatePath = Join-Path $env:RUNNER_TEMP 'mailmeup-release-signing.pfx'
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:MSIX_CERTIFICATE_BASE64))
-          $password = ConvertTo-SecureString $env:MSIX_CERTIFICATE_PASSWORD -AsPlainText -Force
-          $certificate = Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $password
-          if (-not $certificate.HasPrivateKey) { throw 'The imported release certificate has no private key.' }
-          "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
-          "path=$certificatePath" >> $env:GITHUB_OUTPUT
-      - name: Build and sign x64 MSIX
-        if: steps.signing.outputs.available == 'true'
-        shell: pwsh
-        env:
-          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
-        run: |
-          [xml]$props = Get-Content Directory.Build.props
-          $version = $props.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
-          pwsh -NoProfile -File scripts/package-msix.ps1 -Architecture x64 -PackageVersion "$version.0" -Publisher $env:MSIX_PUBLISHER -PublisherDisplayName $env:MSIX_PUBLISHER_DISPLAY_NAME -CertificateThumbprint $env:CERTIFICATE_THUMBPRINT -TimestampServer $env:MSIX_TIMESTAMP_SERVER
-      - name: Remove imported signing material
-        if: always() && steps.signing.outputs.available == 'true'
-        shell: pwsh
-        env:
-          CERTIFICATE_THUMBPRINT: ${{ steps.certificate.outputs.thumbprint }}
-          CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
-        run: |
-          if ($env:CERTIFICATE_THUMBPRINT) { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue }
-          if ($env:CERTIFICATE_PATH) { Remove-Item -LiteralPath $env:CERTIFICATE_PATH -Force -ErrorAction SilentlyContinue }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: steps.signing.outputs.available == 'true'
-        with:
-          name: package-msix-x64
-          path: |
-            artifacts/msix/**/*.msix
-            artifacts/msix/**/*.cer
-            artifacts/msix/**/*.sha256
-          if-no-files-found: error
   draft:
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: [package-portable, package-msix]
+    needs: package-portable
     runs-on: ubuntu-latest
     permissions:
       contents: write

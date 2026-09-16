@@ -61,6 +61,9 @@ Each person connects their own accounts. You don't need a hosted MailMeUp servic
 > [!IMPORTANT]
 > **There's still some setup to do.** For now, you need to register your own app with Google or Microsoft before connecting an account. Google gives you a configuration file; Microsoft gives you an Application (client) ID. The [registration guide](docs/APP_REGISTRATION.md) walks you through it. Making this easier is part of the work ahead.
 
+> [!NOTE]
+> **MSIX installers are temporarily unavailable.** We're working on the code-signing certificate needed to distribute them. Until then, use the Windows portable ZIP.
+
 The Windows app helps you connect accounts, choose what to share and set up Codex. Its **Check read access** button tries sample searches and reads for mail and calendars separately. It helps spot connection problems; it doesn't guarantee every future search will work.
 
 Prefer no installer? The [complete Windows portable ZIP](docs/WINDOWS_PORTABLE.md) includes the setup app and CLI/MCP tools. Extract the whole ZIP and open `MailMeUp.Desktop.exe`. Keep that folder in place after connecting Codex.
