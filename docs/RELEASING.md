@@ -4,7 +4,7 @@ GitHub distributes source and executable archives. There is no hosted deployment
 
 ## Packages
 
-Each release contains a Windows x64 ZIP, a Windows ARM64 ZIP and a signed Windows x64 MSIX. It does not publish Linux or macOS archives.
+Each release contains a complete Windows x64 portable ZIP, a complete Windows ARM64 portable ZIP and a signed Windows x64 MSIX. Both ZIPs include the native setup app, a separate CLI/MCP executable and their runtimes. See [portable setup](WINDOWS_PORTABLE.md). It does not publish Linux or macOS archives.
 
 Only Windows x64 is tested for the current MVP. Windows ARM64 is build-only.
 
@@ -19,10 +19,12 @@ Run **Actions > Windows release > Run workflow** on `main`. It builds the three 
 Local Windows example, from a clean committed checkout:
 
 ```powershell
-pwsh -NoProfile -File scripts/package.ps1 -Runtime win-x64
+pwsh -NoProfile -File scripts/package-windows-portable.ps1 -Runtime win-x64
 ```
 
 Output is under `artifacts/`. Packaging clears that directory before building, including previous packages and logs. Copy anything you want to retain elsewhere first; build one target at a time in each checkout.
+
+Complete Windows ZIPs use committed dependency graphs under `eng/locks/windows-portable/`. Refresh them with `scripts/update-portable-locks.ps1 -Runtime win-x64,win-arm64` after adding modules or changing dependencies. The older `scripts/package.ps1` remains available for CLI-only archives.
 
 ## Publish later
 

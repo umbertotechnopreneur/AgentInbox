@@ -28,13 +28,23 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             throw new InvalidOperationException("The Windows local application directory is unavailable.");
         }
 
-        var alias = Path.Combine(local, "Microsoft", "WindowsApps", "mailmeup.exe");
+        var executablePath = ResolveExecutablePath(AppContext.BaseDirectory, local);
         var pluginDirectory = Path.Combine(ResolveDataDirectory(), "codex-plugin");
         var commands = $"codex plugin marketplace add {QuotePowerShell(pluginDirectory)}{Environment.NewLine}"
             + $"codex plugin add {PluginId}{Environment.NewLine}codex plugin list --json";
         var mcpCommand = $"codex mcp add mailmeup --env {QuotePowerShell($"MAILMEUP_DATA_DIR={ResolveDataDirectory()}")} "
-            + $"-- {QuotePowerShell(alias)} --stdio";
-        return new(alias, pluginDirectory, commands, mcpCommand);
+            + $"-- {QuotePowerShell(executablePath)} --stdio";
+        return new(executablePath, pluginDirectory, commands, mcpCommand);
+    }
+
+    // An explicit package marker prevents a portable setup from selecting an unrelated installed alias.
+    internal static string ResolveExecutablePath(string applicationDirectory, string localDirectory,
+        Func<string, bool>? fileExists = null)
+    {
+        fileExists ??= File.Exists;
+        return fileExists(Path.Combine(applicationDirectory, "mailmeup-portable.txt"))
+            ? Path.GetFullPath(Path.Combine(applicationDirectory, "cli", "mailmeup.exe"))
+            : Path.Combine(localDirectory, "Microsoft", "WindowsApps", "mailmeup.exe");
     }
 
     /// <summary>Copies only the bundled MailMeUp marketplace into its writable local directory.</summary>
@@ -161,7 +171,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             cancellationToken.ThrowIfCancellationRequested();
 
             if (!aliasAvailable)
-                return Finish("AliasUnavailable", "The mailmeup.exe Windows app execution alias was not found. Restore the alias before installing the plugin.");
+                return Finish("AliasUnavailable", "The MailMeUp command was not found. Restore the complete portable folder or the installed Windows app execution alias before configuring Codex.");
             if (!mcpKnown)
                 return Finish("ConfigurationUnknown", "The direct MCP check did not finish. Installation is paused because duplicate MailMeUp tools cannot be ruled out.");
             if (!pluginsKnown)

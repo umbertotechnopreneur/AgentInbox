@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add complete Windows x64/ARM64 portable ZIPs with the native setup app, CLI/MCP tools, bundled runtimes, license notices and checksums. Portable Codex setup selects the executable from the extracted folder instead of the installed MSIX alias. Refresh stale CLI dependency graphs, including the missing Diagnostics and Hosting modules, and add separate desktop portable graphs. Packaging and runtime validation are pending for this increment.
+
 - Restrict GitHub Windows releases to x64 and ARM64 ZIP archives plus a signed x64 MSIX. The MSIX signing certificate is imported from repository secrets only for the release runner, then removed; tag releases create a draft for review. MSIX packages now include a SHA-256 checksum. The workflow has not run from this source.
 
 - Refine the final Windows Codex step with visible plugin/direct connection choices, contextual instructions and **Check again** after changes in Codex. Use **Finish later** while unresolved; offer a copyable first-task prompt and **Finish setup** when local configuration is ready. Group plugin maintenance, detailed checks and manual setup in an expandable section. Require a confirmed single enabled direct registration without a conflicting active plugin before reporting direct setup ready; method selection does not change Codex configuration. The owner-requested local run passed 492 synthetic tests and installed signed MSIX `0.1.1.28`; native interaction and first Codex connection remain pending.

@@ -198,7 +198,7 @@ public sealed partial class MainWindow
             : "You can keep your existing connection or review how to switch to the plugin.",
         "PluginDisabled" => "Enable MailMeUp in Codex's plugin settings, then refresh here.",
         "OtherPluginExists" => "Review the existing MailMeUp plugin before adding this local copy.",
-        "AliasUnavailable" => "Enable mailmeup.exe in Windows app execution aliases to continue.",
+        "AliasUnavailable" => "Restore the portable folder or enable the installed MailMeUp command to continue.",
         "CodexUnavailable" => "Automatic setup needs the native Codex command-line app.",
         "MarketplaceConflict" => "Review the existing local marketplace before installing MailMeUp.",
         "CheckInterrupted" => "The operation was interrupted. Refresh status before trying again.",

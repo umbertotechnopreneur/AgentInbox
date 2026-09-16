@@ -1,5 +1,7 @@
 # Active work
 
+- Complete Windows portable ZIPs now include the native setup app and CLI/MCP tools. The source uses dedicated desktop dependency graphs and a portable executable path for Codex; x64 packaging, extracted CLI/MCP and isolated desktop startup checks are pending. ARM64 runtime needs real hardware. Refresh release assets and validation evidence after the owner-authorized packaging run.
+
 - The Windows release workflow now emits only Windows x64/ARM64 ZIPs and a signed x64 MSIX. Configure the five documented `MSIX_*` repository secrets before dispatching it; a version-matching tag creates a GitHub draft release only. The workflow source has not run yet.
 
 - September 16 source refines the Codex final step with visible plugin/direct choices, contextual instructions, **Check again**, unresolved **Finish later** and a copyable first-task prompt with **Finish setup** after confirmed local readiness. Plugin maintenance, detailed checks and manual setup are expandable. Selecting a method leaves Codex configuration unchanged. Direct readiness requires one confirmed enabled registration and no conflicting active plugin; unknown status remains unresolved. The owner-requested run passed 492 synthetic .NET tests, and MSIX `0.1.1.28` is signed and installed with status `Ok`. Native selection/guidance, refresh/cancellation, clipboard feedback and narrow/high-DPI layouts remain to be exercised. A ready local configuration still needs a first connection in a new Codex task.

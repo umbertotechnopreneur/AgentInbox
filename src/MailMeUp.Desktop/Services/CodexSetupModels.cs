@@ -1,7 +1,7 @@
 namespace MailMeUp.Desktop.Services;
 
 /// <summary>Shows the local paths and commands before Codex configuration changes.</summary>
-/// <param name="StableExecutablePath">The version-independent Windows app execution alias.</param>
+/// <param name="StableExecutablePath">The installed Windows app execution alias or the portable folder's CLI executable.</param>
 /// <param name="PluginDirectory">The writable local marketplace root.</param>
 /// <param name="ManualCommands">PowerShell commands for installing the prepared plugin.</param>
 /// <param name="ManualMcpCommand">An alternative direct MCP registration, separate from the plugin route.</param>
