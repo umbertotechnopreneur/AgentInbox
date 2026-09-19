@@ -30,9 +30,24 @@ It runs on your computer. You choose which accounts to share, and it only reads:
 
 ## Why MailMeUp?
 
-If you use several email addresses, finding one message can mean checking several inboxes. MailMeUp gives your assistant one place to search the accounts you've chosen.
+MailMeUp starts with a practical problem: making several independent mailboxes available to an AI assistant in one conversation. The goal is to make a setup such as **ten Microsoft accounts, ten Google accounts, or a mix of both** easy to connect and search, with each account signed in separately and the user choosing what to share. Ten accounts is an example of the workflow we want to simplify, not a tested capacity guarantee.
 
-Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
+Work, personal and client accounts should be available together without repeatedly disconnecting one account to connect another. MailMeUp gives your assistant one place to search the accounts you've chosen. Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
+
+The preview already supports multiple accounts. Easier onboarding remains work in progress, and setup currently focuses on Codex; see [before you start](#before-you-start) and [AI assistant support](#ai-assistant-support).
+
+<details>
+<summary>How this compares with built-in connectors (research: September 19, 2026)</summary>
+
+The official documentation reviewed did not establish a built-in setup for connecting ten independent Google/Microsoft accounts in Codex or Claude. That is a documentation finding, not proof that every plugin is limited to one mailbox:
+
+- Claude's [Google Workspace guide](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors) describes access to the connected Google account, without documenting several simultaneous Gmail account connections.
+- Claude's [Microsoft 365 guide](https://support.claude.com/en/articles/12542951-set-up-the-microsoft-365-connector) explicitly supports delegated access to shared mailboxes. Those mailboxes are accessed through an authorized work account; this is distinct from signing in to several independent accounts across providers.
+- OpenAI documents [plugins](https://learn.chatgpt.com/docs/plugins) and [custom MCP connections](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) for Codex. Those extension points allow other integrations; these guides do not establish a universal one-mailbox limit for Gmail or Outlook plugins.
+
+MailMeUp's focus is a simple, local, read-only connection for the independent accounts you choose to share with your assistant.
+
+</details>
 
 ## Small and native
 
