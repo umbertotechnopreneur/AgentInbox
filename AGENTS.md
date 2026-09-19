@@ -5,8 +5,8 @@ MailMeUp is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All re
 ## Shared delivery workflow
 
 - Ask the owner for explicit approval before creating a new branch, including a branch for a new worktree. A request to implement changes does not by itself authorize branch creation; reuse an existing suitable branch when possible.
-- Keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved.
-- Do not bypass branch protections, required checks, or review requirements. Delete the branch after a successful merge.
+- For documentation-only or repository-instruction-only changes, commit and push directly on the current branch, including `main`, without creating a branch or opening a pull request. The owner authorizes using existing administrator bypass rights for this exception; do not change repository protection settings. Include `[skip ci]` in the commit message unless the owner explicitly requests CI.
+- For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
 - Create portable release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 
