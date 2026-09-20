@@ -36,13 +36,13 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
         "ReadyToInstall" => new("Ready to install", "What happens next?",
             ["Select Install plugin to add MailMeUp to Codex. Your saved sharing choices are kept.",
              "After installation, start a new Codex task to try the connection."]),
-        "PluginConfigured" => new("Local setup ready", "How to use it",
-            ["Start a new Codex task to load the MailMeUp plugin. In its composer, use /mcp to review loaded servers.",
-             "Choose MailMeUp when asking about your shared mail or calendars. This setup check has not tested a live connection.",
-             "Use Update local plugin only when refreshing the plugin files or configuration."]),
-        "DirectConfigured" => new("Local setup ready", "How to use it",
-            ["Codex reports one direct MailMeUp connection enabled, with no enabled MailMeUp plugin.",
-             "Start a new Codex task to load MailMeUp. This setup check has not tested a live connection."]),
+        "PluginConfigured" => new("Ready to try in Codex", "How to use it",
+            ["Start a new Codex task, then copy and send the request below.",
+             "Once Codex can see your accounts, ask MailMeUp to find an email or show your upcoming appointments.",
+             "Your settings are ready. Your first request will check the connection."]),
+        "DirectConfigured" => new("Ready to try in Codex", "How to use it",
+            ["Your existing MailMeUp connection is enabled in Codex.",
+             "Start a new Codex task, then copy and send the request below to check the connection."]),
         "DirectRegistrationExists" => new(
             status.DirectRegistrationCount > 1 ? "Several connection entries found"
                 : status.IsPluginConfigured ? "Two connection entries found" : "Direct connection needs review",
@@ -62,13 +62,13 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
             ["For the portable edition, extract the complete ZIP and keep its cli folder beside MailMeUp.Desktop.exe.",
              "For the installed edition, enable mailmeup.exe in Windows Settings > Apps > Advanced app settings > App execution aliases. Return here and refresh status."]),
         "CodexUnavailable" => new("Codex CLI not found", "Setup help",
-            ["Automatic setup needs the native Codex CLI. This does not establish whether the Codex desktop app is installed or signed in.",
-             "If you already installed the CLI, restart MailMeUp to pick up PATH changes and refresh status. Otherwise, use the manual setup fallback below."]),
+            ["Automatic setup needs the Codex command-line app (CLI), even if you already use the Codex desktop app.",
+             "If you just installed it, restart MailMeUp and select Check again. Otherwise, open Manual setup below for the commands to run yourself."]),
         "MarketplaceConflict" => new("Local marketplace name in use", "Review next steps",
             ["A different source uses the mailmeup-local marketplace name. Review its source in Codex before changing it.",
              "Keep the existing source if you need it. Only resolve or remove that registration deliberately, then refresh status here."]),
         _ => new("Setup check needs attention", "Review next steps",
             [status.Message,
-             "Refresh status to retry. If a check stays unavailable, review Codex settings or use the manual setup fallback. No successful connection is assumed."])
+             "Select Check again to retry. If it still does not work, review your Codex settings or open Manual setup below."])
     };
 }

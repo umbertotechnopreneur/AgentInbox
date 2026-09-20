@@ -18,4 +18,4 @@ It runs on your computer, where it saves local settings and protects your sign-i
 
 MailMeUp is an early preview, with testing focused on Windows x64 and Codex. You still need to [register an app with Google or Microsoft](APP_REGISTRATION.md) before signing in. Earlier versions have been tried with real accounts; see the [test record](VALIDATION.md) for details and remaining checks.
 
-Start with [getting started](GETTING_STARTED.md), or take a look at [what's next](ROADMAP.md).
+Start with [getting started](GETTING_STARTED.md).

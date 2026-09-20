@@ -4,7 +4,7 @@
 
 Name: **MailMeUp**. Preserve capitalization; do not use spaces in the product name. Executable and MCP server identifier: `mailmeup`.
 
-Tagline: **All your inboxes. One conversation.**
+Tagline: **Connect your inboxes to your AI assistant.**
 
 One-line description: **Connect your Google and Microsoft inboxes to an AI assistant through MCP.**
 
@@ -16,7 +16,7 @@ The name follows the same personal style as PromptMeUp and TrackMeUp. The artwor
 
 Write as if you're helping a friend try the app. Start with what they want to do, then explain the next step. Use short sentences, everyday words and natural contractions.
 
-The first README headline must explain what MailMeUp does. Name the connection options people recognize: Claude, Codex, and apps with local MCP support such as Visual Studio Code. Keep the current testing limits nearby: setup and testing focus on Codex on Windows x64; other clients haven't been tested. Multiple accounts does not mean a tested unlimited capacity.
+The first README headline must explain what MailMeUp does in one short sentence. Name connection options in the subtitle: Claude, Codex, and apps with local MCP support such as Visual Studio Code. Keep the current testing limits nearby: setup and testing focus on Codex on Windows x64; other clients haven't been tested. Multiple accounts does not mean a tested unlimited capacity.
 
 Use "I", "me", and "my" when speaking as Umberto, the solo maintainer with help from a few contributors. Speak to the reader as "you". Avoid company-style "we", slogans that replace an explanation, hype, and formulaic AI wording. Apply this voice to all original documentation, including setup, support, and contributor guides.
 
@@ -25,6 +25,8 @@ Say "connect your accounts" instead of "configure multi-account access," and "ch
 Be clear about what works, what's still being tried and what hasn't been tested. Keep privacy information close to the action it affects. Put build history and implementation details in the developer references. Label concept artwork and keep its source prompts and creation notes.
 
 ## Visual vocabulary
+
+Use the [shared MeUp style](assets/meup/README.md) for the current README presentation: ink navy, ivory forms, and a mint accent. That guide contains the current illustration and its exact generation prompt. The earlier artwork and palette below remain part of the asset history.
 
 | Role | Color |
 | --- | --- |

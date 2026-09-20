@@ -35,9 +35,9 @@ public sealed partial class MainWindow
             CodexConnectionChoices.Visibility = CodexNextStepsPanel.Visibility = CodexFirstTaskPanel.Visibility = Visibility.Collapsed;
             SwitchCodexConnectionButton.Visibility = Visibility.Collapsed;
             InstallPluginButton.IsEnabled = false;
-            CodexStatusTitle.Text = install ? "Installing local plugin…" : "Checking local setup…";
-            CodexStatusText.Text = install ? "Adding MailMeUp to this device's Codex setup." : "Looking for MailMeUp in this device's Codex setup.";
-            CodexStatusCaption.Text = "Local configuration only";
+            CodexStatusTitle.Text = install ? "Adding MailMeUp to Codex…" : "Checking your Codex settings…";
+            CodexStatusText.Text = install ? "Installing the MailMeUp plugin on this device." : "Looking for an existing MailMeUp connection.";
+            CodexStatusCaption.Text = "Your email is not read during this step.";
             CodexStatusIcon.Glyph = "\uE895";
             CodexDiagnosticText.Text = "Waiting for local configuration results. No prompt or mailbox check is running.";
             CodexCheckedText.Text = "Check in progress…";
@@ -111,8 +111,8 @@ public sealed partial class MainWindow
         CodexStatusPanel.Visibility = ToVisibility(!duplicate);
         CodexStatusTitle.Text = status.Code == "DirectConfigured" && !ready ? "Direct connection configured" : view.Title;
         CodexStatusText.Text = CodexStatusSummary(status);
-        CodexStatusCaption.Text = ready ? "Local configuration checked · Live connection not tested"
-            : status.Code == "ReadyToInstall" ? "Local setup checked · Ready to install"
+        CodexStatusCaption.Text = ready ? "Settings checked. Try your first request below to test the connection."
+            : status.Code == "ReadyToInstall" ? "Select Install plugin to add MailMeUp to Codex."
             : "Your saved account and sharing choices are kept.";
         CodexStatusIcon.Glyph = ready ? "\uE73E" : status.Code == "ReadyToInstall" ? "\uE943" : "\uE946";
 
@@ -156,7 +156,7 @@ public sealed partial class MainWindow
         PageSubtitle.Text = IsCodexSetupReady ? "Your selected accounts, one conversation."
             : _codexStatus?.Code is "DirectRegistrationExists" or "DirectConfigured"
                 ? "Choose which MailMeUp connection to keep."
-                : "Make your selected accounts available in new Codex tasks.";
+                : "Let Codex find emails and appointments in the accounts you choose.";
     }
 
     private void UpdateCodexFooter()

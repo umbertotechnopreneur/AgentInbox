@@ -58,10 +58,10 @@ public sealed partial class MainWindow
     {
         var content = new StackPanel { Spacing = 18 };
         content.Children.Add(Body("Review the policies for MailMeUp and your account providers. Links open in your browser."));
-        content.Children.Add(PolicyLinks("MailMeUp", "https://umbertogiacobbi.biz/privacy/", "https://umbertogiacobbi.biz/terms/"));
+        content.Children.Add(PolicyLinks("MailMeUp", "https://umbertogiacobbi.biz/mailmeup/privacy/", "https://umbertogiacobbi.biz/mailmeup/terms/"));
         content.Children.Add(PolicyLinks("Google", "https://policies.google.com/privacy?hl=en", "https://policies.google.com/terms?hl=en"));
         content.Children.Add(PolicyLinks("Microsoft", "https://www.microsoft.com/en-us/privacy/privacystatement", "https://www.microsoft.com/en-us/servicesagreement"));
-        content.Children.Add(Link("Visit our website", "https://umbertogiacobbi.biz/"));
+        content.Children.Add(Link("Visit the website", "https://umbertogiacobbi.biz/"));
         await ShowDialogAsync(DetailsDialog("Privacy & terms", content));
     }
 
@@ -83,12 +83,12 @@ public sealed partial class MainWindow
             "MailMeUp can search and read email and calendars.",
             "It cannot send mail, mark messages as read, edit or delete anything, create appointments, or invite anyone."));
         tabs.Items.Add(InformationTab("AI sharing",
-            "Shared accounts can return names and addresses, matching message headers and short previews, and calendar summaries.",
-            "When requested, details can include message text, event descriptions, attendees and meeting links. Results may reach your assistant's AI service; running locally does not make the conversation offline.",
+            "Your assistant can find sender names, email addresses, subjects, short email previews and calendar summaries in the accounts you share.",
+            "If you ask for more detail, your assistant can also read email text, appointment descriptions, attendees and meeting links. This information may be sent to your AI service, even though MailMeUp runs on your computer.",
             "Sign-in tokens stay protected on this device and are never returned to the assistant."));
         tabs.Items.Add(InformationTab("Your choices",
             "New accounts connected here start with sharing off. Enable each account and choose mail, calendars, or both.",
-            "Save choices applies changes to future reads. Turning sharing off cannot withdraw information already returned to a conversation."));
+            "Select Save changes to apply your choices. Turning sharing off stops future access. It cannot remove information already shared in a conversation."));
         await ShowDialogAsync(DetailsDialog("How sharing works", tabs));
     }
 
@@ -106,7 +106,7 @@ public sealed partial class MainWindow
     {
         if (BlockDemoAction()) return;
         var content = new StackPanel { Spacing = 16 };
-        content.Children.Add(Body("This preview requires your own provider app registration. Configure it once before adding accounts."));
+        content.Children.Add(Body("Before your first sign-in, Google or Microsoft needs an app registration for MailMeUp. Follow the guide below, then add the setup details here. You only need to do this once for each service."));
         foreach (var provider in new[] { "google", "microsoft" })
         {
             var line = new StackPanel { Spacing = 6 };
@@ -115,11 +115,11 @@ public sealed partial class MainWindow
             heading.Children.Add(new TextBlock { Text = ProviderName(provider), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
             line.Children.Add(heading);
             line.Children.Add(Body(_providers.Any(item => item.ProviderId == provider && item.Configured) ? "Configured on this device." : "App registration needed."));
-            line.Children.Add(Body(provider == "google" ? "Import the downloaded Desktop client JSON." : "Enter the Application (client) ID. No client secret is needed."));
+            line.Children.Add(Body(provider == "google" ? "Choose the JSON file you downloaded when registering a Desktop app with Google." : "Paste the Application (client) ID from Microsoft. You do not need a client secret."));
             content.Children.Add(line);
         }
         content.Children.Add(Link("App registration guide", "https://github.com/umbertotechnopreneur/MailMeUp/blob/main/docs/APP_REGISTRATION.md"));
-        var dialog = DetailsDialog("Provider setup", content);
+        var dialog = DetailsDialog("Set up Google or Microsoft", content);
         dialog.PrimaryButtonText = "Configure Google";
         dialog.SecondaryButtonText = "Configure Microsoft";
         var result = await ShowDialogAsync(dialog);
@@ -142,7 +142,7 @@ public sealed partial class MainWindow
             var preview = _codex.GetPreview();
             var content = new StackPanel { Spacing = 14 };
             content.Children.Add(Body(_codexStatus?.Message ?? "Refresh status in the setup page to inspect local Codex configuration."));
-            content.Children.Add(Body("Fallback only: prepare the local plugin files, then run the commands below. Adding the marketplace makes the plugin available; the second command installs it. Review any direct MCP connection first to avoid duplicate tools."));
+            content.Children.Add(Body("Use these steps if automatic setup is unavailable. First select Prepare plugin files. Then run both commands in a terminal: the first makes the plugin available in Codex, and the second installs it. If you already connected MailMeUp in Codex, review that connection first to avoid adding it twice."));
             var commands = new TextBox
             {
                 Header = "Commands to review", Text = preview.ManualCommands, IsReadOnly = true,
@@ -158,7 +158,7 @@ public sealed partial class MainWindow
             buttons.Children.Add(copy);
             content.Children.Add(buttons);
             content.Children.Add(feedback);
-            var dialog = DetailsDialog("Manual setup (fallback)", content);
+            var dialog = DetailsDialog("Set up Codex manually", content);
             dialog.Closing += (_, closing) =>
             {
                 if (_busy && !_lifetime.IsCancellationRequested) closing.Cancel = true;
