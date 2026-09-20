@@ -1,6 +1,6 @@
 # MailMeUp portable preview
 
-All your inboxes. One conversation.
+Search your Google and Microsoft inboxes and calendars from your AI assistant.
 
 Use MailMeUp to search your Google and Microsoft inboxes and check your calendars from an AI conversation. This ZIP or archive contains the command-line app. You'll use it to set up Google or Microsoft, sign in, then connect to Codex through MCP, the protocol assistants use to call tools.
 

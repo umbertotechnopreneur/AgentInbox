@@ -1,8 +1,8 @@
-# Product overview
+# Connect your inboxes to your AI assistant
 
-MailMeUp lets you ask your AI assistant about email and appointments across several accounts at once.
+MailMeUp connects several Google and Microsoft accounts to your AI assistant through MCP. Search email and check appointments across your work, personal, and client accounts in one conversation.
 
-Looking for a client message but can't remember which inbox it went to? Choose the accounts to include, ask your assistant, and open the matching message. You can do the same with unread mail or upcoming meetings.
+Choose the accounts to include, ask for a message or upcoming meeting, and open the matching result. You don't need to remember which inbox received it.
 
 ## You're in control
 

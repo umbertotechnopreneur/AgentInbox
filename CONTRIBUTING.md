@@ -1,6 +1,6 @@
 # Contributing
 
-Want to help? Small fixes, clearer docs and reports of what worked or went wrong are useful. Start with the [roadmap](docs/ROADMAP.md). If you're thinking about adding another email service or changing how account security works, open an issue first so we can talk it through.
+Help improve MailMeUp with a bug fix, clearer instructions, or a report of what worked or failed. Start with the [roadmap](docs/ROADMAP.md). For a new email service or a change to account security, open an issue first so I can review the approach with you.
 
 1. Fork the repository and create a branch for your change.
 2. Use .NET 10 from `global.json`, Python 3.10+ and PowerShell 7 for the validation scripts.

@@ -1,14 +1,14 @@
+# MailMeUp — Connect multiple email inboxes to Claude, Codex, or any app with local MCP support, including Visual Studio Code
+
 <p align="center">
   <img src="docs/assets/branding/mailmeup-hero.png" alt="MailMeUp: several inboxes, one conversation" width="100%" />
 </p>
 
-# MailMeUp
+**Search mail and check calendars across your Google and Microsoft accounts from one conversation.**
 
-**All your inboxes. One conversation.**
+Connect your work, personal, and client accounts, then ask your assistant to find messages or appointments across them. You choose which accounts it can read. MCP is the protocol that connects MailMeUp to your assistant.
 
-Work email here, personal email there, client messages somewhere else. MailMeUp lets you search your Google and Microsoft accounts and check your calendars from one conversation with your AI assistant.
-
-It runs on your computer. You choose which accounts to share, and it only reads: it can't send emails, change messages or edit your calendar. Setup currently focuses on Codex.
+MailMeUp runs on your computer and only reads: it can't send emails, change messages, or edit your calendar. Setup and testing currently focus on Codex on Windows x64. Claude, Visual Studio Code, and other clients need local MCP process support; their setup hasn't been tested yet.
 
 [![CI](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
@@ -30,9 +30,9 @@ It runs on your computer. You choose which accounts to share, and it only reads:
 
 ## Why MailMeUp?
 
-MailMeUp starts with a practical problem: making several independent mailboxes available to an AI assistant in one conversation. The goal is to make a setup such as **ten Microsoft accounts, ten Google accounts, or a mix of both** easy to connect and search, with each account signed in separately and the user choosing what to share. Ten accounts is an example of the workflow we want to simplify, not a tested capacity guarantee.
+Connect several independent mailboxes without switching accounts in your assistant. Sign in to each Google or Microsoft account separately and choose what to share. A mix of ten work and personal accounts is a useful example, but that account count hasn't been tested.
 
-Work, personal and client accounts should be available together without repeatedly disconnecting one account to connect another. MailMeUp gives your assistant one place to search the accounts you've chosen. Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
+Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
 
 The preview already supports multiple accounts. Easier onboarding remains work in progress, and setup currently focuses on Codex; see [before you start](#before-you-start) and [AI assistant support](#ai-assistant-support).
 
@@ -53,7 +53,7 @@ MailMeUp's focus is a simple, local, read-only connection for the independent ac
 
 The MailMeUp command-line processes in the Task Manager snapshot below use **7.4–9.6 MB of RAM each** while waiting for requests. That's one snapshot, so memory use will vary with the work you're doing.
 
-We like small, native apps. The Windows setup window doesn't need an embedded browser to draw its screens. The shared .NET code is portable; the setup app is built for Windows. Other platforms still need testing.
+I build small, native apps. MailMeUp's Windows setup app lets you connect accounts and choose what to share. Other platforms still need testing.
 
 ![Windows Task Manager showing the highlighted MailMeUp CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/mailmeup-task-manager-lightweight.png)
 
@@ -77,7 +77,7 @@ Each person connects their own accounts. You don't need a hosted MailMeUp servic
 > **There's still some setup to do.** For now, you need to register your own app with Google or Microsoft before connecting an account. Google gives you a configuration file; Microsoft gives you an Application (client) ID. The [registration guide](docs/APP_REGISTRATION.md) walks you through it. Making this easier is part of the work ahead.
 
 > [!NOTE]
-> **MSIX installers are temporarily unavailable.** We're working on the code-signing certificate needed to distribute them. Until then, use the Windows portable ZIP.
+> **MSIX installers are temporarily unavailable.** I'm working on the code-signing certificate needed to distribute them. Until then, use the Windows portable ZIP.
 
 The Windows app helps you connect accounts, choose what to share and set up Codex. Its **Check read access** button tries sample searches and reads for mail and calendars separately. It helps spot connection problems; it doesn't guarantee every future search will work.
 
@@ -93,7 +93,7 @@ Your sign-in tokens stay on your computer, protected by the operating system. Ea
 
 Codex is the main focus today. You can use the [Windows setup app](docs/WINDOWS_SETUP.md) to prepare its local plugin, or follow the [manual setup guide](docs/CODEX_SETUP.md).
 
-MailMeUp uses MCP, a standard way for an assistant to use tools, through a local process. Other clients, including Claude, may work if they support this kind of connection, but haven't been tested. ChatGPT Desktop isn't supported as a direct local connection yet.
+MailMeUp connects through a local MCP process. Claude, Visual Studio Code, and other MCP clients are intended connection options, but haven't been tested with MailMeUp. ChatGPT Desktop isn't supported as a direct local connection yet.
 
 If you'd like to help try another client and document the setup, see [how to contribute](CONTRIBUTING.md).
 

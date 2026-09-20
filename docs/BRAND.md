@@ -6,7 +6,7 @@ Name: **MailMeUp**. Preserve capitalization; do not use spaces in the product na
 
 Tagline: **All your inboxes. One conversation.**
 
-One-line description: **Search your email accounts from one conversation with your AI assistant.**
+One-line description: **Connect your Google and Microsoft inboxes to an AI assistant through MCP.**
 
 Expanded product description: **Find mail and check appointments across your Google and Microsoft accounts. MailMeUp runs on your computer and only reads what you choose to share.**
 
@@ -15,6 +15,10 @@ The name follows the same personal style as PromptMeUp and TrackMeUp. The artwor
 ## Writing style
 
 Write as if you're helping a friend try the app. Start with what they want to do, then explain the next step. Use short sentences, everyday words and natural contractions.
+
+The first README headline must explain what MailMeUp does. Name the connection options people recognize: Claude, Codex, and apps with local MCP support such as Visual Studio Code. Keep the current testing limits nearby: setup and testing focus on Codex on Windows x64; other clients haven't been tested. Multiple accounts does not mean a tested unlimited capacity.
+
+Use "I", "me", and "my" when speaking as Umberto, the solo maintainer with help from a few contributors. Speak to the reader as "you". Avoid company-style "we", slogans that replace an explanation, hype, and formulaic AI wording. Apply this voice to all original documentation, including setup, support, and contributor guides.
 
 Say "connect your accounts" instead of "configure multi-account access," and "choose what to share" instead of "manage sharing capabilities." Keep exact command names and button labels. Explain terms such as MCP or Client ID when the reader first needs them.
 

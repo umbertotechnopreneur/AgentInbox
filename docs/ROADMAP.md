@@ -1,6 +1,6 @@
 # Roadmap
 
-We're working toward a preview you can install, connect to your accounts and use with confidence. All planned account features are read-only. Sending mail or changing calendars would need a separate decision.
+I'm preparing a preview you can install and connect to your accounts. The next steps focus on reliable setup and accurate search results. All planned account features are read-only. Sending mail or changing calendars would need a separate decision.
 
 The [plan for the first usable version](MVP_PLAN.md) lists the work and checks for each step.
 
@@ -13,7 +13,7 @@ The [plan for the first usable version](MVP_PLAN.md) lists the work and checks f
 | 3C. Calendars | Find calendars, search appointments and show one combined agenda |
 | 4. Public preview | Make installation easier, prepare Google and Microsoft registration, and check supported platforms |
 
-Each step needs passing tests before we call it available.
+I mark a step as available only after its tests pass.
 
 ## Where things stand
 
