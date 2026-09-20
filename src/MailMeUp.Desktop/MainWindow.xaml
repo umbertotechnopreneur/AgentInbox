@@ -15,15 +15,14 @@
         </Grid>
         <Border Grid.Row="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
             <Grid x:Name="RailLayout" Padding="12,28,12,20">
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                <TextBlock x:Name="RailCaption" Text="SETUP" FontSize="11" CharacterSpacing="100" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="12,0,0,16" />
-                <ListBox x:Name="Steps" Grid.Row="1" VerticalAlignment="Top" SelectionChanged="Steps_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource WizardStep}" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Setup navigation">
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <ListBox x:Name="Steps" Grid.Row="0" VerticalAlignment="Top" SelectionChanged="Steps_SelectionChanged" Background="Transparent" BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource WizardStep}" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Setup navigation">
                     <ListBoxItem ToolTipService.ToolTip="Welcome"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="WelcomeIcon" Glyph="&#xE80F;" FontSize="18" /><TextBlock x:Name="WelcomeLabel" Text="Welcome" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
                     <ListBoxItem ToolTipService.ToolTip="Accounts"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="AccountsIcon" Glyph="&#xE77B;" FontSize="18" /><TextBlock x:Name="AccountsLabel" Text="Accounts" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
                     <ListBoxItem ToolTipService.ToolTip="Sharing"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="SharingIcon" Glyph="&#xE716;" FontSize="18" /><TextBlock x:Name="SharingLabel" Text="Sharing" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
                     <ListBoxItem ToolTipService.ToolTip="Connect to Codex"><StackPanel Orientation="Horizontal" Spacing="12"><FontIcon x:Name="CodexIcon" Glyph="&#xE943;" FontSize="18" /><TextBlock x:Name="CodexLabel" Text="Codex" VerticalAlignment="Center" /></StackPanel></ListBoxItem>
                 </ListBox>
-                <StackPanel Grid.Row="2" Spacing="12">
+                <StackPanel Grid.Row="1" Spacing="12">
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,0,0,0" ToolTipService.ToolTip="Read-only by design"><FontIcon Glyph="&#xEA18;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /><TextBlock x:Name="ReadOnlyLabel" Text="Read-only by design" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" /></StackPanel>
                     <Button x:Name="HelpButton" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Padding="12,8" AutomationProperties.Name="Help and information" ToolTipService.ToolTip="Help and information">
                         <StackPanel Orientation="Horizontal" Spacing="12"><FontIcon Glyph="&#xE946;" FontSize="18" /><TextBlock x:Name="HelpLabel" Text="Help &amp; about" /></StackPanel>
@@ -40,8 +39,8 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <InfoBar x:Name="DemoBanner" IsOpen="False" IsClosable="False" Severity="Informational" Title="UI preview" Message="Sample accounts. Changes last for this session." Margin="0,0,0,16" />
             <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,28">
-                <TextBlock x:Name="PageTitle" Text="All your inboxes.&#x0a;One conversation." FontSize="36" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <TextBlock x:Name="PageSubtitle" Text="Bring your mail and calendars into Codex." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="PageTitle" Text="Your email. Your AI assistant." FontSize="36" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock x:Name="PageSubtitle" Text="Connect your Google and Microsoft accounts to Codex, Claude, Visual Studio Code, or other apps that support MCP." Style="{StaticResource BodyText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
             <!-- The title and actions stay in place; only page content scrolls. -->
             <ScrollViewer x:Name="PageScroll" Grid.Row="2" Margin="0,0,-20,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -52,16 +51,20 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="HeroColumn" Width="280" /></Grid.ColumnDefinitions>
                                 <StackPanel Spacing="24" VerticalAlignment="Center">
                                     <StackPanel Spacing="20">
-                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE77B;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Connect your accounts" FontWeight="SemiBold" /><TextBlock Text="Google and Microsoft, together." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
-                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE716;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Choose what to share" FontWeight="SemiBold" /><TextBlock Text="Mail, calendars, or both." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
-                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE943;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Continue in Codex" FontWeight="SemiBold" /><TextBlock Text="Find messages and upcoming plans." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE77B;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Connect your accounts" FontWeight="SemiBold" /><TextBlock Text="Bring your personal and work email together." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE716;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Choose what to share" FontWeight="SemiBold" /><TextBlock Text="You choose which accounts and calendars your assistant can read." Style="{StaticResource SubtleText}" /></StackPanel></Grid>
+                                        <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon Glyph="&#xE943;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Find what you need, just by asking" FontWeight="SemiBold" /><TextBlock Text="Find an email, catch up on unread messages, or check your next appointment." Style="{StaticResource SubtleText}" TextWrapping="Wrap" /></StackPanel></Grid>
                                     </StackPanel>
                                 </StackPanel>
                                 <Image x:Name="WelcomeArtwork" Grid.Column="1" Source="Assets/WizardHero.png" MaxHeight="280" Stretch="Uniform" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
                             </Grid>
                             <StackPanel Spacing="10" MaxWidth="620" HorizontalAlignment="Left">
-                                <TextBlock Text="Read-only access. Nothing sent or changed. Requested content may reach your AI service; sign-in tokens stay on this device." Style="{StaticResource SubtleText}" />
-                                <Button Style="{StaticResource QuietButton}" Padding="0,6" Content="How sharing works" Click="SharingInfoButton_Click" />
+                                <TextBlock Text="MailMeUp can read, but cannot send, change or delete anything. Information you ask for may be sent to your AI service. Your sign-in details stay protected on this device." Style="{StaticResource SubtleText}" />
+                                <TextBlock Text="This wizard helps you set up Codex. Other MCP apps have not yet been tested with MailMeUp. You can also set up and use MailMeUp from the command line (CLI)." Style="{StaticResource SubtleText}" />
+                                <StackPanel Orientation="Horizontal" Spacing="20">
+                                    <Button Style="{StaticResource QuietButton}" Padding="0,6" Content="How sharing works" Click="SharingInfoButton_Click" />
+                                    <HyperlinkButton Content="Command-line setup (CLI)" NavigateUri="https://github.com/umbertotechnopreneur/MailMeUp/blob/main/docs/GETTING_STARTED.md#2-configure-mailmeup" Padding="0,6" AutomationProperties.Name="Set up MailMeUp with the CLI on GitHub" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="AccountsPage" Spacing="20" Visibility="Collapsed">
@@ -75,7 +78,7 @@
                                 </StackPanel>
                             </Grid>
                             <StackPanel x:Name="ConnectedAccounts" Spacing="0" />
-                            <TextBlock Text="New accounts stay private until you choose to share them." Style="{StaticResource SubtleText}" />
+                            <TextBlock Text="Your assistant cannot read these accounts until you turn on sharing." Style="{StaticResource SubtleText}" />
                         </StackPanel>
                         <StackPanel x:Name="SharingPage" Spacing="20" Visibility="Collapsed">
                             <TextBlock x:Name="SharingSummaryText" Text="No accounts shared" Style="{StaticResource SectionLabel}" />
@@ -92,9 +95,9 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <Border Width="40" Height="40" CornerRadius="20" Background="{ThemeResource WizardSelectionBrush}" VerticalAlignment="Top"><FontIcon x:Name="CodexStatusIcon" Glyph="&#xE943;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /></Border>
                                 <StackPanel Grid.Column="1" Spacing="5">
-                                    <TextBlock x:Name="CodexStatusTitle" Text="Check your local setup" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                                    <TextBlock x:Name="CodexStatusText" Text="Find out whether MailMeUp is already configured in Codex." Style="{StaticResource BodyText}" />
-                                    <TextBlock x:Name="CodexStatusCaption" Text="This checks local settings without reading your mailbox." Style="{StaticResource SubtleText}" />
+                                    <TextBlock x:Name="CodexStatusTitle" Text="Add MailMeUp to Codex" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                    <TextBlock x:Name="CodexStatusText" Text="Check whether Codex is set up to use your selected accounts." Style="{StaticResource BodyText}" />
+                                    <TextBlock x:Name="CodexStatusCaption" Text="This checks your settings. It does not read your email." Style="{StaticResource SubtleText}" />
                                 </StackPanel>
                             </Grid>
                             <StackPanel x:Name="CodexConnectionChoices" Spacing="10" Visibility="Collapsed">
@@ -110,7 +113,7 @@
                                 <Border x:Name="CodexDirectChoiceCard" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="14,8">
                                     <RadioButton x:Name="CodexDirectChoice" GroupName="CodexConnection" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Checked="CodexConnectionChoice_Checked" AutomationProperties.Name="Keep the direct connection">
                                         <Grid ColumnSpacing="12" RowSpacing="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="CodexDirectBadgeColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                            <StackPanel Spacing="3"><TextBlock Text="Direct connection" Style="{StaticResource SectionLabel}" /><TextBlock Text="Your existing MailMeUp MCP entry in Codex" Style="{StaticResource SubtleText}" /></StackPanel>
+                                            <StackPanel Spacing="3"><TextBlock Text="Direct connection" Style="{StaticResource SectionLabel}" /><TextBlock Text="The connection you already added in Codex" Style="{StaticResource SubtleText}" /></StackPanel>
                                             <TextBlock x:Name="CodexDirectChoiceStatus" Grid.Column="1" MaxWidth="140" Text="Entry found" Style="{StaticResource SubtleText}" VerticalAlignment="Center" />
                                         </Grid>
                                     </RadioButton>
@@ -139,7 +142,7 @@
                                     <TextBlock x:Name="CodexDiagnosticText" Text="Check setup to inspect the local connection." Style="{StaticResource BodyText}" />
                                     <StackPanel x:Name="CodexChecks" Spacing="4" />
                                     <TextBlock x:Name="CodexCheckedText" Text="Not checked yet." Style="{StaticResource SubtleText}" AutomationProperties.LiveSetting="Polite" />
-                                    <TextBlock Text="These are local configuration results. Codex sign-in, runtime connection and mailbox access have not been tested." Style="{StaticResource SubtleText}" />
+                                    <TextBlock Text="These results only confirm the saved settings. Try the request above in Codex to check that it can connect and read your selected accounts." Style="{StaticResource SubtleText}" />
                                     <StackPanel x:Name="CodexActions" Orientation="Horizontal" Spacing="8">
                                         <Button x:Name="RefreshCodexButton" Content="Check again" Click="RefreshCodexButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
                                         <Button x:Name="InstallPluginButton" Content="Update local plugin" Click="InstallPluginButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" IsEnabled="False" />
@@ -163,15 +166,15 @@
         </Grid>
         <Border x:Name="AddAccountParkingHost" Visibility="Collapsed">
             <StackPanel x:Name="AddAccountContent" Spacing="20">
-                <TextBlock Text="Choose a provider to sign in through your browser." Style="{StaticResource BodyText}" />
+                <TextBlock Text="Choose Google or Microsoft. Your browser will open so you can sign in." Style="{StaticResource BodyText}" />
 <Grid x:Name="ProviderButtons" ColumnSpacing="12" RowSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="MicrosoftProviderColumn" Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                 <Button x:Name="GoogleButton" Click="AddGoogleAccountButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Google"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Google.svg" /></Image.Source></Image><TextBlock Text="Connect Google" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
                                 <Button x:Name="MicrosoftButton" Grid.Column="1" Click="AddMicrosoftAccountButton_Click" HorizontalAlignment="Stretch" Padding="16,12" AutomationProperties.Name="Connect Microsoft"><StackPanel Orientation="Horizontal" Spacing="12"><Image Width="24" Height="24" AutomationProperties.AccessibilityView="Raw"><Image.Source><SvgImageSource UriSource="ms-appx:///Assets/Microsoft.svg" /></Image.Source></Image><TextBlock Text="Connect Microsoft" TextWrapping="Wrap" VerticalAlignment="Center" /></StackPanel></Button>
                             </Grid>
                             
-                <StackPanel Spacing="8"><TextBlock x:Name="RequestAccessLabel" Text="Read access" Style="{StaticResource SectionLabel}" /><StackPanel Orientation="Horizontal" Spacing="20"><CheckBox x:Name="RequestMail" Content="Mail" IsChecked="True" /><CheckBox x:Name="RequestCalendars" Content="Calendars" IsChecked="True" /></StackPanel></StackPanel>
-                <TextBlock Text="Sharing starts off. You choose what Codex can read in the next step." Style="{StaticResource SubtleText}" />
-                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0"><Button Content="Provider setup" Style="{StaticResource QuietButton}" Padding="0,8" Click="AddAccountProviderSetupButton_Click" /></Border>
+                <StackPanel Spacing="8"><TextBlock x:Name="RequestAccessLabel" Text="What would you like to connect?" Style="{StaticResource SectionLabel}" /><StackPanel Orientation="Horizontal" Spacing="20"><CheckBox x:Name="RequestMail" Content="Mail" IsChecked="True" /><CheckBox x:Name="RequestCalendars" Content="Calendars" IsChecked="True" /></StackPanel></StackPanel>
+                <TextBlock Text="Your assistant cannot read this account yet. You choose what to share in the next step." Style="{StaticResource SubtleText}" />
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0"><Button Content="Set up Google or Microsoft" Style="{StaticResource QuietButton}" Padding="0,8" Click="AddAccountProviderSetupButton_Click" /></Border>
 <TextBlock x:Name="ProviderStatusText" Text="Loading provider setup…" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Border>
@@ -199,9 +202,9 @@
             <StackPanel x:Name="SettingsContent" Spacing="20">
                 <StackPanel x:Name="SearchSettingsSection" Spacing="16">
 <StackPanel Spacing="10" x:Name="MailSearchPreferencesExpander">
-                                    <TextBlock x:Name="MailSearchPreferencesHeading" Text="Mail search" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Used across all accounts when your search has no dates. Dates in your request take priority." Style="{StaticResource BodyText}" />
+                                    <TextBlock x:Name="MailSearchPreferencesHeading" Text="Mail search" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Choose how far back to search when you do not ask for specific dates. This applies to all your accounts." Style="{StaticResource BodyText}" />
                                     <NumberBox x:Name="MailSearchLookbackDaysBox" Header="Days to look back" Width="200" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="7" ValidationMode="Disabled" IsEnabled="False" AutomationProperties.Name="Default mail search period in days" AutomationProperties.HelpText="Enter a whole number from 1 to 365. The default is 14 days. Explicit search dates override this setting." />
-                                    <TextBlock Text="Longer periods take more time, make more requests and may hit your email provider's limits. The default is 14 days." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="Start with 14 days. Searching further back can take longer, and Google or Microsoft may temporarily limit requests." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock x:Name="MailSearchPreferencesSavedText" Text="Loading the saved search period…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                                     <StackPanel x:Name="MailSearchPreferencesActions" Orientation="Horizontal" Spacing="8">
                                         <Button x:Name="SaveMailSearchPreferencesButton" Content="Save search period" Style="{StaticResource AccentButtonStyle}" Click="SaveMailSearchPreferencesButton_Click" IsEnabled="False" />

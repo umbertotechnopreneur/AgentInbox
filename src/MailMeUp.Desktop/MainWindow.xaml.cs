@@ -156,7 +156,7 @@ public sealed partial class MainWindow : Window
         var compact = Root.ActualWidth < 900;
         RailColumn.Width = new GridLength(compact ? 68 : 184);
         RailLayout.Padding = new Thickness(compact ? 6 : 12, 28, compact ? 6 : 12, 20);
-        foreach (var label in new[] { RailCaption, WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, HelpLabel, ReadOnlyLabel })
+        foreach (var label in new[] { WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, HelpLabel, ReadOnlyLabel })
             label.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         ContentLayout.Padding = new Thickness(compact ? 24 : 40, 28, compact ? 24 : 40, 24);
         var availableWidth = Math.Max(0, Math.Min(1080, Root.ActualWidth - RailColumn.Width.Value)
@@ -204,17 +204,17 @@ public sealed partial class MainWindow : Window
         _step = step;
         PageTitle.Text = step switch
         {
-            0 => "All your inboxes.\nOne conversation.",
+            0 => "Your email. Your AI assistant.",
             1 => "Your accounts",
             2 => "What you share",
             _ => "Finish connecting to Codex"
         };
         PageSubtitle.Text = step switch
         {
-            0 => "Bring your mail and calendars into Codex.",
-            1 => "Connect personal, work and client accounts.",
-            2 => "Choose what Codex can read from each account.",
-            _ => "Make your selected accounts available in new Codex tasks."
+            0 => "Connect your Google and Microsoft accounts to Codex, Claude, Visual Studio Code, or other apps that support MCP.",
+            1 => "Connect personal, work and client email accounts from Google or Microsoft.",
+            2 => "Choose which accounts, emails and calendars your AI assistant can read.",
+            _ => "Let Codex find emails and appointments in the accounts you choose."
         };
         WelcomePage.Visibility = ToVisibility(step == 0);
         AccountsPage.Visibility = ToVisibility(step == 1);
@@ -231,7 +231,7 @@ public sealed partial class MainWindow : Window
         };
         NextButton.Content = step switch
         {
-            0 => "Get started", 1 => "Choose sharing", 2 => "Connect to Codex", _ => "Check setup"
+            0 => "Get started", 1 => "Choose what to share", 2 => "Connect to Codex", _ => "Check setup"
         };
         NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
         RenderCodexPage();
@@ -281,7 +281,7 @@ public sealed partial class MainWindow : Window
         if (_step == 2 && !IsDemo)
             PreviewLabel.Text = _sharingDirty || _mailSearchPreferencesDirty || _readGuardrailsDirty
                 ? "You have unsaved changes"
-                : "You control what Codex can read";
+                : "You choose what your assistant can read";
         var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
         string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
         string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
@@ -434,7 +434,8 @@ public sealed partial class MainWindow : Window
             var empty = new StackPanel { Spacing = 12, Margin = new Thickness(0, 28, 0, 28) };
             empty.Children.Add(new FontIcon { Glyph = "\uE715", FontSize = 36, HorizontalAlignment = HorizontalAlignment.Left, Foreground = ThemeBrush("TextFillColorSecondaryBrush") });
             empty.Children.Add(new TextBlock { Text = "Start with one account", FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            empty.Children.Add(Body("Choose Add account to connect Google or Microsoft."));
+            empty.Children.Add(Body("Choose Add account to connect a Google or Microsoft email account."));
+            empty.Children.Add(Body("Some business accounts may require additional approval. Your provider will ask for it."));
             ConnectedAccounts.Children.Add(empty);
         }
     }
@@ -598,7 +599,7 @@ public sealed partial class MainWindow : Window
 
         var content = new StackPanel { Spacing = 12 };
         content.Children.Add(Body($"Remove {account.EmailAddress} from MailMeUp on this device?"));
-        content.Children.Add(Body("This removes the local account record and protected sign-in cache. It does not delete or change email, calendars or provider consent. You can connect the account again later."));
+        content.Children.Add(Body("MailMeUp will forget this account and its saved sign-in details on this device. Your emails and calendars will stay unchanged. Permissions granted to Google or Microsoft stay in place. You can add the account again later."));
         var confirmation = await ShowDialogAsync(new ContentDialog
         {
             Title = "Remove account?",
@@ -626,7 +627,7 @@ public sealed partial class MainWindow : Window
             }
             _connectionChecks.Remove(account.Id);
             await RefreshAccountsAsync(cancellationToken);
-            SetNotice("Account removed", "The local account and protected credentials were removed. Provider consent and account data are unchanged; connect it again above when needed.", InfoBarSeverity.Success);
+            SetNotice("Account removed", "MailMeUp has forgotten this account on this device. Your emails, calendars and Google or Microsoft permissions are unchanged. You can add it again at any time.", InfoBarSeverity.Success);
         }, TimeSpan.FromMinutes(2.5));
     }
 
@@ -680,7 +681,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<bool> ConfigureGoogleAsync(CancellationToken cancellationToken)
     {
-        ActivityText.Text = "Select your Google Desktop OAuth client JSON…";
+        ActivityText.Text = "Choose the JSON setup file you downloaded from Google…";
         var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.Downloads, ViewMode = PickerViewMode.List };
         picker.FileTypeFilter.Add(".json");
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
@@ -697,7 +698,7 @@ public sealed partial class MainWindow : Window
     {
         var input = new TextBox { Header = "Application (client) ID", PlaceholderText = "00000000-0000-0000-0000-000000000000" };
         var content = new StackPanel { Spacing = 14 };
-        content.Children.Add(Body("Enter the public client ID of your Microsoft desktop app. No client secret is needed."));
+        content.Children.Add(Body("Paste the Application (client) ID from your Microsoft app registration. This identifies the app; it is not your password. You do not need a client secret."));
         content.Children.Add(input);
         var dialog = new ContentDialog
         {

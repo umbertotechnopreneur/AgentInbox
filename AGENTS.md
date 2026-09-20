@@ -4,18 +4,36 @@ MailMeUp is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All re
 
 ## Product writing and author voice
 
+- Keep MailMeUp, PromptMeUp, and TrackMeUp visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
+
 - Start each README with a headline that says what the app does and what the reader can use it for. Put the product benefit before architecture, branding, or project history.
 - Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
 - Speak to the reader as "you". When speaking as the author, use "I", "me", and "my", never a company-style "we", "us", or "our". Umberto is the solo maintainer, with help from a few contributors; keep their credits accurate.
 - Keep technical detail in the relevant reference guides. Preserve exact commands, UI labels, privacy facts, limitations, and the distinction between implemented, tested, and planned features. Do not promise unlimited capacity or untested compatibility.
 - Preserve third-party quotations, license text, and historical records; these writing preferences apply to original project copy.
 
+## Distribution and build defaults
+
+- The commercial edition supports Windows 11 on x64 and ARM64 only. Distribute it only as MSIX.
+- Linux and macOS are source-only: users must compile and adapt the source themselves. Do not provide compiled binaries, installers, or commercial support for these platforms, and do not imply that every project can run there unchanged.
+- When a build is explicitly requested, default to a local development/debug build using the Debug configuration. A generic build or release request does not authorize a Microsoft Store package. Produce a Store version only when the owner explicitly asks for one; never upload or publish it without explicit authorization.
+- Keep development/debug artifacts separate from Store release artifacts. These rules do not authorize running builds, changing release pipelines, creating tags, or publishing on their own.
+- Windows distribution is MSIX-only. Do not propose or add portable ZIP, standalone EXE, or MSI distribution unless the owner explicitly changes this decision. This preference does not authorize packaging or workflow changes.
+
+## Private business notes
+
+- Keep pricing, commercial strategy, launch plans, future product proposals, OAuth verification preparation, Store account procedures and owner checkpoints in the owner's Obsidian vault under `40_Business/MeUp/`, organized by product. Do not create or mirror these notes in public repositories.
+- Keep current user and contributor documentation, public privacy policies and terms, licenses, attribution, build instructions, technical validation records and files required by code or CI in the repository. Split documents that mix public technical guidance with internal planning.
+- For publication or Store listing work, first read `40_Business/MeUp/Business decisions.md` and the relevant product notes. The owner-approved purchase notice is preserved there; proposals and approved wording are not evidence of implemented licensing.
+- Keep raw Store account exports outside Git. Do not add credentials, private data or machine-specific vault paths to repository files.
+
 ## Shared delivery workflow
 
 - Ask the owner for explicit approval before creating a new branch, including a branch for a new worktree. A request to implement changes does not by itself authorize branch creation; reuse an existing suitable branch when possible.
-- For documentation-only or repository-instruction-only changes, commit and push directly on the current branch, including `main`, without creating a branch or opening a pull request. The owner authorizes using existing administrator bypass rights for this exception; do not change repository protection settings. Include `[skip ci]` in the commit message unless the owner explicitly requests CI.
+- Never create a branch, commit, or push on your own initiative. Each action requires an explicit request from the owner; a request to edit files does not authorize Git delivery.
+- For documentation-only or repository-instruction-only changes, keep edits local until the owner explicitly requests delivery. If authorized, use the current branch and include `[skip ci]` unless the owner requests CI. Do not treat this rule as permission to bypass repository protections.
 - For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
-- Create portable release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
+- Create MSIX release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 
 ## Context and token efficiency
@@ -34,7 +52,7 @@ MailMeUp is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All re
 
 ## Scope and architecture
 
-- Before changing behavior, read the relevant sections of `README.md` and `docs/ARCHITECTURE.md`, plus the current milestone in `docs/ROADMAP.md`. Reuse these sections when already in context and still current.
+- Before changing behavior, read the relevant sections of `README.md` and `docs/ARCHITECTURE.md`. Reuse these sections when already in context and still current.
 - Keep CLI and MCP adapters thin; share business behavior through `IMailMeUpApplication`.
 - Keep Core free from provider, storage, UI and transport dependencies.
 - Add XML summaries to public APIs. Use dependency injection and `ILogger<T>` for future diagnostics.

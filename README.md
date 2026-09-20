@@ -1,25 +1,31 @@
-# MailMeUp — Connect multiple email inboxes to Claude, Codex, or any app with local MCP support, including Visual Studio Code
+# MailMeUp — Connect your inboxes to your AI assistant.
 
-<p align="center">
-  <img src="docs/assets/branding/mailmeup-hero.png" alt="MailMeUp: several inboxes, one conversation" width="100%" />
-</p>
+Search Google and Microsoft email and calendars from Codex, Claude, or another app with local MCP support, including Visual Studio Code.
 
-**Search mail and check calendars across your Google and Microsoft accounts from one conversation.**
+Connect your work, personal, and client accounts, then ask for messages or appointments across them. You choose which accounts the assistant can read. MailMeUp runs on your computer and can't send mail or change your accounts.
 
-Connect your work, personal, and client accounts, then ask your assistant to find messages or appointments across them. You choose which accounts it can read. MCP is the protocol that connects MailMeUp to your assistant.
+**[Get started](docs/GETTING_STARTED.md)** · [Windows portable setup](docs/WINDOWS_PORTABLE.md) · [Client compatibility](#ai-assistant-support) · [Privacy](docs/PRIVACY.md)
 
-MailMeUp runs on your computer and only reads: it can't send emails, change messages, or edit your calendar. Setup and testing currently focus on Codex on Windows x64. Claude, Visual Studio Code, and other clients need local MCP process support; their setup hasn't been tested yet.
+![MailMeUp cross-account search in an AI conversation, with email addresses hidden](docs/assets/branding/mailmeup-chat-search.png)
+
+*Example search with addresses hidden. Setup and testing focus on Codex on Windows x64. Other clients haven't been tested with MailMeUp.*
+
+## Get started
+
+1. Extract the [Windows portable ZIP](docs/WINDOWS_PORTABLE.md) and open `MailMeUp.Desktop.exe`.
+2. Follow [provider registration](docs/APP_REGISTRATION.md), sign in to each account, and choose what to share.
+3. Connect to Codex, then ask for unread mail or upcoming meetings. See [the setup guide](docs/GETTING_STARTED.md) for the full steps.
 
 [![CI](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
-[![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-F6C453)](docs/ROADMAP.md)
+![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-F6C453)
 
 > [!WARNING]
 > **MailMeUp is still an early preview.** Try it while keeping an eye on the results. Commands, setup steps and local data formats may change before a stable release.
 
 > **Your assistant may send the information you request to its AI service.** MailMeUp runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
 
-## A look at setup
+## Setup preview
 
 ![MailMeUp setup flow: Welcome and connect accounts](docs/assets/branding/mailmeup-setup-flow-welcome-accounts.png)
 
@@ -27,6 +33,7 @@ MailMeUp runs on your computer and only reads: it can't send emails, change mess
 
 > [!NOTE]
 > These illustrations show the four setup steps. They're based on the Windows app, but aren't screenshots of the current version.
+
 
 ## Why MailMeUp?
 
@@ -85,9 +92,6 @@ Prefer no installer? The [complete Windows portable ZIP](docs/WINDOWS_PORTABLE.m
 
 Your sign-in tokens stay on your computer, protected by the operating system. Earlier builds have been tried with real Google and Microsoft accounts. Newer changes still need checks; the [validation record](docs/VALIDATION.md) lists what was tested in each version.
 
-![MailMeUp cross-account mail search in an AI conversation, with example addresses redacted](docs/assets/branding/mailmeup-chat-search.png)
-
-*An example search, with email addresses hidden.*
 
 ## AI assistant support
 
@@ -112,8 +116,6 @@ If you'd like to help try another client and document the setup, see [how to con
 ## Explore the project
 
 - [Short product overview](docs/PRODUCT.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Plan for the first usable version](docs/MVP_PLAN.md)
 - [Getting started](docs/GETTING_STARTED.md)
 - [Calendars and appointments](docs/CALENDARS.md)
 - [Accounts and credentials](docs/AUTHENTICATION.md)
@@ -124,6 +126,20 @@ If you'd like to help try another client and document the setup, see [how to con
 
 For developers: [how the code fits together](docs/ARCHITECTURE.md), [MCP tools](docs/MCP_CONTRACT.md), [release process](docs/RELEASING.md) and [test results](docs/VALIDATION.md).
 
-Created by [Umberto Giacobbi](https://github.com/umbertotechnopreneur). [MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no endorsement by OpenAI, Google or Microsoft.
+[MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no endorsement by OpenAI, Google or Microsoft.
 
 Artwork, source prompts and writing style: [brand guide](docs/BRAND.md).
+
+## More from MeUp
+
+<p align="center">
+  <img src="docs/assets/meup/mailmeup-family-v1.png" alt="MailMeUp concept illustration in the shared MeUp style" width="720" />
+</p>
+
+*Concept artwork, not an app screenshot. [Visual style and image credits](docs/assets/meup/README.md).*
+
+- **[MailMeUp](https://github.com/umbertotechnopreneur/MailMeUp)** — Connect your inboxes to your AI assistant.
+- **[PromptMeUp](https://github.com/umbertotechnopreneur/PromptMeUp)** — Describe your task. Get the command.
+- **[TrackMeUp](https://github.com/umbertotechnopreneur/TrackMeUp)** — Track your time. Find what you worked on.
+
+Built by [Umberto Giacobbi](https://umbertogiacobbi.biz/), with help from contributors.
