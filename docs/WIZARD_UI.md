@@ -1,6 +1,6 @@
 # Wizard implementation
 
-The wizard follows the [approved concepts](design/wizard-2026-09-06/README.md). The earlier `0.1.1.10` package passed its Release build, 113 shared .NET tests, installed CLI/MCP smoke and a synthetic native-window startup check. Subsequent package records and current limits are in [validation](VALIDATION.md).
+The earlier `0.1.1.10` package passed its Release build, 113 shared .NET tests, installed CLI/MCP smoke and a synthetic native-window startup check. Subsequent package records and current limits are in [validation](VALIDATION.md).
 
 The September 12 UI increment adds CLI screen selection, an isolated UI preview and further layout refinements. Windows x64 desktop/CLI publication, 291 synthetic .NET tests and published CLI/MCP smoke passed on September 12, 2026. Native rendering and interaction remain untested. These changes are included in the locally installed Windows x64 MSIX `0.1.1.20`; its signature is valid and Windows reports package status `Ok`.
 

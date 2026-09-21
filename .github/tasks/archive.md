@@ -1,5 +1,9 @@
 # Completed work
 
+## 2026-09-21 — Separate private design explorations
+
+- Archived wizard mockups and product concept illustrations outside Git, removed their README embeds and repaired documentation references. Retained runtime artwork and real screenshots. Documentation/reference checks only; no build or tests.
+
 ## 2026-09-21 — Separate public documentation from internal planning
 
 - Move internal plans, the owner checkpoint and OAuth submission preparation to the owner's private MeUp notes. Keep public setup, privacy, terms and technical documentation in the repository.

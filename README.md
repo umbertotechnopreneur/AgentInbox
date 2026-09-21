@@ -25,16 +25,6 @@ Connect your work, personal, and client accounts, then ask for messages or appoi
 
 > **Your assistant may send the information you request to its AI service.** MailMeUp runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
 
-## Setup preview
-
-![MailMeUp setup flow: Welcome and connect accounts](docs/assets/branding/mailmeup-setup-flow-welcome-accounts.png)
-
-![MailMeUp setup flow: choose what to share and connect to Codex](docs/assets/branding/mailmeup-setup-flow-sharing-codex.png)
-
-> [!NOTE]
-> These illustrations show the four setup steps. They're based on the Windows app, but aren't screenshots of the current version.
-
-
 ## Why MailMeUp?
 
 Connect several independent mailboxes without switching accounts in your assistant. Sign in to each Google or Microsoft account separately and choose what to share. A mix of ten work and personal accounts is a useful example, but that account count hasn't been tested.
@@ -109,9 +99,7 @@ If you'd like to help try another client and document the setup, see [how to con
 
 ## How it fits together
 
-![Planned email workflow: accounts connect to MailMeUp on your device, then to Codex](docs/assets/branding/mailmeup-concept.png)
-
-*Concept artwork showing how your accounts connect to your assistant through MailMeUp. Calendars work through the same connection. Requested information may reach your assistant's AI service.*
+Your accounts connect to your assistant through MailMeUp's local MCP process. Email and calendars use the same connection. Requested information may reach your assistant's AI service. See the [architecture guide](docs/ARCHITECTURE.md).
 
 ## Explore the project
 

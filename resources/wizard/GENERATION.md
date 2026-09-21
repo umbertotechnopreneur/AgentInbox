@@ -1,6 +1,6 @@
 # Wizard artwork
 
-Generated with the built-in image_gen tool on 2026-09-06, using the approved Welcome rendering in docs/design/wizard-2026-09-06 as the style reference.
+Generated with the built-in image_gen tool on 2026-09-06, using an approved Welcome rendering as the style reference. That design exploration is archived privately; the shipped cutouts and their provenance remain here.
 
 Final project assets:
 
@@ -40,4 +40,3 @@ Applied separately to each initial illustration with the built-in image_gen tool
 ```text
 Use case: background-extraction. Edit target: the attached illustration. Remove the entire painted grey-and-white checkerboard background. Deliver a true transparent RGBA PNG cutout with alpha zero outside the objects, not a visualization of transparency. The checkerboard in this source is an error, not part of the artwork. Preserve the paper envelopes, calendar, mint elements, object shapes, materials, colors and composition exactly. Remove any checkerboard showing through translucent arcs as well. Keep antialiased edges. No opaque canvas, no drawn checkerboard, no UI, no labels, no words. Background must be genuinely transparent.
 ```
-
