@@ -20,9 +20,10 @@ internal static class DesktopLogging
             .Filter.ByIncludingOnly(logEvent =>
                 logEvent.Properties.TryGetValue("SourceContext", out var source) &&
                 source is ScalarValue { Value: string name } &&
-                name.StartsWith("MailMeUp.", StringComparison.Ordinal))
+                (name.StartsWith("AgentInbox.", StringComparison.Ordinal)
+                    || name.StartsWith("MailMeUp.", StringComparison.Ordinal)))
             .WriteTo.File(
-                Path.Combine(logDirectory, "mailmeup-.log"),
+                Path.Combine(logDirectory, "agentinbox-.log"),
                 restrictedToMinimumLevel: LogEventLevel.Debug,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,

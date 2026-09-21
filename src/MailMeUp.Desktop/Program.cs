@@ -24,7 +24,7 @@ internal static class Program
             // Read the activation payload once, before packaged launch data can become unavailable.
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
             var instance = AppInstance.FindOrRegisterForKey(
-                options.IsDemo ? "MailMeUp.Desktop.Setup.Demo" : "MailMeUp.Desktop.Setup");
+                options.IsDemo ? "AgentInbox.Desktop.Setup.Demo" : "AgentInbox.Desktop.Setup");
             if (!instance.IsCurrent) return RedirectToExistingInstance(instance, activation);
 
             App? app = null;
@@ -71,7 +71,7 @@ internal static class Program
         catch (Exception)
         {
             // Fail closed: a lifecycle failure must not open an uncoordinated second setup window.
-            Console.Error.WriteLine("MailMeUp could not open or activate its setup window. Close setup and try again.");
+            Console.Error.WriteLine("AgentInbox could not open or activate its setup window. Close setup and try again.");
             return 1;
         }
     }
@@ -139,7 +139,7 @@ internal static class Program
                 _ = task.Exception;
                 completed.Dispose();
             }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            Console.Error.WriteLine("The existing MailMeUp setup window did not respond. Try activating it from the taskbar.");
+            Console.Error.WriteLine("The existing AgentInbox setup window did not respond. Try activating it from the taskbar.");
             return 1;
         }
 

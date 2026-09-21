@@ -1,10 +1,10 @@
 name: Feature request
-description: Propose a focused MailMeUp capability.
+description: Propose a focused AgentInbox capability.
 body:
   - type: textarea
     id: problem
     attributes:
-      label: What task should MailMeUp help with?
+      label: What task should AgentInbox help with?
     validations:
       required: true
   - type: textarea

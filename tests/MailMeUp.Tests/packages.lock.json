@@ -456,16 +456,16 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
-      "mailmeup": {
+      "agentinbox": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Application": "[0.1.1, )",
-          "MailMeUp.Hosting": "[0.1.1, )",
-          "MailMeUp.Mcp": "[0.1.1, )",
-          "MailMeUp.Providers.Google": "[0.1.1, )",
-          "MailMeUp.Providers.Microsoft": "[0.1.1, )",
-          "MailMeUp.Security": "[0.1.1, )",
-          "MailMeUp.Storage": "[0.1.1, )",
+          "MailMeUp.Application": "[0.0.1, )",
+          "MailMeUp.Hosting": "[0.0.1, )",
+          "MailMeUp.Mcp": "[0.0.1, )",
+          "MailMeUp.Providers.Google": "[0.0.1, )",
+          "MailMeUp.Providers.Microsoft": "[0.0.1, )",
+          "MailMeUp.Security": "[0.0.1, )",
+          "MailMeUp.Storage": "[0.0.1, )",
           "Microsoft.Extensions.Hosting": "[10.0.11, )",
           "Serilog.Extensions.Hosting": "[10.0.0, )",
           "Serilog.Sinks.Console": "[6.1.1, )",
@@ -476,8 +476,8 @@
       "mailmeup.application": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.1, )",
-          "MailMeUp.Diagnostics": "[0.1.1, )",
+          "MailMeUp.Core": "[0.0.1, )",
+          "MailMeUp.Diagnostics": "[0.0.1, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
       },
@@ -487,25 +487,25 @@
       "mailmeup.diagnostics": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Core": "[0.0.1, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.11, )"
         }
       },
       "mailmeup.hosting": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Application": "[0.1.1, )",
-          "MailMeUp.Providers.Google": "[0.1.1, )",
-          "MailMeUp.Providers.Microsoft": "[0.1.1, )",
-          "MailMeUp.Security": "[0.1.1, )",
-          "MailMeUp.Storage": "[0.1.1, )",
+          "MailMeUp.Application": "[0.0.1, )",
+          "MailMeUp.Providers.Google": "[0.0.1, )",
+          "MailMeUp.Providers.Microsoft": "[0.0.1, )",
+          "MailMeUp.Security": "[0.0.1, )",
+          "MailMeUp.Storage": "[0.0.1, )",
           "Microsoft.Extensions.Hosting": "[10.0.11, )"
         }
       },
       "mailmeup.mcp": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Application": "[0.1.1, )",
+          "MailMeUp.Application": "[0.0.1, )",
           "ModelContextProtocol": "[2.2.0, )"
         }
       },
@@ -513,31 +513,31 @@
         "type": "Project",
         "dependencies": {
           "Google.Apis.Auth": "[1.76.0, )",
-          "MailMeUp.Core": "[0.1.1, )",
-          "MailMeUp.Diagnostics": "[0.1.1, )",
-          "MailMeUp.Security": "[0.1.1, )"
+          "MailMeUp.Core": "[0.0.1, )",
+          "MailMeUp.Diagnostics": "[0.0.1, )",
+          "MailMeUp.Security": "[0.0.1, )"
         }
       },
       "mailmeup.providers.microsoft": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.1, )",
-          "MailMeUp.Diagnostics": "[0.1.1, )",
-          "MailMeUp.Security": "[0.1.1, )",
+          "MailMeUp.Core": "[0.0.1, )",
+          "MailMeUp.Diagnostics": "[0.0.1, )",
+          "MailMeUp.Security": "[0.0.1, )",
           "Microsoft.Identity.Client": "[4.88.0, )"
         }
       },
       "mailmeup.security": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Core": "[0.0.1, )",
           "Microsoft.Identity.Client.Extensions.Msal": "[4.88.0, )"
         }
       },
       "mailmeup.storage": {
         "type": "Project",
         "dependencies": {
-          "MailMeUp.Core": "[0.1.1, )",
+          "MailMeUp.Core": "[0.0.1, )",
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       },

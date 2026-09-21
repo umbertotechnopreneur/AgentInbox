@@ -6,7 +6,7 @@ namespace MailMeUp.Tests;
 
 public sealed class FileReadGuardrailsTests : IDisposable
 {
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "MailMeUp-guardrail-tests", Guid.NewGuid().ToString("N"));
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "AgentInbox-guardrail-tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
     public void ConstructingDefaultControlsDoesNotCreateRuntimeDirectories()

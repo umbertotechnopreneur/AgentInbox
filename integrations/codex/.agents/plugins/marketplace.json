@@ -1,14 +1,14 @@
 {
-  "name": "mailmeup-local",
+  "name": "agentinbox-local",
   "interface": {
-    "displayName": "MailMeUp local installation"
+    "displayName": "AgentInbox local installation"
   },
   "plugins": [
     {
-      "name": "mailmeup",
+      "name": "agentinbox",
       "source": {
         "source": "local",
-        "path": "./plugins/mailmeup"
+        "path": "./plugins/agentinbox"
       },
       "policy": {
         "installation": "AVAILABLE",

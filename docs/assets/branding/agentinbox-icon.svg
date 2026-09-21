@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
-  <title id="title">MailMeUp envelope icon</title>
+  <title id="title">AgentInbox envelope icon</title>
   <rect width="256" height="256" rx="56" fill="#071525" />
   <rect x="40" y="64" width="176" height="128" rx="20" fill="#71DEB7" />
   <path d="M48 76L116 131Q128 141 140 131L208 76" fill="none" stroke="#071525" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />

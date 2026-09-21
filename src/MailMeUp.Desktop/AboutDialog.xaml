@@ -12,7 +12,7 @@
                     <Image Source="Assets/AboutBanner.png" Stretch="UniformToFill"
                            AutomationProperties.Name="Envelopes and a calendar coming together into one conversation" />
                     <StackPanel VerticalAlignment="Center" Margin="22" Spacing="6" Width="190" HorizontalAlignment="Left">
-                        <TextBlock Text="MailMeUp" FontSize="30" FontWeight="SemiBold" Foreground="#F5EADB" />
+                        <TextBlock Text="AgentInbox" FontSize="30" FontWeight="SemiBold" Foreground="#F5EADB" />
                         <TextBlock Text="All your inboxes.&#x0a;One conversation." FontSize="15" Foreground="#F5EADB" TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
@@ -23,14 +23,14 @@
                 <TextBlock Text="A local, read-only bridge for your email, calendars and AI assistant." Style="{StaticResource BodyText}" />
                 <StackPanel Orientation="Horizontal" Spacing="16">
                     <HyperlinkButton Content="umbertogiacobbi.biz" NavigateUri="https://umbertogiacobbi.biz/" Padding="0,6" />
-                    <HyperlinkButton Content="GitHub repository" NavigateUri="https://github.com/umbertotechnopreneur/MailMeUp" Padding="0,6" />
+                    <HyperlinkButton Content="GitHub repository" NavigateUri="https://github.com/umbertotechnopreneur/AgentInbox" Padding="0,6" />
                 </StackPanel>
             </StackPanel>
             <StackPanel Spacing="8">
                 <TextBlock Text="Need help or found a bug?" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock Text="Get support in the project's GitHub repository. Tell us what happened and include your app version." Style="{StaticResource BodyText}" />
+                <TextBlock Text="Get support in the project's GitHub repository. Describe what happened and include your app version." Style="{StaticResource BodyText}" />
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <HyperlinkButton Content="Get support on GitHub" NavigateUri="https://github.com/umbertotechnopreneur/MailMeUp/issues" Padding="0,6" />
+                    <HyperlinkButton Content="Get support on GitHub" NavigateUri="https://github.com/umbertotechnopreneur/AgentInbox/issues" Padding="0,6" />
                     <Button Content="Copy app version" Click="CopyVersionButton_Click" />
                 </StackPanel>
                 <TextBlock x:Name="CopyStatus" Visibility="Collapsed" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
@@ -38,12 +38,12 @@
             </StackPanel>
             <Border Style="{StaticResource SetupCard}" Padding="16">
                 <StackPanel Spacing="6">
-                    <TextBlock Text="Enjoying MailMeUp?" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Enjoying AgentInbox?" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="Give it a star on GitHub. It helps other people discover the app." Style="{StaticResource BodyText}" />
-                    <HyperlinkButton NavigateUri="https://github.com/umbertotechnopreneur/MailMeUp" Padding="0,6" AutomationProperties.Name="Star MailMeUp on GitHub">
+                    <HyperlinkButton NavigateUri="https://github.com/umbertotechnopreneur/AgentInbox" Padding="0,6" AutomationProperties.Name="Star AgentInbox on GitHub">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE734;" FontSize="16" />
-                            <TextBlock Text="Star MailMeUp on GitHub" />
+                            <TextBlock Text="Star AgentInbox on GitHub" />
                         </StackPanel>
                     </HyperlinkButton>
                 </StackPanel>

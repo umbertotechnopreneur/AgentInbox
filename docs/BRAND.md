@@ -2,21 +2,21 @@
 
 ## Identity
 
-Name: **MailMeUp**. Preserve capitalization; do not use spaces in the product name. Executable and MCP server identifier: `mailmeup`.
+Name: **AgentInbox**. Preserve capitalization; do not use spaces in the product name. Executable and MCP server identifier: `agentinbox`.
 
 Tagline: **Connect your inboxes to your AI assistant.**
 
 One-line description: **Connect your Google and Microsoft inboxes to an AI assistant through MCP.**
 
-Expanded product description: **Find mail and check appointments across your Google and Microsoft accounts. MailMeUp runs on your computer and only reads what you choose to share.**
+Expanded product description: **Find mail and check appointments across your Google and Microsoft accounts. AgentInbox runs on your computer and only reads what you choose to share.**
 
-The name follows the same personal style as PromptMeUp and TrackMeUp. The artwork brings several envelopes together into one conversation.
+The name joins the product's two roles: an AI agent and the inboxes it can read. The artwork brings several envelopes together into one conversation while the shared palette keeps the product connected to PromptMeUp and TrackMeUp.
 
 ## Writing style
 
 Write as if you're helping a friend try the app. Start with what they want to do, then explain the next step. Use short sentences, everyday words and natural contractions.
 
-The first README headline must explain what MailMeUp does in one short sentence. Name connection options in the subtitle: Claude, Codex, and apps with local MCP support such as Visual Studio Code. Keep the current testing limits nearby: setup and testing focus on Codex on Windows x64; other clients haven't been tested. Multiple accounts does not mean a tested unlimited capacity.
+The first README headline must explain what AgentInbox does in one short sentence. Name connection options in the subtitle: Claude, Codex, and apps with local MCP support such as Visual Studio Code. Keep the current testing limits nearby: setup and testing focus on Codex on Windows x64; other clients haven't been tested. Multiple accounts does not mean a tested unlimited capacity.
 
 Use "I", "me", and "my" when speaking as Umberto, the solo maintainer with help from a few contributors. Speak to the reader as "you". Avoid company-style "we", slogans that replace an explanation, hype, and formulaic AI wording. Apply this voice to all original documentation, including setup, support, and contributor guides.
 
@@ -42,10 +42,12 @@ Use restrained dimensional envelopes, generous empty space and clear connection 
 
 - `resources/wizard/hero.png` and `resources/wizard/rail.png`: generated cutouts for the approved Mica wizard. [Final prompts and provenance](../resources/wizard/GENERATION.md).
 - `resources/providers/google.svg` and `resources/providers/microsoft.svg`: original-color provider vectors downloaded from SVG Logos CDN and bundled locally. [Sources](../resources/providers/README.md).
-- `resources/mailmeup-about-banner.png`: 2172 by 724 pixel banner for the Windows app's About & Support dialog, generated with the built-in image generation tool on September 6, 2026. Its calm left area is reserved for accessible native title text; the illustration contains no embedded text or vendor marks.
-- `assets/branding/mailmeup-icon.svg`: editable vector envelope mark.
-- `assets/branding/mailmeup-app-icon-source.png`: large raster app-icon artwork.
-- `assets/branding/mailmeup-app-icon-256.png`: compact app-icon variant.
+- `resources/agentinbox-about-banner.png`: 2172 by 724 pixel banner for the Windows app's About & Support dialog, generated with the built-in image generation tool on September 6, 2026. Its calm left area is reserved for accessible native title text; the illustration contains no embedded text or vendor marks.
+- `assets/branding/agentinbox-icon.svg`: editable vector envelope mark.
+- `assets/branding/agentinbox-app-icon-source.png`: large raster app-icon artwork.
+- `assets/branding/agentinbox-app-icon-256.png`: compact app-icon variant.
+- `assets/branding/agentinbox-chat-search.png`: edited README conversation screenshot with the AgentInbox name.
+- `assets/branding/agentinbox-task-manager-lightweight.png`: edited Task Manager screenshot with the AgentInbox process and executable names.
 
 Keep the concept caption whenever an image could be mistaken for a shipping UI. Do not promise offline processing, supported providers or secure token storage before those features ship. Product names and any indicative provider symbols identify compatibility, not endorsement or ownership of another company's marks.
 
@@ -57,7 +59,7 @@ Tool mode: built-in image generation. Original standalone artwork; no reference 
 
 ```text
 Use case: stylized-concept
-Asset type: wide product banner for the English-only MailMeUp Windows desktop app About & Support dialog.
+Asset type: wide product banner for the English-only AgentInbox Windows desktop app About & Support dialog.
 Primary request: Create a polished premium digital illustration that expresses multiple email inboxes and calendars coming together in one helpful AI conversation.
 Scene/backdrop: deep midnight navy #071525, smooth subtle atmospheric gradient, no frame, a quiet refined desktop-app aesthetic.
 Subject: on the center-right, three small dimensional ivory envelopes and one minimal ivory calendar card flowing along delicate mint connection curves into one larger rounded mint conversation bubble, with a subtle small coral accent. The cards should feel clean, friendly and tactile, like softly beveled paper objects, with crisp edge highlights and restrained natural shadows. Calendar has only a small grid of blank rounded cells, no dates or letters. Conversation bubble has three ivory dots, no robot face. Avoid arrows implying email sending; flowing undirected lines express reading and gathering.
@@ -65,4 +67,16 @@ Composition/framing: panoramic 3:1 landscape image, ideally 1536 by 512. Left 38
 Lighting/mood: soft studio illumination, subtle mint glow, welcoming trustworthy calm, high quality dimensional illustration.
 Color palette: midnight #071525, mint #71DEB7, warm ivory #F5EADB, coral #FF8F79, quiet slate #6E879E.
 Constraints: original standalone artwork. No text, letters, words, logos, vendor marks, GitHub marks, watermark, borders, screenshots, button shapes, padlocks or shields. No busy particles, no people. The image must look finished without text.
+```
+
+## Rebranded screenshot prompts
+
+The two README screenshots were edited with the built-in image generation tool on September 22, 2026. Their previous MailMeUp versions were the edit targets. The edits changed only the product, process and executable names; account data remains synthetic or hidden. Both results were visually reviewed before use.
+
+```text
+Use case: text-localization. Edit the supplied conversation screenshot by replacing only “MailMeUp 0.1.1” with “AgentInbox 0.1.1”. Preserve the original composition, perspective, typography, colors, UI content, synthetic addresses and all other text. Do not add a logo, watermark or decoration.
+```
+
+```text
+Use case: text-localization. Edit the supplied Task Manager screenshot by replacing “MailMeUp CLI (10)” with “AgentInbox CLI (10)”, every visible process name “mailmeup” with “agentinbox”, and every visible “mailmeup.exe” with “agentinbox.exe”. Preserve the Italian UI, row count, PIDs, memory values, highlighting, privacy blur and all other content. Do not add a logo, watermark or decoration.
 ```

@@ -4,27 +4,27 @@ The earlier `0.1.1.10` package passed its Release build, 113 shared .NET tests, 
 
 The September 12 UI increment adds CLI screen selection, an isolated UI preview and further layout refinements. Windows x64 desktop/CLI publication, 291 synthetic .NET tests and published CLI/MCP smoke passed on September 12, 2026. Native rendering and interaction remain untested. These changes are included in the locally installed Windows x64 MSIX `0.1.1.20`; its signature is valid and Windows reports package status `Ok`.
 
-The September 13 source additionally provides local read-budget controls and usage on Sharing. This increment has not been built, tested or installed.
+The September 13 read-budget controls and usage view are included in the locally installed AgentInbox Debug x64 package `0.0.1.1`. The current synthetic suite and desktop startup check passed on September 22, 2026; native rendering and interaction remain untested.
 
 ## Open screens from the CLI
 
 ```powershell
-mailmeup ui --list-steps
-mailmeup ui --list-steps --json
-mailmeup ui --step welcome --demo
-mailmeup ui --step accounts --demo
-mailmeup ui --step sharing --demo
-mailmeup ui --step codex --demo
+agentinbox ui --list-steps
+agentinbox ui --list-steps --json
+agentinbox ui --step welcome --demo
+agentinbox ui --step accounts --demo
+agentinbox ui --step sharing --demo
+agentinbox ui --step codex --demo
 ```
 
-The step list returns screen names, descriptions and commands without starting the desktop app or application services. `mailmeup ui` opens Welcome in a new window or activates the current page in an existing window. An explicit `--step` requests that page; unsaved sharing choices or search-period changes must be saved or discarded before navigation. Opening a page does not start sign-in, provider reads or Codex installation. CLI success reports a launch request, not a rendered-window check.
+The step list returns screen names, descriptions and commands without starting the desktop app or application services. `agentinbox ui` opens Welcome in a new window or activates the current page in an existing window. An explicit `--step` requests that page; unsaved sharing choices or search-period changes must be saved or discarded before navigation. Opening a page does not start sign-in, provider reads or Codex installation. CLI success reports a launch request, not a rendered-window check.
 
 `--demo` uses a separate desktop instance with synthetic `example.test` accounts and in-memory sharing, calendars and search preferences. A persistent preview banner identifies this mode. Sign-in, provider setup, provider reads and real Codex actions are disabled. Demo values survive screen changes and reset when the demo window exits; production accounts, credentials and settings are not loaded. Diagnostic logs use a separate temporary directory.
 
 The launcher finds the desktop executable in the installed package or next to the CLI. For a source build, select it explicitly:
 
 ```powershell
-mailmeup ui --step sharing --demo --desktop-path 'C:\Build\MailMeUp.Desktop.exe'
+agentinbox ui --step sharing --demo --desktop-path 'C:\Build\AgentInbox.Desktop.exe'
 ```
 
 Listing screens works without the Windows desktop runtime. Opening a screen requires Windows and a built desktop executable. `--list-steps` may be combined with `--json`, but not with launch options.
@@ -55,13 +55,13 @@ Privacy/terms, sharing explanations, provider registration and manual Codex comm
 
 Sharing includes an expandable budget editor and aggregate local usage for provider attempts, content/detail admissions and serialized assistant output. A manual refresh reads only local counters and displays a snapshot time. Progress reflects the active process's limits; cooldown and charge-expiry times are not presented as a guaranteed full reset. Output uses KiB, with an explicit distinction from model tokens.
 
-Save persists validated settings through `IMailMeUpApplication`; Discard restores the saved values, and defaults only populate a draft. Drafts survive refresh failures and are protected during navigation and closing. A concurrent settings edit rejects a stale save. Saved changes require restarting MailMeUp and reconnecting the assistant; the UI distinguishes saved values from active limits and does not reset counters or stop processes. Demo settings and illustrative usage remain in memory. See [guardrail details](READ_GUARDRAILS.md).
+Save persists validated settings through `IMailMeUpApplication`; Discard restores the saved values, and defaults only populate a draft. Drafts survive refresh failures and are protected during navigation and closing. A concurrent settings edit rejects a stale save. Saved changes require restarting AgentInbox and reconnecting the assistant; the UI distinguishes saved values from active limits and does not reset counters or stop processes. Demo settings and illustrative usage remain in memory. See [guardrail details](READ_GUARDRAILS.md).
 
 ## Desktop instance lifetime
 
 Program registers a stable Windows App SDK AppInstance key before constructing the WinUI application or application services. A second launch grants foreground activation to the registered process, redirects activation on a worker while pumping the STA, and exits. Redirection has a bounded wait and does not create a fallback second window on failure.
 
-The first application handles activation on its dispatcher, restores a minimized window and brings it forward. The key is released when the application message loop exits. Only MailMeUp.Desktop participates; CLI and MCP executables retain independent process lifetimes.
+The first application handles activation on its dispatcher, restores a minimized window and brings it forward. The key is released when the application message loop exits. Only AgentInbox.Desktop participates; CLI and MCP executables retain independent process lifetimes.
 
 Startup and redirected launches validate navigation arguments before applying them. Requests received while the window is starting, busy or displaying a dialog wait until navigation can safely proceed; unsaved drafts remain protected. Direct page selection does not mark skipped stages complete. Normal setup and demo preview use different instance keys.
 

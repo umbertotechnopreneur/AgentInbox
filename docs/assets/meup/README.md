@@ -1,6 +1,6 @@
 # MeUp visual style
 
-MailMeUp, PromptMeUp, and TrackMeUp share one presentation style. Keep their names and existing app icons. The family artwork connects the products without replacing their individual identities.
+AgentInbox, PromptMeUp, and TrackMeUp share one presentation style. Keep their names and existing app icons. The family artwork connects the products without replacing their individual identities.
 
 ## Use the same structure
 
@@ -16,7 +16,7 @@ Use an ink navy background (`#101526`), warm ivory objects, fine connecting line
 
 | Product | Accent | Subject |
 | --- | --- | --- |
-| MailMeUp | Mint `#71DEB7` | Inboxes and calendars connected to one conversation |
+| AgentInbox | Mint `#71DEB7` | Inboxes and calendars connected to one conversation |
 | PromptMeUp | Amber `#F6C453` | A request, a command, and the choice to run it |
 | TrackMeUp | Lilac `#AF9BFF` | Past activity, search, and time |
 
@@ -24,7 +24,7 @@ This repository uses Mint `#71DEB7`. These colors describe documentation artwork
 
 ## Asset and provenance
 
-- File: `mailmeup-family-v1.png`.
+- File: `agentinbox-family-v1.png`.
 - Created: September 20, 2026, with the built-in image generation tool.
 - Format: PNG, 2172 × 724 pixels, 3:1 landscape.
 - Purpose: conceptual product illustration in the README's MeUp family section. It is not a screenshot, logo, or replacement app icon.
@@ -40,7 +40,7 @@ Use case: stylized-concept. Create one landscape 3:1 editorial product illustrat
 
 ## Footer mark
 
-- File: `mailmeup-mark-v1.png`.
+- File: `agentinbox-mark-v1.png`.
 - Created: September 21, 2026, with the built-in image generation tool.
 - Format: transparent PNG, 1254 × 1254 pixels.
 - Purpose: compact README footer branding. It is not a replacement app icon, product logo, or screenshot.

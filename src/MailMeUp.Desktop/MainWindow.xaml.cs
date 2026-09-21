@@ -52,7 +52,7 @@ public sealed partial class MainWindow : Window
         InitializeReadGuardrails();
         SettingsContent.SizeChanged += (_, _) => UpdateSettingsLayout();
         DemoBanner.IsOpen = IsDemo;
-        if (IsDemo) Title = "MailMeUp — UI preview";
+        if (IsDemo) Title = "AgentInbox — UI preview";
         MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
         MailSearchLookbackDaysBox.Maximum = MailSearchPreferences.MaximumDays;
         MailSearchLookbackDaysBox.RegisterPropertyChangedCallback(NumberBox.TextProperty,
@@ -598,8 +598,8 @@ public sealed partial class MainWindow : Window
         if (!CanLeaveSharing()) return;
 
         var content = new StackPanel { Spacing = 12 };
-        content.Children.Add(Body($"Remove {account.EmailAddress} from MailMeUp on this device?"));
-        content.Children.Add(Body("MailMeUp will forget this account and its saved sign-in details on this device. Your emails and calendars will stay unchanged. Permissions granted to Google or Microsoft stay in place. You can add the account again later."));
+        content.Children.Add(Body($"Remove {account.EmailAddress} from AgentInbox on this device?"));
+        content.Children.Add(Body("AgentInbox will forget this account and its saved sign-in details on this device. Your emails and calendars will stay unchanged. Permissions granted to Google or Microsoft stay in place. You can add the account again later."));
         var confirmation = await ShowDialogAsync(new ContentDialog
         {
             Title = "Remove account?",
@@ -627,7 +627,7 @@ public sealed partial class MainWindow : Window
             }
             _connectionChecks.Remove(account.Id);
             await RefreshAccountsAsync(cancellationToken);
-            SetNotice("Account removed", "MailMeUp has forgotten this account on this device. Your emails, calendars and Google or Microsoft permissions are unchanged. You can add it again at any time.", InfoBarSeverity.Success);
+            SetNotice("Account removed", "AgentInbox has forgotten this account on this device. Your emails, calendars and Google or Microsoft permissions are unchanged. You can add it again at any time.", InfoBarSeverity.Success);
         }, TimeSpan.FromMinutes(2.5));
     }
 
@@ -765,7 +765,7 @@ public sealed partial class MainWindow : Window
     private bool BlockDemoAction()
     {
         if (!IsDemo) return false;
-        SetNotice("UI preview", "This action is disabled for sample accounts. Open MailMeUp without --demo to configure real accounts or Codex.", InfoBarSeverity.Informational);
+        SetNotice("UI preview", "This action is disabled for sample accounts. Open AgentInbox without --demo to configure real accounts or Codex.", InfoBarSeverity.Informational);
         return true;
     }
 

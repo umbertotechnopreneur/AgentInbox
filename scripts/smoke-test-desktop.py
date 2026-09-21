@@ -18,7 +18,7 @@ def main():
 
     # Windows Error Reporting can briefly keep a crashed process database handle open.
     # Cleanup must not hide the startup failure that the smoke test is reporting.
-    with tempfile.TemporaryDirectory(prefix="mailmeup-desktop-smoke-", ignore_cleanup_errors=True) as directory:
+    with tempfile.TemporaryDirectory(prefix="agentinbox-desktop-smoke-", ignore_cleanup_errors=True) as directory:
         registry = Path(directory) / "registry"
         registry.mkdir()
         with sqlite3.connect(registry / "accounts.db") as connection:
@@ -38,7 +38,7 @@ def main():
                 );
                 """)
 
-        environment = {**os.environ, "MAILMEUP_DATA_DIR": str(registry)}
+        environment = {**os.environ, "AGENTINBOX_DATA_DIR": str(registry)}
         process = subprocess.Popen([str(executable)], env=environment)
         try:
             return_code = process.wait(timeout=args.startup_seconds)

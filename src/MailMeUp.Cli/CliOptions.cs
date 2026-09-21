@@ -53,7 +53,7 @@ internal sealed record CliOptions(
             {
                 if (!flags.Add(argument))
                 {
-                    throw new CliUsageException("Specify each option only once. Run mailmeup --help for usage.");
+                    throw new CliUsageException("Specify each option only once. Run agentinbox --help for usage.");
                 }
 
                 if (argument == "--log-level")
@@ -88,7 +88,7 @@ internal sealed record CliOptions(
             {
                 if (!literal && argument.StartsWith('-') && argument is not ("--help" or "-h" or "--version" or "--stdio"))
                 {
-                    throw new CliUsageException("Unknown option. Run mailmeup --help. Use -- before a value that starts with a hyphen.");
+                    throw new CliUsageException("Unknown option. Run agentinbox --help. Use -- before a value that starts with a hyphen.");
                 }
 
                 operands.Add(argument);
@@ -109,7 +109,7 @@ internal sealed record CliOptions(
                 new CliOptions(CliCommand.Setup, Provider: provider, Value: source),
             ["ui"] => new CliOptions(CliCommand.Ui),
             ["accounts", "--help"] or ["setup", "--help"] or ["ui", "--help"] => new CliOptions(CliCommand.Help),
-            _ => throw new CliUsageException("Unknown or incomplete command. Run mailmeup --help. Providers: google, microsoft.")
+            _ => throw new CliUsageException("Unknown or incomplete command. Run agentinbox --help. Providers: google, microsoft.")
         };
 
         var mailOnly = flags.Contains("--mail-only");
@@ -127,7 +127,7 @@ internal sealed record CliOptions(
         var uiFlags = flags.Contains("--step") || flags.Contains("--demo") || flags.Contains("--list-steps") || flags.Contains("--desktop-path");
         if (uiFlags && options.Command != CliCommand.Ui)
         {
-            throw new CliUsageException("--step, --demo, --list-steps and --desktop-path apply only to mailmeup ui.");
+            throw new CliUsageException("--step, --demo, --list-steps and --desktop-path apply only to agentinbox ui.");
         }
 
         if (uiStep is not null && !UiLauncher.IsKnownStep(uiStep))
@@ -147,7 +147,7 @@ internal sealed record CliOptions(
             Json = flags.Contains("--json"),
             NoColor = flags.Contains("--no-color"),
             NoAnimation = flags.Contains("--no-animation"),
-            LogLevel = ParseLogLevel(level ?? Environment.GetEnvironmentVariable("MAILMEUP_LOG_LEVEL")),
+            LogLevel = ParseLogLevel(level ?? Environment.GetEnvironmentVariable("AGENTINBOX_LOG_LEVEL")),
             UiStep = uiStep,
             UiDemo = flags.Contains("--demo"),
             UiListSteps = flags.Contains("--list-steps"),
@@ -163,7 +163,7 @@ internal sealed record CliOptions(
         "information" => LogEventLevel.Information,
         "error" => LogEventLevel.Error,
         "fatal" => LogEventLevel.Fatal,
-        _ => throw new CliUsageException("Invalid log level. Use verbose, debug, information, warning, error or fatal (--log-level or MAILMEUP_LOG_LEVEL).")
+        _ => throw new CliUsageException("Invalid log level. Use verbose, debug, information, warning, error or fatal (--log-level or AGENTINBOX_LOG_LEVEL).")
     };
 }
 

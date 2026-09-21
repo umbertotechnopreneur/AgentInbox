@@ -140,7 +140,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             }
             else if (version != 2)
             {
-                throw new InvalidOperationException("Unsupported account database schema. Upgrade MailMeUp or select a new data directory.");
+                throw new InvalidOperationException("Unsupported account database schema. Upgrade AgentInbox or select a new data directory.");
             }
 
             return database;

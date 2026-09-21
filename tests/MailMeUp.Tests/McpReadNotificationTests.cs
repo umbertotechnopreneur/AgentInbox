@@ -162,8 +162,8 @@ public sealed class McpReadNotificationTests
     {
         var notification = payload.GetProperty("user_notification");
         Assert.True(notification.GetProperty("required").GetBoolean());
-        Assert.Contains("Please tell the user that the MailMeUp plugin failed", notification.GetProperty("instruction").GetString(), StringComparison.Ordinal);
-        Assert.Contains("MailMeUp plugin", notification.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Contains("Please tell the user that the AgentInbox plugin failed", notification.GetProperty("instruction").GetString(), StringComparison.Ordinal);
+        Assert.Contains("AgentInbox plugin", notification.GetProperty("message").GetString(), StringComparison.Ordinal);
         return notification;
     }
 

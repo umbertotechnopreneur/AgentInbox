@@ -5,7 +5,7 @@ namespace MailMeUp.Cli;
 
 internal sealed record UiStep(string Id, string Title, string Description)
 {
-    public string Command => $"mailmeup ui --step {Id}";
+    public string Command => $"agentinbox ui --step {Id}";
 }
 internal sealed record UiStepsOutput(IReadOnlyList<UiStep> Steps);
 internal sealed record UiLaunchOutput(string Status, string? RequestedStep, bool Demo);
@@ -14,7 +14,7 @@ internal static class UiLauncher
 {
     internal static IReadOnlyList<UiStep> Steps { get; } = Array.AsReadOnly<UiStep>(
     [
-        new("welcome", "Welcome", "Discover how MailMeUp connects your inboxes to your assistant."),
+        new("welcome", "Welcome", "Discover how AgentInbox connects your inboxes to your assistant."),
         new("accounts", "Accounts", "Connect Google and Microsoft accounts and review their read access."),
         new("sharing", "Sharing", "Choose participating accounts, calendars and the default mail search period."),
         new("codex", "Codex", "Set up the local Codex connection and review its status.")
@@ -26,7 +26,7 @@ internal static class UiLauncher
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new UiLaunchException("The desktop setup app is available only on Windows. Use mailmeup ui --list-steps to list its screens.");
+            throw new UiLaunchException("The desktop setup app is available only on Windows. Use agentinbox ui --list-steps to list its screens.");
         }
 
         try
@@ -94,19 +94,19 @@ internal static class UiLauncher
             return explicitPath;
         }
 
-        var packagedPath = Path.GetFullPath(Path.Combine(cliDirectory, "..", "MailMeUp.Desktop.exe"));
+        var packagedPath = Path.GetFullPath(Path.Combine(cliDirectory, "..", "AgentInbox.Desktop.exe"));
         if (fileExists(packagedPath))
         {
             return packagedPath;
         }
 
-        var adjacentPath = Path.GetFullPath(Path.Combine(cliDirectory, "MailMeUp.Desktop.exe"));
+        var adjacentPath = Path.GetFullPath(Path.Combine(cliDirectory, "AgentInbox.Desktop.exe"));
         if (fileExists(adjacentPath))
         {
             return adjacentPath;
         }
 
-        throw new UiLaunchException("Desktop setup app not found. Install the Windows package or use --desktop-path <MailMeUp.Desktop.exe> with a built desktop executable.");
+        throw new UiLaunchException("Desktop setup app not found. Install the Windows package or use --desktop-path <AgentInbox.Desktop.exe> with a built desktop executable.");
     }
 }
 

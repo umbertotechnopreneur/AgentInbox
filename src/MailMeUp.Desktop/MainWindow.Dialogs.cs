@@ -57,8 +57,8 @@ public sealed partial class MainWindow
     private async void PrivacyButton_Click(object sender, RoutedEventArgs e)
     {
         var content = new StackPanel { Spacing = 18 };
-        content.Children.Add(Body("Review the policies for MailMeUp and your account providers. Links open in your browser."));
-        content.Children.Add(PolicyLinks("MailMeUp", "https://umbertogiacobbi.biz/mailmeup/privacy/", "https://umbertogiacobbi.biz/mailmeup/terms/"));
+        content.Children.Add(Body("Review the policies for AgentInbox and your account providers. Links open in your browser."));
+        content.Children.Add(PolicyLinks("AgentInbox", "https://umbertogiacobbi.biz/agentinbox/privacy/", "https://umbertogiacobbi.biz/agentinbox/terms/"));
         content.Children.Add(PolicyLinks("Google", "https://policies.google.com/privacy?hl=en", "https://policies.google.com/terms?hl=en"));
         content.Children.Add(PolicyLinks("Microsoft", "https://www.microsoft.com/en-us/privacy/privacystatement", "https://www.microsoft.com/en-us/servicesagreement"));
         content.Children.Add(Link("Visit the website", "https://umbertogiacobbi.biz/"));
@@ -80,11 +80,11 @@ public sealed partial class MainWindow
     {
         var tabs = new Pivot();
         tabs.Items.Add(InformationTab("Read access",
-            "MailMeUp can search and read email and calendars.",
+            "AgentInbox can search and read email and calendars.",
             "It cannot send mail, mark messages as read, edit or delete anything, create appointments, or invite anyone."));
         tabs.Items.Add(InformationTab("AI sharing",
             "Your assistant can find sender names, email addresses, subjects, short email previews and calendar summaries in the accounts you share.",
-            "If you ask for more detail, your assistant can also read email text, appointment descriptions, attendees and meeting links. This information may be sent to your AI service, even though MailMeUp runs on your computer.",
+            "If you ask for more detail, your assistant can also read email text, appointment descriptions, attendees and meeting links. This information may be sent to your AI service, even though AgentInbox runs on your computer.",
             "Sign-in tokens stay protected on this device and are never returned to the assistant."));
         tabs.Items.Add(InformationTab("Your choices",
             "New accounts connected here start with sharing off. Enable each account and choose mail, calendars, or both.",
@@ -106,7 +106,7 @@ public sealed partial class MainWindow
     {
         if (BlockDemoAction()) return;
         var content = new StackPanel { Spacing = 16 };
-        content.Children.Add(Body("Before your first sign-in, Google or Microsoft needs an app registration for MailMeUp. Follow the guide below, then add the setup details here. You only need to do this once for each service."));
+        content.Children.Add(Body("Before your first sign-in, Google or Microsoft needs an app registration for AgentInbox. Follow the guide below, then add the setup details here. You only need to do this once for each service."));
         foreach (var provider in new[] { "google", "microsoft" })
         {
             var line = new StackPanel { Spacing = 6 };
@@ -118,7 +118,7 @@ public sealed partial class MainWindow
             line.Children.Add(Body(provider == "google" ? "Choose the JSON file you downloaded when registering a Desktop app with Google." : "Paste the Application (client) ID from Microsoft. You do not need a client secret."));
             content.Children.Add(line);
         }
-        content.Children.Add(Link("App registration guide", "https://github.com/umbertotechnopreneur/MailMeUp/blob/main/docs/APP_REGISTRATION.md"));
+        content.Children.Add(Link("App registration guide", "https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/APP_REGISTRATION.md"));
         var dialog = DetailsDialog("Set up Google or Microsoft", content);
         dialog.PrimaryButtonText = "Configure Google";
         dialog.SecondaryButtonText = "Configure Microsoft";
@@ -142,7 +142,7 @@ public sealed partial class MainWindow
             var preview = _codex.GetPreview();
             var content = new StackPanel { Spacing = 14 };
             content.Children.Add(Body(_codexStatus?.Message ?? "Refresh status in the setup page to inspect local Codex configuration."));
-            content.Children.Add(Body("Use these steps if automatic setup is unavailable. First select Prepare plugin files. Then run both commands in a terminal: the first makes the plugin available in Codex, and the second installs it. If you already connected MailMeUp in Codex, review that connection first to avoid adding it twice."));
+            content.Children.Add(Body("Use these steps if automatic setup is unavailable. First select Prepare plugin files. Then run both commands in a terminal: the first makes the plugin available in Codex, and the second installs it. If you already connected AgentInbox in Codex, review that connection first to avoid adding it twice."));
             var commands = new TextBox
             {
                 Header = "Commands to review", Text = preview.ManualCommands, IsReadOnly = true,

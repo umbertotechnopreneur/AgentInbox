@@ -18,7 +18,7 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
 
     /// <summary>Reports readiness without disclosing local paths or credentials.</summary>
     [McpServerTool(Name = "get_status", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Report MailMeUp readiness, provider capabilities, the default mail-search period, enforced local read_guardrails and aggregate local read_guardrail_usage when available. No mailbox request is made. Usage is a snapshot for this local profile, not the provider's quota or model tokens. A pending settings change requires restarting MailMeUp and reconnecting the assistant.")]
+    [Description("Report AgentInbox readiness, provider capabilities, the default mail-search period, enforced local read_guardrails and aggregate local read_guardrail_usage when available. No mailbox request is made. Usage is a snapshot for this local profile, not the provider's quota or model tokens. A pending settings change requires restarting AgentInbox and reconnecting the assistant.")]
     public Task<CallToolResult> GetStatusAsync(CancellationToken cancellationToken = default) =>
         ReadAsync(async () =>
         {
@@ -213,10 +213,10 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 payload["user_notification"] = JsonSerializer.SerializeToNode(new
                 {
                     Required = true,
-                    Instruction = "Please tell the user that the MailMeUp plugin failed to read some or all of the requested information. Explain the affected accounts using the details below, suggest the recovery steps, and make clear when returned results are incomplete.",
+                    Instruction = "Please tell the user that the AgentInbox plugin failed to read some or all of the requested information. Explain the affected accounts using the details below, suggest the recovery steps, and make clear when returned results are incomplete.",
                     Message = allFailed
-                        ? "The MailMeUp plugin could not read the requested information."
-                        : "The MailMeUp plugin could not read all requested information. The returned results are incomplete.",
+                        ? "The AgentInbox plugin could not read the requested information."
+                        : "The AgentInbox plugin could not read all requested information. The returned results are incomplete.",
                     Failures = failures.Select(failure =>
                     {
                         var advice = ReadFailureGuidance.Describe(failure.Kind);
@@ -265,8 +265,8 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 UserNotification = new
                 {
                     Required = true,
-                    Instruction = "Please tell the user that the MailMeUp plugin failed to read the requested information. Explain the reason and suggest the recovery step in this notification. Do not describe this failure as an empty inbox or an empty calendar.",
-                    Message = $"The MailMeUp plugin could not read the requested information. {advice.Explanation} {advice.Action}"
+                    Instruction = "Please tell the user that the AgentInbox plugin failed to read the requested information. Explain the reason and suggest the recovery step in this notification. Do not describe this failure as an empty inbox or an empty calendar.",
+                    Message = $"The AgentInbox plugin could not read the requested information. {advice.Explanation} {advice.Action}"
                 }
             }, JsonOptions)!.AsObject();
             return CreateToolResult(payload, true);

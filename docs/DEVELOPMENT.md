@@ -1,6 +1,6 @@
 # Development
 
-To work on MailMeUp, you'll need the .NET SDK listed in `global.json`, PowerShell 7 and Python 3.10+. People using a packaged build don't need these development tools.
+To work on AgentInbox, you'll need the .NET SDK listed in `global.json`, PowerShell 7 and Python 3.10+. People using a packaged build don't need these development tools.
 
 After cloning, install the Git hook once:
 
@@ -40,6 +40,6 @@ pwsh -NoProfile -File scripts/update-portable-locks.ps1
 
 Review both the standard lock files and `eng/locks/<runtime>/`. Portable builds have their own dependency lists because they also include platform runtimes and packaging tools.
 
-Point `MAILMEUP_DATA_DIR` at a separate folder when experimenting. Keep code and docs in English. Google and Microsoft access stays read-only; local settings and account storage can still save files.
+Point `AGENTINBOX_DATA_DIR` at a separate folder when experimenting. Keep code and docs in English. Google and Microsoft access stays read-only; local settings and account storage can still save files.
 
 See [contribution guidance](../CONTRIBUTING.md) and [release steps](RELEASING.md).

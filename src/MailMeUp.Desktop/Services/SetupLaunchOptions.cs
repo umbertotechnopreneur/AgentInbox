@@ -54,7 +54,7 @@ internal sealed record SetupLaunchOptions(SetupStep? Step = null, bool IsDemo = 
         {
             var first = arguments[0];
             var fileName = first[(first.LastIndexOfAny(['\\', '/']) + 1)..];
-            if (string.Equals(fileName, "MailMeUp.Desktop.exe", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(fileName, "AgentInbox.Desktop.exe", StringComparison.OrdinalIgnoreCase))
                 return TryParse(arguments.Skip(1).ToArray(), out options);
         }
 

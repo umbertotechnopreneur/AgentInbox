@@ -99,8 +99,8 @@ public sealed partial class MainWindow
         ReadGuardrailEditorExpander.IsEnabled = true;
         ReadGuardrailRestartNotice.IsOpen = status.RequiresRestart;
         ReadGuardrailRestartNotice.Message = IsDemo
-            ? "Preview only: saved limits differ from the simulated active limits. The real app requires restarting MailMeUp and reconnecting your assistant's MailMeUp connection. Closing the demo resets its sample choices."
-            : "Saved limits differ from those active in this window. Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply them to all processes. Saving does not clear usage or provider pauses.";
+            ? "Preview only: saved limits differ from the simulated active limits. The real app requires restarting AgentInbox and reconnecting your assistant's AgentInbox connection. Closing the demo resets its sample choices."
+            : "Saved limits differ from those active in this window. Restart AgentInbox and reconnect your assistant's AgentInbox connection to apply them to all processes. Saving does not clear usage or provider pauses.";
         UpdateSharingSettingsSummary();
     }
 
@@ -231,7 +231,7 @@ public sealed partial class MainWindow
         DiscardReadGuardrailsButton.Visibility = ToVisibility(_readGuardrailsDirty || _readGuardrailsConflict);
         ReadGuardrailDraftText.Text = _readGuardrailsConflict
             ? "Limits changed in another process. Refresh usage, then discard your draft to load the latest saved limits before editing again."
-            : !valid ? error : _readGuardrailsDirty ? "Unsaved limits · saving requires restarting MailMeUp processes."
+            : !valid ? error : _readGuardrailsDirty ? "Unsaved limits · saving requires restarting AgentInbox processes."
             : IsDemo ? "Saved for this preview session." : "Saved on this device. Current usage appears in the Usage tab.";
         ReadGuardrailDraftText.Visibility = ToVisibility(_readGuardrailsDirty || _readGuardrailsConflict || IsDemo);
         ReadGuardrailEditorHeading.Text = "Read limits";
@@ -255,7 +255,7 @@ public sealed partial class MainWindow
                 RenderReadGuardrailStatus(status);
                 DisplayReadGuardrailDraft(status.SavedLimits);
                 SetNotice("Read limits saved", IsDemo ? "Saved for this preview session only. Closing the demo resets these choices."
-                    : status.RequiresRestart ? "Restart MailMeUp and reconnect your assistant's MailMeUp connection to apply the saved limits to all processes. Existing usage and provider pauses are kept."
+                    : status.RequiresRestart ? "Restart AgentInbox and reconnect your assistant's AgentInbox connection to apply the saved limits to all processes. Existing usage and provider pauses are kept."
                     : "Saved limits match this window's active limits. Other running processes may need restarting. Existing usage and provider pauses are kept.", InfoBarSeverity.Success);
             }
             catch (InvalidOperationException)

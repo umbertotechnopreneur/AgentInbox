@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rebrand the product from MailMeUp to AgentInbox. Update the Windows display name and approved Store identity, public executables (`AgentInbox.Desktop.exe` and `agentinbox.exe`), Codex plugin identifiers, local profile and environment-variable names, user-facing copy, documentation and visual assets. Keep .NET project and namespace names internal. This pre-release change deliberately provides no MailMeUp compatibility or data migration.
+
 - Add complete Windows x64/ARM64 portable ZIPs with the native setup app, CLI/MCP tools, bundled runtimes, license notices and checksums. Portable Codex setup selects the executable from the extracted folder instead of the installed MSIX alias. Refresh stale CLI dependency graphs, including the missing Diagnostics and Hosting modules, and add separate desktop portable graphs. Both ZIPs built locally; x64 CLI/MCP checks passed before and after extraction, and the extracted desktop opened an isolated demo window. ARM64 runtime and clean-machine behavior remain untested.
 - Allow portable release drafts when MSIX signing secrets are absent; a partial signing configuration still fails explicitly. Tag reruns update existing draft assets without replacing published releases or removing locally attached installers.
 

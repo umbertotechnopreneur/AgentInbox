@@ -11,8 +11,8 @@ namespace MailMeUp.Desktop.Services;
 /// <summary>Prepares and installs the local Codex plugin only after an explicit desktop action.</summary>
 public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisposable
 {
-    private const string PluginId = "mailmeup@mailmeup-local";
-    private const string MarketplaceName = "mailmeup-local";
+    private const string PluginId = "agentinbox@agentinbox-local";
+    private const string MarketplaceName = "agentinbox-local";
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly SemaphoreSlim installationLock = new(1, 1);
 
@@ -32,7 +32,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         var pluginDirectory = Path.Combine(ResolveDataDirectory(), "codex-plugin");
         var commands = $"codex plugin marketplace add {QuotePowerShell(pluginDirectory)}{Environment.NewLine}"
             + $"codex plugin add {PluginId}{Environment.NewLine}codex plugin list --json";
-        var mcpCommand = $"codex mcp add mailmeup --env {QuotePowerShell($"MAILMEUP_DATA_DIR={ResolveDataDirectory()}")} "
+        var mcpCommand = $"codex mcp add agentinbox --env {QuotePowerShell($"AGENTINBOX_DATA_DIR={ResolveDataDirectory()}")} "
             + $"-- {QuotePowerShell(executablePath)} --stdio";
         return new(executablePath, pluginDirectory, commands, mcpCommand);
     }
@@ -42,12 +42,12 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         Func<string, bool>? fileExists = null)
     {
         fileExists ??= File.Exists;
-        return fileExists(Path.Combine(applicationDirectory, "mailmeup-portable.txt"))
-            ? Path.GetFullPath(Path.Combine(applicationDirectory, "cli", "mailmeup.exe"))
-            : Path.Combine(localDirectory, "Microsoft", "WindowsApps", "mailmeup.exe");
+        return fileExists(Path.Combine(applicationDirectory, "agentinbox-portable.txt"))
+            ? Path.GetFullPath(Path.Combine(applicationDirectory, "cli", "agentinbox.exe"))
+            : Path.Combine(localDirectory, "Microsoft", "WindowsApps", "agentinbox.exe");
     }
 
-    /// <summary>Copies only the bundled MailMeUp marketplace into its writable local directory.</summary>
+    /// <summary>Copies only the bundled AgentInbox marketplace into its writable local directory.</summary>
     public async Task<CodexSetupPreview> PreparePluginAsync(CancellationToken cancellationToken = default)
     {
         await installationLock.WaitAsync(cancellationToken);
@@ -122,7 +122,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             cancellationToken.ThrowIfCancellationRequested();
             var preview = GetPreview();
             var aliasAvailable = File.Exists(preview.StableExecutablePath);
-            checks["MailMeUp command"] = aliasAvailable ? "Available" : "Not found";
+            checks["AgentInbox command"] = aliasAvailable ? "Available" : "Not found";
             var executable = FindCodexExecutable();
             checks["Codex CLI"] = executable is null ? "Not found" : "Found (native executable)";
             if (executable is null)
@@ -148,17 +148,17 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 };
                 return true;
             });
-            var pluginsKnown = await InspectAsync(executable, "MailMeUp plugin", ["plugin", "list", "--json"], output =>
+            var pluginsKnown = await InspectAsync(executable, "AgentInbox plugin", ["plugin", "list", "--json"], output =>
             {
                 if (!TryReadPluginState(output, out var observedInstalled, out var observedEnabled, out var observedOther, out var observedOtherEnabled)) return false;
                 installed = observedInstalled;
                 enabled = observedEnabled;
                 otherPlugin = observedOther;
                 otherPluginEnabled = observedOtherEnabled;
-                checks["MailMeUp plugin"] = installed
+                checks["AgentInbox plugin"] = installed
                     ? enabled ? "Installed and enabled" : "Installed but disabled"
                     : "Not installed";
-                if (otherPlugin) checks["MailMeUp plugin"] += "; another source also found";
+                if (otherPlugin) checks["AgentInbox plugin"] += "; another source also found";
                 return true;
             });
             var marketplaceKnown = await InspectAsync(executable, "Local marketplace", ["plugin", "marketplace", "list", "--json"], output =>
@@ -171,37 +171,37 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             cancellationToken.ThrowIfCancellationRequested();
 
             if (!aliasAvailable)
-                return Finish("AliasUnavailable", "The MailMeUp command was not found. Restore the complete portable folder or the installed Windows app execution alias before configuring Codex.");
+                return Finish("AliasUnavailable", "The AgentInbox command was not found. Restore the complete portable folder or the installed Windows app execution alias before configuring Codex.");
             if (!mcpKnown)
-                return Finish("ConfigurationUnknown", "The direct MCP check did not finish. Installation is paused because duplicate MailMeUp tools cannot be ruled out.");
+                return Finish("ConfigurationUnknown", "The direct MCP check did not finish. Installation is paused because duplicate AgentInbox tools cannot be ruled out.");
             if (!pluginsKnown)
                 return Finish("PluginStatusUnknown", "The plugin check did not finish. Review the result below, update Codex if needed, then refresh status. No installation was attempted.");
             if (IsDirectConfigurationReady(directRegistrationCount, directRegistrationEnabled, pluginsKnown, installed && enabled, otherPluginEnabled))
-                return Finish("DirectConfigured", "Codex reports one direct MailMeUp connection enabled and no enabled MailMeUp plugin. Start a new Codex task to load its tools; no live connection was tested.");
+                return Finish("DirectConfigured", "Codex reports one direct AgentInbox connection enabled and no enabled AgentInbox plugin. Start a new Codex task to load its tools; no live connection was tested.");
             if (hasDirectRegistration)
                 return Finish("DirectRegistrationExists", installed && enabled
                     ? "A direct MCP registration and the enabled local plugin were both found. Review the two methods before installing or updating."
                     : otherPluginEnabled
-                        ? "A direct MCP registration and an enabled MailMeUp plugin from another source were found. Keep one enabled connection method in Codex, then check again."
+                        ? "A direct MCP registration and an enabled AgentInbox plugin from another source were found. Keep one enabled connection method in Codex, then check again."
                         : directRegistrationCount.GetValueOrDefault() > 1
-                            ? "Several direct MailMeUp registrations were found. Keep one enabled entry in Codex, then check again."
+                            ? "Several direct AgentInbox registrations were found. Keep one enabled entry in Codex, then check again."
                             : directRegistrationEnabled == false
-                                ? "The direct MailMeUp connection is disabled. Enable it in Codex to keep that setup, or remove it before installing the local plugin."
-                                : "A direct MailMeUp registration was found, but its enabled state could not be confirmed. Review it in Codex, then check again.");
+                                ? "The direct AgentInbox connection is disabled. Enable it in Codex to keep that setup, or remove it before installing the local plugin."
+                                : "A direct AgentInbox registration was found, but its enabled state could not be confirmed. Review it in Codex, then check again.");
             if (otherPlugin)
-                return Finish("OtherPluginExists", "A MailMeUp plugin from another marketplace was found. Review that source before adding this local copy.");
+                return Finish("OtherPluginExists", "An AgentInbox plugin from another marketplace was found. Review that source before adding this local copy.");
             if (!marketplaceKnown)
                 return Finish("MarketplaceStatusUnknown", "The marketplace check did not finish. Installation is paused until its source can be confirmed.");
             if (collision)
-                return Finish("MarketplaceConflict", "A different source uses the mailmeup-local name. Review that marketplace before installing this copy.");
+                return Finish("MarketplaceConflict", "A different source uses the agentinbox-local name. Review that marketplace before installing this copy.");
             if (installed)
                 return enabled
                     ? Finish("PluginConfigured", "Codex reports the local plugin installed and enabled. Start a new Codex task to load its tools; no live connection was tested.", true)
                     : Finish("PluginDisabled", "The local plugin is installed but disabled. Enable it in Codex's plugin settings, then refresh status.");
 
             return Finish("ReadyToInstall", marketplaceRegistered
-                ? "The local marketplace is already added. Install the MailMeUp plugin to complete setup."
-                : "Install the local plugin to add the MailMeUp marketplace and connect your sharing choices to Codex.", true);
+                ? "The local marketplace is already added. Install the AgentInbox plugin to complete setup."
+                : "Install the local plugin to add the AgentInbox marketplace and connect your sharing choices to Codex.", true);
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
@@ -239,14 +239,14 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             var install = await RunCodexAsync(executable, ["plugin", "add", PluginId, "--json"], cancellationToken);
             if (!install.Success)
             {
-                const string message = "The local marketplace was added, but plugin installation was not confirmed. Refresh status, or review MailMeUp in Codex's plugin settings.";
+                const string message = "The local marketplace was added, but plugin installation was not confirmed. Refresh status, or review AgentInbox in Codex's plugin settings.";
                 return new(false, message, State("InstallationIncomplete", message));
             }
 
             var refreshed = await GetStatusAsync(cancellationToken);
             var confirmed = refreshed.Code == "PluginConfigured" && refreshed.IsPluginConfigured;
             return new(confirmed, confirmed
-                ? "The MailMeUp plugin is installed and enabled. Start a new Codex task to load its tools."
+                ? "The AgentInbox plugin is installed and enabled. Start a new Codex task to load its tools."
                 : "Codex accepted the installation request, but enabled configuration could not be confirmed. Refresh the status or inspect the plugin in Codex.", refreshed);
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
@@ -267,15 +267,15 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         var source = Path.Combine(AppContext.BaseDirectory, "CodexPlugin");
         var mcp = new Dictionary<string, object>
         {
-            ["mailmeup"] = new
+            ["agentinbox"] = new
             {
                 command = preview.StableExecutablePath,
                 args = new[] { "--stdio" },
-                env = new Dictionary<string, string> { ["MAILMEUP_DATA_DIR"] = ResolveDataDirectory() }
+                env = new Dictionary<string, string> { ["AGENTINBOX_DATA_DIR"] = ResolveDataDirectory() }
             }
         };
         var mcpContents = JsonSerializer.Serialize(mcp, JsonOptions);
-        const string manifestRelativePath = "plugins/mailmeup/.codex-plugin/plugin.json";
+        const string manifestRelativePath = "plugins/agentinbox/.codex-plugin/plugin.json";
         var manifestContents = await File.ReadAllTextAsync(Path.Combine(source, manifestRelativePath), cancellationToken);
         var manifest = System.Text.Json.Nodes.JsonNode.Parse(manifestContents)?.AsObject()
             ?? throw new InvalidDataException("The bundled plugin manifest is missing.");
@@ -286,7 +286,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         const string marketplaceRelativePath = ".agents/plugins/marketplace.json";
         var marketplace = await File.ReadAllTextAsync(Path.Combine(source, marketplaceRelativePath), cancellationToken);
 
-        await WriteOwnedFileAsync(preview.PluginDirectory, "plugins/mailmeup/.mcp.json", mcpContents, cancellationToken);
+        await WriteOwnedFileAsync(preview.PluginDirectory, "plugins/agentinbox/.mcp.json", mcpContents, cancellationToken);
         await WriteOwnedFileAsync(preview.PluginDirectory, manifestRelativePath, manifest.ToJsonString(JsonOptions), cancellationToken);
         await WriteOwnedFileAsync(preview.PluginDirectory, marketplaceRelativePath, marketplace, cancellationToken);
         return preview;
@@ -297,7 +297,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         var destination = Path.Combine(root, relative);
         var parent = Path.GetDirectoryName(destination)!;
         Directory.CreateDirectory(parent);
-        var temporary = Path.Combine(parent, $".mailmeup-{Guid.NewGuid():N}.tmp");
+        var temporary = Path.Combine(parent, $".agentinbox-{Guid.NewGuid():N}.tmp");
         try
         {
             await File.WriteAllTextAsync(temporary, contents, new UTF8Encoding(false), cancellationToken);
@@ -413,11 +413,10 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 return false;
             }
 
-            var matches = string.Equals(name, "mailmeup", StringComparison.OrdinalIgnoreCase);
+            var matches = IsProductName(name);
 
             if (server.TryGetProperty("transport", out var transport) && TryString(transport, "command", out var command)
-                && (string.Equals(Path.GetFileName(command), "mailmeup.exe", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(Path.GetFileName(command), "mailmeup", StringComparison.OrdinalIgnoreCase)))
+                && IsProductExecutable(command))
             {
                 matches = true;
             }
@@ -425,7 +424,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             if (server.TryGetProperty("transport", out transport) && transport.ValueKind == JsonValueKind.Object
                 && transport.TryGetProperty("args", out var arguments) && arguments.ValueKind == JsonValueKind.Array
                 && arguments.EnumerateArray().Any(argument => argument.ValueKind == JsonValueKind.String
-                    && string.Equals(Path.GetFileName(argument.GetString()), "mailmeup.dll", StringComparison.OrdinalIgnoreCase)))
+                    && IsProductAssembly(argument.GetString())))
             {
                 matches = true;
             }
@@ -475,7 +474,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
                 installed = true;
                 enabled |= enabledValue.GetBoolean();
             }
-            else if (string.Equals(name, "mailmeup", StringComparison.OrdinalIgnoreCase))
+            else if (IsProductName(name))
             {
                 if (!entry.TryGetProperty("enabled", out var enabledValue)
                     || enabledValue.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
@@ -573,7 +572,23 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return null;
     }
 
-    private static string ResolveDataDirectory() => DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
+    private static bool IsProductName(string value) =>
+        string.Equals(value, "agentinbox", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsProductExecutable(string path)
+    {
+        var name = Path.GetFileName(path);
+        return string.Equals(name, "agentinbox.exe", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "agentinbox", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsProductAssembly(string? path)
+    {
+        var name = Path.GetFileName(path);
+        return string.Equals(name, "agentinbox.dll", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveDataDirectory() => DataDirectory.ResolveFromEnvironment();
 
     private static string QuotePowerShell(string value) => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
 

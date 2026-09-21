@@ -11,7 +11,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 [xml]$properties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props')
 $version = $properties.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
 $artifactRoot = Join-Path $repoRoot 'artifacts'
-$packageName = "mailmeup-$version-$Runtime"
+$packageName = "agentinbox-$version-$Runtime"
 $payload = Join-Path $artifactRoot $packageName
 
 $hostOs = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
@@ -45,7 +45,7 @@ try {
     python scripts/export-notices.py --check --copy-to (Join-Path $payload 'licenses/packages')
     if ($LASTEXITCODE -ne 0) { throw 'Notice export failed.' }
 
-    $executable = Join-Path $payload $(if ($IsWindows) { 'mailmeup.exe' } else { 'mailmeup' })
+    $executable = Join-Path $payload $(if ($IsWindows) { 'agentinbox.exe' } else { 'agentinbox' })
     if ($isNative) {
         python scripts/smoke-test.py $executable
         if ($LASTEXITCODE -ne 0) { throw 'Published executable smoke test failed.' }
@@ -79,7 +79,7 @@ try {
                 if ($LASTEXITCODE -ne 0) { throw 'Archive extraction failed.' }
             }
 
-            $verifiedExecutable = Join-Path $verificationPath $(if ($IsWindows) { 'mailmeup.exe' } else { 'mailmeup' })
+            $verifiedExecutable = Join-Path $verificationPath $(if ($IsWindows) { 'agentinbox.exe' } else { 'agentinbox' })
             python scripts/smoke-test.py $verifiedExecutable
             if ($LASTEXITCODE -ne 0) { throw 'Extracted executable smoke test failed.' }
         } finally {

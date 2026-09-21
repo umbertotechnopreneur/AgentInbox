@@ -9,26 +9,26 @@ public sealed class CodexSetupTests
     [Fact]
     public void PortableSetupUsesItsOwnCliEvenWhenAnInstalledAliasExists()
     {
-        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-portable"));
-        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-local"));
-        var expected = Path.Combine(root, "cli", "mailmeup.exe");
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-portable"));
+        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-local"));
+        var expected = Path.Combine(root, "cli", "agentinbox.exe");
         Assert.Equal(expected, CodexSetupService.ResolveExecutablePath(root, local, _ => true));
     }
 
     [Fact]
-    public void IncompletePortableFolderDoesNotFallBackToInstalledMailMeUp()
+    public void IncompletePortableFolderDoesNotFallBackToInstalledAgentInbox()
     {
-        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-portable"));
-        var marker = Path.Combine(root, "mailmeup-portable.txt");
-        Assert.Equal(Path.Combine(root, "cli", "mailmeup.exe"),
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-portable"));
+        var marker = Path.Combine(root, "agentinbox-portable.txt");
+        Assert.Equal(Path.Combine(root, "cli", "agentinbox.exe"),
             CodexSetupService.ResolveExecutablePath(root, Path.GetTempPath(), path => path == marker));
     }
 
     [Fact]
     public void InstalledSetupKeepsTheWindowsManagedAlias()
     {
-        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-local"));
-        Assert.Equal(Path.Combine(local, "Microsoft", "WindowsApps", "mailmeup.exe"),
+        var local = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-local"));
+        Assert.Equal(Path.Combine(local, "Microsoft", "WindowsApps", "agentinbox.exe"),
             CodexSetupService.ResolveExecutablePath(Path.GetTempPath(), local, _ => false));
     }
 
@@ -43,8 +43,8 @@ public sealed class CodexSetupTests
     [Fact]
     public void AddedMarketplaceDoesNotMeanPluginInstalled()
     {
-        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-marketplace"));
-        var json = JsonSerializer.Serialize(new { marketplaces = new[] { new { name = "mailmeup-local", root } } });
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-marketplace"));
+        var json = JsonSerializer.Serialize(new { marketplaces = new[] { new { name = "agentinbox-local", root } } });
         Assert.True(CodexSetupService.TryReadMarketplaceState(json, root, out var collision, out var registered));
         Assert.True(registered);
         Assert.False(collision);
@@ -66,13 +66,13 @@ public sealed class CodexSetupTests
     [Fact]
     public void ConflictingMarketplaceCannotBeOverriddenByAnotherEntry()
     {
-        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "mailmeup-synthetic-marketplace"));
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "agentinbox-synthetic-marketplace"));
         var json = JsonSerializer.Serialize(new
         {
             marketplaces = new[]
             {
-                new { name = "mailmeup-local", root = root + "-different" },
-                new { name = "mailmeup-local", root }
+                new { name = "agentinbox-local", root = root + "-different" },
+                new { name = "agentinbox-local", root }
             }
         });
         Assert.True(CodexSetupService.TryReadMarketplaceState(json, root, out var collision, out var registered));
@@ -87,7 +87,7 @@ public sealed class CodexSetupTests
     {
         var json = JsonSerializer.Serialize(new
         {
-            installed = new[] { new { pluginId = "mailmeup@mailmeup-local", name = "mailmeup", enabled = expectedEnabled } }
+            installed = new[] { new { pluginId = "agentinbox@agentinbox-local", name = "agentinbox", enabled = expectedEnabled } }
         });
         Assert.True(CodexSetupService.TryReadPluginState(json, out var installed, out var enabled, out var other));
         Assert.True(installed);
@@ -99,14 +99,14 @@ public sealed class CodexSetupTests
     public void MissingPluginEnabledFlagIsNotASuccess()
     {
         Assert.False(CodexSetupService.TryReadPluginState(
-            "{\"installed\":[{\"pluginId\":\"mailmeup@mailmeup-local\",\"name\":\"mailmeup\"}]}", out _, out _, out _));
+            "{\"installed\":[{\"pluginId\":\"agentinbox@agentinbox-local\",\"name\":\"agentinbox\"}]}", out _, out _, out _));
     }
 
     [Theory]
-    [InlineData("[{\"name\":\"MailMeUp\",\"enabled\":true}]")]
-    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"mailmeup.exe\"}}]")]
-    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"mailmeup\"}}]")]
-    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"dotnet\",\"args\":[\"mailmeup.dll\",\"--stdio\"]}}]")]
+    [InlineData("[{\"name\":\"AgentInbox\",\"enabled\":true}]")]
+    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"agentinbox.exe\"}}]")]
+    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"agentinbox\"}}]")]
+    [InlineData("[{\"name\":\"custom-mail\",\"enabled\":true,\"transport\":{\"command\":\"dotnet\",\"args\":[\"agentinbox.dll\",\"--stdio\"]}}]")]
     public void DirectRegistrationCanBeRecognizedByNameExecutableOrAssembly(string json)
     {
         Assert.True(CodexSetupService.TryReadDirectRegistration(json, out var count, out var enabled));
@@ -118,18 +118,18 @@ public sealed class CodexSetupTests
     [Fact]
     public void MatchingNameAndExecutableCountAsOneRegistration()
     {
-        const string json = "[{\"name\":\"mailmeup\",\"enabled\":true,\"transport\":{\"command\":\"mailmeup.exe\"}}]";
+        const string json = "[{\"name\":\"agentinbox\",\"enabled\":true,\"transport\":{\"command\":\"agentinbox.exe\"}}]";
         Assert.True(CodexSetupService.TryReadDirectRegistration(json, out var count, out var enabled));
         Assert.Equal(1, count);
         Assert.Equal(true, enabled);
     }
 
     [Theory]
-    [InlineData("[{\"name\":\"mailmeup\",\"enabled\":false}]", false)]
-    [InlineData("[{\"name\":\"mailmeup\"}]", null)]
-    [InlineData("[{\"name\":\"mailmeup\",\"enabled\":null}]", null)]
-    [InlineData("[{\"name\":\"mailmeup\",\"enabled\":\"true\"}]", null)]
-    [InlineData("[{\"name\":\"mailmeup\",\"enabled\":1}]", null)]
+    [InlineData("[{\"name\":\"agentinbox\",\"enabled\":false}]", false)]
+    [InlineData("[{\"name\":\"agentinbox\"}]", null)]
+    [InlineData("[{\"name\":\"agentinbox\",\"enabled\":null}]", null)]
+    [InlineData("[{\"name\":\"agentinbox\",\"enabled\":\"true\"}]", null)]
+    [InlineData("[{\"name\":\"agentinbox\",\"enabled\":1}]", null)]
     public void DisabledOrUnknownDirectRegistrationCannotCompleteSetup(string json, bool? expectedEnabled)
     {
         Assert.True(CodexSetupService.TryReadDirectRegistration(json, out var count, out var enabled));
@@ -145,8 +145,8 @@ public sealed class CodexSetupTests
     {
         var json = JsonSerializer.Serialize(new[]
         {
-            new { name = "mailmeup", enabled = true, transport = new { command = "mailmeup.exe" } },
-            new { name = "custom-mail", enabled = secondEnabled, transport = new { command = "mailmeup.exe" } }
+            new { name = "agentinbox", enabled = true, transport = new { command = "agentinbox.exe" } },
+            new { name = "custom-mail", enabled = secondEnabled, transport = new { command = "agentinbox.exe" } }
         });
         Assert.True(CodexSetupService.TryReadDirectRegistration(json, out var count, out var enabled));
         Assert.Equal(2, count);
@@ -155,9 +155,9 @@ public sealed class CodexSetupTests
     }
 
     [Fact]
-    public void UnrelatedDirectEntriesDoNotAffectMailMeUpState()
+    public void UnrelatedDirectEntriesDoNotAffectAgentInboxState()
     {
-        const string json = "[{\"name\":\"other-server\"},{\"name\":\"mailmeup\",\"enabled\":true}]";
+        const string json = "[{\"name\":\"other-server\"},{\"name\":\"agentinbox\",\"enabled\":true}]";
         Assert.True(CodexSetupService.TryReadDirectRegistration(json, out var count, out var enabled));
         Assert.Equal(1, count);
         Assert.Equal(true, enabled);
@@ -180,7 +180,7 @@ public sealed class CodexSetupTests
     [InlineData(true, true, false)]
     [InlineData(true, false, true)]
     [InlineData(true, true, true)]
-    public void DirectCompletionRequiresKnownPluginsWithNoEnabledMailMeUpPlugin(bool pluginsKnown, bool localEnabled, bool otherEnabled)
+    public void DirectCompletionRequiresKnownPluginsWithNoEnabledAgentInboxPlugin(bool pluginsKnown, bool localEnabled, bool otherEnabled)
     {
         Assert.False(CodexSetupService.IsDirectConfigurationReady(1, true, pluginsKnown, localEnabled, otherEnabled));
     }
@@ -205,8 +205,8 @@ public sealed class CodexSetupTests
         {
             installed = new[]
             {
-                new { pluginId = "mailmeup@mailmeup-local", name = "mailmeup", enabled = false },
-                new { pluginId = "mailmeup@other-source", name = "mailmeup", enabled = otherEnabled }
+                new { pluginId = "agentinbox@agentinbox-local", name = "agentinbox", enabled = false },
+                new { pluginId = "agentinbox@other-source", name = "agentinbox", enabled = otherEnabled }
             }
         });
         Assert.True(CodexSetupService.TryReadPluginState(json, out var installed, out var enabled, out var other, out var observedOtherEnabled));
@@ -220,7 +220,7 @@ public sealed class CodexSetupTests
     [Fact]
     public void UnknownOtherSourcePluginStateCannotCompleteDirectSetup()
     {
-        const string json = "{\"installed\":[{\"pluginId\":\"mailmeup@other-source\",\"name\":\"mailmeup\"}]}";
+        const string json = "{\"installed\":[{\"pluginId\":\"agentinbox@other-source\",\"name\":\"agentinbox\"}]}";
         var known = CodexSetupService.TryReadPluginState(json, out _, out var enabled, out _, out var otherEnabled);
         Assert.False(known);
         Assert.False(CodexSetupService.IsDirectConfigurationReady(1, true, known, enabled, otherEnabled));
@@ -233,10 +233,10 @@ public sealed class CodexSetupTests
         {
             installed = new[]
             {
-                new { pluginId = "mailmeup@mailmeup-local", name = "mailmeup", enabled = true },
-                new { pluginId = "mailmeup@mailmeup-local", name = "mailmeup", enabled = false },
-                new { pluginId = "mailmeup@other-source", name = "mailmeup", enabled = true },
-                new { pluginId = "mailmeup@other-source", name = "mailmeup", enabled = false }
+                new { pluginId = "agentinbox@agentinbox-local", name = "agentinbox", enabled = true },
+                new { pluginId = "agentinbox@agentinbox-local", name = "agentinbox", enabled = false },
+                new { pluginId = "agentinbox@other-source", name = "agentinbox", enabled = true },
+                new { pluginId = "agentinbox@other-source", name = "agentinbox", enabled = false }
             }
         });
         Assert.True(CodexSetupService.TryReadPluginState(json, out var installed, out var enabled, out var other, out var otherEnabled));

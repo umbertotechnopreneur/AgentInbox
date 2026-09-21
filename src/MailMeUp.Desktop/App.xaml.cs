@@ -45,10 +45,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         try
         {
             var dataDirectory = _launchOptions.IsDemo
-                ? Path.Combine(Path.GetTempPath(), "MailMeUp-ui-demo", Guid.NewGuid().ToString("N"))
-                : DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
+                ? Path.Combine(Path.GetTempPath(), "AgentInbox-ui-demo", Guid.NewGuid().ToString("N"))
+                : DataDirectory.ResolveFromEnvironment();
             diagnostics = DesktopLogging.Create(dataDirectory);
-            var startupLogger = diagnostics.ForContext("SourceContext", "MailMeUp.Desktop");
+            var startupLogger = diagnostics.ForContext("SourceContext", "AgentInbox.Desktop");
             startupLogger.Information("Starting desktop setup");
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = [], DisableDefaults = true });
             builder.Logging.ClearProviders();
@@ -69,20 +69,20 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
         catch (Exception exception)
         {
-            var startupLogger = diagnostics?.ForContext("SourceContext", "MailMeUp.Desktop") ??
-                _diagnostics?.ForContext("SourceContext", "MailMeUp.Desktop");
+            var startupLogger = diagnostics?.ForContext("SourceContext", "AgentInbox.Desktop") ??
+                _diagnostics?.ForContext("SourceContext", "AgentInbox.Desktop");
             startupLogger?.Error("Desktop setup startup failed ({ErrorType}, HResult {HResult})", exception.GetType().Name, exception.HResult);
             diagnostics?.Dispose();
             _diagnostics?.Dispose();
             _diagnostics = null;
-            if (Environment.GetEnvironmentVariable("MAILMEUP_STARTUP_DIAGNOSTICS") == "1")
-                Console.Error.WriteLine($"MailMeUp startup failure: {exception.GetType().Name} (0x{exception.HResult:X8})");
+            if (Environment.GetEnvironmentVariable("AGENTINBOX_STARTUP_DIAGNOSTICS") == "1")
+                Console.Error.WriteLine($"AgentInbox startup failure: {exception.GetType().Name} (0x{exception.HResult:X8})");
             _window = new Window
             {
-                Title = "MailMeUp",
+                Title = "AgentInbox",
                 Content = new Microsoft.UI.Xaml.Controls.TextBlock
                 {
-                    Text = "MailMeUp could not open setup. Close the app and try again. If it persists, check the local installation and data directory.",
+                    Text = "AgentInbox could not open setup. Close the app and try again. If it persists, check the local installation and data directory.",
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(32)
                 }

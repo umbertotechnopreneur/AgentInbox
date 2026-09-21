@@ -32,7 +32,7 @@ class LocalArgumentParser(argparse.ArgumentParser):
     """Avoid echoing unexpected command arguments into diagnostic output."""
 
     def error(self, message):
-        raise CheckFailure("Usage: real-provider-check.py <mailmeup-executable>")
+        raise CheckFailure("Usage: real-provider-check.py <agentinbox-executable>")
 
 
 def require(condition, message):
@@ -73,12 +73,12 @@ class McpSession:
             self.process = subprocess.Popen(
                 [str(resolved), "--stdio"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, encoding="utf-8",
-                env={**os.environ, "MAILMEUP_LOG_LEVEL": "fatal"},
+                env={**os.environ, "AGENTINBOX_LOG_LEVEL": "fatal"},
             )
         except CheckFailure:
             raise
         except Exception:
-            raise CheckFailure("Could not start the supplied MailMeUp executable.") from None
+            raise CheckFailure("Could not start the supplied AgentInbox executable.") from None
         threading.Thread(target=self._consume_stdout, daemon=True).start()
 
     def _consume_stdout(self):
@@ -344,7 +344,7 @@ def check_mixed(session, accounts, account_checks, checks, name, consent, tool, 
 def run_checks(session, summary):
     session.request("initialize", {
         "protocolVersion": "2025-11-25", "capabilities": {},
-        "clientInfo": {"name": "mailmeup-real-provider-check", "version": "2.0.0"},
+        "clientInfo": {"name": "agentinbox-real-provider-check", "version": "2.0.0"},
     })
     session.send({"method": "notifications/initialized"})
     tools = session.request("tools/list")["tools"]
@@ -414,7 +414,7 @@ def main():
         # This guard precedes path resolution, child startup and credential access.
         require(not is_ci(os.environ), "Real-provider checks are local-only and cannot run in CI.")
         parser = LocalArgumentParser(description=__doc__)
-        parser.add_argument("executable", type=Path, help="Path to the local mailmeup or mailmeup.exe")
+        parser.add_argument("executable", type=Path, help="Path to the local agentinbox or agentinbox.exe")
         args = parser.parse_args()
         session.start(args.executable)
         run_checks(session, summary)

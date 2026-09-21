@@ -1,6 +1,0 @@
-{
-  "mailmeup": {
-    "command": "mailmeup.exe",
-    "args": ["--stdio"]
-  }
-}

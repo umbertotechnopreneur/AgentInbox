@@ -37,7 +37,7 @@ public sealed partial class AboutDialog : ContentDialog
     private void CopyVersionButton_Click(object sender, RoutedEventArgs e)
     {
         var data = new DataPackage();
-        data.SetText($"MailMeUp {_version} · Windows {Environment.OSVersion.Version} · {RuntimeInformation.ProcessArchitecture}");
+        data.SetText($"AgentInbox {_version} · Windows {Environment.OSVersion.Version} · {RuntimeInformation.ProcessArchitecture}");
         try
         {
             Clipboard.SetContent(data);

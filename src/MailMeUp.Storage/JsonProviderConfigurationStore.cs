@@ -92,7 +92,7 @@ public sealed class JsonProviderConfigurationStore(string directory) : IProvider
             ?? throw new InvalidOperationException("Provider settings are empty or invalid.");
         if (document.SchemaVersion != 1)
         {
-            throw new InvalidOperationException("Unsupported provider settings version. Upgrade MailMeUp or select a new data directory.");
+            throw new InvalidOperationException("Unsupported provider settings version. Upgrade AgentInbox or select a new data directory.");
         }
 
         if (document.Providers.Select(item => item.ProviderId).Distinct(StringComparer.Ordinal).Count() != document.Providers.Count)

@@ -72,9 +72,9 @@ public sealed class SetupLaunchOptionsTests
     }
 
     [Theory]
-    [InlineData("MailMeUp.Desktop.exe")]
-    [InlineData("C:\\Program Files\\MailMeUp\\MailMeUp.Desktop.exe")]
-    [InlineData("C:/Program Files/MailMeUp/MAILMEUP.DESKTOP.EXE")]
+    [InlineData("AgentInbox.Desktop.exe")]
+    [InlineData("C:\\Program Files\\AgentInbox\\AgentInbox.Desktop.exe")]
+    [InlineData("C:/Program Files/AgentInbox/AGENTINBOX.DESKTOP.EXE")]
     public void RedirectedFullCommandLineAcceptsTheDesktopExecutable(string executable)
     {
         Assert.True(SetupLaunchOptions.TryParseActivation([executable, "--step", "codex", "--demo"], out var options));
@@ -95,7 +95,7 @@ public sealed class SetupLaunchOptionsTests
     [Fact]
     public void RedirectedDefaultLaunchPreservesTheCurrentPage()
     {
-        Assert.True(SetupLaunchOptions.TryParseActivation(["C:\\Program Files\\MailMeUp\\MailMeUp.Desktop.exe"], out var options));
+        Assert.True(SetupLaunchOptions.TryParseActivation(["C:\\Program Files\\AgentInbox\\AgentInbox.Desktop.exe"], out var options));
 
         Assert.Null(options.Step);
     }

@@ -8,11 +8,11 @@
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap5 uap10 desktop4 desktop6 rescap">
-  <!-- Keep Name, Publisher, application IDs and the alias stable across updates. -->
-  <Identity Name="MailMeUp.Desktop" Publisher="CN=Umberto Giacobbi" Version="0.1.1.0" ProcessorArchitecture="x64" />
+  <!-- Keep the Store identity, application IDs and alias stable across updates. -->
+  <Identity Name="UmbertoGiacobbiDotBiz.AgentInbox" Publisher="CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510" Version="0.1.1.0" ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>MailMeUp</DisplayName>
-    <PublisherDisplayName>Umberto Giacobbi</PublisherDisplayName>
+    <DisplayName>AgentInbox</DisplayName>
+    <PublisherDisplayName>UmbertoGiacobbiDotBiz</PublisherDisplayName>
     <Description>A local, read-only email and calendar bridge for your assistant.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
     <!-- Codex and the portable CLI must see the same explicit local data directories. -->
@@ -25,18 +25,18 @@
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Applications>
-    <Application Id="Desktop" Executable="MailMeUp.Desktop.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
-      <uap:VisualElements DisplayName="MailMeUp" Description="Connect your accounts and choose what to share with your assistant."
+    <Application Id="Desktop" Executable="AgentInbox.Desktop.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
+      <uap:VisualElements DisplayName="AgentInbox" Description="Connect your accounts and choose what to share with your assistant."
         BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
     </Application>
-    <Application Id="Cli" Executable="cli\mailmeup.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL"
+    <Application Id="Cli" Executable="cli\agentinbox.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL"
       desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
-      <uap:VisualElements DisplayName="MailMeUp CLI" Description="MailMeUp command line and MCP server."
+      <uap:VisualElements DisplayName="AgentInbox CLI" Description="AgentInbox command line and MCP server."
         AppListEntry="none" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
       <Extensions>
-        <uap5:Extension Category="windows.appExecutionAlias" Executable="cli\mailmeup.exe" EntryPoint="Windows.FullTrustApplication">
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="cli\agentinbox.exe" EntryPoint="Windows.FullTrustApplication">
           <uap5:AppExecutionAlias desktop4:Subsystem="console">
-            <uap5:ExecutionAlias Alias="mailmeup.exe" />
+            <uap5:ExecutionAlias Alias="agentinbox.exe" />
           </uap5:AppExecutionAlias>
         </uap5:Extension>
       </Extensions>

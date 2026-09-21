@@ -98,7 +98,7 @@ public sealed class ReadAccessConnectionChecker : IAccountConnectionChecker
         {
             new ProviderMailQuery(string.Empty, null, null, null),
             new ProviderMailQuery(string.Empty, null, now.AddDays(-7), now, UnreadOnly: true),
-            new ProviderMailQuery("mailmeup", null, now.AddDays(-7), now)
+            new ProviderMailQuery("agentinbox", null, now.AddDays(-7), now)
         };
         var detailRead = false;
         foreach (var query in queries)
