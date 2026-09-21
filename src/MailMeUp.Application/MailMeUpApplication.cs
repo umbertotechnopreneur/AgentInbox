@@ -210,7 +210,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         if (!_providerSetupServices.TryGetValue(providerId, out var service))
         {
-            throw new ArgumentException("Unknown provider. Run mailmeup setup status to list supported providers.", nameof(providerId));
+            throw new ArgumentException("Unknown provider. Run agentinbox setup status to list supported providers.", nameof(providerId));
         }
 
         return service.ConfigureAsync(source, cancellationToken);
@@ -227,7 +227,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         options.Validate();
         if (!_accountConnectors.TryGetValue(providerId, out var connector))
         {
-            throw new ArgumentException("Unknown account provider. Run mailmeup setup status to list supported providers.", nameof(providerId));
+            throw new ArgumentException("Unknown account provider. Run agentinbox setup status to list supported providers.", nameof(providerId));
         }
 
         var existingAccounts = await _accounts.ListAsync(cancellationToken);

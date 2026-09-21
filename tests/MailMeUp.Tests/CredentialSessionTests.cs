@@ -14,7 +14,7 @@ public sealed class CredentialSessionTests : IDisposable
 {
     private const string SyntheticReference = "tests/synthetic-session-example.test";
     private const string MicrosoftClientId = "00000000-0000-0000-0000-000000000001";
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "MailMeUp.Tests", Guid.NewGuid().ToString("N"));
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "AgentInbox.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
     public async Task SeparateStoreInstancesExcludeEachOtherUntilTheLeaseIsDisposed()
@@ -120,7 +120,10 @@ public sealed class CredentialSessionTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-File", helperPath, "-LockPath", lockPath })
+        foreach (var argument in new[]
+                 {
+                     "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", helperPath, "-LockPath", lockPath
+                 })
         {
             start.ArgumentList.Add(argument);
         }
@@ -129,6 +132,11 @@ public sealed class CredentialSessionTests : IDisposable
         try
         {
             var signal = await process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            if (signal is null)
+            {
+                var error = await process.StandardError.ReadToEndAsync();
+                Assert.Fail($"The synthetic lock helper exited before signaling readiness: {error}");
+            }
             Assert.Equal("locked", signal);
             using (var blockedWait = new CancellationTokenSource(TimeSpan.FromMilliseconds(250)))
             {
@@ -256,7 +264,7 @@ public sealed class CredentialSessionTests : IDisposable
     public void Dispose()
     {
         // The fixture owns only this randomly generated directory under the OS test directory.
-        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MailMeUp.Tests")) + Path.DirectorySeparatorChar;
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "AgentInbox.Tests")) + Path.DirectorySeparatorChar;
         var target = Path.GetFullPath(_directory);
         if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
         {

@@ -1,5 +1,15 @@
 # Validation
 
+## AgentInbox rebrand and Store identity
+
+**Windows x64, 2026-09-22 — local Debug package and fresh installation.** The public product name, desktop and CLI executables, Store identity, Codex identifiers, local profile names, documentation and visual assets were changed from MailMeUp to AgentInbox. Internal .NET project and namespace names remain unchanged. Because this is a pre-production rename and no AgentInbox package was installed before this run, no MailMeUp-to-AgentInbox compatibility or data migration is included or tested.
+
+`dotnet test MailMeUp.slnx -c Debug` passed **495 tests, zero failures and zero skips**. The first run exposed a missing failure-state safety sentence and a synthetic Windows PowerShell helper blocked by the machine execution policy; both test-path issues were corrected before the passing run. The published `agentinbox.exe` passed the isolated CLI/MCP smoke suite, including nine tools, Inbox scope behavior, empty reads, invalid references and diagnostic-only initial state. The published `AgentInbox.Desktop.exe` remained open with one synthetic `example.test` account. Every executable check used a temporary `AGENTINBOX_DATA_DIR`; no real mailbox, provider account or Codex connection was accessed.
+
+The final Debug x64 MSIX `0.0.1.1` was built, signed with an existing trusted code-signing certificate whose subject matches the approved Store publisher, and installed as a normal update to the initial `0.0.1.0` local package without changing certificate stores. Authenticode reports a valid signature. Windows reports package `UmbertoGiacobbiDotBiz.AgentInbox_0.0.1.1_x64__aa9ddh7dsmn36`, PFN `UmbertoGiacobbiDotBiz.AgentInbox_aa9ddh7dsmn36`, status `Ok`, and Start app name **AgentInbox**. The installed `agentinbox.exe` alias and installed desktop executable passed the same isolated smoke/startup checks. The local package and exported public certificate remain under ignored `artifacts/msix/debug/0.0.1.1/x64/`.
+
+The rebranded README screenshots were visually reviewed. Native window layout and interaction, real provider reads, a live Codex connection, ARM64 execution, clean-machine installation, Microsoft Store ingestion, CI and publication were not tested. No release, Store upload or tag was created.
+
 ## Complete Windows portable preview
 
 **2026-09-16 — local packaging from `2489f68`.** Complete Windows x64 and ARM64 ZIPs were built using locked desktop/CLI graphs. The x64 published executable and the executable extracted from the ZIP passed the CLI/MCP smoke suite, including nine tools, Inbox scope defaults/overrides, synthetic empty reads, invalid references and diagnostic-only initial state. The extracted desktop created a native window in isolated `--demo` mode with `MAILMEUP_DATA_DIR` outside the normal profile; it emitted no stderr. This checks startup, not visual layout or full interaction. No real provider or Codex connection was opened. ARM64 was compiled and archived only.
@@ -181,7 +191,7 @@ At the owner's request, CI also skips unit-test execution. It retains build, rea
 
 The Windows x64 package from `de1fae7` passed native smoke checks before and after ZIP extraction, then the real-provider checks above. Account metadata matched exactly between the previous `971a5b8` executable and this build: all four accounts were preserved and usable. Diagnostics checks used synthetic data and printed no credentials or private content. This was an update on the development workstation; a clean Windows installation remains untested.
 
-Earlier foundation CI produced six portable packages; see [the recorded run](https://github.com/umbertotechnopreneur/MailMeUp/actions/runs/33943689252). That historical run does not validate the current source. Current-turn results above are local, not remote CI results.
+Earlier foundation CI produced six portable packages; see [the recorded run](https://github.com/umbertotechnopreneur/AgentInbox/actions/runs/33943689252). That historical run does not validate the current source. Current-turn results above are local, not remote CI results.
 
 Windows ARM64 was published previously but not executed on hardware. **Real macOS and Linux flows are not tested:** no machines are available, and the current MVP makes no support claim for them.
 

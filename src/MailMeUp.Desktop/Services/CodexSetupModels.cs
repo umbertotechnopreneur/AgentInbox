@@ -15,8 +15,8 @@ public sealed record CodexSetupPreview(
 /// <param name="Code">A stable machine-readable state identifier.</param>
 /// <param name="Message">The observed state and any required next step.</param>
 /// <param name="CanInstall">Whether the guided installer can safely proceed.</param>
-/// <param name="IsPluginConfigured">Whether Codex reports the MailMeUp plugin installed and enabled.</param>
-/// <param name="HasDirectRegistration">Whether a direct MailMeUp MCP registration was observed.</param>
+/// <param name="IsPluginConfigured">Whether Codex reports the AgentInbox plugin installed and enabled.</param>
+/// <param name="HasDirectRegistration">Whether a direct AgentInbox MCP registration was observed.</param>
 public sealed record CodexSetupStatus(
     string Code,
     string Message,
@@ -41,10 +41,10 @@ public sealed record CodexSetupCheck(string Name, string Result)
 {
     internal static IReadOnlyList<CodexSetupCheck> Pending() =>
     [
-        new("MailMeUp command", "Not checked"),
+        new("AgentInbox command", "Not checked"),
         new("Codex CLI", "Not checked"),
         new("Local marketplace", "Not checked"),
-        new("MailMeUp plugin", "Not checked"),
+        new("AgentInbox plugin", "Not checked"),
         new("Direct MCP connection", "Not checked")
     ];
 }

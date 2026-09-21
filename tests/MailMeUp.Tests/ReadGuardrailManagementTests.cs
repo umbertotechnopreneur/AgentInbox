@@ -7,7 +7,7 @@ namespace MailMeUp.Tests;
 
 public sealed class ReadGuardrailManagementTests : IDisposable
 {
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "MailMeUp-guardrail-management-tests", Guid.NewGuid().ToString("N"));
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "AgentInbox-guardrail-management-tests", Guid.NewGuid().ToString("N"));
     private DateTimeOffset _now = new(2026, 9, 13, 0, 0, 0, TimeSpan.Zero);
     private string SettingsPath => Path.Combine(_directory, "read-guardrails.json");
     private string LedgerPath => Path.Combine(_directory, "read-guardrails", "ledger.json");

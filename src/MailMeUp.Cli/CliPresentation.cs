@@ -39,9 +39,9 @@ internal sealed class CliPresentation
         }
 
         _output.WriteLine();
-        _output.MarkupLine($"[bold {Mint}]{Icon("📬", "::")} MailMeUp[/]  [dim]v{Markup.Escape(Version)}[/]");
+        _output.MarkupLine($"[bold {Mint}]{Icon("📬", "::")} AgentInbox[/]  [dim]v{Markup.Escape(Version)}[/]");
         _output.MarkupLine("[dim]   All your inboxes. One conversation.[/]");
-        _output.MarkupLine("[dim]   [link=https://github.com/umbertotechnopreneur/MailMeUp]github.com/umbertotechnopreneur/MailMeUp[/][/]");
+        _output.MarkupLine("[dim]   [link=https://github.com/umbertotechnopreneur/AgentInbox]GitHub repository[/][/]");
         _output.MarkupLine("[dim]   by Umberto Giacobbi · [link=https://umbertogiacobbi.biz]umbertogiacobbi.biz[/][/]");
         _output.WriteLine();
     }
@@ -53,25 +53,25 @@ internal sealed class CliPresentation
         _output.MarkupLine("Read-only access to Google and Microsoft accounts from your AI assistant.");
         _output.WriteLine();
         Section("Get started", "🚀");
-        Command("mailmeup ui", "Open or activate the native Windows setup app, keeping its current page");
-        Command("mailmeup setup google <client-json>", "Import your Google Desktop app registration");
-        Command("mailmeup setup microsoft <client-id>", "Save your Microsoft app registration");
-        Command("mailmeup accounts connect <google|microsoft>", "Sign in with read-only mail and calendar access");
-        Command("mailmeup --stdio", "Start the MCP bridge for your assistant");
+        Command("agentinbox ui", "Open or activate the native Windows setup app, keeping its current page");
+        Command("agentinbox setup google <client-json>", "Import your Google Desktop app registration");
+        Command("agentinbox setup microsoft <client-id>", "Save your Microsoft app registration");
+        Command("agentinbox accounts connect <google|microsoft>", "Sign in with read-only mail and calendar access");
+        Command("agentinbox --stdio", "Start the MCP bridge for your assistant");
         _output.WriteLine();
         Section("Manage your setup", "⚙️");
-        Command("mailmeup status", "Show the capabilities implemented in this build");
-        Command("mailmeup setup status", "See which providers are ready for sign-in");
-        Command("mailmeup accounts list", "Show connected accounts and their read access");
-        Command("mailmeup accounts remove <account-id>", "Remove local account metadata and credentials");
-        Command("mailmeup accounts connect <provider> --mail-only", "Request mail read access only");
-        Command("mailmeup accounts connect <provider> --calendar-only", "Request calendar read access only");
+        Command("agentinbox status", "Show the capabilities implemented in this build");
+        Command("agentinbox setup status", "See which providers are ready for sign-in");
+        Command("agentinbox accounts list", "Show connected accounts and their read access");
+        Command("agentinbox accounts remove <account-id>", "Remove local account metadata and credentials");
+        Command("agentinbox accounts connect <provider> --mail-only", "Request mail read access only");
+        Command("agentinbox accounts connect <provider> --calendar-only", "Request calendar read access only");
         _output.WriteLine();
         Section("Explore the setup screens", "🪟");
-        Command("mailmeup ui --list-steps", "List every screen without starting the desktop app");
-        Command("mailmeup ui --step <welcome|accounts|sharing|codex>", "Open a specific setup screen on Windows");
-        Command("mailmeup ui --step sharing --demo", "Preview a screen with sample data and no account access");
-        Command("--desktop-path <MailMeUp.Desktop.exe>", "Use a built desktop executable with mailmeup ui");
+        Command("agentinbox ui --list-steps", "List every screen without starting the desktop app");
+        Command("agentinbox ui --step <welcome|accounts|sharing|codex>", "Open a specific setup screen on Windows");
+        Command("agentinbox ui --step sharing --demo", "Preview a screen with sample data and no account access");
+        Command("--desktop-path <AgentInbox.Desktop.exe>", "Use a built desktop executable with agentinbox ui");
         _output.WriteLine();
         Section("Make it yours", "🎛️");
         Command("--json", "Return JSON; automatic when stdout is redirected");
@@ -81,8 +81,8 @@ internal sealed class CliPresentation
         Command("--help / -h", "Show this help");
         Command("--version", "Print the application version");
         _output.WriteLine();
-        _output.MarkupLine("[dim]MAILMEUP_DATA_DIR selects an absolute local data directory.[/]");
-        _output.MarkupLine("[dim]MAILMEUP_LOG_LEVEL sets the default log level. NO_COLOR disables colors.[/]");
+        _output.MarkupLine("[dim]AGENTINBOX_DATA_DIR selects an absolute local data directory.[/]");
+        _output.MarkupLine("[dim]AGENTINBOX_LOG_LEVEL sets the default log level. NO_COLOR disables colors.[/]");
         _output.MarkupLine("[dim]Mail and calendar reads are available through MCP. Logs go to stderr.[/]");
         _output.WriteLine();
     }
@@ -152,14 +152,14 @@ internal sealed class CliPresentation
                 }
 
                 _output.MarkupLine("[dim]Capabilities describe this build. Provider setup and account access are shown separately.[/]");
-                Next("Check provider setup", "mailmeup setup status");
+                Next("Check provider setup", "agentinbox setup status");
                 break;
             case AccountListOutput accounts:
                 Section("Connected accounts", "👤");
                 if (accounts.Accounts.Count == 0)
                 {
                     _output.MarkupLine("No accounts connected yet.");
-                    Next("Check provider setup", "mailmeup setup status");
+                    Next("Check provider setup", "agentinbox setup status");
                 }
                 else
                 {
@@ -175,14 +175,14 @@ internal sealed class CliPresentation
 
                     _output.WriteLine();
                     _output.MarkupLine($"[dim]{accounts.Accounts.Count} connected account(s). Account IDs can be used with accounts remove.[/]");
-                    Next("Start the bridge from your MCP client", "mailmeup --stdio");
+                    Next("Start the bridge from your MCP client", "agentinbox --stdio");
                 }
 
                 break;
             case AccountConnectionResult connection:
                 Section("Account connected", "✅");
                 WriteAccount(connection.Account);
-                Next("See all connected accounts", "mailmeup accounts list");
+                Next("See all connected accounts", "agentinbox accounts list");
                 break;
             case AccountRemovalResult removal:
                 Section(removal.Removed ? "Account removed" : "Account not found", removal.Removed ? "✅" : "ℹ️");
@@ -194,7 +194,7 @@ internal sealed class CliPresentation
                     _output.MarkupLine("[dim]Provider consent is unchanged; manage it in your Google or Microsoft account.[/]");
                 }
 
-                Next("See connected accounts and IDs", "mailmeup accounts list");
+                Next("See connected accounts and IDs", "agentinbox accounts list");
                 break;
             case ProviderListOutput providers:
                 Section("Provider setup", "⚙️");
@@ -230,14 +230,14 @@ internal sealed class CliPresentation
     internal void WriteError(string message, string? nextStep = null)
     {
         var symbol = _error.Profile.Capabilities.Unicode ? "❌" : "Error:";
-        _error.MarkupLine($"[bold {Coral}]{symbol} MailMeUp[/]  {Safe(message)}");
+        _error.MarkupLine($"[bold {Coral}]{symbol} AgentInbox[/]  {Safe(message)}");
         if (nextStep is not null)
         {
             _error.MarkupLine($"[dim]{Safe(nextStep)}[/]");
         }
     }
 
-    internal void WriteCancelled() => _error.MarkupLine("[yellow]MailMeUp: operation cancelled.[/]");
+    internal void WriteCancelled() => _error.MarkupLine("[yellow]AgentInbox: operation cancelled.[/]");
 
     private void WriteAccount(Account account)
     {
@@ -274,9 +274,9 @@ internal sealed class CliPresentation
         // Only construct executable suggestions for known providers, never from provider-controlled text.
         var command = provider.ProviderId switch
         {
-            "google" => provider.Configured ? "mailmeup accounts connect google" : "mailmeup setup google <client-json>",
-            "microsoft" => provider.Configured ? "mailmeup accounts connect microsoft" : "mailmeup setup microsoft <client-id>",
-            _ => "mailmeup setup status"
+            "google" => provider.Configured ? "agentinbox accounts connect google" : "agentinbox setup google <client-json>",
+            "microsoft" => provider.Configured ? "agentinbox accounts connect microsoft" : "agentinbox setup microsoft <client-id>",
+            _ => "agentinbox setup status"
         };
         Command(command, provider.Configured ? "Next: connect an account" : "Next: register your app");
     }

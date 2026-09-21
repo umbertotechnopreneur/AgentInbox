@@ -8,31 +8,31 @@
 
 ## Why this is needed
 
-Google and Microsoft need your permission before MailMeUp can read an account. You'll sign in on their website, see which permissions MailMeUp asks for, and decide whether to allow them. This sign-in process is called OAuth.
+Google and Microsoft need your permission before AgentInbox can read an account. You'll sign in on their website, see which permissions AgentInbox asks for, and decide whether to allow them. This sign-in process is called OAuth.
 
 A **Client ID** tells Google or Microsoft which app is asking. It isn't your account password. Google gives you a downloadable JSON configuration file; keep it private. Microsoft gives you an **Application (client) ID** and doesn't need a client secret for this desktop setup.
 
-Set up Google, Microsoft or both. You'll sign in to each account separately. MailMeUp saves the resulting sign-in tokens using your operating system's protected storage.
+Set up Google, Microsoft or both. You'll sign in to each account separately. AgentInbox saves the resulting sign-in tokens using your operating system's protected storage.
 
 ## Before you begin
 
-Open PowerShell and point it to your copy of MailMeUp. Replace this example path with your own:
+Open PowerShell and point it to your copy of AgentInbox. Replace this example path with your own:
 
 ```powershell
-$MailMeUp = 'C:\Tools\MailMeUp\mailmeup.exe'
-& $MailMeUp --help
+$AgentInbox = 'C:\Tools\AgentInbox\agentinbox.exe'
+& $AgentInbox --help
 ```
 
-The commands below use `$MailMeUp`, so you can run them from any folder. Keep JSON contents, tokens and client secrets out of chats, GitHub and terminal output you share.
+The commands below use `$AgentInbox`, so you can run them from any folder. Keep JSON contents, tokens and client secrets out of chats, GitHub and terminal output you share.
 
 ## Google: register the app and connect an account
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project for MailMeUp.
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project for AgentInbox.
 2. In **APIs & Services > Library**, enable only **Gmail API** and **Google Calendar API**.
 3. Open **Google Auth Platform**:
    - set the app name and contact email;
    - choose **External** if personal or other Google accounts will sign in;
-   - keep the app in **Testing** while trying MailMeUp;
+   - keep the app in **Testing** while trying AgentInbox;
    - add the exact Google accounts that may test the app.
 4. Under **Data Access**, add these permissions (Google calls them scopes):
 
@@ -45,13 +45,13 @@ The commands below use `$MailMeUp`, so you can run them from any folder. Keep JS
    https://www.googleapis.com/auth/calendar.events.readonly
    ```
 
-5. Under **Clients**, create a **Desktop app** client named **MailMeUp Desktop**. Download its JSON file and keep it in a private local folder.
-6. Import the file into MailMeUp, then start sign-in:
+5. Under **Clients**, create a **Desktop app** client named **AgentInbox Desktop**. Download its JSON file and keep it in a private local folder.
+6. Import the file into AgentInbox, then start sign-in:
 
    ```powershell
-   & $MailMeUp setup google 'C:\Private\client_secret.json'
-   & $MailMeUp setup status
-   & $MailMeUp accounts connect google
+   & $AgentInbox setup google 'C:\Private\client_secret.json'
+   & $AgentInbox setup status
+   & $AgentInbox accounts connect google
    ```
 
 7. Sign in with one of the configured Google test users and approve the read-only permissions. Run the last command again for every additional Google account.
@@ -61,7 +61,7 @@ Keep the Google app in Testing for this preview. You don't need to publish it, c
 ## Microsoft: register the app and connect an account
 
 1. Open [Microsoft Entra](https://entra.microsoft.com/) with a directory where you can register applications. Go to **Entra ID > App registrations > New registration**.
-2. Name the app **MailMeUp Desktop**.
+2. Name the app **AgentInbox Desktop**.
 3. To use both Outlook.com and Microsoft 365, choose **Accounts in any organizational directory and personal Microsoft accounts**. Choose a more limited option if you only want certain accounts to sign in.
 4. In **Authentication**, add the **Mobile and desktop applications** platform with this redirect URI:
 
@@ -77,12 +77,12 @@ Keep the Google app in Testing for this preview. You don't need to publish it, c
    ```
 
 6. Do not create a certificate or client secret. Do not add application permissions, `Mail.ReadWrite`, `Mail.Send`, or `Calendars.ReadWrite`. Do not grant tenant-wide admin consent unless your organization explicitly requires and approves it.
-7. On **Overview**, copy the **Application (client) ID**. Configure MailMeUp and start browser sign-in:
+7. On **Overview**, copy the **Application (client) ID**. Configure AgentInbox and start browser sign-in:
 
    ```powershell
-   & $MailMeUp setup microsoft '<application-client-id>'
-   & $MailMeUp setup status
-   & $MailMeUp accounts connect microsoft
+   & $AgentInbox setup microsoft '<application-client-id>'
+   & $AgentInbox setup status
+   & $AgentInbox accounts connect microsoft
    ```
 
 8. Choose your Microsoft account in the browser and approve the read-only permissions. Run the last command again for each additional Microsoft account.
@@ -92,9 +92,9 @@ Your workplace or school may limit which apps you can connect. If sign-in is blo
 ## Check connected accounts
 
 ```powershell
-& $MailMeUp accounts list
+& $AgentInbox accounts list
 ```
 
 Add `--mail-only` or `--calendar-only` to `accounts connect` if you only want to share email or calendars. Use `accounts remove <account-id>` to remove an account and its saved sign-in tokens from this device. To revoke the app's access too, use your Google or Microsoft account settings.
 
-MailMeUp only reads. It can't send email, change or delete messages, create or edit appointments, or send invitations.
+AgentInbox only reads. It can't send email, change or delete messages, create or edit appointments, or send invitations.

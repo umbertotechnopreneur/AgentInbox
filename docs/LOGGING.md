@@ -1,19 +1,19 @@
 # Diagnostics
 
-MailMeUp uses Serilog in the executables and `ILogger<T>` in the application and provider readers. UI, CLI and MCP share the same diagnostic format.
+AgentInbox uses Serilog in the executables and `ILogger<T>` in the application and provider readers. UI, CLI and MCP share the same diagnostic format.
 
 The CLI writes diagnostics to stderr and the Windows setup app writes them to a shared local file. Both use the same bounded application events, so a UI check and a later Codex/MCP call can be compared without exposing provider data. MCP stdout remains reserved for JSON-RPC; no banner, progress animation or log line is written there.
 
-The file is `%LOCALAPPDATA%\MailMeUp\logs\mailmeup-YYYYMMDD.log` by default, or under `logs` below `MAILMEUP_DATA_DIR`. Files roll daily and at 10 MiB, retaining the newest 14 files (not necessarily 14 days). Size-rolled files have a numeric suffix. The file sink records debug and above; console verbosity is controlled separately. Shutdown disposes the logger and flushes events.
+The file is `%LOCALAPPDATA%\AgentInbox\logs\agentinbox-YYYYMMDD.log` by default, or under `logs` below `AGENTINBOX_DATA_DIR`. Files roll daily and at 10 MiB, retaining the newest 14 files (not necessarily 14 days). Size-rolled files have a numeric suffix. The file sink records debug and above; console verbosity is controlled separately. Shutdown disposes the logger and flushes events.
 
 ## Levels
 
-The default is `warning`. Set `MAILMEUP_LOG_LEVEL` or pass `--log-level`; the command option takes precedence. Accepted levels are `verbose`, `debug`, `information`, `warning`, `error` and `fatal`.
+The default is `warning`. Set `AGENTINBOX_LOG_LEVEL` or pass `--log-level`; the command option takes precedence. Accepted levels are `verbose`, `debug`, `information`, `warning`, `error` and `fatal`.
 
 ```powershell
-mailmeup accounts list --json --log-level debug
-mailmeup --stdio --log-level information
-mailmeup setup status --no-color --no-animation
+agentinbox accounts list --json --log-level debug
+agentinbox --stdio --log-level information
+agentinbox setup status --no-color --no-animation
 ```
 
 - Debug: operation starts, successful HTTP endpoint labels/status/timing and the presence of mail filters, never their values.
@@ -36,7 +36,7 @@ The log distinguishes failures, searches without a detail sample and verified sa
 
 ## Privacy boundary
 
-Only `MailMeUp.*` source categories are admitted to the Serilog sink. External SDK, host and transport logs are excluded at every level because they may include request arguments, response content or provider exception messages. The application decorator supplies bounded diagnostics in their place.
+Only `AgentInbox.*` source categories are admitted to the Serilog sink. External SDK, host and transport logs are excluded at every level because they may include request arguments, response content or provider exception messages. The application decorator supplies bounded diagnostics in their place.
 
 Do not log raw account IDs, addresses, user paths, command arguments, search values, local/provider item references, message or event content, authorization headers, credentials, or exception objects/messages. Only the explicitly bounded fields and pseudonymous account key above are permitted. Never log arbitrary response headers, error strings, URLs, JSON paths or SDK errors. The category filter does not sanitize arbitrary future messages.
 
@@ -44,9 +44,9 @@ Account information explicitly requested by the owner appears in CLI results or 
 
 For comparison, run **Check connections** in the Windows app, then repeat the failing Codex operation. Compare the same account key across separate operation IDs. Absence of a Codex operation means it did not reach this logging/data context, not that the mailbox failed. `Unknown` does not prove that reconnection is required. Existing MCP processes must restart after an update to emit the new diagnostics.
 
-## Google request limits — installed 0.1.1.19/0.1.1.20 behavior
+## Google request limits
 
-The source-only follow-up replaces the process-local queue below with shared per-service profile guardrails and adds Microsoft throttling recovery. It has not been compiled or run. See [read guardrails](READ_GUARDRAILS.md).
+The current source replaces the earlier process-local queue below with shared per-service profile guardrails and adds Microsoft throttling recovery. It is included in the locally installed AgentInbox Debug x64 package `0.0.1.1`; the synthetic suite and isolated smoke checks passed, while live provider behavior remains untested. See [read guardrails](READ_GUARDRAILS.md).
 
 The Google readers classify HTTP 403 using the bounded allowlisted provider reason. A recognized request/quota limit or HTTP 429 produces `RateLimited` and safe `rate_limited` advice; a genuine permission error remains `AccessDenied`. This follows the [Gmail error contract](https://developers.google.com/workspace/gmail/api/guides/handle-errors). The Windows account check offers wait/narrow-search guidance for rate-limit-only failures instead of reconnecting.
 

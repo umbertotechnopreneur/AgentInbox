@@ -7,7 +7,7 @@ namespace MailMeUp.Tests;
 
 public sealed class AccountStoreTests : IDisposable
 {
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "MailMeUp.Tests", Guid.NewGuid().ToString("N"));
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "AgentInbox.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
     public async Task FreshRegistryReadDoesNotCreateFiles()

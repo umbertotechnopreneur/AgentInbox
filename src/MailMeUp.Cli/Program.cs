@@ -47,9 +47,9 @@ if (options.Command == CliCommand.Ui)
     }
 }
 
-var dataDirectory = DataDirectory.Resolve(Environment.GetEnvironmentVariable("MAILMEUP_DATA_DIR"));
+var dataDirectory = DataDirectory.ResolveFromEnvironment();
 using var diagnostics = CliLogging.Create(options, dataDirectory);
-var startupLogger = diagnostics.ForContext("SourceContext", "MailMeUp.Cli");
+var startupLogger = diagnostics.ForContext("SourceContext", "AgentInbox.Cli");
 using var cancellation = new CancellationTokenSource();
 ConsoleCancelEventHandler onCancel = (_, eventArgs) =>
 {
@@ -101,10 +101,10 @@ catch (Exception exception)
     startupLogger.Debug("Command {Command} failed ({ErrorType})", options.Command, exception.GetType().Name);
     presentation.WriteError($"Could not complete the operation ({exception.GetType().Name}).", options.Command switch
     {
-        CliCommand.Connect => "Run mailmeup setup status, then check provider consent and retry sign-in.",
+        CliCommand.Connect => "Run agentinbox setup status, then check provider consent and retry sign-in.",
         CliCommand.Setup => "Check the app registration input, file access and operating-system credential storage.",
-        CliCommand.Remove => "Run mailmeup accounts list and use the exact local account ID.",
-        _ => "Review the local setup and MAILMEUP_DATA_DIR, then try again."
+        CliCommand.Remove => "Run agentinbox accounts list and use the exact local account ID.",
+        _ => "Review the local setup and AGENTINBOX_DATA_DIR, then try again."
     });
     return 1;
 }

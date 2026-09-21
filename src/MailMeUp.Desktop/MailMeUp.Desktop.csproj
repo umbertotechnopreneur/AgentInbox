@@ -5,7 +5,7 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <RootNamespace>MailMeUp.Desktop</RootNamespace>
-    <AssemblyName>MailMeUp.Desktop</AssemblyName>
+    <AssemblyName>AgentInbox.Desktop</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWinUI>true</UseWinUI>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
@@ -22,7 +22,7 @@
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Description>Set up read-only accounts and connect MailMeUp to Codex.</Description>
+    <Description>Set up read-only accounts and connect AgentInbox to Codex.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../MailMeUp.Hosting/MailMeUp.Hosting.csproj" />
@@ -33,8 +33,8 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="../../resources/mailmeup-logo-512-safe.png" Link="Assets/Logo.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="../../resources/mailmeup-about-banner.png" Link="Assets/AboutBanner.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../resources/agentinbox-logo-512-safe.png" Link="Assets/Logo.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../resources/agentinbox-about-banner.png" Link="Assets/AboutBanner.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../resources/wizard/hero.png" Link="Assets/WizardHero.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../resources/wizard/rail.png" Link="Assets/WizardRail.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../resources/providers/google.svg" Link="Assets/Google.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

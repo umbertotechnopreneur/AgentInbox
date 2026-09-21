@@ -94,5 +94,5 @@ jobs:
             echo 'The release is already published; its assets must not be replaced by this workflow.' >&2
             exit 1
           else
-            gh release create "$RELEASE_TAG" dist/* --verify-tag --draft --prerelease --generate-notes --title "MailMeUp $RELEASE_TAG"
+            gh release create "$RELEASE_TAG" dist/* --verify-tag --draft --prerelease --generate-notes --title "AgentInbox $RELEASE_TAG"
           fi

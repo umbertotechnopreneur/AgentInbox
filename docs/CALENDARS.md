@@ -1,8 +1,8 @@
 # Calendars and appointments
 
-Ask your assistant for appointments across the calendars you've chosen to share. MailMeUp shows a short agenda first. It fetches descriptions, attendees and meeting links when you ask for more detail.
+Ask your assistant for appointments across the calendars you've chosen to share. AgentInbox shows a short agenda first. It fetches descriptions, attendees and meeting links when you ask for more detail.
 
-You need to allow calendar access when connecting each account. Email access alone doesn't include calendars. MailMeUp reads Google Calendar and Microsoft calendars through their APIs.
+You need to allow calendar access when connecting each account. Email access alone doesn't include calendars. AgentInbox reads Google Calendar and Microsoft calendars through their APIs.
 
 ## Example requests
 
@@ -20,7 +20,7 @@ If a calendar couldn't be searched, the answer must say so. An empty list only m
 
 ## Reading only
 
-MailMeUp can't create, edit or delete appointments, send or reply to invitations, or change attendees.
+AgentInbox can't create, edit or delete appointments, send or reply to invitations, or change attendees.
 
 This is still an early preview. Windows checks passed across seven real calendars, and tests with made-up data cover date boundaries and fetching more pages. Real recurring meetings, cancellations and time-zone examples still need comparison with Google or Microsoft.
 

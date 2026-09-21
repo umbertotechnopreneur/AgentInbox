@@ -35,8 +35,8 @@ public sealed partial class MainWindow
             CodexConnectionChoices.Visibility = CodexNextStepsPanel.Visibility = CodexFirstTaskPanel.Visibility = Visibility.Collapsed;
             SwitchCodexConnectionButton.Visibility = Visibility.Collapsed;
             InstallPluginButton.IsEnabled = false;
-            CodexStatusTitle.Text = install ? "Adding MailMeUp to Codex…" : "Checking your Codex settings…";
-            CodexStatusText.Text = install ? "Installing the MailMeUp plugin on this device." : "Looking for an existing MailMeUp connection.";
+            CodexStatusTitle.Text = install ? "Adding AgentInbox to Codex…" : "Checking your Codex settings…";
+            CodexStatusText.Text = install ? "Installing the AgentInbox plugin on this device." : "Looking for an existing AgentInbox connection.";
             CodexStatusCaption.Text = "Your email is not read during this step.";
             CodexStatusIcon.Glyph = "\uE895";
             CodexDiagnosticText.Text = "Waiting for local configuration results. No prompt or mailbox check is running.";
@@ -84,7 +84,7 @@ public sealed partial class MainWindow
         RenderCodexChecks(checks);
         CodexCheckedText.Text = $"Last attempt: {DateTimeOffset.Now:HH:mm:ss} · Local configuration only";
         _codexReport = string.Join(Environment.NewLine,
-            new[] { "MailMeUp — Codex setup", CodexCheckedText.Text, $"Result: {status.Code}", status.Message }
+            new[] { "AgentInbox — Codex setup", CodexCheckedText.Text, $"Result: {status.Code}", status.Message }
                 .Concat(checks.Select(check => $"{check.Name}: {check.Result}"))
                 .Append("Runtime connection, Codex sign-in and mailbox access: not tested."));
         CopyCodexResultsButton.Content = "Copy setup results";
@@ -105,14 +105,14 @@ public sealed partial class MainWindow
 
         CodexConnectionNotice.Title = view.Title;
         CodexConnectionNotice.Message = status.DirectRegistrationCount > 1
-            ? "Codex lists several direct MailMeUp entries. Keep one connection method."
-            : "Codex lists a MailMeUp plugin and a direct connection. Keep one connection method.";
+            ? "Codex lists several direct AgentInbox entries. Keep one connection method."
+            : "Codex lists an AgentInbox plugin and a direct connection. Keep one connection method.";
         CodexConnectionNotice.IsOpen = duplicate;
         CodexStatusPanel.Visibility = ToVisibility(!duplicate);
         CodexStatusTitle.Text = status.Code == "DirectConfigured" && !ready ? "Direct connection configured" : view.Title;
         CodexStatusText.Text = CodexStatusSummary(status);
         CodexStatusCaption.Text = ready ? "Settings checked. Try your first request below to test the connection."
-            : status.Code == "ReadyToInstall" ? "Select Install plugin to add MailMeUp to Codex."
+            : status.Code == "ReadyToInstall" ? "Select Install plugin to add AgentInbox to Codex."
             : "Your saved account and sharing choices are kept.";
         CodexStatusIcon.Glyph = ready ? "\uE73E" : status.Code == "ReadyToInstall" ? "\uE943" : "\uE946";
 
@@ -121,7 +121,7 @@ public sealed partial class MainWindow
         CodexPluginChoice.IsChecked = _keepCodexPlugin == true;
         CodexDirectChoice.IsChecked = _keepCodexPlugin == false;
         _renderingCodexChoices = false;
-        CodexPluginChoiceStatus.Text = status.Checks.FirstOrDefault(check => check.Name == "MailMeUp plugin")?.Result
+        CodexPluginChoiceStatus.Text = status.Checks.FirstOrDefault(check => check.Name == "AgentInbox plugin")?.Result
             ?? (status.IsPluginConfigured ? "Installed and enabled" : "Not checked");
         CodexDirectChoiceStatus.Text = status.DirectRegistrationCount > 1 ? $"{status.DirectRegistrationCount} entries found"
             : status.IsDirectRegistrationEnabled switch
@@ -152,10 +152,10 @@ public sealed partial class MainWindow
     private void UpdateCodexPageHeading()
     {
         if (_step != 3) return;
-        PageTitle.Text = IsCodexSetupReady ? "You're ready to try MailMeUp" : "Finish connecting to Codex";
+        PageTitle.Text = IsCodexSetupReady ? "You're ready to try AgentInbox" : "Finish connecting to Codex";
         PageSubtitle.Text = IsCodexSetupReady ? "Your selected accounts, one conversation."
             : _codexStatus?.Code is "DirectRegistrationExists" or "DirectConfigured"
-                ? "Choose which MailMeUp connection to keep."
+                ? "Choose which AgentInbox connection to keep."
                 : "Let Codex find emails and appointments in the accounts you choose.";
     }
 
@@ -191,16 +191,16 @@ public sealed partial class MainWindow
     private static string CodexStatusSummary(CodexSetupStatus status) => status.Code switch
     {
         "ReadyToInstall" => "The local plugin is ready to add to Codex.",
-        "PluginConfigured" => "MailMeUp plugin installed and enabled.",
-        "DirectConfigured" => "One direct MailMeUp entry is enabled, with no enabled MailMeUp plugin.",
+        "PluginConfigured" => "AgentInbox plugin installed and enabled.",
+        "DirectConfigured" => "One direct AgentInbox entry is enabled, with no enabled AgentInbox plugin.",
         "DirectRegistrationExists" => status.IsPluginConfigured
-            ? "Choose one MailMeUp connection in Codex to avoid duplicate tools."
+            ? "Choose one AgentInbox connection in Codex to avoid duplicate tools."
             : "You can keep your existing connection or review how to switch to the plugin.",
-        "PluginDisabled" => "Enable MailMeUp in Codex's plugin settings, then refresh here.",
-        "OtherPluginExists" => "Review the existing MailMeUp plugin before adding this local copy.",
-        "AliasUnavailable" => "Restore the portable folder or enable the installed MailMeUp command to continue.",
+        "PluginDisabled" => "Enable AgentInbox in Codex's plugin settings, then refresh here.",
+        "OtherPluginExists" => "Review the existing AgentInbox plugin before adding this local copy.",
+        "AliasUnavailable" => "Restore the portable folder or enable the installed AgentInbox command to continue.",
         "CodexUnavailable" => "Automatic setup needs the native Codex command-line app.",
-        "MarketplaceConflict" => "Review the existing local marketplace before installing MailMeUp.",
+        "MarketplaceConflict" => "Review the existing local marketplace before installing AgentInbox.",
         "CheckInterrupted" => "The operation was interrupted. Refresh status before trying again.",
         "ConfigurationUnknown" => "Setup could not be confirmed. Refresh status to try again.",
         "PluginStatusUnknown" => "The plugin could not be checked. Refresh status or review the details.",

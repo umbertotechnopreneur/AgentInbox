@@ -1,31 +1,31 @@
-# MailMeUp — Connect your inboxes to your AI assistant.
+# AgentInbox — Connect your inboxes to your AI assistant.
 
 Search Google and Microsoft email and calendars from Codex, Claude, or another app with local MCP support, including Visual Studio Code.
 
-Connect your work, personal, and client accounts, then ask for messages or appointments across them. You choose which accounts the assistant can read. MailMeUp runs on your computer and can't send mail or change your accounts.
+Connect your work, personal, and client accounts, then ask for messages or appointments across them. You choose which accounts the assistant can read. AgentInbox runs on your computer and can't send mail or change your accounts.
 
 **[Get started](docs/GETTING_STARTED.md)** · [Windows portable setup](docs/WINDOWS_PORTABLE.md) · [Client compatibility](#ai-assistant-support) · [Privacy](docs/PRIVACY.md)
 
-![MailMeUp cross-account search in an AI conversation, with email addresses hidden](docs/assets/branding/mailmeup-chat-search.png)
+![AgentInbox cross-account search in an AI conversation, with email addresses hidden](docs/assets/branding/agentinbox-chat-search.png)
 
-*Example search with addresses hidden. Setup and testing focus on Codex on Windows x64. Other clients haven't been tested with MailMeUp.*
+*Example search with addresses hidden. Setup and testing focus on Codex on Windows x64. Other clients haven't been tested with AgentInbox.*
 
 ## Get started
 
-1. Extract the [Windows portable ZIP](docs/WINDOWS_PORTABLE.md) and open `MailMeUp.Desktop.exe`.
+1. Extract the [Windows portable ZIP](docs/WINDOWS_PORTABLE.md) and open `AgentInbox.Desktop.exe`.
 2. Follow [provider registration](docs/APP_REGISTRATION.md), sign in to each account, and choose what to share.
 3. Connect to Codex, then ask for unread mail or upcoming meetings. See [the setup guide](docs/GETTING_STARTED.md) for the full steps.
 
-[![CI](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/MailMeUp/actions/workflows/ci.yml)
+[![CI](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 ![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-F6C453)
 
 > [!WARNING]
-> **MailMeUp is still an early preview.** Try it while keeping an eye on the results. Commands, setup steps and local data formats may change before a stable release.
+> **AgentInbox is still an early preview.** Try it while keeping an eye on the results. Commands, setup steps and local data formats may change before a stable release.
 
-> **Your assistant may send the information you request to its AI service.** MailMeUp runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
+> **Your assistant may send the information you request to its AI service.** AgentInbox runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
 
-## Why MailMeUp?
+## Why AgentInbox?
 
 Connect several independent mailboxes without switching accounts in your assistant. Sign in to each Google or Microsoft account separately and choose what to share. A mix of ten work and personal accounts is a useful example, but that account count hasn't been tested.
 
@@ -42,19 +42,19 @@ The official documentation reviewed did not establish a built-in setup for conne
 - Claude's [Microsoft 365 guide](https://support.claude.com/en/articles/12542951-set-up-the-microsoft-365-connector) explicitly supports delegated access to shared mailboxes. Those mailboxes are accessed through an authorized work account; this is distinct from signing in to several independent accounts across providers.
 - OpenAI documents [plugins](https://learn.chatgpt.com/docs/plugins) and [custom MCP connections](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) for Codex. Those extension points allow other integrations; these guides do not establish a universal one-mailbox limit for Gmail or Outlook plugins.
 
-MailMeUp's focus is a simple, local, read-only connection for the independent accounts you choose to share with your assistant.
+AgentInbox's focus is a simple, local, read-only connection for the independent accounts you choose to share with your assistant.
 
 </details>
 
 ## Small and native
 
-The MailMeUp command-line processes in the Task Manager snapshot below use **7.4–9.6 MB of RAM each** while waiting for requests. That's one snapshot, so memory use will vary with the work you're doing.
+The AgentInbox command-line processes in the Task Manager snapshot below use **7.4–9.6 MB of RAM each** while waiting for requests. That's one snapshot, so memory use will vary with the work you're doing.
 
-I build small, native apps. MailMeUp's Windows setup app lets you connect accounts and choose what to share. Other platforms still need testing.
+I build small, native apps. AgentInbox's Windows setup app lets you connect accounts and choose what to share. Other platforms still need testing.
 
-![Windows Task Manager showing the highlighted MailMeUp CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/mailmeup-task-manager-lightweight.png)
+![Windows Task Manager showing the highlighted AgentInbox CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/agentinbox-task-manager-lightweight.png)
 
-*MailMeUp is highlighted. Other processes are blurred for privacy.*
+*AgentInbox is highlighted. Other processes are blurred for privacy.*
 
 ## What you can try
 
@@ -64,7 +64,7 @@ I build small, native apps. MailMeUp's Windows setup app lets you connect accoun
 - Choose which accounts and calendars to include.
 - Return short results first, then open the details you need.
 
-Each person connects their own accounts. You don't need a hosted MailMeUp service or a public marketplace.
+Each person connects their own accounts. You don't need a hosted AgentInbox service or a public marketplace.
 
 ## Before you start
 
@@ -78,7 +78,7 @@ Each person connects their own accounts. You don't need a hosted MailMeUp servic
 
 The Windows app helps you connect accounts, choose what to share and set up Codex. Its **Check read access** button tries sample searches and reads for mail and calendars separately. It helps spot connection problems; it doesn't guarantee every future search will work.
 
-Prefer no installer? The [complete Windows portable ZIP](docs/WINDOWS_PORTABLE.md) includes the setup app and CLI/MCP tools. Extract the whole ZIP and open `MailMeUp.Desktop.exe`. Keep that folder in place after connecting Codex.
+Prefer no installer? The [complete Windows portable ZIP](docs/WINDOWS_PORTABLE.md) includes the setup app and CLI/MCP tools. Extract the whole ZIP and open `AgentInbox.Desktop.exe`. Keep that folder in place after connecting Codex.
 
 Your sign-in tokens stay on your computer, protected by the operating system. Earlier builds have been tried with real Google and Microsoft accounts. Newer changes still need checks; the [validation record](docs/VALIDATION.md) lists what was tested in each version.
 
@@ -87,7 +87,7 @@ Your sign-in tokens stay on your computer, protected by the operating system. Ea
 
 Codex is the main focus today. You can use the [Windows setup app](docs/WINDOWS_SETUP.md) to prepare its local plugin, or follow the [manual setup guide](docs/CODEX_SETUP.md).
 
-MailMeUp connects through a local MCP process. Claude, Visual Studio Code, and other MCP clients are intended connection options, but haven't been tested with MailMeUp. ChatGPT Desktop isn't supported as a direct local connection yet.
+AgentInbox connects through a local MCP process. Claude, Visual Studio Code, and other MCP clients are intended connection options, but haven't been tested with AgentInbox. ChatGPT Desktop isn't supported as a direct local connection yet.
 
 If you'd like to help try another client and document the setup, see [how to contribute](CONTRIBUTING.md).
 
@@ -99,7 +99,7 @@ If you'd like to help try another client and document the setup, see [how to con
 
 ## How it fits together
 
-Your accounts connect to your assistant through MailMeUp's local MCP process. Email and calendars use the same connection. Requested information may reach your assistant's AI service. See the [architecture guide](docs/ARCHITECTURE.md).
+Your accounts connect to your assistant through AgentInbox's local MCP process. Email and calendars use the same connection. Requested information may reach your assistant's AI service. See the [architecture guide](docs/ARCHITECTURE.md).
 
 ## Explore the project
 
@@ -121,11 +121,11 @@ Artwork, source prompts and writing style: [brand guide](docs/BRAND.md).
 ## More from MeUp
 
 <p align="center">
-  <img src="docs/assets/meup/mailmeup-mark-v1.png" alt="MailMeUp brand mark: an envelope, calendar, and connected access points" width="132" />
+  <img src="docs/assets/meup/agentinbox-mark-v1.png" alt="AgentInbox brand mark: an envelope, calendar, and connected access points" width="132" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/umbertotechnopreneur/MailMeUp"><strong>MailMeUp</strong></a> · Connect your inboxes to your AI assistant.<br />
+  <a href="https://github.com/umbertotechnopreneur/AgentInbox"><strong>AgentInbox</strong></a> · Connect your inboxes to your AI assistant.<br />
   <a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>PromptMeUp</strong></a> · Describe your task. Get the command.<br />
   <a href="https://github.com/umbertotechnopreneur/TrackMeUp"><strong>TrackMeUp</strong></a> · Track your time. Find what you worked on.
 </p>

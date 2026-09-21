@@ -118,9 +118,9 @@ class RunnerRegressionTests(unittest.TestCase):
     """Exercise the runner entry point, failure boundaries and real validation logic."""
 
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="mailmeup-manual-runner-tests-")
+        self.directory = tempfile.TemporaryDirectory(prefix="agentinbox-manual-runner-tests-")
         self.addCleanup(self.directory.cleanup)
-        self.executable = Path(self.directory.name) / "synthetic-mailmeup.exe"
+        self.executable = Path(self.directory.name) / "synthetic-agentinbox.exe"
 
     def invoke(self, session=None, argv=None, environment=None):
         stdout, stderr = io.StringIO(), io.StringIO()

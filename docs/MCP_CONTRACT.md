@@ -22,7 +22,7 @@ All tools are read-only. A new installation has no accounts. Paths, provider ite
 
 Provider registration, interactive account connection and sharing choices belong to the local CLI or Windows setup app. They are deliberately not exposed through MCP. Calendar discovery for the owner's sharing picker is also local-only.
 
-The September 13 source adds `read_guardrail_usage` and `read_guardrail_settings_pending_restart` to `get_status`. Usage is a local profile snapshot with counters and expiry timestamps, not provider quota or token accounting. Unsupported management returns `null` for both fields. Status makes no provider requests and remains available without charging the read/output budgets. Saved limit changes require restarting the participating MailMeUp processes; no settings-write tool is registered. See [read guardrails](READ_GUARDRAILS.md).
+The September 13 source adds `read_guardrail_usage` and `read_guardrail_settings_pending_restart` to `get_status`. Usage is a local profile snapshot with counters and expiry timestamps, not provider quota or token accounting. Unsupported management returns `null` for both fields. Status makes no provider requests and remains available without charging the read/output budgets. Saved limit changes require restarting the participating AgentInbox processes; no settings-write tool is registered. See [read guardrails](READ_GUARDRAILS.md).
 
 The application reloads local sharing choices for every read, including existing references and continuation cursors. It checks access again before releasing a response; a change made during a read discards that response. Hidden accounts are omitted from discovery and continuation coverage. Provider consent and local sharing are independent: consent alone does not override a saved sharing choice.
 
@@ -43,13 +43,13 @@ Mail search accepts common text plus optional sender/recipient contains filters,
 
 The September 14 source adds `inboxOnly`: it defaults to `true` for `search_unread_mail` and `false` for `search_mail` and `search_mail_by_date`. For an unread Inbox briefing, combine `search_unread_mail` with the required date range. Pass `inboxOnly: false` explicitly to include unread archived or moved messages, while retaining Spam/Junk and Trash/Deleted exclusions. Inbox scope includes all Gmail Inbox categories, not only Primary; it does not exclude senders. A custom Gmail label does not itself remove a message from Inbox.
 
-Inbox filtering happens at the provider before preview retrieval: Gmail requires the `INBOX` label, and Microsoft queries the Inbox message collection without traversing child folders. Results report `inbox_only` alongside their effective dates. Continuations retain this scope and reject a changed `inboxOnly` value. This source increment has not been built, tested or installed.
+Inbox filtering happens at the provider before preview retrieval: Gmail requires the `INBOX` label, and Microsoft queries the Inbox message collection without traversing child folders. Results report `inbox_only` alongside their effective dates. Continuations retain this scope and reject a changed `inboxOnly` value. Synthetic tests and installed CLI/MCP smoke passed; real Gmail and Microsoft behavior remains untested for this increment.
 
 In the current source, searches without explicit dates cover the previous 14 days by default. The Windows Sharing page can save a global default from 1 to 365 days. Longer periods take more time, require more provider requests and can hit provider limits. An explicit start, end or recognized native provider date expression overrides the default; older mail remains available when requested explicitly. Calendar windows are unchanged.
 
 Mail results include `effective_start`, `effective_end` and `default_lookback_days_applied`. Default windows use a fixed inclusive start and exclusive end for the whole search, including continuations. Dates embedded only in provider text are not translated into these fields. Local preferences reload for each request; changing the default requires a fresh search instead of continuing a cursor created with the old default. The local file is `search-preferences.json`, under the runtime data directory. MCP reports this preference but cannot change it.
 
-Microsoft text/address searches use Graph `$search` without `$filter` or `$orderby`. Structured date bounds become `received` constraints inside the search expression, using [KQL UTC date comparisons](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference#date-or-time-values-for-properties). MailMeUp also filters each returned page locally before releasing matches and keeps its continuation even when all items on a page are excluded. Structured listings without search text or address criteria retain Graph filtering and received-time ordering. Graph message search has an [index limit of 1,000 results](https://learn.microsoft.com/en-us/graph/search-query-parameter#use-search-on-message-collections); it is not an exhaustive mailbox export. Narrow searches when needed. Existing refill limits and timeouts report partial account coverage.
+Microsoft text/address searches use Graph `$search` without `$filter` or `$orderby`. Structured date bounds become `received` constraints inside the search expression, using [KQL UTC date comparisons](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference#date-or-time-values-for-properties). AgentInbox also filters each returned page locally before releasing matches and keeps its continuation even when all items on a page are excluded. Structured listings without search text or address criteria retain Graph filtering and received-time ordering. Graph message search has an [index limit of 1,000 results](https://learn.microsoft.com/en-us/graph/search-query-parameter#use-search-on-message-collections); it is not an exhaustive mailbox export. Narrow searches when needed. Existing refill limits and timeouts report partial account coverage.
 
 Search first, select relevant previews, then read the details needed for the request. Do not open every match for a compact briefing. Keep detail reads sequential per account and bound the work; disclose a selection or unexamined pages instead of claiming an exhaustive review. `coverage_complete` reports account failures, while `next_cursor` reports remaining pages. Neither field says that every message body was read. Omit raw HTML, MIME, binary attachments and unnecessary attendee lists.
 
@@ -61,7 +61,7 @@ Calendar discovery returns at most 100 calendars per account and reports incompl
 
 ## Tell the user when reading fails
 
-Read failures include a trusted, adapter-generated `user_notification` object in both structured content and the JSON text content. The calling assistant must tell the user that the MailMeUp plugin failed to read the requested information, explain the supplied reason in plain English, and suggest the recovery step. A failed read must never be described as an empty inbox or calendar.
+Read failures include a trusted, adapter-generated `user_notification` object in both structured content and the JSON text content. The calling assistant must tell the user that the AgentInbox plugin failed to read the requested information, explain the supplied reason in plain English, and suggest the recovery step. A failed read must never be described as an empty inbox or calendar.
 
 Partial results keep their normal fields and healthy results, set `coverage_complete` to `false`, and include per-account failure details. A failure with no usable results from any requested account sets the MCP result's `isError` to `true`. Exceptions that prevent the call also set `isError` and return a bounded error category with a notification. Caller cancellation remains cancellation.
 
@@ -72,12 +72,12 @@ For example, an expired sign-in produces this JSON content:
   "error": {
     "code": "sign_in_required",
     "explanation": "The account's sign-in has expired, was removed, or needs approval again.",
-    "action": "Open MailMeUp and sign in to the affected account again."
+    "action": "Open AgentInbox and sign in to the affected account again."
   },
   "user_notification": {
     "required": true,
-    "instruction": "Please tell the user that the MailMeUp plugin failed to read the requested information. Explain the reason and suggest the recovery step in this notification. Do not describe this failure as an empty inbox or an empty calendar.",
-    "message": "The MailMeUp plugin could not read the requested information. The account's sign-in has expired, was removed, or needs approval again. Open MailMeUp and sign in to the affected account again."
+    "instruction": "Please tell the user that the AgentInbox plugin failed to read the requested information. Explain the reason and suggest the recovery step in this notification. Do not describe this failure as an empty inbox or an empty calendar.",
+    "message": "The AgentInbox plugin could not read the requested information. The account's sign-in has expired, was removed, or needs approval again. Open AgentInbox and sign in to the affected account again."
   }
 }
 ```

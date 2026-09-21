@@ -13,7 +13,7 @@ Both final assets use background extraction after the initial illustrations cont
 
 ```text
 Use case: compositing
-Asset type: transparent PNG illustration to ship inside the approved MailMeUp WinUI 3 desktop wizard.
+Asset type: transparent PNG illustration to ship inside the approved AgentInbox WinUI 3 desktop wizard.
 Input image: approved Welcome UI mockup, visual style reference only. Extract/recreate ONLY its upper-right dimensional illustration as a standalone original asset. Do not include any part of the UI.
 Subject: two warm ivory dimensional paper envelopes, a small ivory desk-calendar card with muted navy binding and blank pastel grid squares, and one mint/aqua conversation bubble with three ivory dots. A few translucent pale mint and dusty blue organic arcs softly connect the composition without arrows.
 Style: match the approved reference exactly: refined tactile paper and ceramic materials, soft studio highlights, restrained soft shadows, subtle navy/ivory/mint palette and tiny coral calendar accent. Calm, modern and premium, no neon, no glossy tech clutter.
@@ -25,7 +25,7 @@ CRITICAL: genuinely transparent alpha background everywhere outside the illustra
 
 ```text
 Use case: compositing
-Asset type: transparent PNG decorative navigation-rail vignette to ship inside the approved MailMeUp WinUI 3 desktop wizard.
+Asset type: transparent PNG decorative navigation-rail vignette to ship inside the approved AgentInbox WinUI 3 desktop wizard.
 Input image: approved Welcome UI mockup, visual style reference only. Recreate ONLY its bottom-left paper envelope/calendar vignette as a standalone original asset. Do not include the UI or typography.
 Subject: a small compact arrangement of a muted navy envelope at back left, two warm ivory paper envelopes, one ivory calendar with dusty blue binding and blank pastel grid squares in front, and two restrained mint paper leaves. No conversation bubble.
 Style: same tactile dimensional paper, soft studio illumination, subtle ambient shadows, muted blue/ivory/mint palette as the reference. Harmonize with both light and dark Mica surfaces.

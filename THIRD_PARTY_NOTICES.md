@@ -1,6 +1,6 @@
 # Third-party notices
 
-MailMeUp source is MIT-licensed. Dependencies retain their own licenses; MailMeUp's license does not replace them.
+AgentInbox source is MIT-licensed. Dependencies retain their own licenses; AgentInbox's license does not replace them.
 
 The exact restored CLI dependency inventory is in `docs/DEPENDENCIES.md` in source and `DEPENDENCIES.md` in portable packages. `scripts/export-notices.py` derives it from NuGet metadata and fails validation if it becomes stale.
 

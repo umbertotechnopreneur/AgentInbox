@@ -28,7 +28,7 @@ def check_only_diagnostic_state(registry):
     for path in registry_path.rglob("*"):
         if path == log_directory:
             continue
-        if (path.is_file() and path.parent == log_directory and path.name.startswith("mailmeup-")
+        if (path.is_file() and path.parent == log_directory and path.name.startswith("agentinbox-")
                 and path.suffix == ".log"):
             continue
         unexpected.append(str(path.relative_to(registry_path)))
@@ -44,9 +44,9 @@ def main():
     executable = Path(os.path.abspath(args.executable))
     command = ["dotnet", str(executable)] if executable.suffix == ".dll" else [str(executable)]
 
-    with tempfile.TemporaryDirectory(prefix="mailmeup-smoke-") as directory:
+    with tempfile.TemporaryDirectory(prefix="agentinbox-smoke-") as directory:
         registry = str(Path(directory) / "registry")
-        environment = {**os.environ, "MAILMEUP_DATA_DIR": registry, "MAILMEUP_LOG_LEVEL": "warning",
+        environment = {**os.environ, "AGENTINBOX_DATA_DIR": registry, "AGENTINBOX_LOG_LEVEL": "warning",
                        "DOTNET_CLI_UI_LANGUAGE": "en"}
         for cli_args in (["--help"], ["--version"], ["status"], ["accounts", "list"], ["setup", "status"]):
             result = subprocess.run(command + cli_args, env=environment, capture_output=True, text=True,
@@ -90,7 +90,7 @@ def main():
         check("\x1b" not in explicit_json.stdout + explicit_json.stderr, "Plain output contains ANSI escapes")
 
         level_override = subprocess.run(command + ["status", "--json", "--log-level", "warning"],
-                                        env={**environment, "MAILMEUP_LOG_LEVEL": "invalid"},
+                                        env={**environment, "AGENTINBOX_LOG_LEVEL": "invalid"},
                                         capture_output=True, text=True, encoding="utf-8", timeout=30, check=True)
         check(json.loads(level_override.stdout)["read_only"] and not level_override.stderr,
               "Command-line log level did not override the environment")
@@ -145,7 +145,7 @@ def main():
 
         try:
             send({"id": 1, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {},
-                  "clientInfo": {"name": "mailmeup-smoke", "version": "1.0.0"}}})
+                  "clientInfo": {"name": "agentinbox-smoke", "version": "1.0.0"}}})
             check("result" in receive(1), "MCP initialization failed")
             send({"method": "notifications/initialized"})
             send({"id": 2, "method": "tools/list"})
@@ -204,7 +204,7 @@ def main():
                 notification = failure_payload["user_notification"]
                 check(notification["required"] is True and "tell the user" in notification["instruction"].lower(),
                       f"Missing caller notification for {name}")
-                check("MailMeUp plugin" in notification["message"], f"Missing plain-English plugin failure for {name}")
+                check("AgentInbox plugin" in notification["message"], f"Missing plain-English plugin failure for {name}")
         finally:
             process.stdin.close()
             try:

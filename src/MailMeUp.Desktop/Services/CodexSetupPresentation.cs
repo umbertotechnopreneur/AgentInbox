@@ -15,60 +15,61 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
     {
         if (keepPlugin)
         {
-            var entries = status.DirectRegistrationCount > 1 ? "the direct MailMeUp entries" : "the direct MailMeUp entry";
+            var entries = status.DirectRegistrationCount > 1 ? "the direct AgentInbox entries" : "the direct AgentInbox entry";
             return $"In Codex Settings > MCP servers, remove {entries}. "
-                + (status.IsPluginConfigured ? "Keep the MailMeUp plugin enabled, then select Check again."
+                + (status.IsPluginConfigured ? "Keep the AgentInbox plugin enabled, then select Check again."
                     : "Then select Check again to continue with the local plugin setup.");
         }
 
         var next = status.DirectRegistrationCount > 1
-            ? "In Codex Settings > MCP servers, keep one MailMeUp entry and make sure it is enabled."
+            ? "In Codex Settings > MCP servers, keep one AgentInbox entry and make sure it is enabled."
             : status.IsDirectRegistrationEnabled == false
-                ? "In Codex Settings > MCP servers, enable the MailMeUp entry."
+                ? "In Codex Settings > MCP servers, enable the AgentInbox entry."
                 : status.IsDirectRegistrationEnabled is null
-                    ? "In Codex Settings > MCP servers, review the MailMeUp entry and make sure it is enabled."
-                    : "Keep your direct MailMeUp entry enabled in Codex Settings > MCP servers.";
-        return "In Codex's plugin settings, disable any enabled MailMeUp plugin. " + next + " Then select Check again.";
+                    ? "In Codex Settings > MCP servers, review the AgentInbox entry and make sure it is enabled."
+                    : "Keep your direct AgentInbox entry enabled in Codex Settings > MCP servers.";
+        return "In Codex's plugin settings, disable any enabled AgentInbox plugin. " + next + " Then select Check again.";
     }
 
     internal static CodexSetupPresentation FromStatus(CodexSetupStatus status) => status.Code switch
     {
         "ReadyToInstall" => new("Ready to install", "What happens next?",
-            ["Select Install plugin to add MailMeUp to Codex. Your saved sharing choices are kept.",
+            ["Select Install plugin to add AgentInbox to Codex. Your saved sharing choices are kept.",
              "After installation, start a new Codex task to try the connection."]),
         "PluginConfigured" => new("Ready to try in Codex", "How to use it",
             ["Start a new Codex task, then copy and send the request below.",
-             "Once Codex can see your accounts, ask MailMeUp to find an email or show your upcoming appointments.",
+             "Once Codex can see your accounts, ask AgentInbox to find an email or show your upcoming appointments.",
              "Your settings are ready. Your first request will check the connection."]),
         "DirectConfigured" => new("Ready to try in Codex", "How to use it",
-            ["Your existing MailMeUp connection is enabled in Codex.",
+            ["Your existing AgentInbox connection is enabled in Codex.",
              "Start a new Codex task, then copy and send the request below to check the connection."]),
         "DirectRegistrationExists" => new(
             status.DirectRegistrationCount > 1 ? "Several connection entries found"
                 : status.IsPluginConfigured ? "Two connection entries found" : "Direct connection needs review",
             "Review connections",
-            ["Open Codex Settings > MCP servers and review the MailMeUp entry. A direct MCP registration is an alternative to the plugin, not a mailbox sign-in error.",
+            ["Open Codex Settings > MCP servers and review the AgentInbox entry. A direct MCP registration is an alternative to the plugin, not a mailbox sign-in error.",
              status.IsPluginConfigured
                  ? "The local plugin is also enabled. Choose one connection method to avoid duplicate tools: keep the direct entry and disable the plugin in Codex, or remove the direct entry and keep the plugin."
-                 : "You can keep the direct connection without installing this plugin. To switch to the plugin, remove only the direct MailMeUp entry in Codex first.",
-             "Return here and refresh status after any change. MailMeUp does not remove Codex connections automatically; their runtime status is not confirmed here."]),
+                 : "You can keep the direct connection without installing this plugin. To switch to the plugin, remove only the direct AgentInbox entry in Codex first.",
+             "Return here and refresh status after any change. AgentInbox does not remove Codex connections automatically; their runtime status is not confirmed here."]),
         "PluginDisabled" => new("Plugin is disabled", "How to enable it",
-            ["Open MailMeUp in Codex's plugin settings and enable the local plugin.",
+            ["Open AgentInbox in Codex's plugin settings and enable the local plugin.",
              "Return here and refresh status, then start a new Codex task."]),
-        "OtherPluginExists" => new("Another MailMeUp plugin found", "Review connections",
-            ["Review the installed MailMeUp plugin in Codex. You can keep that source without adding this local copy.",
+        "OtherPluginExists" => new("Another AgentInbox plugin found", "Review connections",
+            ["Review the installed AgentInbox plugin in Codex. You can keep that source without adding this local copy.",
              "If you want to switch sources, remove the other copy in Codex first, then return here and refresh status."]),
-        "AliasUnavailable" => new("MailMeUp command unavailable", "How to restore it",
-            ["For the portable edition, extract the complete ZIP and keep its cli folder beside MailMeUp.Desktop.exe.",
-             "For the installed edition, enable mailmeup.exe in Windows Settings > Apps > Advanced app settings > App execution aliases. Return here and refresh status."]),
+        "AliasUnavailable" => new("AgentInbox command unavailable", "How to restore it",
+            ["For the portable edition, extract the complete ZIP and keep its cli folder beside AgentInbox.Desktop.exe.",
+             "For the installed edition, enable agentinbox.exe in Windows Settings > Apps > Advanced app settings > App execution aliases. Return here and refresh status."]),
         "CodexUnavailable" => new("Codex CLI not found", "Setup help",
             ["Automatic setup needs the Codex command-line app (CLI), even if you already use the Codex desktop app.",
-             "If you just installed it, restart MailMeUp and select Check again. Otherwise, open Manual setup below for the commands to run yourself."]),
+             "If you just installed it, restart AgentInbox and select Check again. Otherwise, open Manual setup below for the commands to run yourself."]),
         "MarketplaceConflict" => new("Local marketplace name in use", "Review next steps",
-            ["A different source uses the mailmeup-local marketplace name. Review its source in Codex before changing it.",
+            ["A different source uses the agentinbox-local marketplace name. Review its source in Codex before changing it.",
              "Keep the existing source if you need it. Only resolve or remove that registration deliberately, then refresh status here."]),
         _ => new("Setup check needs attention", "Review next steps",
             [status.Message,
-             "Select Check again to retry. If it still does not work, review your Codex settings or open Manual setup below."])
+             "Select Check again to retry. If it still does not work, review your Codex settings or open Manual setup below.",
+             "No successful connection is assumed until Codex reports the AgentInbox configuration ready."])
     };
 }

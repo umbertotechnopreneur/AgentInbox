@@ -23,7 +23,8 @@ internal static class CliLogging
             .Filter.ByIncludingOnly(logEvent =>
                 logEvent.Properties.TryGetValue("SourceContext", out var source) &&
                 source is ScalarValue { Value: string name } &&
-                name.StartsWith("MailMeUp.", StringComparison.Ordinal))
+                (name.StartsWith("AgentInbox.", StringComparison.Ordinal)
+                    || name.StartsWith("MailMeUp.", StringComparison.Ordinal)))
             .WriteTo.Console(
                 restrictedToMinimumLevel: options.LogLevel,
                 standardErrorFromLevel: LogEventLevel.Verbose,
@@ -34,7 +35,7 @@ internal static class CliLogging
                         ? ConsoleTheme.None
                         : AnsiConsoleTheme.Code)
             .WriteTo.File(
-                Path.Combine(logDirectory, "mailmeup-.log"),
+                Path.Combine(logDirectory, "agentinbox-.log"),
                 restrictedToMinimumLevel: LogEventLevel.Debug,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,

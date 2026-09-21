@@ -15,7 +15,7 @@ try {
 
     git config --local core.hooksPath .githooks
     if ($LASTEXITCODE -ne 0) { throw 'Could not configure the repository Git hooks.' }
-    Write-Host 'MailMeUp Git hooks installed. Staged C# files will be formatted before each commit.'
+    Write-Host 'AgentInbox Git hooks installed. Staged C# files will be formatted before each commit.'
 } finally {
     Pop-Location
 }

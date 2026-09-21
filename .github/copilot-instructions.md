@@ -1,10 +1,10 @@
 ---
-name: MailMeUp repository rules
+name: AgentInbox repository rules
 description: Use the canonical repository instructions in AGENTS.md.
 alwaysApply: true
 ---
 
-# MailMeUp repository rules
+# AgentInbox repository rules
 
 Read and follow [AGENTS.md](../AGENTS.md), the single source of repository-wide rules.
 If it is already available in context and unchanged, reuse it without another read.

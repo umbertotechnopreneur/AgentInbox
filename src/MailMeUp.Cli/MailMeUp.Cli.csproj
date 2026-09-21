@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <AssemblyName>mailmeup</AssemblyName>
+    <AssemblyName>agentinbox</AssemblyName>
     <RootNamespace>MailMeUp.Cli</RootNamespace>
-    <Description>A local, read-only email and calendar bridge for MCP clients.</Description>
+    <Description>AgentInbox is a local, read-only email and calendar bridge for MCP clients.</Description>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="MailMeUp.Tests" />

@@ -1,8 +1,8 @@
 # Read guardrails
 
-**September 12–13 source increments: not built, tested or installed.** Installed MSIX `0.1.1.20` predates these controls and the budget editor. See [validation](VALIDATION.md).
+These controls and the budget editor are included in the locally installed AgentInbox Debug x64 package `0.0.1.1`. The current synthetic suite and isolated CLI/MCP and desktop startup checks passed on September 22, 2026. Live provider behavior and native editor interaction remain untested. See [validation](VALIDATION.md).
 
-MailMeUp bounds provider work and the content returned through MCP. These local limits do not measure the provider's remaining quota or the AI model's tokens.
+AgentInbox bounds provider work and the content returned through MCP. These local limits do not measure the provider's remaining quota or the AI model's tokens.
 
 ## Default limits
 
@@ -32,7 +32,7 @@ A response exceeding the single-response or remaining cumulative limit is replac
 
 The caller should stop bulk reads, disclose incomplete coverage and wait for the rolling window or narrow the request. A smaller response may fit the remaining output budget; reconnecting cannot reset a local budget. Local provider-attempt exhaustion can return partial mail results and a resumable cursor preserving buffered matches and the failed page position. Retry after the window resets. Other provider failures retain fresh-search recovery. Coverage never means that all pages or bodies were examined.
 
-These limits bound MailMeUp output. They cannot cap tokens from conversation history, other tools, client prompts or repeated client-side ingestion. Model-specific token accounting requires a separate client integration.
+These limits bound AgentInbox output. They cannot cap tokens from conversation history, other tools, client prompts or repeated client-side ingestion. Model-specific token accounting requires a separate client integration.
 
 ## Avoiding unnecessary reads
 
@@ -44,11 +44,11 @@ Microsoft exclusion-folder IDs have a separate five-minute, 128-entry cache keye
 
 ## Windows controls and usage
 
-The source adds a read-limits and usage section on **Sharing**, alongside the existing mail-search period. It shows aggregate HTTP attempts in the last minute, content and detail admissions in the active read window, and serialized output in KiB. Usage includes MailMeUp processes sharing this profile. Refresh reads only the local ledger; it makes no provider request and consumes no admission or output budget. The timestamp identifies the snapshot rather than implying continuously updated measurements.
+The source adds a read-limits and usage section on **Sharing**, alongside the existing mail-search period. It shows aggregate HTTP attempts in the last minute, content and detail admissions in the active read window, and serialized output in KiB. Usage includes AgentInbox processes sharing this profile. Refresh reads only the local ledger; it makes no provider request and consumes no admission or output budget. The timestamp identifies the snapshot rather than implying continuously updated measurements.
 
 The editor has explicit Save, Discard and default-value actions. Loading defaults changes only the draft. Increasing limits allows more traffic and more assistant context. Output values use KiB (1,024 bytes), not estimated model tokens. Validation preserves the relationship between detail and total reads, and between per-response and cumulative output caps. Unsaved limits are protected when navigating away or closing the window.
 
-Saved settings and the running process's active settings are separate. After saving changed limits, restart MailMeUp and reconnect the assistant so all CLI/MCP/desktop processes load the same configuration. Saving does not reset usage counters or cooldowns and does not automatically terminate processes. A save based on stale settings is rejected; refresh and explicitly discard or reapply the draft instead of overwriting another window's changes.
+Saved settings and the running process's active settings are separate. After saving changed limits, restart AgentInbox and reconnect the assistant so all CLI/MCP/desktop processes load the same configuration. Saving does not reset usage counters or cooldowns and does not automatically terminate processes. A save based on stale settings is rejected; refresh and explicitly discard or reapply the draft instead of overwriting another window's changes.
 
 Usage times identify the earliest recorded charge that expires, not a simultaneous reset of every rolling counter or a promise that a read will then succeed. Active provider cooldowns are reported separately. Another process, another budget or a provider response can still delay the next read. Counts and expiry times use this process's active limits; they may differ from another process awaiting restart with different settings.
 
@@ -58,7 +58,7 @@ The isolated UI demo uses illustrative counters and in-memory limit settings. Th
 
 ## Local configuration file
 
-Optional `read-guardrails.json` belongs directly under the runtime data directory selected by `MAILMEUP_DATA_DIR` or the normal application profile. MCP cannot change it. Complete defaults:
+Optional `read-guardrails.json` belongs directly under the runtime data directory selected by `AGENTINBOX_DATA_DIR` or the normal application profile. MCP cannot change it. Complete defaults:
 
 ```json
 {

@@ -31,7 +31,7 @@ public sealed class UiCliTests
         Assert.All(UiLauncher.Steps, step =>
         {
             Assert.False(string.IsNullOrWhiteSpace(step.Description));
-            Assert.Equal($"mailmeup ui --step {step.Id}", step.Command);
+            Assert.Equal($"agentinbox ui --step {step.Id}", step.Command);
         });
     }
 
@@ -42,7 +42,7 @@ public sealed class UiCliTests
     [InlineData("codex")]
     public void EveryKnownStepCanBeOpenedWithDemoAndExplicitDesktop(string step)
     {
-        var executable = SyntheticPath("source preview", "MailMeUp.Desktop.exe");
+        var executable = SyntheticPath("source preview", "AgentInbox.Desktop.exe");
         var options = Parse("ui", "--step", step, "--demo", "--desktop-path", executable);
 
         Assert.Equal(CliCommand.Ui, options.Command);
@@ -55,12 +55,12 @@ public sealed class UiCliTests
     [InlineData("status", "--demo")]
     [InlineData("accounts", "list", "--step", "accounts")]
     [InlineData("setup", "status", "--list-steps")]
-    [InlineData("--stdio", "--desktop-path", "MailMeUp.Desktop.exe")]
+    [InlineData("--stdio", "--desktop-path", "AgentInbox.Desktop.exe")]
     [InlineData("ui", "--mail-only")]
     [InlineData("ui", "--calendar-only")]
     [InlineData("ui", "--list-steps", "--step", "welcome")]
     [InlineData("ui", "--list-steps", "--demo")]
-    [InlineData("ui", "--list-steps", "--desktop-path", "MailMeUp.Desktop.exe")]
+    [InlineData("ui", "--list-steps", "--desktop-path", "AgentInbox.Desktop.exe")]
     [InlineData("ui", "--step", "unknown")]
     [InlineData("ui", "--step", "--demo")]
     [InlineData("ui", "--step")]
@@ -77,8 +77,8 @@ public sealed class UiCliTests
     public void PackagedDesktopIsPreferredOverAdjacentExecutable()
     {
         var cliDirectory = SyntheticPath("package", "mcp");
-        var packaged = SyntheticPath("package", "MailMeUp.Desktop.exe");
-        var adjacent = SyntheticPath("package", "mcp", "MailMeUp.Desktop.exe");
+        var packaged = SyntheticPath("package", "AgentInbox.Desktop.exe");
+        var adjacent = SyntheticPath("package", "mcp", "AgentInbox.Desktop.exe");
 
         var startInfo = UiLauncher.CreateStartInfo(cliDirectory, null, "accounts", false,
             path => path == packaged || path == adjacent);
@@ -94,7 +94,7 @@ public sealed class UiCliTests
     public void AdjacentExecutableIsUsedWhenPackagedDesktopIsAbsent()
     {
         var cliDirectory = SyntheticPath("adjacent");
-        var executable = Path.Combine(cliDirectory, "MailMeUp.Desktop.exe");
+        var executable = Path.Combine(cliDirectory, "AgentInbox.Desktop.exe");
 
         var startInfo = UiLauncher.CreateStartInfo(cliDirectory, null, "codex", false, path => path == executable);
 
@@ -104,7 +104,7 @@ public sealed class UiCliTests
     [Fact]
     public void ExplicitExecutableWithSpacesUsesStructuredArguments()
     {
-        var executable = SyntheticPath("preview with spaces;literal", "MailMeUp.Desktop.exe");
+        var executable = SyntheticPath("preview with spaces;literal", "AgentInbox.Desktop.exe");
         var startInfo = UiLauncher.CreateStartInfo(SyntheticPath("cli"), executable, "sharing", true, path => path == executable);
 
         Assert.Equal(executable, startInfo.FileName);
@@ -118,7 +118,7 @@ public sealed class UiCliTests
     [InlineData(true)]
     public void LaunchWithoutAnExplicitStepDoesNotSendNavigationArguments(bool demo)
     {
-        var executable = SyntheticPath("preview", "MailMeUp.Desktop.exe");
+        var executable = SyntheticPath("preview", "AgentInbox.Desktop.exe");
         var startInfo = UiLauncher.CreateStartInfo(SyntheticPath("cli"), executable, null, demo, path => path == executable);
 
         Assert.Equal(demo ? new[] { "--demo" } : [], startInfo.ArgumentList);
@@ -127,7 +127,7 @@ public sealed class UiCliTests
     [Fact]
     public void MissingExplicitExecutableNeverFallsBackToInstalledApp()
     {
-        var absent = SyntheticPath("missing", "MailMeUp.Desktop.exe");
+        var absent = SyntheticPath("missing", "AgentInbox.Desktop.exe");
         var requestedPaths = new List<string>();
 
         Assert.Throws<UiLaunchException>(() => UiLauncher.CreateStartInfo(SyntheticPath("cli"), absent, "welcome", true, path =>
@@ -149,5 +149,5 @@ public sealed class UiCliTests
     private static CliOptions Parse(params string[] args) => CliOptions.Parse([.. args, "--log-level", "warning"]);
 
     private static string SyntheticPath(params string[] parts) =>
-        Path.GetFullPath(Path.Combine([Path.GetTempPath(), "mailmeup-ui-synthetic", .. parts]));
+        Path.GetFullPath(Path.Combine([Path.GetTempPath(), "agentinbox-ui-synthetic", .. parts]));
 }

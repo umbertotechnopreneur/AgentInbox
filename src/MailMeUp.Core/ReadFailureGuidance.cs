@@ -42,20 +42,20 @@ public static class ReadFailureGuidance
     /// <summary>Maps a trusted category to a safe explanation and a practical recovery step.</summary>
     public static ReadFailureAdvice Describe(ReadFailureKind kind) => kind switch
     {
-        ReadFailureKind.SignInRequired => new("sign_in_required", "The account's sign-in has expired, was removed, or needs approval again.", "Open MailMeUp and sign in to the affected account again."),
-        ReadFailureKind.AccessDenied => new("access_denied", "The email or calendar provider denied read access.", "Open MailMeUp, check the account permissions and sign in again if needed. A work account may require an administrator's approval."),
+        ReadFailureKind.SignInRequired => new("sign_in_required", "The account's sign-in has expired, was removed, or needs approval again.", "Open AgentInbox and sign in to the affected account again."),
+        ReadFailureKind.AccessDenied => new("access_denied", "The email or calendar provider denied read access.", "Open AgentInbox, check the account permissions and sign in again if needed. A work account may require an administrator's approval."),
         ReadFailureKind.ProviderUnavailable => new("provider_unavailable", "The email or calendar provider is temporarily unavailable or is limiting requests.", "Wait a little and try again."),
         ReadFailureKind.RateLimited => new("rate_limited", "The email or calendar provider is limiting requests or has exhausted a usage quota.", "Wait before trying again, use a shorter date range and open only the messages you need. Reconnecting the account does not resolve a request limit."),
-        ReadFailureKind.BudgetExceeded => new("read_budget_exceeded", "MailMeUp stopped because a local request or returned-content budget was reached. The requested review may be incomplete.", "Stop additional bulk reads. Use a smaller result count or text window, select fewer accounts, or wait for the configured budget window to reset. Do not retry immediately or reconnect the account."),
-        ReadFailureKind.Network => new("network_unavailable", "MailMeUp could not reach the email or calendar provider.", "Check the internet connection and try again."),
+        ReadFailureKind.BudgetExceeded => new("read_budget_exceeded", "AgentInbox stopped because a local request or returned-content budget was reached. The requested review may be incomplete.", "Stop additional bulk reads. Use a smaller result count or text window, select fewer accounts, or wait for the configured budget window to reset. Do not retry immediately or reconnect the account."),
+        ReadFailureKind.Network => new("network_unavailable", "AgentInbox could not reach the email or calendar provider.", "Check the internet connection and try again."),
         ReadFailureKind.Timeout => new("read_timed_out", "The email or calendar provider took too long to respond and the read timed out.", "Try again, or narrow the search to a shorter date range."),
-        ReadFailureKind.LocalCredentialsUnavailable => new("local_credentials_unavailable", "MailMeUp could not open the account's protected sign-in information on this computer.", "Open MailMeUp and try signing in again. If the problem continues, check that the computer's credential storage is available."),
-        ReadFailureKind.SetupRequired => new("setup_required", "The Google or Microsoft connection has not been fully configured in MailMeUp.", "Open MailMeUp and complete the provider setup."),
+        ReadFailureKind.LocalCredentialsUnavailable => new("local_credentials_unavailable", "AgentInbox could not open the account's protected sign-in information on this computer.", "Open AgentInbox and try signing in again. If the problem continues, check that the computer's credential storage is available."),
+        ReadFailureKind.SetupRequired => new("setup_required", "The Google or Microsoft connection has not been fully configured in AgentInbox.", "Open AgentInbox and complete the provider setup."),
         ReadFailureKind.ItemUnavailable => new("item_unavailable", "The selected message or appointment is no longer available from the provider.", "Refresh the search and select an available item."),
         ReadFailureKind.ResultLimit => new("results_incomplete", "The provider could not finish returning all of the requested results.", "Use a shorter date range or a more specific search."),
-        ReadFailureKind.LocalConfiguration => new("local_configuration", "The selected account, sharing choices or local MailMeUp settings are unavailable or changed during the read.", "Open MailMeUp, check the connected accounts and sharing choices, then start a new request."),
+        ReadFailureKind.LocalConfiguration => new("local_configuration", "The selected account, sharing choices or local AgentInbox settings are unavailable or changed during the read.", "Open AgentInbox, check the connected accounts and sharing choices, then start a new request."),
         ReadFailureKind.InvalidRequest => new("invalid_request", "The read request is invalid, or a selected result reference has expired.", "Refresh the search and check the requested accounts, dates and result limits."),
-        _ => new("read_failed", "MailMeUp could not complete the requested read.", "Try again. If the problem continues, open MailMeUp and check the affected account.")
+        _ => new("read_failed", "AgentInbox could not complete the requested read.", "Try again. If the problem continues, open AgentInbox and check the affected account.")
     };
 
 }

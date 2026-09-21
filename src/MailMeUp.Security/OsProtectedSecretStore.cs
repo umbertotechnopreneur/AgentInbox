@@ -10,7 +10,7 @@ namespace MailMeUp.Security;
 /// <summary>Protects credential blobs with DPAPI, macOS Keychain, or Linux Secret Service.</summary>
 public sealed class OsProtectedSecretStore(string directory) : ISecretStore
 {
-    private const string KeychainService = "com.mailmeup.credentials";
+    private const string KeychainService = "com.agentinbox.credentials";
     private static readonly TimeSpan LockWaitTimeout = TimeSpan.FromSeconds(30);
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(StringComparer.Ordinal);
     private readonly string _directory = Path.Combine(Path.GetFullPath(directory), "credentials");
@@ -100,7 +100,7 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
         {
             CreatePrivateDirectory(_directory);
             await using var fileLock = await AcquireFileLockAsync(key, cancellationToken, LockWaitTimeout - wait.Elapsed);
-            var trace = new TraceSource("MailMeUp.ProtectedStorage", SourceLevels.Off);
+            var trace = new TraceSource("AgentInbox.ProtectedStorage", SourceLevels.Off);
             try
             {
                 trace.Listeners.Clear();
@@ -136,8 +136,8 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
             .WithLinuxKeyring(
                 KeychainService,
                 "default",
-                "MailMeUp protected credentials",
-                new KeyValuePair<string, string>("application", "MailMeUp"),
+                "AgentInbox protected credentials",
+                new KeyValuePair<string, string>("application", "AgentInbox"),
                 new KeyValuePair<string, string>("profile", $"{_profileId}:{key}"))
             .Build();
 
