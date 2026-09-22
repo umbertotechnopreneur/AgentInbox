@@ -11,13 +11,15 @@ namespace MailMeUp.Desktop;
 public sealed partial class AboutDialog : ContentDialog
 {
     private readonly string _version;
+    private readonly string _buildDetails;
 
     /// <summary>Creates the About and Support dialog without opening external links.</summary>
     public AboutDialog()
     {
         InitializeComponent();
         _version = GetVersion();
-        VersionText.Text = $"Version {_version} · Windows preview";
+        _buildDetails = GetBuildDetails();
+        VersionText.Text = $"Version {_version} · Windows preview{Environment.NewLine}{_buildDetails}";
     }
 
     private static string GetVersion()
@@ -37,7 +39,7 @@ public sealed partial class AboutDialog : ContentDialog
     private void CopyVersionButton_Click(object sender, RoutedEventArgs e)
     {
         var data = new DataPackage();
-        data.SetText($"AgentInbox {_version} · Windows {Environment.OSVersion.Version} · {RuntimeInformation.ProcessArchitecture}");
+        data.SetText($"AgentInbox {_version}{Environment.NewLine}{_buildDetails}{Environment.NewLine}Windows {Environment.OSVersion.Version} · {RuntimeInformation.ProcessArchitecture}");
         try
         {
             Clipboard.SetContent(data);
@@ -49,5 +51,13 @@ public sealed partial class AboutDialog : ContentDialog
         }
 
         CopyStatus.Visibility = Visibility.Visible;
+    }
+
+    private static string GetBuildDetails()
+    {
+        var metadata = typeof(AboutDialog).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value ?? string.Empty, StringComparer.Ordinal);
+        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateLocal"], "O", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None);
+        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss zzz} ({metadata["BuildTimeZone"]}){Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
     }
 }

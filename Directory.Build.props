@@ -20,4 +20,24 @@
   <PropertyGroup Condition="'$(MailMeUpPortableBuild)' == 'true'">
     <NuGetLockFilePath>$(MSBuildThisFileDirectory)eng/locks/$(MailMeUpPortableRuntime)/$(MSBuildProjectName).json</NuGetLockFilePath>
   </PropertyGroup>
+  <Target Name="CaptureAgentInboxBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
+    <PropertyGroup>
+      <AgentInboxBuildDateLocal Condition="'$(AgentInboxBuildDateLocal)' == ''">$([System.DateTimeOffset]::Now.ToString('O'))</AgentInboxBuildDateLocal>
+      <AgentInboxBuildTimeZone Condition="'$(AgentInboxBuildTimeZone)' == ''">$([System.TimeZoneInfo]::Local.Id)</AgentInboxBuildTimeZone>
+    </PropertyGroup>
+    <Exec Command="git rev-parse --short=12 HEAD" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="AgentInboxBuildGitCommitRaw" />
+    </Exec>
+    <PropertyGroup>
+      <AgentInboxBuildGitCommit Condition="'$(AgentInboxBuildGitCommit)' == ''">$([System.String]::Copy('$(AgentInboxBuildGitCommitRaw)').Trim())</AgentInboxBuildGitCommit>
+    </PropertyGroup>
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(AgentInboxBuildDateLocal)', '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}[+-]\d{2}:\d{2}$'))" Text="The build date must use the ISO 8601 round-trip format with a local UTC offset." />
+    <Error Condition="$([System.String]::IsNullOrWhiteSpace('$(AgentInboxBuildTimeZone)'))" Text="The build time zone must not be empty." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(AgentInboxBuildGitCommit)', '^[0-9a-f]{12}$'))" Text="The build Git commit must be a 12-character lowercase SHA." />
+    <ItemGroup>
+      <AssemblyMetadata Include="BuildDateLocal" Value="$(AgentInboxBuildDateLocal)" />
+      <AssemblyMetadata Include="BuildTimeZone" Value="$(AgentInboxBuildTimeZone)" />
+      <AssemblyMetadata Include="BuildGitCommit" Value="$(AgentInboxBuildGitCommit)" />
+    </ItemGroup>
+  </Target>
 </Project>

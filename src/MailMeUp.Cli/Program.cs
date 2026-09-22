@@ -28,7 +28,7 @@ if (options.Command == CliCommand.Help)
 
 if (options.Command == CliCommand.Version)
 {
-    Console.Out.WriteLine(CliPresentation.Version);
+    Console.Out.WriteLine(CliPresentation.VersionReport);
     return 0;
 }
 

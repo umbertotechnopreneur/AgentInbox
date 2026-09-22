@@ -29,6 +29,8 @@ internal sealed class CliPresentation
     internal static string Version => typeof(CliPresentation).Assembly
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "unknown";
 
+    internal static string VersionReport => $"{Version}{Environment.NewLine}{BuildDetails(typeof(CliPresentation).Assembly)}";
+
     private bool Json => _options.Json || Console.IsOutputRedirected;
 
     internal void WriteBanner()
@@ -310,6 +312,14 @@ internal sealed class CliPresentation
     }
 
     private string Icon(string emoji, string fallback) => _output.Profile.Capabilities.Unicode ? emoji : fallback;
+
+    private static string BuildDetails(Assembly assembly)
+    {
+        var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value ?? string.Empty, StringComparer.Ordinal);
+        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateLocal"], "O", CultureInfo.InvariantCulture, DateTimeStyles.None);
+        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss zzz} ({metadata["BuildTimeZone"]}){Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
+    }
 
     private static string ProviderName(string id) => id switch
     {
