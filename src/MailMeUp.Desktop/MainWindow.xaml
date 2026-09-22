@@ -90,7 +90,6 @@
                             </Border>
                         </StackPanel>
                         <StackPanel x:Name="CodexPage" Spacing="20" Visibility="Collapsed">
-                            <InfoBar x:Name="CodexConnectionNotice" IsOpen="False" IsClosable="False" Severity="Warning" Title="Two connection entries found" Message="Codex lists an AgentInbox plugin and a direct connection." />
                             <Grid x:Name="CodexStatusPanel" ColumnSpacing="14">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <Border Width="40" Height="40" CornerRadius="20" Background="{ThemeResource WizardSelectionBrush}" VerticalAlignment="Top"><FontIcon x:Name="CodexStatusIcon" Glyph="&#xE943;" FontSize="20" Foreground="{ThemeResource WizardAccentBrush}" /></Border>
@@ -101,7 +100,9 @@
                                 </StackPanel>
                             </Grid>
                             <StackPanel x:Name="CodexConnectionChoices" Spacing="10" Visibility="Collapsed">
-                                <TextBlock Text="Which connection would you like to keep?" Style="{StaticResource SectionLabel}" />
+                                <TextBlock Text="Step 1 of 3" Foreground="{ThemeResource WizardAccentBrush}" FontWeight="SemiBold" />
+                                <TextBlock Text="Choose one connection" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="Keep one AgentInbox connection enabled in Codex." Style="{StaticResource SubtleText}" />
                                 <Border x:Name="CodexPluginChoiceCard" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="14,8">
                                     <RadioButton x:Name="CodexPluginChoice" GroupName="CodexConnection" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Checked="CodexConnectionChoice_Checked" AutomationProperties.Name="Keep the AgentInbox plugin, recommended">
                                         <Grid ColumnSpacing="12" RowSpacing="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="CodexPluginBadgeColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -120,7 +121,10 @@
                                 </Border>
                             </StackPanel>
                             <Border x:Name="CodexNextStepsPanel" BorderBrush="{ThemeResource WizardAccentBrush}" BorderThickness="2,0,0,0" Padding="14,0,0,0" Visibility="Collapsed">
-                                <StackPanel Spacing="7"><TextBlock x:Name="CodexNextStepsTitle" Text="Next, make this change in Codex" Style="{StaticResource SectionLabel}" /><TextBlock x:Name="CodexNextStepsText" Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" /><TextBlock x:Name="CodexChoiceHint" Text="Choosing an option here shows the steps. Make the change in Codex, then check again." Style="{StaticResource SubtleText}" Visibility="Collapsed" /></StackPanel>
+                                <StackPanel Spacing="7"><TextBlock x:Name="CodexNextStepNumber" Text="Step 2 of 3" Foreground="{ThemeResource WizardAccentBrush}" FontWeight="SemiBold" Visibility="Collapsed" /><TextBlock x:Name="CodexNextStepsTitle" Text="Update Codex" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="CodexNextStepsText" Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" /></StackPanel>
+                            </Border>
+                            <Border x:Name="CodexVerificationPanel" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0" Visibility="Collapsed">
+                                <StackPanel Spacing="7"><TextBlock Text="Step 3 of 3" Foreground="{ThemeResource WizardAccentBrush}" FontWeight="SemiBold" /><TextBlock Text="Verify the connection" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="After you update Codex, select Verify connection. AgentInbox checks the local settings only and does not read your email." Style="{StaticResource BodyText}" /></StackPanel>
                             </Border>
                             <Border x:Name="CodexFirstTaskPanel" Style="{StaticResource SetupCard}" CornerRadius="8" Visibility="Collapsed">
                                 <StackPanel Spacing="12">
@@ -131,20 +135,14 @@
                                     <TextBlock Text="This first request checks whether Codex can use AgentInbox. Local setup alone does not test the connection." Style="{StaticResource SubtleText}" />
                                 </StackPanel>
                             </Border>
-                            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
-                                <Grid ColumnSpacing="12" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="CodexSharingActionColumn" Width="Auto" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                    <StackPanel Spacing="4"><TextBlock x:Name="CodexSharingText" Text="No accounts selected for sharing" Style="{StaticResource SectionLabel}" /><TextBlock Text="Codex can request only the mail and calendars you choose." Style="{StaticResource SubtleText}" /></StackPanel>
-                                    <Button x:Name="ReviewSharingButton" Grid.Column="1" Content="Change sharing" Style="{StaticResource QuietButton}" Click="ReviewSharingButton_Click" />
-                                </Grid>
-                            </Border>
-                            <Expander Header="Connection details &amp; manual setup" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <Expander Header="Need help?" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                 <StackPanel Spacing="14">
                                     <TextBlock x:Name="CodexDiagnosticText" Text="Check setup to inspect the local connection." Style="{StaticResource BodyText}" />
                                     <StackPanel x:Name="CodexChecks" Spacing="4" />
                                     <TextBlock x:Name="CodexCheckedText" Text="Not checked yet." Style="{StaticResource SubtleText}" AutomationProperties.LiveSetting="Polite" />
                                     <TextBlock Text="These results only confirm the saved settings. Try the request above in Codex to check that it can connect and read your selected accounts." Style="{StaticResource SubtleText}" />
                                     <StackPanel x:Name="CodexActions" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="RefreshCodexButton" Content="Check again" Click="RefreshCodexButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
+                                        <Button x:Name="RefreshCodexButton" Content="Verify connection" Click="RefreshCodexButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
                                         <Button x:Name="InstallPluginButton" Content="Update local plugin" Click="InstallPluginButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" IsEnabled="False" />
                                         <Button x:Name="CopyCodexResultsButton" Content="Copy setup results" Click="CopyCodexResultsButton_Click" Style="{StaticResource QuietButton}" Visibility="Collapsed" />
                                     </StackPanel>
@@ -161,7 +159,7 @@
                 <Grid x:Name="Activity" ColumnSpacing="12" Visibility="Collapsed"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><ProgressRing Width="20" Height="20" IsActive="True" /><TextBlock x:Name="ActivityText" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" /><Button Grid.Column="2" Content="Cancel" Click="CancelButton_Click" /></Grid>
             </StackPanel>
             <Border Grid.Row="4" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,20,0,0">
-                <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Button x:Name="BackButton" Content="Back" Style="{StaticResource QuietButton}" Click="BackButton_Click" /><TextBlock x:Name="PreviewLabel" Grid.Column="1" Text="Your choices stay on this device" Style="{StaticResource SubtleText}" VerticalAlignment="Center" HorizontalAlignment="Center" /><StackPanel x:Name="FooterActions" Grid.Column="2" Orientation="Horizontal" Spacing="8"><Button x:Name="FinishLaterButton" Content="Finish later" Style="{StaticResource QuietButton}" Click="FinishLaterButton_Click" Visibility="Collapsed" /><Button x:Name="NextButton" Content="Get started" MinWidth="144" Padding="20,10" Click="NextButton_Click" Style="{StaticResource AccentButtonStyle}" /></StackPanel></Grid>
+                <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Button x:Name="BackButton" Content="Back" Style="{StaticResource QuietButton}" Click="BackButton_Click" /><TextBlock x:Name="PreviewLabel" Grid.Column="1" Text="Your choices stay on this device" Style="{StaticResource SubtleText}" VerticalAlignment="Center" HorizontalAlignment="Center" /><StackPanel x:Name="FooterActions" Grid.Column="2" Orientation="Horizontal" Spacing="8"><Button x:Name="FinishLaterButton" Content="Close setup" Style="{StaticResource QuietButton}" Click="FinishLaterButton_Click" Visibility="Collapsed" /><Button x:Name="NextButton" Content="Get started" MinWidth="144" Padding="20,10" Click="NextButton_Click" Style="{StaticResource AccentButtonStyle}" /></StackPanel></Grid>
             </Border>
         </Grid>
         <Border x:Name="AddAccountParkingHost" Visibility="Collapsed">
@@ -193,8 +191,6 @@
                                                 <Button x:Name="ChooseCalendarsButton" Content="Choose calendars…" Style="{StaticResource QuietButton}" Click="ChooseCalendarsButton_Click" />
                                             </StackPanel>
                                         </StackPanel>
-                                        <TextBlock x:Name="SharingSavedText" Visibility="Collapsed" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                                        <StackPanel x:Name="SharingSaveActions" Visibility="Collapsed" Orientation="Horizontal" Spacing="8"><Button x:Name="SaveSharingButton" Content="Save changes" Style="{StaticResource AccentButtonStyle}" Click="SaveSharingButton_Click" IsEnabled="False" /><Button x:Name="DiscardSharingButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardSharingButton_Click" Visibility="Collapsed" /></StackPanel>
                                     </StackPanel></Border>
                                 
         </Border>

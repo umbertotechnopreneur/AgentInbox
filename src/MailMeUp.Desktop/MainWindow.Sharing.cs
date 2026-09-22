@@ -135,6 +135,26 @@ public sealed partial class MainWindow
                 Content = surface
             };
             _sharingDialog.Resources["ContentDialogMaxWidth"] = 580.0;
+            _sharingDialog.CloseButtonClick += async (_, args) =>
+            {
+                if (_busy)
+                {
+                    args.Cancel = true;
+                    SetNotice("Operation in progress", "Wait for it to finish or choose Cancel.", InfoBarSeverity.Informational);
+                    return;
+                }
+
+                if (!_sharingDirty) return;
+                var deferral = args.GetDeferral();
+                try
+                {
+                    if (!await SaveSharingAsync()) args.Cancel = true;
+                }
+                finally
+                {
+                    deferral.Complete();
+                }
+            };
             _sharingDialog.Opened += (_, _) =>
             {
                 opened = true;
@@ -152,8 +172,7 @@ public sealed partial class MainWindow
                 else if (_sharingDirty)
                 {
                     closing.Cancel = true;
-                    SetNotice("Unsaved choices", "Save or discard your changes before closing.", InfoBarSeverity.Warning);
-                    SaveSharingButton.Focus(FocusState.Programmatic);
+                    SetNotice("Unsaved choices", "Choose Done to save your changes before closing.", InfoBarSeverity.Warning);
                 }
             };
 
@@ -211,7 +230,6 @@ public sealed partial class MainWindow
         if (_sharingScroll is null) return;
         _sharingScroll.Width = Math.Min(500, Math.Max(0, Root.ActualWidth - 96));
         _sharingScroll.MaxHeight = Math.Max(120, Root.ActualHeight - 280);
-        SharingSaveActions.Orientation = _sharingScroll.Width < 340 ? Orientation.Vertical : Orientation.Horizontal;
     }
 
     private void SelectSharingAccount(Account? account)
@@ -223,10 +241,6 @@ public sealed partial class MainWindow
             _sharingDirty = false;
             SharingEditor.Visibility = ToVisibility(account is not null);
             SharingEditorCard.Visibility = ToVisibility(account is not null);
-            SaveSharingButton.IsEnabled = false;
-            DiscardSharingButton.Visibility = Visibility.Collapsed;
-            SharingSaveActions.Visibility = Visibility.Collapsed;
-            SharingSavedText.Visibility = Visibility.Collapsed;
             if (account is null) return;
             var saved = _sharing.GetValueOrDefault(account.Id) ?? new AccountSharingSettings(account.Id);
             SelectedAccountText.Text = account.EmailAddress;
@@ -236,7 +250,6 @@ public sealed partial class MainWindow
             ShareCalendarsSwitch.IsOn = saved.ShareCalendars && account.CalendarReadEnabled;
             _selectedCalendarIds = saved.CalendarIds?.ToHashSet(StringComparer.Ordinal) ?? new(StringComparer.Ordinal);
             CalendarScope.SelectedIndex = saved.CalendarIds is null ? 0 : 1;
-            SharingSavedText.Text = IsDemo ? "Choices saved for this preview session." : "Choices saved on this device.";
         }
         finally
         {
@@ -279,11 +292,6 @@ public sealed partial class MainWindow
             || (CalendarScope.SelectedIndex == 0) != (saved.CalendarIds is null)
             || (CalendarScope.SelectedIndex != 0 && !_selectedCalendarIds.SetEquals(saved.CalendarIds ?? []));
         if (_sharingDirty) _sharingReviewed = false;
-        SaveSharingButton.IsEnabled = _sharingDirty;
-        DiscardSharingButton.Visibility = ToVisibility(_sharingDirty);
-        SharingSaveActions.Visibility = ToVisibility(_sharingDirty);
-        SharingSavedText.Visibility = ToVisibility(_sharingDirty);
-        SharingSavedText.Text = _sharingDirty ? "Unsaved changes" : IsDemo ? "Choices saved for this preview session." : "Choices saved on this device.";
         UpdateProgress();
     }
 
@@ -313,9 +321,9 @@ public sealed partial class MainWindow
         _sharingDialog.Hide();
     }
 
-    private async void SaveSharingButton_Click(object sender, RoutedEventArgs e)
+    private async Task<bool> SaveSharingAsync()
     {
-        if (_selectedAccount is not { } account || !_sharingDirty || _busy) return;
+        if (_selectedAccount is not { } account || !_sharingDirty || _busy) return false;
         var requested = new AccountSharingSettings(account.Id,
             Enabled: ShareAccountSwitch.IsOn,
             ShareMail: ShareMailSwitch.IsOn && account.MailReadEnabled,
@@ -328,20 +336,10 @@ public sealed partial class MainWindow
             _sharing[account.Id] = result;
             SelectSharingAccount(account);
             RenderConnectedAccounts();
-            UpdateSharingSummary();
             UpdateProgress();
             saved = true;
         });
-        if (saved && !_lifetime.IsCancellationRequested) _sharingDialog?.Hide();
-    }
-
-    private void DiscardSharingButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_busy) return;
-        SelectSharingAccount(_selectedAccount);
-        _sharingNotice.IsOpen = false;
-        UpdateProgress();
-        _sharingDialog?.Hide();
+        return saved;
     }
 
 }

@@ -35,7 +35,7 @@ AgentInbox is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All 
 - Never create a branch, commit, or push on your own initiative. Each action requires an explicit request from the owner; a request to edit files does not authorize Git delivery.
 - For documentation-only or repository-instruction-only changes, keep edits local until the owner explicitly requests delivery. If authorized, use the current branch and include `[skip ci]` unless the owner requests CI. Do not treat this rule as permission to bypass repository protections.
 - For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
-- Create MSIX release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
+- Create MSIX release artifacts only through GitHub Actions. For explicit local Debug testing, a signed MSIX may be built and installed from an ignored `artifacts/msix` directory using the existing current-user certificate. Do not upload, publish, tag, or describe a local Debug package as a release. Create an annotated `v<version>` tag only after the matching source version is on `main`.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 
 ## Context and token efficiency
@@ -75,7 +75,7 @@ AgentInbox is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All 
 ## Validation and handoff
 
 - Use `rg` for searches and `pwsh -NoProfile` for PowerShell scripts.
-- Start every authorized build with an empty repository `artifacts/` directory. The packaging and validation scripts run `scripts/clean-artifacts.ps1` automatically; run it once before a manual build. Keep packages or logs that must survive another build outside `artifacts/`, and do not run builds concurrently in the same checkout.
+- Start every authorized build with an empty repository `artifacts/` directory. The packaging and validation scripts run `scripts/clean-artifacts.ps1` automatically; run it once before a manual build. For an explicit local Debug MSIX installation, preserve the newly created package under `artifacts/msix` until installation completes, then clean generated build output without deleting that requested installer. Keep packages or logs that must survive another build outside `artifacts/`, and do not run builds concurrently in the same checkout.
 - Do not run tests, builds, formatters, linters, smoke tests, repository preflight or other verification on your own initiative.
 - Finish the requested work first, then explain which tests or checks would be useful. Run them only when the owner explicitly asks. In Italian, use wording such as: "Ci sarebbero i test da lanciare."
 - Do not dispatch CI or push changes merely to trigger verification without an explicit request. This working agreement does not itself change the existing GitHub Actions configuration.

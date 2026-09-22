@@ -88,7 +88,7 @@ public sealed partial class MainWindow
             "Sign-in tokens stay protected on this device and are never returned to the assistant."));
         tabs.Items.Add(InformationTab("Your choices",
             "New accounts connected here start with sharing off. Enable each account and choose mail, calendars, or both.",
-            "Select Save changes to apply your choices. Turning sharing off stops future access. It cannot remove information already shared in a conversation."));
+            "Select Done to apply your choices. Turning sharing off stops future access. It cannot remove information already shared in a conversation."));
         await ShowDialogAsync(DetailsDialog("How sharing works", tabs));
     }
 
@@ -106,7 +106,7 @@ public sealed partial class MainWindow
     {
         if (BlockDemoAction()) return;
         var content = new StackPanel { Spacing = 16 };
-        content.Children.Add(Body("Before your first sign-in, Google or Microsoft needs an app registration for AgentInbox. Follow the guide below, then add the setup details here. You only need to do this once for each service."));
+        content.Children.Add(Body("Before your first sign-in, Google or Microsoft needs an app registration for AgentInbox. Follow the guide below, then add the setup details here. Each provider is optional: configure one now and add the other later."));
         foreach (var provider in new[] { "google", "microsoft" })
         {
             var line = new StackPanel { Spacing = 6 };
@@ -115,7 +115,7 @@ public sealed partial class MainWindow
             heading.Children.Add(new TextBlock { Text = ProviderName(provider), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
             line.Children.Add(heading);
             line.Children.Add(Body(_providers.Any(item => item.ProviderId == provider && item.Configured) ? "Configured on this device." : "App registration needed."));
-            line.Children.Add(Body(provider == "google" ? "Choose the JSON file you downloaded when registering a Desktop app with Google." : "Paste the Application (client) ID from Microsoft. You do not need a client secret."));
+            line.Children.Add(Body(provider == "google" ? "Choose the JSON file you downloaded when registering a Desktop app with Google. If you do not have it yet, you can configure Microsoft instead." : "Paste the Application (client) ID from Microsoft. You do not need a client secret. If you do not have it yet, you can configure Google instead."));
             content.Children.Add(line);
         }
         content.Children.Add(Link("App registration guide", "https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/APP_REGISTRATION.md"));

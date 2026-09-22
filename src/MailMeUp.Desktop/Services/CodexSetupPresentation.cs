@@ -16,9 +16,11 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
         if (keepPlugin)
         {
             var entries = status.DirectRegistrationCount > 1 ? "the direct AgentInbox entries" : "the direct AgentInbox entry";
-            return $"In Codex Settings > MCP servers, remove {entries}. "
-                + (status.IsPluginConfigured ? "Keep the AgentInbox plugin enabled, then select Check again."
-                    : "Then select Check again to continue with the local plugin setup.");
+            return $"1. Open Codex Settings > MCP servers and remove {entries}."
+                + Environment.NewLine
+                + (status.IsPluginConfigured
+                    ? "2. In Codex Settings > Plugins, keep AgentInbox enabled."
+                    : "2. Return here to install the AgentInbox plugin after the direct entry is removed.");
         }
 
         var next = status.DirectRegistrationCount > 1
@@ -28,7 +30,8 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
                 : status.IsDirectRegistrationEnabled is null
                     ? "In Codex Settings > MCP servers, review the AgentInbox entry and make sure it is enabled."
                     : "Keep your direct AgentInbox entry enabled in Codex Settings > MCP servers.";
-        return "In Codex's plugin settings, disable any enabled AgentInbox plugin. " + next + " Then select Check again.";
+        return "1. In Codex Settings > Plugins, disable any enabled AgentInbox plugin."
+            + Environment.NewLine + "2. " + next;
     }
 
     internal static CodexSetupPresentation FromStatus(CodexSetupStatus status) => status.Code switch
@@ -63,13 +66,13 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
              "For the installed edition, enable agentinbox.exe in Windows Settings > Apps > Advanced app settings > App execution aliases. Return here and refresh status."]),
         "CodexUnavailable" => new("Codex CLI not found", "Setup help",
             ["Automatic setup needs the Codex command-line app (CLI), even if you already use the Codex desktop app.",
-             "If you just installed it, restart AgentInbox and select Check again. Otherwise, open Manual setup below for the commands to run yourself."]),
+             "If you just installed it, restart AgentInbox and select Verify connection. Otherwise, open Need help? and select Manual setup."]),
         "MarketplaceConflict" => new("Local marketplace name in use", "Review next steps",
             ["A different source uses the agentinbox-local marketplace name. Review its source in Codex before changing it.",
              "Keep the existing source if you need it. Only resolve or remove that registration deliberately, then refresh status here."]),
         _ => new("Setup check needs attention", "Review next steps",
             [status.Message,
-             "Select Check again to retry. If it still does not work, review your Codex settings or open Manual setup below.",
+             "Select Verify connection to retry. If it still does not work, review your Codex settings or open Need help?.",
              "No successful connection is assumed until Codex reports the AgentInbox configuration ready."])
     };
 }

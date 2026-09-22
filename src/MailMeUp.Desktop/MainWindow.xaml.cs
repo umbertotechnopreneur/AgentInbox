@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
+using Windows.System;
 using Windows.UI.ViewManagement;
 
 namespace MailMeUp.Desktop;
@@ -184,10 +185,6 @@ public sealed partial class MainWindow : Window
         Grid.SetColumn(AccountsToolbarActions, stackActions ? 0 : 1);
         Grid.SetRow(AccountsToolbarActions, stackActions ? 1 : 0);
         AccountsToolbarActions.Orientation = availableWidth < 320 ? Orientation.Vertical : Orientation.Horizontal;
-        CodexSharingActionColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
-        Grid.SetColumn(ReviewSharingButton, stackActions ? 0 : 1);
-        Grid.SetRow(ReviewSharingButton, stackActions ? 1 : 0);
-        ReviewSharingButton.HorizontalAlignment = stackActions ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         PreviewLabel.Visibility = ToVisibility(_step != 3 && availableWidth >= 600);
         if (_stackAccountActions != stackActions)
         {
@@ -298,8 +295,6 @@ public sealed partial class MainWindow : Window
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = Math.Max(0, _step - 1);
-    private void ReviewSharingButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = 2;
-
     private async void NextButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _dialogOpen) return;
@@ -361,7 +356,6 @@ public sealed partial class MainWindow : Window
         UpdateLayout();
         RenderConnectedAccounts();
         RenderSharingAccounts();
-        UpdateSharingSummary();
         UpdateProgress();
     }
 
@@ -529,13 +523,6 @@ public sealed partial class MainWindow : Window
             || setting.ShareCalendars && account.CalendarReadEnabled && setting.CalendarIds is not { Count: 0 });
     }
 
-    private void UpdateSharingSummary()
-    {
-        var shared = _accounts.Count(IsShared);
-        CodexSharingText.Text = shared == 0 ? "No accounts selected for sharing"
-            : $"{shared} {(shared == 1 ? "account" : "accounts")} selected for sharing";
-    }
-
     private async void CheckConnectionsButton_Click(object sender, RoutedEventArgs e) => await RunAsync(
         "Checking read access…",
         async cancellationToken =>
@@ -681,13 +668,19 @@ public sealed partial class MainWindow : Window
 
     private async Task<bool> ConfigureGoogleAsync(CancellationToken cancellationToken)
     {
+        if (!await ShowProviderSetupPromptAsync("Google JSON file required", "Before AgentInbox can connect a Google account, you need the JSON file from your Google Desktop app registration.", "Choose a file"))
+            return false;
         ActivityText.Text = "Choose the JSON setup file you downloaded from Google…";
         var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.Downloads, ViewMode = PickerViewMode.List };
         picker.FileTypeFilter.Add(".json");
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
         var file = await picker.PickSingleFileAsync();
         cancellationToken.ThrowIfCancellationRequested();
-        if (file is null) return false;
+        if (file is null)
+        {
+            ActivityText.Text = "Google setup was not completed.";
+            return false;
+        }
         await _application.ConfigureProviderAsync("google", file.Path, cancellationToken);
         SetNotice("Google app configured", "The original JSON stays in its folder. Keep it private.", InfoBarSeverity.Informational);
         ActivityText.Text = "Google app configured.";
@@ -696,6 +689,8 @@ public sealed partial class MainWindow : Window
 
     private async Task<bool> ConfigureMicrosoftAsync(CancellationToken cancellationToken, bool signIn)
     {
+        if (!await ShowProviderSetupPromptAsync("Microsoft client ID required", "Before AgentInbox can connect a Microsoft account, you need the Application (client) ID from your Microsoft app registration.", "Enter client ID"))
+            return false;
         var input = new TextBox { Header = "Application (client) ID", PlaceholderText = "00000000-0000-0000-0000-000000000000" };
         var content = new StackPanel { Spacing = 14 };
         content.Children.Add(Body("Paste the Application (client) ID from your Microsoft app registration. This identifies the app; it is not your password. You do not need a client secret."));
@@ -712,6 +707,25 @@ public sealed partial class MainWindow : Window
         cancellationToken.ThrowIfCancellationRequested();
         await _application.ConfigureProviderAsync("microsoft", input.Text.Trim(), cancellationToken);
         return true;
+    }
+
+    private async Task<bool> ShowProviderSetupPromptAsync(string title, string message, string continueButtonText)
+    {
+        var dialog = DetailsDialog(title, Body(message));
+        dialog.PrimaryButtonText = continueButtonText;
+        dialog.SecondaryButtonText = "More info";
+        dialog.CloseButtonText = "Not now";
+        dialog.DefaultButton = ContentDialogButton.Close;
+        var result = await ShowDialogAsync(dialog);
+        if (result == ContentDialogResult.Secondary)
+            await OpenAppRegistrationGuideAsync();
+        return result == ContentDialogResult.Primary;
+    }
+
+    private async Task OpenAppRegistrationGuideAsync()
+    {
+        if (!await Launcher.LaunchUriAsync(new Uri("https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/APP_REGISTRATION.md")))
+            SetNotice("Could not open the guide", "Open the app registration guide from the AgentInbox GitHub repository and try again.", InfoBarSeverity.Warning);
     }
 
 
