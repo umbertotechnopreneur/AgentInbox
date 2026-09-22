@@ -1,7 +1,7 @@
 {
   "name": "agentinbox",
-  "version": "0.1.1",
-  "description": "Read selected local Google and Microsoft mail and calendars through AgentInbox.",
+  "version": "0.1.1+codex.20260922140632",
+  "description": "All your selected Gmail and Microsoft mail and calendars in one local plugin, without switching accounts.",
   "author": {
     "name": "Umberto Giacobbi",
     "url": "https://github.com/umbertotechnopreneur"
@@ -9,20 +9,27 @@
   "homepage": "https://github.com/umbertotechnopreneur/AgentInbox",
   "repository": "https://github.com/umbertotechnopreneur/AgentInbox",
   "license": "MIT",
-  "keywords": ["email", "calendar", "read-only", "local"],
+  "keywords": [
+    "email",
+    "calendar",
+    "read-only",
+    "local"
+  ],
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "AgentInbox",
-    "shortDescription": "Your selected inboxes and calendars, read only",
-    "longDescription": "Search selected Google and Microsoft accounts and read the messages or appointments you request. Account sign-in and sharing choices remain in the local AgentInbox app. Requested content can reach the assistant's AI service.",
+    "shortDescription": "All your Gmail and Microsoft mail in one plugin. No account switching.",
+    "longDescription": "Search your selected Gmail and Microsoft accounts in one AgentInbox plugin, without switching accounts. Read the messages or appointments you request. You choose accounts and sharing in the local AgentInbox app. Requested content can reach the assistant's AI service.",
     "developerName": "Umberto Giacobbi",
     "category": "Productivity",
-    "capabilities": ["Read"],
+    "capabilities": [
+      "Read"
+    ],
     "websiteURL": "https://github.com/umbertotechnopreneur/AgentInbox",
     "privacyPolicyURL": "https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/PRIVACY.md",
     "defaultPrompt": [
-      "Use AgentInbox to find my unread mail from today.",
-      "Use AgentInbox to show today's appointments."
+      "Use AgentInbox to find my unread mail from today across all my accounts.",
+      "Use AgentInbox to show today's appointments across all my calendars."
     ],
     "brandColor": "#177F74"
   }

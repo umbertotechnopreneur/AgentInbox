@@ -30,9 +30,8 @@ public sealed partial class MainWindow
             _codexStatus = null;
             _codexReport = string.Empty;
             CopyCodexResultsButton.Visibility = InstallPluginButton.Visibility = RefreshCodexButton.Visibility = Visibility.Collapsed;
-            CodexConnectionNotice.IsOpen = false;
             CodexStatusPanel.Visibility = Visibility.Visible;
-            CodexConnectionChoices.Visibility = CodexNextStepsPanel.Visibility = CodexFirstTaskPanel.Visibility = Visibility.Collapsed;
+            CodexConnectionChoices.Visibility = CodexNextStepsPanel.Visibility = CodexVerificationPanel.Visibility = CodexFirstTaskPanel.Visibility = Visibility.Collapsed;
             SwitchCodexConnectionButton.Visibility = Visibility.Collapsed;
             InstallPluginButton.IsEnabled = false;
             CodexStatusTitle.Text = install ? "Adding AgentInbox to Codex…" : "Checking your Codex settings…";
@@ -77,8 +76,10 @@ public sealed partial class MainWindow
     private void ApplyCodexStatus(CodexSetupStatus status)
     {
         _codexStatus = status;
-        if (status.Code is "DirectRegistrationExists" or "DirectConfigured")
-            _keepCodexPlugin ??= status.IsPluginConfigured;
+        if (status.Code == "DirectRegistrationExists")
+            _keepCodexPlugin ??= true;
+        else if (status.Code == "DirectConfigured")
+            _keepCodexPlugin ??= false;
         CodexDiagnosticText.Text = status.Message;
         var checks = status.Checks.Count > 0 ? status.Checks : CodexSetupCheck.Pending();
         RenderCodexChecks(checks);
@@ -100,15 +101,8 @@ public sealed partial class MainWindow
         var view = CodexSetupPresentation.FromStatus(status);
         var ready = IsCodexSetupReady;
         var chooseConnection = !ready && (status.Code is "DirectRegistrationExists" or "DirectConfigured");
-        var duplicate = status.Code == "DirectRegistrationExists"
-            && (status.IsPluginConfigured || status.DirectRegistrationCount > 1);
 
-        CodexConnectionNotice.Title = view.Title;
-        CodexConnectionNotice.Message = status.DirectRegistrationCount > 1
-            ? "Codex lists several direct AgentInbox entries. Keep one connection method."
-            : "Codex lists an AgentInbox plugin and a direct connection. Keep one connection method.";
-        CodexConnectionNotice.IsOpen = duplicate;
-        CodexStatusPanel.Visibility = ToVisibility(!duplicate);
+        CodexStatusPanel.Visibility = ToVisibility(!chooseConnection);
         CodexStatusTitle.Text = status.Code == "DirectConfigured" && !ready ? "Direct connection configured" : view.Title;
         CodexStatusText.Text = CodexStatusSummary(status);
         CodexStatusCaption.Text = ready ? "Settings checked. Try your first request below to test the connection."
@@ -135,12 +129,13 @@ public sealed partial class MainWindow
 
         CodexFirstTaskPanel.Visibility = ToVisibility(ready);
         CodexNextStepsPanel.Visibility = ToVisibility(!ready);
-        CodexNextStepsTitle.Text = chooseConnection ? "Next, make this change in Codex"
+        CodexNextStepNumber.Visibility = ToVisibility(chooseConnection);
+        CodexVerificationPanel.Visibility = ToVisibility(chooseConnection);
+        CodexNextStepsTitle.Text = chooseConnection ? "Update Codex"
             : status.Code == "ReadyToInstall" ? "What happens next" : "Next step";
         CodexNextStepsText.Text = chooseConnection
             ? CodexSetupPresentation.ConnectionInstructions(status, _keepCodexPlugin == true)
             : string.Join(Environment.NewLine + Environment.NewLine, view.Steps.Where(step => step != status.Message));
-        CodexChoiceHint.Visibility = ToVisibility(chooseConnection);
         RefreshCodexButton.Visibility = ToVisibility(ready);
         InstallPluginButton.Visibility = ToVisibility(ready && status.CanInstall);
         InstallPluginButton.IsEnabled = status.CanInstall;
@@ -155,7 +150,7 @@ public sealed partial class MainWindow
         PageTitle.Text = IsCodexSetupReady ? "You're ready to try AgentInbox" : "Finish connecting to Codex";
         PageSubtitle.Text = IsCodexSetupReady ? "Your selected accounts, one conversation."
             : _codexStatus?.Code is "DirectRegistrationExists" or "DirectConfigured"
-                ? "Choose which AgentInbox connection to keep."
+                ? "Choose one connection, update Codex, then verify it here."
                 : "Let Codex find emails and appointments in the accounts you choose.";
     }
 
@@ -166,7 +161,7 @@ public sealed partial class MainWindow
         if (_step != 3) return;
         NextButton.Content = IsCodexSetupReady ? "Finish setup"
             : _codexStatus is { CanInstall: true } ? "Install plugin"
-            : _codexStatus is null ? "Check setup" : "Check again";
+            : _codexStatus is null ? "Check Codex setup" : "Verify connection";
         NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
     }
 
@@ -196,16 +191,16 @@ public sealed partial class MainWindow
         "DirectRegistrationExists" => status.IsPluginConfigured
             ? "Choose one AgentInbox connection in Codex to avoid duplicate tools."
             : "You can keep your existing connection or review how to switch to the plugin.",
-        "PluginDisabled" => "Enable AgentInbox in Codex's plugin settings, then refresh here.",
+        "PluginDisabled" => "Enable AgentInbox in Codex's plugin settings, then verify the connection here.",
         "OtherPluginExists" => "Review the existing AgentInbox plugin before adding this local copy.",
         "AliasUnavailable" => "Restore the portable folder or enable the installed AgentInbox command to continue.",
         "CodexUnavailable" => "Automatic setup needs the native Codex command-line app.",
         "MarketplaceConflict" => "Review the existing local marketplace before installing AgentInbox.",
-        "CheckInterrupted" => "The operation was interrupted. Refresh status before trying again.",
-        "ConfigurationUnknown" => "Setup could not be confirmed. Refresh status to try again.",
-        "PluginStatusUnknown" => "The plugin could not be checked. Refresh status or review the details.",
-        "MarketplaceStatusUnknown" => "The plugin source could not be checked. Refresh status to try again.",
-        "InstallationIncomplete" => "Installation was not confirmed. Refresh status before trying again.",
+        "CheckInterrupted" => "The operation was interrupted. Verify the connection before trying again.",
+        "ConfigurationUnknown" => "Setup could not be confirmed. Verify the connection to try again.",
+        "PluginStatusUnknown" => "The plugin could not be checked. Verify the connection or review the details.",
+        "MarketplaceStatusUnknown" => "The plugin source could not be checked. Verify the connection to try again.",
+        "InstallationIncomplete" => "Installation was not confirmed. Verify the connection before trying again.",
         _ => "Review the setup details and next steps to continue."
     };
 
