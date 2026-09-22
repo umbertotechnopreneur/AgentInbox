@@ -57,7 +57,7 @@ public sealed partial class AboutDialog : ContentDialog
     {
         var metadata = typeof(AboutDialog).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value ?? string.Empty, StringComparer.Ordinal);
-        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateLocal"], "O", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None);
-        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss zzz} ({metadata["BuildTimeZone"]}){Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
+        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateUtc"], "O", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None);
+        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss} UTC{Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
     }
 }

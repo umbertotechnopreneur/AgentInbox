@@ -317,8 +317,8 @@ internal sealed class CliPresentation
     {
         var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value ?? string.Empty, StringComparer.Ordinal);
-        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateLocal"], "O", CultureInfo.InvariantCulture, DateTimeStyles.None);
-        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss zzz} ({metadata["BuildTimeZone"]}){Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
+        var builtAt = DateTimeOffset.ParseExact(metadata["BuildDateUtc"], "O", CultureInfo.InvariantCulture, DateTimeStyles.None);
+        return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss} UTC{Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
     }
 
     private static string ProviderName(string id) => id switch
