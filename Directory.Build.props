@@ -20,4 +20,21 @@
   <PropertyGroup Condition="'$(MailMeUpPortableBuild)' == 'true'">
     <NuGetLockFilePath>$(MSBuildThisFileDirectory)eng/locks/$(MailMeUpPortableRuntime)/$(MSBuildProjectName).json</NuGetLockFilePath>
   </PropertyGroup>
+  <Target Name="CaptureAgentInboxBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
+    <PropertyGroup>
+      <AgentInboxBuildDateUtc Condition="'$(AgentInboxBuildDateUtc)' == ''">$([System.DateTime]::UtcNow.ToString('O'))</AgentInboxBuildDateUtc>
+    </PropertyGroup>
+    <Exec Command="git rev-parse --short=12 HEAD" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="AgentInboxBuildGitCommitRaw" />
+    </Exec>
+    <PropertyGroup>
+      <AgentInboxBuildGitCommit Condition="'$(AgentInboxBuildGitCommit)' == ''">$([System.String]::Copy('$(AgentInboxBuildGitCommitRaw)').Trim())</AgentInboxBuildGitCommit>
+    </PropertyGroup>
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(AgentInboxBuildDateUtc)', '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$'))" Text="The build date must use the ISO 8601 round-trip format in UTC." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(AgentInboxBuildGitCommit)', '^[0-9a-f]{12}$'))" Text="The build Git commit must be a 12-character lowercase SHA." />
+    <ItemGroup>
+      <AssemblyMetadata Include="BuildDateUtc" Value="$(AgentInboxBuildDateUtc)" />
+      <AssemblyMetadata Include="BuildGitCommit" Value="$(AgentInboxBuildGitCommit)" />
+    </ItemGroup>
+  </Target>
 </Project>
