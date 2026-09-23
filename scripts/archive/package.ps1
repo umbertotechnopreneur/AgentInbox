@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_UI_LANGUAGE = 'en'
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 [xml]$properties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props')
 $version = $properties.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
 $artifactRoot = Join-Path $repoRoot 'artifacts'

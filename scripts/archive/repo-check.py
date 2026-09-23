@@ -8,7 +8,7 @@ from urllib.parse import unquote
 
 
 def main():
-    repo = Path(__file__).resolve().parents[1]
+    repo = Path(__file__).resolve().parents[2]
     files = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], cwd=repo).decode().split("\0")
     failures = []
     for name in sorted(set(filter(None, files))):

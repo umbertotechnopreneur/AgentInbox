@@ -1,24 +1,13 @@
-# Internal scripts
+# Shared script modules
 
-This folder contains shared PowerShell menu helpers used by `scripts/AgentInbox.ps1`.
-The launcher remains the single public entrypoint. Add a file here only when a
-task is cohesive enough to run independently behind a launcher command.
+This folder contains reusable helpers and grouped modules used by the
+`scripts/AgentInbox.ps1` entrypoint and its archived command implementations.
 
-Reusable interactive presentation helpers live under `modules`, including the
-repository-local `MenuManager` port. AgentInbox owns its public menu and command
-dispatch in `scripts/AgentInbox.ps1`.
+- `modules/MenuManager` provides the interactive menu controls.
+- `windows-package-support.ps1` shares dependency notice handling between the
+  Windows packaging scripts.
+- `session-replay` keeps its Python engine, PowerShell inventory module, tests,
+  and usage notes together as a self-contained tool module.
 
-`Compare-OriginalBaseline.ps1` is the read-only implementation behind the
-`baseline` launcher command. It batch-hashes the original source tree and
-reports the remaining inherited-file merge surface without invoking Gradle.
-
-`Invoke-SessionReplay.ps1` and the `session-replay` folder implement the
-`replay-day` launcher command. They remain internal; use the public workflow in
-[`scripts/session-replay.md`](../session-replay.md) for Local/S3 planning,
-strict JSON settings, byte-identified staging, per-image fail-fast remote
-execution, reserved-code negative evidence caching, Markdown/JPEG output
-interpretation, the plain-language `README.md` created at each run root, and
-the verified Excel evidence workbook created directly at each completed run
-root. The `overlays` directory remains JPEG-only.
-Its action and settings menus reuse the shared QSee banner,
-footer, bootstrap, and prefixed `MenuManager` helpers.
+Command implementations exposed by the AgentInbox CLI live under
+[`../archive`](../archive/).

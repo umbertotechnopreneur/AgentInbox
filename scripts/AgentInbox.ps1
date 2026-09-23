@@ -41,7 +41,7 @@ function Invoke-AgentInboxScript {
         [hashtable]$Parameters = @{}
     )
 
-    $target = Join-Path $scriptRoot $Path
+    $target = Join-Path $scriptRoot (Join-Path 'archive' $Path)
     if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
         throw "AgentInbox command implementation was not found: $Path"
     }

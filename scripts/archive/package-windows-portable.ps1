@@ -9,8 +9,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'Build Windows portable packages on Windows.' }
-$repoRoot = Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'windows-package-support.ps1')
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $PSScriptRoot '..\common\windows-package-support.ps1')
 $previousCliLanguage = $env:DOTNET_CLI_UI_LANGUAGE
 $env:DOTNET_CLI_UI_LANGUAGE = 'en'
 Push-Location $repoRoot
@@ -29,7 +29,7 @@ try {
     $lockFamily = "windows-portable/$Runtime"
     foreach ($module in Get-ChildItem -LiteralPath 'src' -Directory) {
         if (-not (Test-Path -LiteralPath "eng/locks/$lockFamily/$($module.Name).json" -PathType Leaf)) {
-            throw "Missing Windows portable dependency graph for $($module.Name). Run scripts/update-portable-locks.ps1 and commit the results."
+            throw "Missing Windows portable dependency graph for $($module.Name). Run pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command update-locks and commit the results."
         }
     }
 
