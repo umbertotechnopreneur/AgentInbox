@@ -114,7 +114,7 @@ if (-not $Unsigned) {
 }
 
 $packageName = "agentinbox-$Version-$runtime"
-$artifactRoot = Join-Path $repoRoot "artifacts/msix/$channelDirectory/$Version/$Architecture"
+$artifactRoot = Join-Path $repoRoot "artifacts/$channelDirectory/$Version/$Architecture"
 & (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
 if (Test-Path -LiteralPath $artifactRoot) {
     throw "Package output already exists. Choose a fresh version or architecture; existing output is never overwritten: $artifactRoot"

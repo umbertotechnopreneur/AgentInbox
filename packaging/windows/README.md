@@ -5,17 +5,17 @@ Source for the WinUI 3 setup app and the existing CLI in one MSIX. On 2026-09-06
 After the owner authorizes a build, use Windows with the .NET 10 SDK and Windows SDK tools:
 
 ```powershell
-pwsh -NoProfile -File scripts/package-msix.ps1
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64
 ```
 
 The script defaults to the local `Debug` channel and Windows x64. It publishes self-contained .NET and Windows App SDK payloads, creates package logos from the existing artwork, copies dependency notices and calls MakeAppx. It does not run tests or launch AgentInbox. Restore creates or updates dedicated graphs under `eng/locks/msix/win-<architecture>/`, preserving the normal cross-platform and portable package lock files. Review the MSIX graph changes before committing. Pass `-Architecture arm64` for an ARM64 package. ARM64 runtime support remains untested. Use `-Channel Store` only for an explicitly authorized Store package; it uses the `Release` configuration but does not upload or publish anything.
 
-Output goes into `artifacts/msix/<debug|store>/<version>/<architecture>/`. Before building, the script clears the entire repository `artifacts/` directory, including previous packages and logs. Copy anything you want to retain elsewhere first, and do not run builds concurrently in the same checkout. Signed packaging requires an explicit matching certificate and timestamp server; use `-Unsigned` only when an unsigned staging package is intentional. The script does not create certificates, change trust stores, install packages, contact accounts, register plugins, or publish releases.
+Output goes into `artifacts/debug/<version>/<architecture>/` or `artifacts/store/<version>/<architecture>/`. Before building, the script clears the entire repository `artifacts/` directory, including previous packages and logs. Copy anything you want to retain elsewhere first, and do not run builds concurrently in the same checkout. Signed packaging requires an explicit matching certificate and timestamp server; use `-Unsigned` only when an unsigned staging package is intentional. The script does not create certificates, change trust stores, install packages, contact accounts, register plugins, or publish releases.
 
 To sign during an explicitly authorized package build, supply an existing code-signing certificate in `CurrentUser\My` and an RFC 3161 timestamp service. The script requires its exact subject to match the source manifest publisher:
 
 ```powershell
-pwsh -NoProfile -File scripts/package-msix.ps1 -Channel Store -Version 0.1.2.0 -CertificateThumbprint '<40 hexadecimal characters>' -TimestampServer 'https://your-timestamp-service.example'
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Store -PackageVersion 1.0.0.0 -CertificateThumbprint '<40 hexadecimal characters>' -TimestampServer 'https://your-timestamp-service.example'
 ```
 
 Replace all example values. Successful signing also exports the public certificate to a `.cer` file beside the MSIX; it contains no private key and does not install trust. A signed package still needs a chain trusted by the target Windows device. Keep using the manifest signing identity for subsequent updates. Signing, installation, clean-device launch, provider login and upgrades require separate validation. `-MakeAppxPath` and `-SignToolPath` accept explicit Windows SDK tool paths when they cannot be discovered.

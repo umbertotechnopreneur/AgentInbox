@@ -45,10 +45,10 @@ Updates keep your local data. Uninstalling the Windows package leaves the data f
 
 ## For developers: build the installer
 
-The [Windows packaging script](../scripts/package-msix.ps1) builds the desktop and command-line apps with the .NET runtime included, creates installer logos and adds dependency notices. It can sign the package with an existing certificate. It doesn't run tests, install the result, change certificate trust or publish a release.
+The unified [AgentInbox CLI](../scripts/AgentInbox.ps1) builds the desktop and command-line apps with the .NET runtime included, creates installer logos and adds dependency notices. It can sign the package with an existing certificate. It doesn't run tests, install the result, change certificate trust or publish a release. Debug packages go under `artifacts/debug`; Store packages go under `artifacts/store`.
 
 ```powershell
-pwsh -NoProfile -File scripts/package-msix.ps1 -Architecture x64
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -Unsigned
 ```
 
 Without signing options, the file ends in `.unsigned.msix` and isn't ready for normal installation. See [packaging details](../packaging/windows/README.md) for signing and requirements. Use `MailMeUp.Windows.slnx` to build the UI; the original solution keeps the shared cross-platform code.

@@ -34,4 +34,4 @@ jobs:
           global-json-file: global.json
       - name: Validate solution and MCP protocol
         shell: pwsh
-        run: pwsh -NoProfile -File scripts/validate.ps1 -SkipUnitTests -CheckFormatting
+        run: pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command validate -SkipUnitTests -CheckFormatting
