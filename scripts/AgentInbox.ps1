@@ -72,7 +72,7 @@ COMMANDS
   install-hooks     Install the repository Git hooks; -Force replaces an existing hook path
   update-locks      Refresh portable dependency lock files for Windows runtimes
   repo-check        Check repository links and accidental local data
-  export-notices    Verify the dependency inventory
+  export-notices    Generate docs/DEPENDENCIES.md; use -Check to verify it
   smoke-test       Run the CLI/MCP protocol smoke check against a published executable
   desktop-smoke     Launch a published desktop executable with synthetic local data
   provider-check    Run opt-in local read checks against an executable and real accounts
@@ -141,7 +141,12 @@ function Invoke-AgentInboxCommand {
             Invoke-AgentInboxScript 'update-portable-locks.ps1' -Parameters @{ Runtime = @('win-x64', 'win-arm64') }
         }
         'repo-check' { Invoke-AgentInboxScript 'repo-check.py' }
-        'export-notices' { Invoke-AgentInboxScript 'export-notices.py' @('--check') }
+        'export-notices' {
+            $noticeArguments = @()
+            if ($Check) { $noticeArguments += '--check' }
+            $noticeArguments += $ToolArguments
+            Invoke-AgentInboxScript 'export-notices.py' $noticeArguments
+        }
         'smoke-test' {
             if ([string]::IsNullOrWhiteSpace($Executable)) { throw 'Supply the published executable path with -Executable.' }
             Invoke-AgentInboxScript 'smoke-test.py' (@($Executable) + $ToolArguments)
