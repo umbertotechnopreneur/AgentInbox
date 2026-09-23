@@ -2,7 +2,7 @@
 param(
     [switch]$Check,
     [switch]$NoRestore,
-    [string[]]$Include
+    [string[]]$Include = @()
 )
 
 $ErrorActionPreference = 'Stop'

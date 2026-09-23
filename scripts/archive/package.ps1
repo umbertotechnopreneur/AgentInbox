@@ -42,12 +42,12 @@ try {
     Copy-Item -LiteralPath LICENSE, THIRD_PARTY_NOTICES.md, docs/DEPENDENCIES.md -Destination $payload
     Copy-Item -LiteralPath docs/RELEASE_README.md -Destination (Join-Path $payload 'README.md')
     Copy-Item -LiteralPath docs/licenses -Destination (Join-Path $payload 'licenses') -Recurse
-    python scripts/export-notices.py --check --copy-to (Join-Path $payload 'licenses/packages')
+    python (Join-Path $PSScriptRoot 'export-notices.py') --check --copy-to (Join-Path $payload 'licenses/packages')
     if ($LASTEXITCODE -ne 0) { throw 'Notice export failed.' }
 
     $executable = Join-Path $payload $(if ($IsWindows) { 'agentinbox.exe' } else { 'agentinbox' })
     if ($isNative) {
-        python scripts/smoke-test.py $executable
+        python (Join-Path $PSScriptRoot 'smoke-test.py') $executable
         if ($LASTEXITCODE -ne 0) { throw 'Published executable smoke test failed.' }
     }
     "Version=$version`nRuntime=$Runtime`nCommit=$commit`nSmokeTest=$smokeStatus`nStage=read_only_mvp" |
@@ -80,7 +80,7 @@ try {
             }
 
             $verifiedExecutable = Join-Path $verificationPath $(if ($IsWindows) { 'agentinbox.exe' } else { 'agentinbox' })
-            python scripts/smoke-test.py $verifiedExecutable
+            python (Join-Path $PSScriptRoot 'smoke-test.py') $verifiedExecutable
             if ($LASTEXITCODE -ne 0) { throw 'Extracted executable smoke test failed.' }
         } finally {
             if (Test-Path -LiteralPath $verificationPath) {

@@ -60,7 +60,7 @@ try {
     $smokeStatus = if ($isNative) { 'native-before-and-after-extraction' } else { 'not-run-cross-architecture' }
     $executable = Join-Path $cliPayload 'agentinbox.exe'
     if ($isNative) {
-        python scripts/smoke-test.py $executable
+        python (Join-Path $PSScriptRoot 'smoke-test.py') $executable
         if ($LASTEXITCODE -ne 0) { throw 'Published portable CLI/MCP smoke test failed.' }
     }
     @(
@@ -84,7 +84,7 @@ try {
                     throw "Portable archive is incomplete: $required"
                 }
             }
-            python scripts/smoke-test.py (Join-Path $verificationPath 'cli/agentinbox.exe')
+            python (Join-Path $PSScriptRoot 'smoke-test.py') (Join-Path $verificationPath 'cli/agentinbox.exe')
             if ($LASTEXITCODE -ne 0) { throw 'Extracted portable CLI/MCP smoke test failed.' }
         } finally {
             if (Test-Path -LiteralPath $verificationPath) { Remove-Item -LiteralPath $verificationPath -Recurse -Force }
