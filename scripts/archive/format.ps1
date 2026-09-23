@@ -2,12 +2,12 @@
 param(
     [switch]$Check,
     [switch]$NoRestore,
-    [string[]]$Include
+    [string[]]$Include = @()
 )
 
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_UI_LANGUAGE = 'en'
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Push-Location $repoRoot
 try {
     if (-not $NoRestore) {
@@ -27,7 +27,7 @@ try {
     dotnet @formatArguments
     if ($LASTEXITCODE -ne 0) {
         if ($Check) {
-            throw 'Formatting check failed. Run pwsh -NoProfile -File scripts/format.ps1 to apply the fixes.'
+            throw 'Formatting check failed. Run pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command format to apply the fixes.'
         }
         throw 'Formatting failed.'
     }

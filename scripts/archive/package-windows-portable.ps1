@@ -9,8 +9,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'Build Windows portable packages on Windows.' }
-$repoRoot = Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'windows-package-support.ps1')
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $PSScriptRoot '..\common\windows-package-support.ps1')
 $previousCliLanguage = $env:DOTNET_CLI_UI_LANGUAGE
 $env:DOTNET_CLI_UI_LANGUAGE = 'en'
 Push-Location $repoRoot
@@ -29,7 +29,7 @@ try {
     $lockFamily = "windows-portable/$Runtime"
     foreach ($module in Get-ChildItem -LiteralPath 'src' -Directory) {
         if (-not (Test-Path -LiteralPath "eng/locks/$lockFamily/$($module.Name).json" -PathType Leaf)) {
-            throw "Missing Windows portable dependency graph for $($module.Name). Run scripts/update-portable-locks.ps1 and commit the results."
+            throw "Missing Windows portable dependency graph for $($module.Name). Run pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command update-locks and commit the results."
         }
     }
 
@@ -60,7 +60,7 @@ try {
     $smokeStatus = if ($isNative) { 'native-before-and-after-extraction' } else { 'not-run-cross-architecture' }
     $executable = Join-Path $cliPayload 'agentinbox.exe'
     if ($isNative) {
-        python scripts/smoke-test.py $executable
+        python (Join-Path $PSScriptRoot 'smoke-test.py') $executable
         if ($LASTEXITCODE -ne 0) { throw 'Published portable CLI/MCP smoke test failed.' }
     }
     @(
@@ -84,7 +84,7 @@ try {
                     throw "Portable archive is incomplete: $required"
                 }
             }
-            python scripts/smoke-test.py (Join-Path $verificationPath 'cli/agentinbox.exe')
+            python (Join-Path $PSScriptRoot 'smoke-test.py') (Join-Path $verificationPath 'cli/agentinbox.exe')
             if ($LASTEXITCODE -ne 0) { throw 'Extracted portable CLI/MCP smoke test failed.' }
         } finally {
             if (Test-Path -LiteralPath $verificationPath) { Remove-Item -LiteralPath $verificationPath -Recurse -Force }

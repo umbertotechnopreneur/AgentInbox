@@ -185,7 +185,7 @@ These checks compare summaries with fetched details. They do **not** independent
 
 The manual runner is local-only: `python scripts/real-provider-check.py <path-to-mailmeup>`. It enumerates accounts, requires at least two and refuses recognized CI environments before process startup. Live checks are excluded from CI.
 
-At the owner's request, CI also skips unit-test execution. It retains build, read-only formatting verification, isolated protocol smoke and repository checks. Local `scripts/validate.ps1` applies style fixes before building and runs the unit suite unless `-SkipUnitTests` is supplied. The repository pre-commit hook applies the same formatter to staged C# files.
+At the owner's request, CI also skips unit-test execution. It retains build, read-only formatting verification, isolated protocol smoke and repository checks. The unified `scripts/AgentInbox.ps1 -Command validate` command applies style fixes before building and runs the unit suite unless `-SkipUnitTests` is supplied. The repository pre-commit hook applies the same formatter to staged C# files.
 
 ## Packaging and CI
 

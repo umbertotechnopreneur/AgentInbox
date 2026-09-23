@@ -26,7 +26,7 @@ if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
 if ($Unsigned -and $null -ne $TimestampServer) {
     throw 'Unsigned packaging cannot use TimestampServer.'
 }
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $runtime = "win-$Architecture"
 $channelDirectory = $Channel.ToLowerInvariant()
 $configuration = if ($Channel -eq 'Store') { 'Release' } else { 'Debug' }
@@ -79,7 +79,7 @@ function Write-PackageLogo {
     }
 }
 
-. (Join-Path $PSScriptRoot 'windows-package-support.ps1')
+. (Join-Path $PSScriptRoot '..\common\windows-package-support.ps1')
 
 [xml]$properties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw
 $productVersion = $properties.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
