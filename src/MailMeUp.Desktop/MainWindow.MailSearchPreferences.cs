@@ -83,7 +83,7 @@ public sealed partial class MainWindow
             : _mailSearchPreferencesDirty ? "Unsaved search period"
             : IsDemo ? "Saved for this preview session." : "Saved on this device.";
         MailSearchPreferencesSavedText.Visibility = ToVisibility(_mailSearchPreferencesDirty || IsDemo);
-        MailSearchPreferencesHeading.Text = "Default search period";
+        MailSearchPreferencesHeading.Text = "Mail · default search period";
         UpdateSharingSettingsSummary();
         UpdateProgress();
     }

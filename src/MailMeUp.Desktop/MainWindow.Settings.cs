@@ -33,7 +33,7 @@ public sealed partial class MainWindow
             surface.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             _settingsTabs = new Pivot { Margin = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Stretch };
             SettingsContent.Children.Clear();
-            string[] titles = ["Search", "Usage", "Limits"];
+            string[] titles = ["Mail & calendars", "Usage", "Safety limits"];
             for (var index = 0; index < sections.Length; index++)
             {
                 var scroll = new ScrollViewer
@@ -77,9 +77,10 @@ public sealed partial class MainWindow
             {
                 Title = "Search & read settings",
                 CloseButtonText = "Done",
+                Background = ThemeBrush("AcrylicInAppFillColorDefaultBrush"),
                 Content = surface
             };
-            _settingsDialog.Resources["ContentDialogMaxWidth"] = 704.0;
+            _settingsDialog.Resources["ContentDialogMaxWidth"] = 900.0;
             _settingsDialog.Opened += (_, _) =>
             {
                 opened = true;
@@ -183,9 +184,9 @@ public sealed partial class MainWindow
     private void UpdateSettingsLayout()
     {
         if (_settingsTabs is null || _settingsScroll is null) return;
-        _settingsTabs.Width = Math.Min(624, Math.Max(0, Root.ActualWidth - 96));
+        _settingsTabs.Width = Math.Min(820, Math.Max(0, Root.ActualWidth - 96));
         foreach (var scroll in _settingsScrolls)
-            scroll.Height = Math.Min(420, Math.Max(120, Root.ActualHeight - 360));
+            scroll.Height = Math.Min(660, Math.Max(160, Root.ActualHeight - 320));
         var activeSection = _settingsScroll.Content as FrameworkElement;
         var width = activeSection is { ActualWidth: > 0 } ? activeSection.ActualWidth : _settingsTabs.Width - 36;
         MailSearchPreferencesActions.Orientation = width < 360 ? Orientation.Vertical : Orientation.Horizontal;
