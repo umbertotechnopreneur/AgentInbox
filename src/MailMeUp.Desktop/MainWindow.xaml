@@ -197,8 +197,14 @@
         <Border x:Name="SettingsParkingHost" Visibility="Collapsed">
             <StackPanel x:Name="SettingsContent" Spacing="20">
                 <StackPanel x:Name="SearchSettingsSection" Spacing="16">
-<StackPanel Spacing="10" x:Name="MailSearchPreferencesExpander">
-                                    <TextBlock x:Name="MailSearchPreferencesHeading" Text="Mail search" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Choose how far back to search when you do not ask for specific dates. This applies to all your accounts." Style="{StaticResource BodyText}" />
+                    <TextBlock Text="Choose a small date range and only the accounts you need. AgentInbox returns short matches first." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="10" x:Name="MailSearchPreferencesExpander">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <FontIcon Glyph="&#xE715;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="20" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                        <TextBlock x:Name="MailSearchPreferencesHeading" Text="Mail · default search period" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="When you do not specify dates, mail searches look back this many days across the accounts you chose. Dates in your request take priority." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
                                     <NumberBox x:Name="MailSearchLookbackDaysBox" Header="Days to look back" Width="200" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="7" ValidationMode="Disabled" IsEnabled="False" AutomationProperties.Name="Default mail search period in days" AutomationProperties.HelpText="Enter a whole number from 1 to 365. The default is 14 days. Explicit search dates override this setting." />
                                     <TextBlock Text="Start with 14 days. Searching further back can take longer, and Google or Microsoft may temporarily limit requests." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <TextBlock x:Name="MailSearchPreferencesSavedText" Text="Loading the saved search period…" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
@@ -207,10 +213,22 @@
                                         <Button x:Name="DiscardMailSearchPreferencesButton" Content="Discard changes" Style="{StaticResource QuietButton}" Click="DiscardMailSearchPreferencesButton_Click" Visibility="Collapsed" />
                                         <Button x:Name="ReloadMailSearchPreferencesButton" Content="Retry loading" Style="{StaticResource QuietButton}" Click="ReloadMailSearchPreferencesButton_Click" Visibility="Collapsed" />
                                     </StackPanel>
-                                </StackPanel>
-                            
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="20" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock Text="Calendars · search by date" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="Ask for a day or a short range, such as your meetings tomorrow. AgentInbox searches from the start time up to, but not including, the end time. A whole day runs from one midnight to the next in the chosen time zone." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                            <TextBlock Text="Each calendar search covers at most 31 days. You can choose specific accounts or calendars. Results show the title, time and location without opening descriptions or attendee lists." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                            <TextBlock Text="For one meeting location, search a narrow date range and use the short result. Open the appointment only if you need its description, attendees or meeting link." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 <StackPanel x:Name="UsageSettingsSection" Spacing="16">
+                    <TextBlock Text="Mail and calendars share these local counters. A search or calendar list uses a content read; opening a full message or appointment also uses a detail read." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
                     <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Read usage" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
 <Button x:Name="RefreshReadGuardrailsButton" Grid.Column="1" Style="{StaticResource QuietButton}" Click="RefreshReadGuardrailsButton_Click" VerticalAlignment="Top" AutomationProperties.Name="Refresh local read usage"><FontIcon Glyph="" FontSize="16" /><ToolTipService.ToolTip>Refresh local usage</ToolTipService.ToolTip></Button>
                     </Grid>
@@ -227,20 +245,43 @@
                 </StackPanel>
                 <StackPanel x:Name="LimitsSettingsSection" Spacing="16">
 <InfoBar x:Name="ReadGuardrailRestartNotice" Title="Restart needed" Message="Saved limits differ from those active in this window. Restart AgentInbox and reconnect your assistant's AgentInbox connection to apply them to all processes. Saving does not clear usage or provider pauses." Severity="Warning" IsOpen="False" IsClosable="False" />
-                                    <ContentControl x:Name="ReadGuardrailEditorExpander" IsEnabled="False" HorizontalContentAlignment="Stretch"><StackPanel Spacing="12">
-                                            <TextBlock x:Name="ReadGuardrailEditorHeading" Text="Read limits" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="Limit requests and the content shared with your assistant. Higher limits allow more traffic and content." Style="{StaticResource BodyText}" />
+                                    <ContentControl x:Name="ReadGuardrailEditorExpander" IsEnabled="False" HorizontalContentAlignment="Stretch"><StackPanel Spacing="16">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <FontIcon Glyph="&#xE713;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="20" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                                <TextBlock x:Name="ReadGuardrailEditorHeading" Text="Safety limits" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Text="These are local limits shared by mail and calendars. They do not increase your Google or Microsoft quota." Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="&#xE715;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                                    <TextBlock Text="Mail" FontSize="16" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                                <TextBlock Text="A search returns 20 short matches by default, or up to 50 per page. Specify dates, sender, recipient, unread state, attachments or Inbox only to narrow it. Opening one message returns 2,000 characters by default; ask for more only when needed." TextWrapping="Wrap" />
+                                            </StackPanel></Border>
+                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="&#xE787;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                                    <TextBlock Text="Calendars" FontSize="16" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                                <TextBlock Text="Search at most 31 days and select up to 20 calendars at a time. The agenda returns 20 events by default, or up to 50 per page. It already includes each location; opening an event fetches description, attendees and meeting link separately." TextWrapping="Wrap" />
+                                            </StackPanel></Border>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon Glyph="&#xE713;" FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="16" Foreground="{ThemeResource SettingsWindowsAccentBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                                <TextBlock Text="Shared limits you can change" FontSize="16" FontWeight="SemiBold" />
+                                            </StackPanel>
+                                            <TextBlock Text="A provider call is one request to Google or Microsoft. The account-and-service limit counts mail and calendars separately for each account; the profile limit counts all accounts together." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                             <Grid x:Name="ReadGuardrailFields" ColumnSpacing="16" RowSpacing="12">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="ReadGuardrailFieldRightColumn" Width="*" /></Grid.ColumnDefinitions>
                                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                                <NumberBox x:Name="ReadGuardrailAccountAttemptsBox" Header="Attempts / account &amp; service / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per account and service per minute" />
-                                                <NumberBox x:Name="ReadGuardrailProfileAttemptsBox" Grid.Column="1" Header="Attempts / profile / minute" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per profile per minute" />
-                                                <NumberBox x:Name="ReadGuardrailContentReadsBox" Grid.Row="1" Header="Content reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Content reads per rolling window" />
-                                                <NumberBox x:Name="ReadGuardrailDetailReadsBox" Grid.Row="1" Grid.Column="1" Header="Detail reads / window" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="5" AutomationProperties.Name="Detail reads per rolling window" />
-                                                <NumberBox x:Name="ReadGuardrailWindowBox" Grid.Row="2" Header="Window / seconds" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="60" LargeChange="300" AutomationProperties.Name="Rolling read window in seconds, 60 to 3600" />
-                                                <TextBox x:Name="ReadGuardrailResponseBytesBox" Grid.Row="2" Grid.Column="1" Header="Output / response (KiB)" AutomationProperties.Name="Maximum KiB in one assistant response" />
-                                                <TextBox x:Name="ReadGuardrailOutputBytesBox" Grid.Row="3" Header="Output / window (KiB)" AutomationProperties.Name="Maximum assistant output KiB per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailAccountAttemptsBox" Header="Calls / account + service / min" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per account and service per minute" />
+                                                <NumberBox x:Name="ReadGuardrailProfileAttemptsBox" Grid.Column="1" Header="Calls / all accounts / min" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Provider attempts per profile per minute" />
+                                                <NumberBox x:Name="ReadGuardrailContentReadsBox" Grid.Row="1" Header="Searches + reads / period" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10" AutomationProperties.Name="Content reads per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailDetailReadsBox" Grid.Row="1" Grid.Column="1" Header="Full details / period" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="5" AutomationProperties.Name="Detail reads per rolling window" />
+                                                <NumberBox x:Name="ReadGuardrailWindowBox" Grid.Row="2" Header="Period length (seconds)" ValidationMode="Disabled" SpinButtonPlacementMode="Compact" SmallChange="60" LargeChange="300" AutomationProperties.Name="Rolling read window in seconds, 60 to 3600" />
+                                                <TextBox x:Name="ReadGuardrailResponseBytesBox" Grid.Row="2" Grid.Column="1" Header="One result (KiB)" AutomationProperties.Name="Maximum KiB in one assistant response" />
+                                                <TextBox x:Name="ReadGuardrailOutputBytesBox" Grid.Row="3" Header="All results / period (KiB)" AutomationProperties.Name="Maximum assistant output KiB per rolling window" />
                                             </Grid>
-                                            <TextBlock Text="Use whole numbers for attempts, reads and seconds. Details count toward content reads. Output measures response data, not model tokens; 1 KiB = 1,024 bytes." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Text="A rolling period means the most recent seconds, not a fixed clock interval. Opening a full item uses both a search/read allowance and a full-item allowance. Output measures data returned to the assistant, not model tokens; 1 KiB = 1,024 bytes." FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                             <TextBlock x:Name="ReadGuardrailDraftText" FontSize="12" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                                             <StackPanel x:Name="ReadGuardrailSaveActions" Orientation="Horizontal" Spacing="8">
                                                 <Button x:Name="SaveReadGuardrailsButton" Content="Save limits" Style="{StaticResource AccentButtonStyle}" Click="SaveReadGuardrailsButton_Click" IsEnabled="False" />
