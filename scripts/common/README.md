@@ -1,7 +1,7 @@
 # Shared script modules
 
 This folder contains reusable helpers and grouped modules used by the
-`scripts/AgentInbox.ps1` entrypoint and its archived command implementations.
+`scripts/AgentInbox.ps1` entrypoint and its command implementations.
 
 - `modules/MenuManager` provides the interactive menu controls.
 - `windows-package-support.ps1` shares dependency notice handling between the
@@ -10,4 +10,4 @@ This folder contains reusable helpers and grouped modules used by the
   and usage notes together as a self-contained tool module.
 
 Command implementations exposed by the AgentInbox CLI live under
-[`../archive`](../archive/).
+[`../commands`](../commands/).
