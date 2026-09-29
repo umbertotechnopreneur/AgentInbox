@@ -75,11 +75,11 @@ public sealed partial class MainWindow
         var window = limits.ReadWindowSeconds % 60 == 0
             ? $"{limits.ReadWindowSeconds / 60} min" : $"{limits.ReadWindowSeconds} sec";
         ReadGuardrailUsageRows.Children.Clear();
-        AddReadGuardrailUsage("Provider attempts · last minute", usage.ProviderAttemptsInMinute,
+        AddReadGuardrailUsage("Provider calls · last minute", usage.ProviderAttemptsInMinute,
             limits.ProviderAttemptsPerProfilePerMinute, usage.NextProviderCapacityAt);
-        AddReadGuardrailUsage($"Content reads · last {window}", usage.ContentReadsInWindow,
+        AddReadGuardrailUsage($"Searches and reads · last {window}", usage.ContentReadsInWindow,
             limits.ContentReadsPerWindow, usage.NextContentCapacityAt);
-        AddReadGuardrailUsage($"Detail reads · last {window}", usage.DetailReadsInWindow,
+        AddReadGuardrailUsage($"Full item reads · last {window}", usage.DetailReadsInWindow,
             limits.DetailReadsPerWindow, usage.NextDetailCapacityAt);
         AddReadGuardrailUsage($"Assistant output · last {window}", usage.OutputBytesInWindow,
             limits.OutputBytesPerWindow, usage.NextOutputCapacityAt, outputBytes: true);
@@ -145,7 +145,7 @@ public sealed partial class MainWindow
             ? "Unsaved search or read settings"
             : _readGuardrailStatus?.RequiresRestart == true
                 ? "Saved read limits · restart needed"
-                : "Search period, read limits and usage";
+                : "Mail and calendar search, limits and usage";
     }
 
     private void DisplayReadGuardrailDraft(ReadGuardrailLimits limits)
@@ -234,7 +234,7 @@ public sealed partial class MainWindow
             : !valid ? error : _readGuardrailsDirty ? "Unsaved limits · saving requires restarting AgentInbox processes."
             : IsDemo ? "Saved for this preview session." : "Saved on this device. Current usage appears in the Usage tab.";
         ReadGuardrailDraftText.Visibility = ToVisibility(_readGuardrailsDirty || _readGuardrailsConflict || IsDemo);
-        ReadGuardrailEditorHeading.Text = "Read limits";
+        ReadGuardrailEditorHeading.Text = "Safety limits";
         UpdateSharingSettingsSummary();
         UpdateProgress();
     }

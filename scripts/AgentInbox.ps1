@@ -41,7 +41,7 @@ function Invoke-AgentInboxScript {
         [hashtable]$Parameters = @{}
     )
 
-    $target = Join-Path $scriptRoot (Join-Path 'archive' $Path)
+    $target = Join-Path $scriptRoot (Join-Path 'commands' $Path)
     if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
         throw "AgentInbox command implementation was not found: $Path"
     }
@@ -171,6 +171,9 @@ function Show-AgentInboxMenu {
         @{ Command = 'package-msix'; Label = 'Build Debug MSIX'; Detail = 'Output: artifacts/debug' },
         @{ Command = 'package-msix'; Label = 'Build Store MSIX'; Detail = 'Output: artifacts/store' },
         @{ Command = 'format'; Label = 'Format solution'; Detail = 'Apply C# formatting' },
+        @{ Command = 'repo-check'; Label = 'Repository check'; Detail = 'Check links and accidental local data' },
+        @{ Command = 'export-notices'; Label = 'Dependency notices'; Detail = 'Regenerate third-party notices' },
+        @{ Command = 'test-provider-check'; Label = 'Test provider checker'; Detail = 'Run synthetic checker tests' },
         @{ Command = 'clean-artifacts'; Label = 'Clean artifacts'; Detail = 'Remove generated package and build outputs' },
         @{ Command = 'update-locks'; Label = 'Update Windows locks'; Detail = 'Restore x64 and ARM64 dependency graphs' },
         @{ Command = 'install-hooks'; Label = 'Install Git hooks'; Detail = 'Format staged C# files before commits' },
