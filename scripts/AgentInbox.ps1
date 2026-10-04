@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('menu', 'help', 'validate', 'package-portable', 'package-msix', 'clean-artifacts', 'format', 'format-staged', 'install-hooks', 'update-locks', 'repo-check', 'export-notices', 'smoke-test', 'desktop-smoke', 'provider-check', 'test-provider-check')]
+    [ValidateSet('menu', 'help', 'validate', 'package-portable', 'package-msix', 'install-debug-msix', 'clean-artifacts', 'format', 'format-staged', 'install-hooks', 'update-locks', 'repo-check', 'export-notices', 'smoke-test', 'desktop-smoke', 'provider-check', 'test-provider-check')]
     [string]$Command = 'menu',
     [ValidateSet('win-x64', 'win-arm64')]
     [string]$Runtime = 'win-x64',
@@ -12,7 +12,6 @@ param(
     [string]$PackageVersion,
     [ValidatePattern('^[A-Fa-f0-9]{40}$')]
     [string]$CertificateThumbprint,
-    [uri]$TimestampServer,
     [string]$MakeAppxPath,
     [string]$SignToolPath,
     [switch]$Unsigned,
@@ -66,6 +65,7 @@ COMMANDS
   validate          Restore, format, build, optionally test, and run repository checks
   package-portable  Build a Windows portable ZIP (win-x64 or win-arm64)
   package-msix      Build a manual Debug or Store MSIX under artifacts/debug or artifacts/store
+  install-debug-msix Build, sign, install, and check a Debug MSIX for -PackageVersion
   clean-artifacts   Remove generated files from artifacts/
   format            Format the solution; use -Check to verify without edits
   format-staged     Format staged C# files before commit
@@ -84,7 +84,6 @@ OPTIONS
   -Architecture x64|arm64     MSIX architecture (default: x64)
   -PackageVersion <version>   Optional four-part MSIX package version
   -CertificateThumbprint     Signing certificate for a signed MSIX
-  -TimestampServer <URL>      RFC 3161 timestamp service for signed MSIX output
   -Unsigned                   Create an unsigned Debug MSIX
   -SkipUnitTests              Skip unit tests during validate
   -CheckFormatting            Verify formatting during validate
@@ -96,7 +95,8 @@ OPTIONS
 
 EXAMPLES
   pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -Unsigned
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command package-msix -Channel Store -Architecture x64 -CertificateThumbprint <40-hex-digits> -TimestampServer https://timestamp.example.test
+  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command install-debug-msix -PackageVersion <higher-four-part-version>
+  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command package-msix -Channel Store -Architecture x64 -CertificateThumbprint <40-hex-digits>
 
 With no command, AgentInbox opens an interactive menu. Esc or 0 returns or closes it.
 '@ | Write-Host
@@ -118,11 +118,22 @@ function Invoke-AgentInboxCommand {
             $packageParameters = @{ Channel = $Channel; Architecture = $Architecture }
             if (-not [string]::IsNullOrWhiteSpace($PackageVersion)) { $packageParameters.Version = $PackageVersion }
             if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) { $packageParameters.CertificateThumbprint = $CertificateThumbprint }
-            if ($TimestampServer) { $packageParameters.TimestampServer = $TimestampServer }
             if (-not [string]::IsNullOrWhiteSpace($MakeAppxPath)) { $packageParameters.MakeAppxPath = $MakeAppxPath }
             if (-not [string]::IsNullOrWhiteSpace($SignToolPath)) { $packageParameters.SignToolPath = $SignToolPath }
             if ($Unsigned) { $packageParameters.Unsigned = $true }
             Invoke-AgentInboxScript 'package-msix.ps1' -Parameters $packageParameters
+        }
+        'install-debug-msix' {
+            if ([string]::IsNullOrWhiteSpace($PackageVersion)) { throw '-PackageVersion is required for install-debug-msix.' }
+            if ($Channel -ne 'Debug' -or $Unsigned) { throw 'install-debug-msix requires a signed Debug package.' }
+            $installParameters = @{
+                Version = $PackageVersion
+                Architecture = $Architecture
+            }
+            if ($CertificateThumbprint) { $installParameters.CertificateThumbprint = $CertificateThumbprint }
+            if ($MakeAppxPath) { $installParameters.MakeAppxPath = $MakeAppxPath }
+            if ($SignToolPath) { $installParameters.SignToolPath = $SignToolPath }
+            Invoke-AgentInboxScript 'install-debug-msix.ps1' -Parameters $installParameters
         }
         'clean-artifacts' { Invoke-AgentInboxScript 'clean-artifacts.ps1' }
         'format' {
@@ -209,7 +220,6 @@ function Show-AgentInboxMenu {
                 }
                 if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
                     $script:CertificateThumbprint = Read-Host 'Signing certificate thumbprint (40 hexadecimal characters)'
-                    $script:TimestampServer = [uri](Read-Host 'RFC 3161 timestamp server URL')
                 }
             }
             Invoke-AgentInboxCommand $items[$selection - 1].Command

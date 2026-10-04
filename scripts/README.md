@@ -6,7 +6,7 @@ Run it without arguments for the interactive menu, or pass `-Command` in automat
 ```powershell
 pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command help
 pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command validate
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -CertificateThumbprint '<thumbprint>' -TimestampServer 'http://timestamp.example.test'
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -CertificateThumbprint '<thumbprint>'
 ```
 
 `commands/` contains the implementations selected by the entrypoint. `common/`

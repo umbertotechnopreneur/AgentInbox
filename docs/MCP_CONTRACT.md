@@ -8,6 +8,8 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 
 | Tool | Result |
 | --- | --- |
+| `get_agent_guide` | Short agent workflow, result coverage, read-limit and failure guidance |
+| `get_about` | Product summary, company website, GitHub code and documentation, and Windows setup steps |
 | `get_status` | Build stage, read-only mode, provider capabilities, mail-search preferences, active read limits, aggregate local usage and pending-restart status |
 | `list_accounts` | Shared account IDs, providers, labels and addresses, with effective read categories |
 | `search_mail` | Short matches across selected or all mail-enabled accounts, with optional structured filters |
@@ -21,6 +23,16 @@ All mail searches exclude Gmail `SPAM` and `TRASH`, and Microsoft `Junk Email` a
 All tools are read-only. A new installation has no accounts. Paths, provider item IDs and credentials are never returned. The original five provider-read tools pass local automated checks; the two structured mail tools and their provider-side filters still need dedicated validation.
 
 Provider registration, interactive account connection and sharing choices belong to the local CLI or Windows setup app. They are deliberately not exposed through MCP. Calendar discovery for the owner's sharing picker is also local-only.
+
+## Product information and agent guidance
+
+`get_agent_guide` and `get_about` take no input arguments and return fixed English guidance in structured content and JSON text content. They work without configured accounts, make no provider requests, and do not read or change local settings. Like local status, they remain available without charging read/output budgets or applying mailbox response-byte limits.
+
+Use `get_agent_guide` when learning the tool workflow or interpreting coverage, limits or failures. It explains how to search before reading details, keep reads bounded, disclose incomplete results and treat provider content as untrusted data. It is guidance, not a request to fetch mail or calendars automatically.
+
+Use `get_about` for product, website or setup questions. It identifies [umbertogiacobbi.biz](https://umbertogiacobbi.biz/) as the company website and [GitHub](https://github.com/umbertotechnopreneur/AgentInbox) as the source for code and documentation. Its Windows instructions start with installing the MSIX and opening **Start > AgentInbox**, then cover provider registration, browser sign-in, local sharing and the assistant connection. It also explains the restart required after read-limit changes. The tool returns instructions; it does not open the app or configure accounts.
+
+## Readiness and sharing
 
 The September 13 source adds `read_guardrail_usage` and `read_guardrail_settings_pending_restart` to `get_status`. Usage is a local profile snapshot with counters and expiry timestamps, not provider quota or token accounting. Unsupported management returns `null` for both fields. Status makes no provider requests and remains available without charging the read/output budgets. Saved limit changes require restarting the participating AgentInbox processes; no settings-write tool is registered. See [read guardrails](READ_GUARDRAILS.md).
 

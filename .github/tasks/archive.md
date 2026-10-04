@@ -1,5 +1,11 @@
 # Completed work
 
+## 2026-10-03 — Add one-command Debug MSIX installation
+
+- Added `install-debug-msix` to the general script to clear `artifacts`, build, sign, install, and verify a local Debug MSIX with an explicit higher four-part version.
+- The combined path cleans generated project output after packaging while retaining the new installer.
+- PowerShell parsing passed. The simplified command built, signed, installed, and verified Debug x64 version 1.0.6.3 with a valid package signature and `Ok` registration status.
+
 ## 2026-09-21 — Separate private design explorations
 
 - Archived wizard mockups and product concept illustrations outside Git, removed their README embeds and repaired documentation references. Retained runtime artwork and real screenshots. Documentation/reference checks only; no build or tests.
