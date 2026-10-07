@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using MailMeUp.Cli;
 using Spectre.Console;
+using Xunit;
 
 namespace MailMeUp.Tests;
 
