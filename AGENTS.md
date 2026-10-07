@@ -4,7 +4,7 @@ AgentInbox is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All 
 
 ## Product writing and author voice
 
-- Keep AgentInbox, PromptMeUp, and TrackMeUp visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
+- Keep AgentInbox, PromptMeUp, and WorkTrail visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
 
 - Start each README with a headline that says what the app does and what the reader can use it for. Put the product benefit before architecture, branding, or project history.
 - Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
@@ -75,7 +75,9 @@ AgentInbox is an MIT-licensed, local .NET 10 email and calendar MCP bridge. All 
 ## Validation and handoff
 
 - Use `rg` for searches and `pwsh -NoProfile` for PowerShell scripts.
-- Start every authorized build with an empty repository `artifacts/` directory. The packaging and validation scripts run cleanup automatically; run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command clean-artifacts` once before a manual build. For an explicit local Debug MSIX installation, preserve the newly created package under `artifacts/debug` until installation completes, then clean generated build output without deleting that requested installer. Keep packages or logs that must survive another build outside `artifacts/`, and do not run builds concurrently in the same checkout.
+- Use repository-local `artifacts/` as the only location for all temporary, generated, compiled, and packaging output produced during work, including intermediates, logs, reports, and scratch files. Keep each output category in a dedicated subdirectory; do not write outputs at the repository root or beside source files.
+- Start every authorized build with empty transient-output subdirectories under `artifacts/`. The packaging and validation scripts run cleanup automatically; run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command clean-artifacts` once before a manual build. For an explicit local Debug MSIX installation, preserve the newly created package under `artifacts/debug` until installation completes, then clean generated build output without deleting that requested installer. Keep packages or logs that must survive another build under `artifacts/preserved/`, ensure cleanup preserves that subdirectory, and do not run builds concurrently in the same checkout.
+- For an explicitly authorized local Debug MSIX build or reinstallation, use the known configuration and current-user certificate, then attempt installation immediately. Verify only the installation result, installed version, and package status. Diagnose the signature, manifest, or dependencies only after a failed installation, and do not run UI tests unless explicitly requested. Keep full package validation for Release and Store builds. Perform any mandatory cleanup quietly and report it briefly.
 - Do not run tests, builds, formatters, linters, smoke tests, repository preflight or other verification on your own initiative.
 - Finish the requested work first, then explain which tests or checks would be useful. Run them only when the owner explicitly asks. In Italian, use wording such as: "Ci sarebbero i test da lanciare."
 - Do not dispatch CI or push changes merely to trigger verification without an explicit request. This working agreement does not itself change the existing GitHub Actions configuration.

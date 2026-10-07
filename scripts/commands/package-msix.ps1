@@ -11,7 +11,7 @@ param(
     [ValidatePattern('^[A-Fa-f0-9]{40}$')]
     [string]$CertificateThumbprint,
     [switch]$Unsigned,
-    [uri]$TimestampServer
+    [switch]$SkipArtifactCleanup
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,9 +22,6 @@ if ($Unsigned -and -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
 }
 if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
     throw 'Signed MSIX packaging requires CertificateThumbprint.'
-}
-if ($Unsigned -and $null -ne $TimestampServer) {
-    throw 'Unsigned packaging cannot use TimestampServer.'
 }
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $runtime = "win-$Architecture"
@@ -102,9 +99,6 @@ if ([string]::IsNullOrWhiteSpace($manifestPublisher)) { throw 'The source manife
 $makeAppx = Resolve-WindowsSdkTool -Name 'MakeAppx.exe' -ExplicitPath $MakeAppxPath
 $signTool = $null
 if (-not $Unsigned) {
-    if (-not $TimestampServer -or $TimestampServer.Scheme -notin @('http', 'https')) {
-        throw 'Signing requires an explicit HTTP(S) RFC 3161 TimestampServer.'
-    }
     $certificate = Get-Item -LiteralPath "Cert:/CurrentUser/My/$CertificateThumbprint"
     if (-not $certificate.HasPrivateKey -or [DateTime]::Now -lt $certificate.NotBefore -or [DateTime]::Now -gt $certificate.NotAfter) {
         throw 'The selected certificate must have an accessible private key and be within its validity period.'
@@ -115,7 +109,10 @@ if (-not $Unsigned) {
 
 $packageName = "agentinbox-$Version-$runtime"
 $artifactRoot = Join-Path $repoRoot "artifacts/$channelDirectory/$Version/$Architecture"
-& (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
+# The combined install command retains previous packages and verification records.
+if (-not $SkipArtifactCleanup) {
+    & (Join-Path $PSScriptRoot 'clean-artifacts.ps1')
+}
 if (Test-Path -LiteralPath $artifactRoot) {
     throw "Package output already exists. Choose a fresh version or architecture; existing output is never overwritten: $artifactRoot"
 }
@@ -183,7 +180,7 @@ try {
     & $makeAppx pack /d $payload /p $packagePath
     if ($LASTEXITCODE -ne 0) { throw 'MakeAppx packaging failed.' }
     if (-not $Unsigned) {
-        & $signTool sign /sha1 $CertificateThumbprint /s My /fd SHA256 /tr $TimestampServer.AbsoluteUri /td SHA256 $packagePath
+        & $signTool sign /sha1 $CertificateThumbprint /s My /fd SHA256 $packagePath
         if ($LASTEXITCODE -ne 0) { throw 'MSIX signing failed. The output must not be distributed as signed.' }
         $publicCertificatePath = Join-Path $artifactRoot "$packageName.cer"
         [IO.File]::WriteAllBytes($publicCertificatePath, $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))

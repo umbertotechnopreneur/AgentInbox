@@ -150,7 +150,7 @@ def main():
             send({"method": "notifications/initialized"})
             send({"id": 2, "method": "tools/list"})
             tools = receive(2)["result"]["tools"]
-            expected_tools = {"get_status", "list_accounts", "search_mail", "search_unread_mail",
+            expected_tools = {"get_agent_guide", "get_about", "get_status", "list_accounts", "search_mail", "search_unread_mail",
                               "search_mail_by_date", "read_mail", "list_calendars", "search_events", "read_event"}
             check({tool["name"] for tool in tools} == expected_tools, "Unexpected tool surface")
             check(all(tool["annotations"]["readOnlyHint"] for tool in tools), "Missing read-only hints")

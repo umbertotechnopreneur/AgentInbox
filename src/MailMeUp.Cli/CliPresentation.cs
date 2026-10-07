@@ -41,10 +41,12 @@ internal sealed class CliPresentation
         }
 
         _output.WriteLine();
-        _output.MarkupLine($"[bold {Mint}]{Icon("📬", "::")} AgentInbox[/]  [dim]v{Markup.Escape(Version)}[/]");
-        _output.MarkupLine("[dim]   All your inboxes. One conversation.[/]");
-        _output.MarkupLine("[dim]   [link=https://github.com/umbertotechnopreneur/AgentInbox]GitHub repository[/][/]");
-        _output.MarkupLine("[dim]   by Umberto Giacobbi · [link=https://umbertogiacobbi.biz]umbertogiacobbi.biz[/][/]");
+        var product = new Rows(
+            new Markup($"[bold {Mint}]{Icon("📬", "::")} AgentInbox[/]  [dim]v{Markup.Escape(Version)}[/]"),
+            new Markup("[dim]   All your inboxes. One conversation.[/]"),
+            new Markup("[dim]   [link=https://github.com/umbertotechnopreneur/AgentInbox]GitHub repository[/][/]"),
+            new Markup("[dim]   by Umberto Giacobbi · [link=https://umbertogiacobbi.biz]umbertogiacobbi.biz[/][/]"));
+        _output.Write(new VibeWareBrand(_output, product));
         _output.WriteLine();
     }
 

@@ -22,4 +22,7 @@
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\resources\vibeware-symbol.rgb" LogicalName="MailMeUp.Cli.Assets.vibeware-symbol.rgb" />
+  </ItemGroup>
 </Project>
