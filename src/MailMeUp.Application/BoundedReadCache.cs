@@ -37,6 +37,7 @@ internal sealed class BoundedReadCache<T>(TimeProvider timeProvider, Func<T, lon
     private readonly Dictionary<string, TaskCompletionSource<T>> _pending = new(StringComparer.Ordinal);
     private long _bytes;
 
+    /// <summary>Returns a cached detail or joins the single provider read already in progress for its key.</summary>
     internal async Task<T> GetAsync(string key, Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -46,11 +47,18 @@ internal sealed class BoundedReadCache<T>(TimeProvider timeProvider, Func<T, lon
         lock (_sync)
         {
             Prune();
-            if (_entries.TryGetValue(cacheKey, out var cached)) return cached.Value;
+            if (_entries.TryGetValue(cacheKey, out var cached))
+            {
+                return cached.Value;
+            }
+
             if (!_pending.TryGetValue(cacheKey, out var pending))
             {
                 if (_pending.Count >= MaximumPending)
+                {
                     throw new ProviderReadException("Too many detail reads are waiting.", ReadFailureKind.BudgetExceeded);
+                }
+
                 owner = pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
                 _pending.Add(cacheKey, pending);
             }
@@ -58,10 +66,15 @@ internal sealed class BoundedReadCache<T>(TimeProvider timeProvider, Func<T, lon
         }
 
         // The first caller owns provider cancellation. Other callers can leave without cancelling that read.
-        if (owner is not null) _ = PopulateAsync(cacheKey, owner, read, cancellationToken);
+        if (owner is not null)
+        {
+            _ = PopulateAsync(cacheKey, owner, read, cancellationToken);
+        }
+
         return await task.WaitAsync(cancellationToken);
     }
 
+    /// <summary>Completes a newly owned provider read and stores a bounded result when it is safe to retain.</summary>
     private async Task PopulateAsync(string key, TaskCompletionSource<T> completion,
         Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
     {
@@ -77,7 +90,10 @@ internal sealed class BoundedReadCache<T>(TimeProvider timeProvider, Func<T, lon
                 if (bytes is >= 0 and <= MaximumEntryBytes)
                 {
                     while (_entries.Count >= MaximumEntries || _bytes + bytes > MaximumBytes)
+                    {
                         Remove(_entries.MinBy(pair => pair.Value.ExpiresAt).Key);
+                    }
+
                     _entries[key] = new(value, timeProvider.GetUtcNow() + Lifetime, bytes);
                     _bytes += bytes;
                 }
@@ -87,37 +103,56 @@ internal sealed class BoundedReadCache<T>(TimeProvider timeProvider, Func<T, lon
         }
         catch (OperationCanceledException exception)
         {
-            lock (_sync) _pending.Remove(key);
+            lock (_sync)
+            {
+                _pending.Remove(key);
+            }
+
             completion.TrySetCanceled(exception.CancellationToken);
         }
         catch (Exception exception)
         {
-            lock (_sync) _pending.Remove(key);
+            lock (_sync)
+            {
+                _pending.Remove(key);
+            }
+
             completion.TrySetException(exception);
         }
     }
 
+    /// <summary>Removes expired cached details before calculating capacity.</summary>
     private void Prune()
     {
         var now = timeProvider.GetUtcNow();
         foreach (var key in _entries.Where(pair => pair.Value.ExpiresAt <= now).Select(pair => pair.Key).ToArray())
+        {
             Remove(key);
+        }
     }
 
+    /// <summary>Removes one cached entry and releases its accounted byte budget.</summary>
     private void Remove(string key)
     {
-        if (_entries.Remove(key, out var entry)) _bytes -= entry.Bytes;
+        if (_entries.Remove(key, out var entry))
+        {
+            _bytes -= entry.Bytes;
+        }
     }
 
+    /// <summary>Stores a cached value together with its expiry and accounted size.</summary>
     private sealed record Entry(T Value, DateTimeOffset ExpiresAt, long Bytes);
 }
 
+/// <summary>Estimates the managed text size of provider details before they enter the bounded cache.</summary>
 internal static class ProviderContentSize
 {
+    /// <summary>Estimates the UTF-16 text size of a mail detail.</summary>
     internal static long Mail(ProviderMailMessage value) => 2L *
         (value.ProviderMessageId.Length + (long)value.Subject.Length + value.Sender.Length + value.PlainText.Length +
          value.To.Sum(item => (long)item.Length) + value.Cc.Sum(item => (long)item.Length));
 
+    /// <summary>Estimates the UTF-16 text size of a calendar event detail.</summary>
     internal static long Event(ProviderEvent value) => 2L *
         (value.ProviderEventId.Length + (long)value.Title.Length + value.Start.Length + value.End.Length +
          value.Location.Length + value.Description.Length + (value.MeetingLink?.Length ?? 0) +

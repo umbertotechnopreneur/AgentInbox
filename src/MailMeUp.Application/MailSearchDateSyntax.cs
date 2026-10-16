@@ -22,8 +22,10 @@ using System.Globalization;
 
 namespace MailMeUp.Application;
 
+/// <summary>Recognizes explicit date constraints in the supported provider search syntax.</summary>
 internal static class MailSearchDateSyntax
 {
+    /// <summary>Determines whether a query contains a valid explicit date or relative-date constraint.</summary>
     public static bool HasExplicitDate(string? query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -99,8 +101,10 @@ internal static class MailSearchDateSyntax
         return false;
     }
 
+    /// <summary>Determines whether a character ends an unquoted search token.</summary>
     private static bool IsSeparator(char value) => char.IsWhiteSpace(value) || value is '(' or ')' or '{' or '}';
 
+    /// <summary>Determines whether a provider date expression is valid for an explicit range.</summary>
     private static bool IsDateValue(string value)
     {
         value = value.TrimStart('<', '>', '=');

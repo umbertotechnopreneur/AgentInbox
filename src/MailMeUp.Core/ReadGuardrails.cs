@@ -206,6 +206,7 @@ public abstract class ReadGuardrails : IProviderRequestGovernor, IReadBudget
         }, cancellationToken);
     }
 
+    /// <summary>Extends the pause recorded for one hashed provider scope.</summary>
     private Task SetCooldownAsync(string key, TimeSpan delay, ReadFailureKind kind, CancellationToken cancellationToken)
     {
         if (delay < TimeSpan.Zero || !ValidCooldownKind(kind))
@@ -255,6 +256,7 @@ public abstract class ReadGuardrails : IProviderRequestGovernor, IReadBudget
             cooldowns.Length == 0 ? null : DateTimeOffset.FromUnixTimeMilliseconds(cooldowns.Max(scope => scope.CooldownUntil)));
     }
 
+    /// <summary>Calculates when the earliest charge in a rolling window stops counting.</summary>
     private static DateTimeOffset? NextExpiry(IEnumerable<long> charges, long windowMilliseconds)
     {
         var earliest = charges.Select(value => (long?)value).Min();
@@ -280,12 +282,18 @@ public abstract class ReadGuardrails : IProviderRequestGovernor, IReadBudget
         }
     }
 
+    /// <summary>Determines whether a persisted timestamp collection stays inside supported limits.</summary>
     private static bool ValidTimes(List<long> timestamps) =>
         timestamps.Count <= MaximumLedgerEntries && timestamps.All(ValidTime);
+
+    /// <summary>Determines whether a persisted Unix-millisecond value is representable.</summary>
     private static bool ValidTime(long value) => value is >= 0 and <= MaximumTimestamp;
+
+    /// <summary>Determines whether a failure category is valid for a provider cooldown.</summary>
     private static bool ValidCooldownKind(ReadFailureKind kind) =>
         kind is ReadFailureKind.RateLimited or ReadFailureKind.BudgetExceeded or ReadFailureKind.ProviderUnavailable or ReadFailureKind.Timeout or ReadFailureKind.Network;
 
+    /// <summary>Removes expired rolling-window charges and idle provider scopes.</summary>
     private void Prune(GuardrailState state, long now)
     {
         state.ProviderAttempts.RemoveAll(value => value <= now - 60_000);
@@ -354,14 +362,19 @@ public abstract class ReadGuardrails : IProviderRequestGovernor, IReadBudget
         public ReadFailureKind CooldownKind { get; set; } = ReadFailureKind.RateLimited;
     }
 
+    /// <summary>Owns one provider-scope lock and exposes its scoped cooldown operation.</summary>
     private sealed class ProviderLease(ReadGuardrails owner, string key, IAsyncDisposable inner) : IProviderRequestLease
     {
         private IAsyncDisposable? _inner = inner;
+
+        /// <inheritdoc />
         public Task SetCooldownAsync(TimeSpan delay, ReadFailureKind kind, CancellationToken cancellationToken = default)
         {
             ObjectDisposedException.ThrowIf(_inner is null, this);
             return owner.SetCooldownAsync(key, delay, kind, cancellationToken);
         }
+
+        /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
             var lease = Interlocked.Exchange(ref _inner, null);
@@ -414,6 +427,7 @@ public sealed class InMemoryReadGuardrails : ReadGuardrails
         finally { _stateGate.Release(); }
     }
 
+    /// <summary>Releases one scope user and disposes the gate after its final user leaves.</summary>
     private void ReleaseScope(string key, ScopeGate gate, bool held)
     {
         lock (_scopeGate)
@@ -425,14 +439,17 @@ public sealed class InMemoryReadGuardrails : ReadGuardrails
         }
     }
 
+    /// <summary>Tracks serialized access and active users for one hashed provider scope.</summary>
     private sealed class ScopeGate
     {
         public SemaphoreSlim Semaphore { get; } = new(1, 1);
         public int Users { get; set; }
     }
 
+    /// <summary>Releases a held in-memory provider scope when disposed.</summary>
     private sealed class GateLease(InMemoryReadGuardrails owner, string key, ScopeGate gate) : IAsyncDisposable
     {
+        /// <inheritdoc />
         public ValueTask DisposeAsync() { owner.ReleaseScope(key, gate, held: true); return ValueTask.CompletedTask; }
     }
 }

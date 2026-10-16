@@ -76,6 +76,7 @@ public sealed class ReadAccessConnectionChecker : IAccountConnectionChecker
             mail.Evidence, calendar.Evidence);
     }
 
+    /// <summary>Runs one enabled capability check inside its own deadline and retains its safe failure category.</summary>
     private async Task<CapabilityResult> CheckCapabilityAsync(bool enabled, string capability,
         Func<CancellationToken, Task<ReadCheckEvidence>> action, CancellationToken cancellationToken)
     {
@@ -111,6 +112,7 @@ public sealed class ReadAccessConnectionChecker : IAccountConnectionChecker
         }
     }
 
+    /// <summary>Probes bounded mail queries and, when available, one representative message detail.</summary>
     private async Task<ReadCheckEvidence> CheckMailAsync(Account account, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
@@ -154,6 +156,7 @@ public sealed class ReadAccessConnectionChecker : IAccountConnectionChecker
         return detailRead ? ReadCheckEvidence.SampleRead : ReadCheckEvidence.SearchOnly;
     }
 
+    /// <summary>Probes available calendars and, when available, one representative event detail.</summary>
     private async Task<ReadCheckEvidence> CheckCalendarsAsync(Account account, CancellationToken cancellationToken)
     {
         var calendars = await _calendar.ListCalendarsAsync(account, cancellationToken);
@@ -207,5 +210,6 @@ public sealed class ReadAccessConnectionChecker : IAccountConnectionChecker
         }
     }
 
+    /// <summary>Retains independent evidence and failure information for one read capability.</summary>
     private sealed record CapabilityResult(ReadCheckEvidence Evidence, ReadFailureKind? Failure);
 }
