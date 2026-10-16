@@ -22,6 +22,7 @@ using Serilog.Events;
 
 namespace MailMeUp.Cli;
 
+/// <summary>Identifies the command-line operation requested by a parsed invocation.</summary>
 internal enum CliCommand
 {
     Help,
@@ -36,6 +37,7 @@ internal enum CliCommand
     Ui
 }
 
+/// <summary>Contains validated command-line command, flags, and operands.</summary>
 internal sealed record CliOptions(
     CliCommand Command,
     string? Provider = null,
@@ -51,6 +53,7 @@ internal sealed record CliOptions(
     bool UiListSteps = false,
     string? DesktopPath = null)
 {
+    /// <summary>Parses supported command-line arguments and rejects ambiguous or incompatible options.</summary>
     internal static CliOptions Parse(string[] args)
     {
         var operands = new List<string>();
@@ -175,6 +178,7 @@ internal sealed record CliOptions(
         };
     }
 
+    /// <summary>Maps a supported textual log level to Serilog's corresponding event level.</summary>
     private static LogEventLevel ParseLogLevel(string? value) => value?.ToLowerInvariant() switch
     {
         null or "" or "warning" => LogEventLevel.Warning,
@@ -187,6 +191,7 @@ internal sealed record CliOptions(
     };
 }
 
+/// <summary>Represents a safe command-line usage error that can be shown with help guidance.</summary>
 internal sealed class CliUsageException(string message) : Exception(message)
 {
 }
