@@ -29,6 +29,7 @@ using Windows.System;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements responsive page-scroll affordances and pointer interactions for the window.</summary>
 public sealed partial class MainWindow
 {
     private ScrollBar? _pageVerticalScrollBar;
@@ -245,6 +246,7 @@ public sealed partial class MainWindow
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    /// <summary>Represents a native screen-space cursor point for page-scroll hit testing.</summary>
     private struct PageScrollCursorPoint
     {
         public int X;
@@ -253,9 +255,11 @@ public sealed partial class MainWindow
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
+    /// <summary>Reads the current native screen cursor position.</summary>
     private static extern bool GetCursorPos(out PageScrollCursorPoint point);
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
+    /// <summary>Converts a native screen cursor position to the specified window's client coordinates.</summary>
     private static extern bool ScreenToClient(IntPtr window, ref PageScrollCursorPoint point);
 }

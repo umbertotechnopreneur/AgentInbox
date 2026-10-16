@@ -25,6 +25,7 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements accessible modal dialogs and local setup guidance for the window.</summary>
 public sealed partial class MainWindow
 {
     private ContentDialog? _activeSetupDialog;

@@ -23,6 +23,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements account connection and provider-registration interactions for the setup window.</summary>
 public sealed partial class MainWindow
 {
     private ContentDialog? _addAccountDialog;
@@ -30,9 +31,11 @@ public sealed partial class MainWindow
     private readonly InfoBar _addAccountNotice = new() { IsClosable = true };
     private string? _pendingAccountAction;
 
+    /// <summary>Opens the account provider selection dialog after an explicit add-account request.</summary>
     private async void AddAccountButton_Click(object sender, RoutedEventArgs e) =>
         await ShowAddAccountAsync();
 
+    /// <summary>Displays available provider connection choices and related setup actions.</summary>
     private async Task ShowAddAccountAsync()
     {
         if (_busy || _dialogOpen || _lifetime.IsCancellationRequested) return;
@@ -88,10 +91,13 @@ public sealed partial class MainWindow
         while (_pendingAccountAction == "setup" && !_lifetime.IsCancellationRequested);
     }
 
+    /// <summary>Selects Google as the provider for the pending account connection.</summary>
     private void AddGoogleAccountButton_Click(object sender, RoutedEventArgs e) => ChooseAccountProvider("google");
 
+    /// <summary>Selects Microsoft as the provider for the pending account connection.</summary>
     private void AddMicrosoftAccountButton_Click(object sender, RoutedEventArgs e) => ChooseAccountProvider("microsoft");
 
+    /// <summary>Stores the selected provider and refreshes the account-add dialog layout.</summary>
     private void ChooseAccountProvider(string provider)
     {
         if (_busy || _addAccountDialog is null || BlockDemoAction()) return;
@@ -105,6 +111,7 @@ public sealed partial class MainWindow
         _addAccountDialog.Hide();
     }
 
+    /// <summary>Opens provider registration guidance for the provider selected in the account-add dialog.</summary>
     private void AddAccountProviderSetupButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _addAccountDialog is null || BlockDemoAction()) return;
@@ -112,6 +119,7 @@ public sealed partial class MainWindow
         _addAccountDialog.Hide();
     }
 
+    /// <summary>Updates account-add choices and notices from the latest provider setup status.</summary>
     private void UpdateAddAccountLayout()
     {
         if (_addAccountScroll is null) return;

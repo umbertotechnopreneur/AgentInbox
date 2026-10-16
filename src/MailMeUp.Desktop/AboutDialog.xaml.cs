@@ -42,6 +42,7 @@ public sealed partial class AboutDialog : ContentDialog
         VersionText.Text = $"Version {_version} · Windows preview{Environment.NewLine}{_buildDetails}";
     }
 
+    /// <summary>Reads the installed application version for display and clipboard use.</summary>
     private static string GetVersion()
     {
         try
@@ -56,6 +57,7 @@ public sealed partial class AboutDialog : ContentDialog
         }
     }
 
+    /// <summary>Copies the version report after the user explicitly requests it.</summary>
     private void CopyVersionButton_Click(object sender, RoutedEventArgs e)
     {
         var data = new DataPackage();
@@ -73,6 +75,7 @@ public sealed partial class AboutDialog : ContentDialog
         CopyStatus.Visibility = Visibility.Visible;
     }
 
+    /// <summary>Builds bounded assembly details for the About dialog.</summary>
     private static string GetBuildDetails()
     {
         var metadata = typeof(AboutDialog).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()

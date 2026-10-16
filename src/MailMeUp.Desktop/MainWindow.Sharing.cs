@@ -25,6 +25,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements account-sharing selection and persistence interactions for the window.</summary>
 public sealed partial class MainWindow
 {
     private Account? _selectedAccount;

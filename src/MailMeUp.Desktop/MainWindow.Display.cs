@@ -25,6 +25,7 @@ using Windows.Foundation;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements display-root observation and deferred layout refreshes for the window.</summary>
 public sealed partial class MainWindow
 {
     private XamlRoot? _displayXamlRoot;
@@ -32,6 +33,7 @@ public sealed partial class MainWindow
     private Size _displaySize;
     private bool _displayRefreshQueued;
 
+    /// <summary>Subscribes to the current XAML root so display changes can refresh layout chrome.</summary>
     private void ObserveDisplayRoot()
     {
         var root = Root.XamlRoot;
@@ -44,12 +46,14 @@ public sealed partial class MainWindow
         QueueDisplayLayoutRefresh();
     }
 
+    /// <summary>Removes the active XAML root subscription before the window closes or the root changes.</summary>
     private void StopObservingDisplayRoot()
     {
         if (_displayXamlRoot is { } root) root.Changed -= DisplayRoot_Changed;
         _displayXamlRoot = null;
     }
 
+    /// <summary>Queues a layout update after the XAML root reports a display change.</summary>
     private void DisplayRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
         if (_lifetime.IsCancellationRequested || !ReferenceEquals(sender, _displayXamlRoot)) return;
@@ -63,6 +67,7 @@ public sealed partial class MainWindow
         QueueDisplayLayoutRefresh();
     }
 
+    /// <summary>Schedules one UI-thread layout refresh when no refresh is already pending.</summary>
     private void QueueDisplayLayoutRefresh()
     {
         if (_displayRefreshQueued || _lifetime.IsCancellationRequested) return;

@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements settings navigation, unsaved-change focus, and layout updates for the window.</summary>
 public sealed partial class MainWindow
 {
     private ContentDialog? _settingsDialog;

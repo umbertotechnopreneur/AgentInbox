@@ -58,6 +58,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
     }
 
     // An explicit package marker prevents a portable setup from selecting an unrelated installed alias.
+    /// <summary>Resolves a supported local AgentInbox executable path without accepting arbitrary product binaries.</summary>
     internal static string ResolveExecutablePath(string applicationDirectory, string localDirectory,
         Func<string, bool>? fileExists = null)
     {
@@ -281,6 +282,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         }
     }
 
+    /// <summary>Builds the owned local plugin files and returns their bounded preview metadata.</summary>
     private async Task<CodexSetupPreview> PreparePluginCoreAsync(CancellationToken cancellationToken)
     {
         var preview = GetPreview();
@@ -312,6 +314,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return preview;
     }
 
+    /// <summary>Writes one owned setup file after verifying that its resolved path stays under the plugin root.</summary>
     private static async Task WriteOwnedFileAsync(string root, string relative, string contents, CancellationToken cancellationToken)
     {
         var destination = Path.Combine(root, relative);
@@ -329,6 +332,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         }
     }
 
+    /// <summary>Runs a bounded local Codex command and captures only its constrained standard output.</summary>
     private async Task<CommandResult> RunCodexAsync(string executable, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -390,6 +394,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         }
     }
 
+    /// <summary>Reads a bounded local command output stream for state parsing.</summary>
     private static async Task<string?> ReadBoundedOutputAsync(StreamReader reader, CancellationToken cancellationToken)
     {
         const int maximumCharacters = 1024 * 1024;
@@ -412,10 +417,12 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return exceeded ? null : text.ToString();
     }
 
+    /// <summary>Determines whether the direct local MCP registration has the required enabled state.</summary>
     internal static bool IsDirectConfigurationReady(int? registrationCount, bool? registrationEnabled,
         bool pluginsKnown, bool localPluginEnabled, bool otherPluginEnabled) =>
         registrationCount == 1 && registrationEnabled == true && pluginsKnown && !localPluginEnabled && !otherPluginEnabled;
 
+    /// <summary>Parses bounded Codex MCP registration output for AgentInbox's direct connection state.</summary>
     internal static bool TryReadDirectRegistration(string output, out int count, out bool? enabled)
     {
         count = 0;
@@ -460,9 +467,11 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
+    /// <summary>Parses bounded Codex plugin output and reports registration collisions.</summary>
     internal static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin)
         => TryReadPluginState(output, out installed, out enabled, out otherPlugin, out _);
 
+    /// <summary>Parses bounded plugin state including whether a colliding registration is enabled.</summary>
     internal static bool TryReadPluginState(string output, out bool installed, out bool enabled, out bool otherPlugin, out bool otherPluginEnabled)
     {
         installed = false;
@@ -510,6 +519,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
+    /// <summary>Parses bounded marketplace output while detecting a plugin root owned by another product.</summary>
     internal static bool TryReadMarketplaceState(string output, string expectedRoot, out bool collision, out bool registered)
     {
         collision = false;
@@ -544,6 +554,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
+    /// <summary>Reads a non-empty string property from a parsed local Codex JSON object.</summary>
     private static bool TryString(JsonElement value, string property, out string text)
     {
         text = string.Empty;
@@ -556,6 +567,7 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return true;
     }
 
+    /// <summary>Finds a supported local Codex executable without trusting an arbitrary path.</summary>
     private static string? FindCodexExecutable()
     {
         var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
@@ -592,9 +604,11 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
         return null;
     }
 
+    /// <summary>Determines whether a plugin name is reserved for this product.</summary>
     private static bool IsProductName(string value) =>
         string.Equals(value, "agentinbox", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Determines whether an executable path belongs to the installed AgentInbox product.</summary>
     private static bool IsProductExecutable(string path)
     {
         var name = Path.GetFileName(path);
@@ -602,20 +616,26 @@ public sealed class CodexSetupService(ILogger<CodexSetupService> logger) : IDisp
             || string.Equals(name, "agentinbox", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Determines whether an assembly path belongs to the installed AgentInbox product.</summary>
     private static bool IsProductAssembly(string? path)
     {
         var name = Path.GetFileName(path);
         return string.Equals(name, "agentinbox.dll", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Resolves the current local AgentInbox data directory for setup files and status inspection.</summary>
     private static string ResolveDataDirectory() => DataDirectory.ResolveFromEnvironment();
 
+    /// <summary>Quotes one literal argument for the restricted local PowerShell invocation.</summary>
     private static string QuotePowerShell(string value) => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
 
+    /// <summary>Creates a non-ready setup status with no inferred installation or registration claims.</summary>
     private static CodexSetupStatus State(string code, string message) => new(code, message, false, false, false);
 
+    /// <summary>Determines whether a local setup exception maps to an expected unavailable-state result.</summary>
     private static bool IsExpectedFailure(Exception exception) => exception is IOException or UnauthorizedAccessException
         or JsonException or Win32Exception or TimeoutException or InvalidOperationException or ArgumentException;
 
+    /// <summary>Captures a bounded local Codex command result for setup-state parsing.</summary>
     private sealed record CommandResult(bool Success, string Output, int ExitCode);
 }

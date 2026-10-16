@@ -259,6 +259,7 @@ public sealed class DemoMailMeUpApplication : IMailMeUpApplication
     public Task<EventResult> ReadEventAsync(EventReadRequest request, CancellationToken cancellationToken = default) =>
         Unsupported<EventResult>(cancellationToken);
 
+    /// <summary>Finds one sample account or raises the same safe absence error used by the production facade.</summary>
     private Account FindAccount(string accountId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
@@ -266,9 +267,11 @@ public sealed class DemoMailMeUpApplication : IMailMeUpApplication
             ?? throw new ArgumentException("The sample account is no longer available in this preview.", nameof(accountId));
     }
 
+    /// <summary>Creates the current deterministic read-guardrail status shown by demo mode.</summary>
     private ReadGuardrailStatus CreateReadGuardrailStatus() =>
         new(_activeReadGuardrailLimits, _savedReadGuardrailLimits, _sampleReadGuardrailUsage);
 
+    /// <summary>Creates a detached sample sharing value so callers cannot mutate demo state by reference.</summary>
     private static AccountSharingSettings CopySharing(AccountSharingSettings settings) =>
         settings with { CalendarIds = settings.CalendarIds?.ToArray() };
 

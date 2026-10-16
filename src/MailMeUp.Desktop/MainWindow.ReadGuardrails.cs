@@ -27,6 +27,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements local read-guardrail status, draft validation, and save interactions.</summary>
 public sealed partial class MainWindow
 {
     private ReadGuardrailStatus? _readGuardrailStatus;
@@ -43,6 +44,7 @@ public sealed partial class MainWindow
         ReadGuardrailResponseBytesBox, ReadGuardrailOutputBytesBox
     ];
 
+    /// <summary>Initializes the read-guardrail settings controls before the initial status load.</summary>
     private void InitializeReadGuardrails()
     {
         SaveReadGuardrailsButton.Visibility = Visibility.Collapsed;
@@ -52,6 +54,7 @@ public sealed partial class MainWindow
         ReadGuardrailOutputBytesBox.TextChanged += (_, _) => UpdateReadGuardrailsDirty();
     }
 
+    /// <summary>Loads current read-guardrail status and displays a safe unavailable state when needed.</summary>
     private async Task LoadReadGuardrailsAsync(CancellationToken cancellationToken)
     {
         ReadGuardrailLoadText.Text = "Loading local limits and usage…";
@@ -88,6 +91,7 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Renders active limits, saved limits, usage, and restart guidance from one status snapshot.</summary>
     private void RenderReadGuardrailStatus(ReadGuardrailStatus status)
     {
         var limits = status.ActiveLimits;
@@ -124,6 +128,7 @@ public sealed partial class MainWindow
         UpdateSharingSettingsSummary();
     }
 
+    /// <summary>Adds one bounded usage row with its limit and next available capacity when known.</summary>
     private void AddReadGuardrailUsage(string label, long used, long limit, DateTimeOffset? nextCapacity, bool outputBytes = false)
     {
         var counts = outputBytes
@@ -157,8 +162,10 @@ public sealed partial class MainWindow
         ReadGuardrailUsageRows.Children.Add(tile);
     }
 
+    /// <summary>Formats a local read-guardrail timestamp for the current UI culture.</summary>
     private static string ReadGuardrailTime(DateTimeOffset time) => time.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
 
+    /// <summary>Updates the shared settings summary after read-guardrail controls change.</summary>
     private void UpdateSharingSettingsSummary()
     {
         SharingSettingsSummary.Text = _mailSearchPreferencesDirty || _readGuardrailsDirty
@@ -168,6 +175,7 @@ public sealed partial class MainWindow
                 : "Mail and calendar search, limits and usage";
     }
 
+    /// <summary>Displays a validated limits value without marking it as an unsaved edit.</summary>
     private void DisplayReadGuardrailDraft(ReadGuardrailLimits limits)
     {
         _loadingReadGuardrails = true;
@@ -187,12 +195,14 @@ public sealed partial class MainWindow
         UpdateReadGuardrailsDirty();
     }
 
+    /// <summary>Writes one integral guardrail value into a numeric UI control.</summary>
     private static void SetReadGuardrailBox(NumberBox box, decimal value)
     {
         box.Value = (double)value;
         box.Text = value.ToString(CultureInfo.CurrentCulture);
     }
 
+    /// <summary>Parses and validates the editable guardrail controls into one complete limits draft.</summary>
     private bool TryGetReadGuardrailDraft(out ReadGuardrailLimits limits, out string error)
     {
         limits = _readGuardrailExpectedLimits ?? new();
@@ -220,9 +230,11 @@ public sealed partial class MainWindow
         return true;
     }
 
+    /// <summary>Reads one positive integral guardrail value from a numeric UI control.</summary>
     private static bool TryReadGuardrailInteger(NumberBox box, out int value) =>
         int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out value);
 
+    /// <summary>Reads one positive byte limit from a text UI control.</summary>
     private static bool TryReadGuardrailBytes(TextBox box, out int bytes)
     {
         bytes = 0;
@@ -234,6 +246,7 @@ public sealed partial class MainWindow
         return true;
     }
 
+    /// <summary>Updates save-state controls after a read-guardrail draft edit.</summary>
     private void UpdateReadGuardrailsDirty()
     {
         if (_loadingReadGuardrails) return;
@@ -259,9 +272,11 @@ public sealed partial class MainWindow
         UpdateProgress();
     }
 
+    /// <summary>Reloads persisted read-guardrail status after an explicit user request.</summary>
     private async void RefreshReadGuardrailsButton_Click(object sender, RoutedEventArgs e) =>
         await RunAsync("Refreshing local read usage…", LoadReadGuardrailsAsync);
 
+    /// <summary>Saves a validated read-guardrail draft after explicit user confirmation.</summary>
     private async void SaveReadGuardrailsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !_readGuardrailsAvailable || !_readGuardrailsDirty || _readGuardrailsConflict
@@ -292,6 +307,7 @@ public sealed partial class MainWindow
         });
     }
 
+    /// <summary>Restores the last loaded read-guardrail draft after an explicit discard request.</summary>
     private async void DiscardReadGuardrailsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _readGuardrailExpectedLimits is null) return;
@@ -312,6 +328,7 @@ public sealed partial class MainWindow
         });
     }
 
+    /// <summary>Displays default limits as an editable draft without saving them automatically.</summary>
     private void DefaultReadGuardrailsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _readGuardrailExpectedLimits is not { } expected) return;
@@ -322,6 +339,7 @@ public sealed partial class MainWindow
         UpdateReadGuardrailsDirty();
     }
 
+    /// <summary>Updates read-guardrail control layout for the current available settings width.</summary>
     private void UpdateReadGuardrailLayout(double availableWidth)
     {
         var usageWidth = _settingsTabs?.SelectedIndex == 1 && ReadGuardrailUsageRows.ActualWidth > 0
