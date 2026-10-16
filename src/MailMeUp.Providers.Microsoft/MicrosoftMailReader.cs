@@ -171,6 +171,7 @@ public sealed class MicrosoftMailReader : IMailReader
         }
     }
 
+    /// <summary>Creates a bounded Microsoft Graph mail-search URL from the requested filters and exclusions.</summary>
     private static string CreateSearchUrl(
         ProviderMailQuery query,
         int limit,
@@ -249,6 +250,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return "https://graph.microsoft.com" + collection + "?" + string.Join('&', parameters);
     }
 
+    /// <summary>Converts one Microsoft Graph page into bounded provider-neutral mail summaries and continuation data.</summary>
     private static ProviderMailSearchPage ParseSearchPage(
         JsonElement root,
         ProviderMailQuery query,
@@ -298,6 +300,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return new ProviderMailSearchPage(summaries, GetOptionalString(root, "@odata.nextLink"));
     }
 
+    /// <summary>Reads the folder identifiers excluded from general Microsoft mail searches.</summary>
     private async Task<IReadOnlyList<string>> ReadExcludedFolderIdsAsync(
         Account account,
         string accessToken,
@@ -320,16 +323,21 @@ public sealed class MicrosoftMailReader : IMailReader
         return ids;
     }
 
+    /// <summary>Formats one timestamp in the UTC representation expected by Microsoft Graph filters.</summary>
     private static string FormatGraphDate(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
+    /// <summary>Formats one timestamp in the precision expected by Microsoft Graph search syntax.</summary>
     private static string FormatSearchDate(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture);
 
+    /// <summary>Escapes a string literal for a Microsoft Graph OData filter.</summary>
     private static string EscapeODataString(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
+    /// <summary>Removes unsupported quote characters from a Microsoft Graph search value.</summary>
     private static string EscapeSearchValue(string value) => value.Replace("\"", string.Empty, StringComparison.Ordinal);
 
+    /// <summary>Validates a Microsoft Graph mail continuation URL against the requested mailbox scope.</summary>
     internal static string ValidateNextLink(string cursor, bool inboxOnly)
     {
         var expectedPath = inboxOnly ? "/v1.0/me/mailFolders/inbox/messages" : "/v1.0/me/messages";
@@ -346,6 +354,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return uri.AbsoluteUri;
     }
 
+    /// <summary>Sends a governed Microsoft Graph Mail read request with the account's bearer token.</summary>
     private Task<JsonDocument> GetJsonAsync(
         Account account,
         string url,
@@ -355,6 +364,7 @@ public sealed class MicrosoftMailReader : IMailReader
         CancellationToken cancellationToken)
         => _requests.GetJsonAsync(account, url, accessToken, _logger, endpoint, MaximumJsonBytes, preferText, cancellationToken);
 
+    /// <summary>Reads a bounded sender display value from a Microsoft Graph message.</summary>
     private static string ReadSender(JsonElement message)
     {
         if (!message.TryGetProperty("from", out var from) ||
@@ -366,6 +376,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return FormatAddress(emailAddress);
     }
 
+    /// <summary>Reads bounded recipient display values from a Microsoft Graph message collection.</summary>
     private static IReadOnlyList<string> ReadRecipients(JsonElement message, string propertyName)
     {
         if (!message.TryGetProperty(propertyName, out var recipients) || recipients.ValueKind != JsonValueKind.Array)
@@ -380,6 +391,7 @@ public sealed class MicrosoftMailReader : IMailReader
             .ToArray();
     }
 
+    /// <summary>Formats one Microsoft Graph recipient as a display name or address.</summary>
     private static string FormatAddress(JsonElement emailAddress)
     {
         var name = GetOptionalString(emailAddress, "name");
@@ -392,6 +404,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return string.IsNullOrWhiteSpace(address) ? name : $"{name} <{address}>";
     }
 
+    /// <summary>Reads the required Microsoft Graph received timestamp as a UTC instant.</summary>
     private static DateTimeOffset ReadDate(JsonElement message)
     {
         var value = GetOptionalString(message, "receivedDateTime");
@@ -404,17 +417,20 @@ public sealed class MicrosoftMailReader : IMailReader
             : DateTimeOffset.UnixEpoch;
     }
 
+    /// <summary>Reads an optional string property from a provider object.</summary>
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
 
+    /// <summary>Reads an optional Boolean property while preserving a missing value.</summary>
     private static bool? GetOptionalBoolean(JsonElement parent, string propertyName) =>
         parent.TryGetProperty(propertyName, out var property) &&
         (property.ValueKind == JsonValueKind.True || property.ValueKind == JsonValueKind.False)
             ? property.GetBoolean()
             : null;
 
+    /// <summary>Reduces a bounded HTML mail body to normalized plain text for local results.</summary>
     private static string HtmlToText(string html)
     {
         var withoutTags = Regex.Replace(
@@ -427,6 +443,7 @@ public sealed class MicrosoftMailReader : IMailReader
         return string.Join(' ', decoded.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>Ensures an account is a Microsoft account with mail reading enabled.</summary>
     private static void ValidateMailAccount(Account account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -436,6 +453,7 @@ public sealed class MicrosoftMailReader : IMailReader
         }
     }
 
+    /// <summary>Validates a Microsoft Graph message identifier before it is interpolated into a request path.</summary>
     private static void ValidateMessageId(string messageId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);

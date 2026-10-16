@@ -261,6 +261,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Converts one Google event JSON value into a safe summary or skips an unusable item.</summary>
     private static ProviderEventSummary? ParseEventSummary(JsonElement item, string? calendarTimeZone)
     {
         var id = GetOptionalString(item, "id");
@@ -287,6 +288,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
             GetOptionalString(item, "location") ?? string.Empty);
     }
 
+    /// <summary>Parses complete start and end boundaries, including all-day events and calendar time zones.</summary>
     private static EventBoundaries? ParseBoundaries(JsonElement item, string? calendarTimeZone = null)
     {
         if (item.ValueKind != JsonValueKind.Object ||
@@ -327,6 +329,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         return null;
     }
 
+    /// <summary>Parses one Google event time only when it carries an explicit date-time value and offset.</summary>
     private static bool TryParseEventTime(JsonElement element, out DateTimeOffset result)
     {
         result = default;
@@ -360,6 +363,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         return true;
     }
 
+    /// <summary>Extracts bounded attendee display values without preserving arbitrary event JSON.</summary>
     private static IReadOnlyList<string> ReadAttendees(JsonElement item)
     {
         if (!item.TryGetProperty("attendees", out var attendees) || attendees.ValueKind != JsonValueKind.Array)
@@ -379,6 +383,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         }).Where(value => !string.IsNullOrWhiteSpace(value)).Take(20).ToArray();
     }
 
+    /// <summary>Reads one supported HTTPS meeting link when Google provides it.</summary>
     private static string? ReadMeetingLink(JsonElement item)
     {
         var direct = GetOptionalString(item, "hangoutLink");
@@ -406,21 +411,25 @@ public sealed class GoogleCalendarReader : ICalendarReader
         return null;
     }
 
+    /// <summary>Sends a governed Google Calendar read request with the account's bearer token.</summary>
     private Task<JsonDocument> GetJsonAsync(Account account, string url, string accessToken, string endpoint, CancellationToken cancellationToken) =>
         GoogleReadRequests.Shared.GetJsonAsync(
             account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken, governor: _governor);
 
+    /// <summary>Reads an optional string property from a provider object.</summary>
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object &&
         parent.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
 
+    /// <summary>Reads an optional Boolean property, treating malformed values as false.</summary>
     private static bool GetOptionalBoolean(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(propertyName, out var property) &&
         property.ValueKind is JsonValueKind.True or JsonValueKind.False &&
         property.GetBoolean();
 
+    /// <summary>Reduces a bounded HTML description to normalized plain text for local results.</summary>
     private static string HtmlToText(string html)
     {
         var withoutTags = Regex.Replace(
@@ -433,6 +442,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         return string.Join(' ', decoded.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>Ensures an account is a Google account with calendar reading enabled.</summary>
     private static void ValidateCalendarAccount(Account account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -442,6 +452,7 @@ public sealed class GoogleCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Validates a provider calendar or event identifier before it is interpolated into a request path.</summary>
     private static void ValidateProviderId(string value, string kind)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -451,5 +462,6 @@ public sealed class GoogleCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Contains normalized event boundaries and a stable sort instant.</summary>
     private sealed record EventBoundaries(DateTimeOffset SortStart, string Start, string End, bool AllDay);
 }

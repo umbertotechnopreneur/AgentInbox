@@ -157,6 +157,7 @@ public sealed class GoogleAccountConnector(IProviderConfigurationStore configura
         }
     }
 
+    /// <summary>Builds the minimal Google OAuth scope set for the capabilities selected during connection.</summary>
     private static IReadOnlyList<string> CreateScopes(AccountConnectionOptions options)
     {
         var scopes = new List<string> { "openid", "email", "profile" };
@@ -174,6 +175,7 @@ public sealed class GoogleAccountConnector(IProviderConfigurationStore configura
         return scopes;
     }
 
+    /// <summary>Reads the authenticated user's stable Google profile fields after OAuth completes.</summary>
     private static async Task<GoogleProfile> ReadProfileAsync(TokenResponse token, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(token.AccessToken))
@@ -201,6 +203,7 @@ public sealed class GoogleAccountConnector(IProviderConfigurationStore configura
         return new GoogleProfile(subject, email, name);
     }
 
+    /// <summary>Reads a required non-empty profile string from Google's user-info response.</summary>
     private static string GetRequiredProfileValue(JsonElement profile, string propertyName)
     {
         if (!profile.TryGetProperty(propertyName, out var property) ||
@@ -213,13 +216,16 @@ public sealed class GoogleAccountConnector(IProviderConfigurationStore configura
         return property.GetString()!;
     }
 
+    /// <summary>Parses a provider scope string into an ordinal set when the response supplied one.</summary>
     private static HashSet<string>? ParseScopes(string? value) => string.IsNullOrWhiteSpace(value)
         ? null
         : value.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>Determines whether a required scope was granted or the provider omitted explicit scope data.</summary>
     private static bool IsGranted(IReadOnlySet<string>? grantedScopes, string scope) =>
         grantedScopes is null || grantedScopes.Contains(scope);
 
+    /// <summary>Attempts cleanup after a failed connection without masking the original failure.</summary>
     private static async Task TryClearAsync(ProtectedGoogleTokenStore store)
     {
         try
@@ -233,5 +239,6 @@ public sealed class GoogleAccountConnector(IProviderConfigurationStore configura
         }
     }
 
+    /// <summary>Contains the stable Google identity values used to construct a local account record.</summary>
     private sealed record GoogleProfile(string Subject, string EmailAddress, string DisplayName);
 }

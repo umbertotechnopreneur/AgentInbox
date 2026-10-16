@@ -134,6 +134,7 @@ public sealed class GoogleProviderSetupService(
         }
     }
 
+    /// <summary>Attempts protected configuration cleanup without masking the primary setup failure.</summary>
     private async ValueTask TryDeleteAsync(string reference)
     {
         try
@@ -146,14 +147,17 @@ public sealed class GoogleProviderSetupService(
         }
     }
 
+    /// <summary>Creates a safe setup status without exposing provider registration secrets.</summary>
     private static ProviderSetupStatus CreateStatus(ProviderConfiguration? configuration) => new(
         "google",
         configuration is not null && !string.IsNullOrWhiteSpace(configuration.ClientSecretReference),
         configuration is null ? null : CreateClientIdHint(configuration.ClientId),
         !string.IsNullOrWhiteSpace(configuration?.ClientSecretReference));
 
+    /// <summary>Creates a minimal client-ID hint suitable for local setup status.</summary>
     private static string CreateClientIdHint(string clientId) => clientId.Length <= 12 ? clientId : $"…{clientId[^12..]}";
 
+    /// <summary>Reads a required non-empty string from an imported Google registration document.</summary>
     private static string GetRequiredString(JsonElement parent, string propertyName, string source)
     {
         if (!parent.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.GetString()))
@@ -164,6 +168,7 @@ public sealed class GoogleProviderSetupService(
         return property.GetString()!;
     }
 
+    /// <summary>Validates the structural form of an imported Google OAuth client identifier.</summary>
     private static void ValidateClientId(string clientId, string source)
     {
         if (!clientId.EndsWith(".apps.googleusercontent.com", StringComparison.Ordinal) || clientId.Length > 256)
@@ -172,6 +177,7 @@ public sealed class GoogleProviderSetupService(
         }
     }
 
+    /// <summary>Validates an imported Google OAuth endpoint against its expected HTTPS host.</summary>
     private static void ValidateEndpoint(JsonElement installed, string propertyName, string expectedHost, string source)
     {
         var value = GetRequiredString(installed, propertyName, source);
@@ -183,6 +189,7 @@ public sealed class GoogleProviderSetupService(
         }
     }
 
+    /// <summary>Requires an imported OAuth registration to retain the supported loopback redirect URI.</summary>
     private static void ValidateLoopbackRedirect(JsonElement installed, string source)
     {
         if (!installed.TryGetProperty("redirect_uris", out var redirects) || redirects.ValueKind != JsonValueKind.Array)

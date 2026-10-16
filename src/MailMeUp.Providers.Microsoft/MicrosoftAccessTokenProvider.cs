@@ -26,10 +26,12 @@ using Microsoft.Identity.Client;
 
 namespace MailMeUp.Providers.Microsoft;
 
+/// <summary>Obtains valid Microsoft access tokens from the protected per-account credential cache.</summary>
 internal sealed class MicrosoftAccessTokenProvider(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger logger)
 {
     private const string AccountIdPrefix = "microsoft:";
 
+    /// <summary>Returns a valid token for the account's enabled Microsoft read capabilities.</summary>
     public async Task<string> GetAsync(
         Account account,
         IReadOnlyList<string> scopes,

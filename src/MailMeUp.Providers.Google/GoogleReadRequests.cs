@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging;
 namespace MailMeUp.Providers.Google;
 
 /// <summary>Applies shared request guardrails and bounded retries to Google mail and calendar reads.</summary>
+/// <summary>Issues bounded authenticated Google read requests and classifies sanitized failures.</summary>
 internal sealed class GoogleReadRequests
 {
     private const int MaximumRetries = 3;
@@ -38,6 +39,7 @@ internal sealed class GoogleReadRequests
 
     internal static GoogleReadRequests Shared { get; } = new(new HttpClient());
 
+    /// <summary>Creates a request helper with injectable HTTP, governor, and delay dependencies.</summary>
     internal GoogleReadRequests(
         HttpClient client,
         Func<DateTimeOffset>? utcNow = null,
@@ -52,6 +54,7 @@ internal sealed class GoogleReadRequests
             : new InMemoryReadGuardrails(utcNow: _utcNow, delay: _delay));
     }
 
+    /// <summary>Sends one governed Google read request and returns a bounded JSON object response.</summary>
     internal async Task<JsonDocument> GetJsonAsync(
         Account account, string url, string accessToken, ILogger logger, string endpoint,
         int maximumBytes, CancellationToken cancellationToken, bool allowNoContent = false,
@@ -112,6 +115,7 @@ internal sealed class GoogleReadRequests
         }
     }
 
+    /// <summary>Maps bounded Google HTTP metadata to a safe reader failure category.</summary>
     internal static ReadFailureKind ClassifyFailure(ProviderHttpFailure failure)
     {
         if (failure.StatusCode == 429 || failure.StatusCode == 403 && failure.Codes.Any(code => code is
@@ -122,13 +126,16 @@ internal sealed class GoogleReadRequests
         return ClassifyStatus(failure.StatusCode);
     }
 
+    /// <summary>Determines whether an unsuccessful Google response can be retried within the read budget.</summary>
     private static bool IsTransient(ProviderHttpFailure failure) =>
         failure.StatusCode is 408 or 429 or 500 or 502 or 503 or 504 ||
         ClassifyFailure(failure) == ReadFailureKind.RateLimited && !HasPersistentQuota(failure);
 
+    /// <summary>Determines whether an allowlisted quota response should pause future reads.</summary>
     private static bool HasPersistentQuota(ProviderHttpFailure failure) =>
         failure.Codes.Any(code => code is "dailyLimitExceeded" or "quotaExceeded");
 
+    /// <summary>Maps a Google HTTP status to its default safe reader failure category.</summary>
     private static ReadFailureKind ClassifyStatus(int statusCode) => statusCode switch
     {
         400 => ReadFailureKind.InvalidRequest,

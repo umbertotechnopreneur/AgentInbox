@@ -250,6 +250,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Creates a bounded Microsoft Graph event-search URL or validates a supplied continuation URL.</summary>
     private static string CreateEventSearchUrl(
         string calendarId,
         DateTimeOffset start,
@@ -261,6 +262,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         "&%24select=id%2Csubject%2Cstart%2Cend%2CisAllDay%2CisCancelled%2Clocation%2CoriginalStartTimeZone%2CoriginalEndTimeZone" +
         "&%24orderby=start%2FdateTime&%24top=" + limit.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Converts one Microsoft Graph event JSON value into a safe summary or skips an unusable item.</summary>
     private static ProviderEventSummary? ParseEventSummary(JsonElement item)
     {
         var id = GetOptionalString(item, "id");
@@ -281,6 +283,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
             ReadLocation(item));
     }
 
+    /// <summary>Parses complete Microsoft Graph event boundaries, including all-day events.</summary>
     private static EventBoundaries? ParseBoundaries(JsonElement item)
     {
         if (item.ValueKind != JsonValueKind.Object ||
@@ -329,6 +332,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
             AllDay: false);
     }
 
+    /// <summary>Parses a Microsoft Graph date-time object only when both fields form an unambiguous instant.</summary>
     private static bool TryParseGraphDate(JsonElement element, out DateTimeOffset result)
     {
         result = default;
@@ -362,6 +366,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return true;
     }
 
+    /// <summary>Reads a bounded display location from a Microsoft Graph event.</summary>
     private static string ReadLocation(JsonElement item)
     {
         if (!item.TryGetProperty("location", out var location) || location.ValueKind != JsonValueKind.Object)
@@ -372,6 +377,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return GetOptionalString(location, "displayName") ?? string.Empty;
     }
 
+    /// <summary>Extracts bounded attendee display values without preserving arbitrary event JSON.</summary>
     private static IReadOnlyList<string> ReadAttendees(JsonElement item)
     {
         if (!item.TryGetProperty("attendees", out var attendees) || attendees.ValueKind != JsonValueKind.Array)
@@ -401,6 +407,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         }).Where(value => !string.IsNullOrWhiteSpace(value)).Take(20).ToArray();
     }
 
+    /// <summary>Reads one supported HTTPS meeting link when Microsoft Graph provides it.</summary>
     private static string? ReadMeetingLink(JsonElement item)
     {
         if (item.TryGetProperty("onlineMeeting", out var onlineMeeting) &&
@@ -416,6 +423,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return GetOptionalString(item, "onlineMeetingUrl");
     }
 
+    /// <summary>Validates a Microsoft Graph continuation URL before it is sent as a subsequent request.</summary>
     private static string ValidateNextLink(string cursor, string requiredPathPart)
     {
         if (cursor.Length > 8_192 ||
@@ -431,6 +439,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return uri.AbsoluteUri;
     }
 
+    /// <summary>Sends a governed Microsoft Graph Calendar read request with the account's bearer token.</summary>
     private Task<JsonDocument> GetJsonAsync(
         Account account,
         string url,
@@ -440,17 +449,20 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         CancellationToken cancellationToken)
         => _requests.GetJsonAsync(account, url, accessToken, _logger, endpoint, MaximumJsonBytes, preferText, cancellationToken, preferUtc: true);
 
+    /// <summary>Reads an optional string property from a provider object.</summary>
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object &&
         parent.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
 
+    /// <summary>Reads an optional Boolean property, treating malformed values as false.</summary>
     private static bool GetOptionalBoolean(JsonElement parent, string propertyName) =>
         parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(propertyName, out var property) &&
         property.ValueKind is JsonValueKind.True or JsonValueKind.False &&
         property.GetBoolean();
 
+    /// <summary>Reduces a bounded HTML description to normalized plain text for local results.</summary>
     private static string HtmlToText(string html)
     {
         var withoutTags = Regex.Replace(
@@ -463,6 +475,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         return string.Join(' ', decoded.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>Ensures an account is a Microsoft account with calendar reading enabled.</summary>
     private static void ValidateCalendarAccount(Account account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -472,6 +485,7 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Validates a provider calendar or event identifier before it is interpolated into a request path.</summary>
     private static void ValidateProviderId(string value, string kind)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -481,5 +495,6 @@ public sealed class MicrosoftCalendarReader : ICalendarReader
         }
     }
 
+    /// <summary>Contains normalized event boundaries and a stable sort instant.</summary>
     private sealed record EventBoundaries(DateTimeOffset SortStart, string Start, string End, bool AllDay);
 }
