@@ -150,6 +150,7 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
         }
     }
 
+    /// <summary>Creates protected-storage options for one hashed credential key.</summary>
     private StorageCreationProperties CreateProperties(string key) =>
         new StorageCreationPropertiesBuilder($"{key}.bin", _directory)
             .WithMacKeyChain(KeychainService, $"{_profileId}:{key}")
@@ -161,6 +162,7 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
                 new KeyValuePair<string, string>("profile", $"{_profileId}:{key}"))
             .Build();
 
+    /// <summary>Acquires an exclusive cross-process file lock within the supplied or default timeout.</summary>
     private async ValueTask<FileStream> AcquireFileLockAsync(
         string key,
         CancellationToken cancellationToken,
@@ -194,6 +196,7 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
         }
     }
 
+    /// <summary>Validates a non-secret credential reference and converts it to a fixed storage key.</summary>
     private static string ValidateAndHash(string reference)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reference);
@@ -205,8 +208,10 @@ public sealed class OsProtectedSecretStore(string directory) : ISecretStore
         return Hash(reference);
     }
 
+    /// <summary>Creates a deterministic hexadecimal SHA-256 value for a non-secret local key.</summary>
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
+    /// <summary>Creates a credential directory with the narrowest available user-only permissions.</summary>
     private static void CreatePrivateDirectory(string path)
     {
         if (OperatingSystem.IsWindows())

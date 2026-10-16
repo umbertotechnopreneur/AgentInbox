@@ -100,6 +100,7 @@ public sealed class JsonProviderConfigurationStore(string directory) : IProvider
         }
     }
 
+    /// <summary>Reads and validates the current provider configuration file while the caller holds the local gate.</summary>
     private async Task<IReadOnlyList<ProviderConfiguration>> ReadUnsafeAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_filePath))
@@ -123,6 +124,7 @@ public sealed class JsonProviderConfigurationStore(string directory) : IProvider
         return document.Providers.OrderBy(item => item.ProviderId, StringComparer.Ordinal).ToArray();
     }
 
+    /// <summary>Validates a stable lowercase provider identifier before it becomes a local configuration key.</summary>
     private static void ValidateProviderId(string providerId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
@@ -132,6 +134,7 @@ public sealed class JsonProviderConfigurationStore(string directory) : IProvider
         }
     }
 
+    /// <summary>Creates the provider configuration directory with user-only permissions where supported.</summary>
     private static void CreatePrivateDirectory(string path)
     {
         if (OperatingSystem.IsWindows())
@@ -144,5 +147,6 @@ public sealed class JsonProviderConfigurationStore(string directory) : IProvider
         }
     }
 
+    /// <summary>Defines the versioned JSON envelope for all local provider registrations.</summary>
     private sealed record ConfigurationDocument(int SchemaVersion, List<ProviderConfiguration> Providers);
 }

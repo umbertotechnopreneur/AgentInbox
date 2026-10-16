@@ -115,16 +115,20 @@ public sealed class JsonAccountSharingStore(string directory) : IAccountSharingS
         }
     }
 
+    /// <summary>Maps an account identifier to a non-reversible per-account settings filename.</summary>
     private string GetPath(string accountId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
         return Path.Combine(_directory, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(accountId))) + ".json");
     }
 
+    /// <summary>Defines the versioned JSON envelope for one account's sharing settings.</summary>
     private sealed record SharingDocument(int SchemaVersion, StoredSettings Settings);
 
+    /// <summary>Contains the persisted primitive values used to recreate sharing settings.</summary>
     private sealed record StoredSettings(string AccountId, bool Enabled, bool ShareMail, bool ShareCalendars, IReadOnlyList<string>? CalendarIds)
     {
+        /// <summary>Recreates the validated Core sharing value from its persisted representation.</summary>
         public AccountSharingSettings ToSettings() => new(AccountId, Enabled, ShareMail, ShareCalendars, CalendarIds);
     }
 }

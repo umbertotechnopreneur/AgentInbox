@@ -111,6 +111,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         }
     }
 
+    /// <summary>Reads validated persisted limits without creating a settings file when none exists.</summary>
     private static ReadGuardrailLimits ReadLimits(string dataDirectory)
     {
         try
@@ -160,7 +161,11 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
             await using var stateLease = await OpenExclusiveAsync(Path.Combine(_directory, "ledger.lock"), wait.Token);
             var state = await ReadStateAsync(wait.Token);
             var transaction = update(state);
-            if (transaction.Save) await WriteStateAsync(state, wait.Token);
+            if (transaction.Save)
+            {
+                await WriteStateAsync(state, wait.Token);
+            }
+
             return transaction.Result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -173,6 +178,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         }
     }
 
+    /// <summary>Reads and validates the existing non-secret guardrail ledger or starts with an empty state.</summary>
     private async Task<GuardrailState> ReadStateAsync(CancellationToken cancellationToken)
     {
         FileStream stream;
@@ -200,6 +206,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         return state;
     }
 
+    /// <summary>Validates an object shape, including duplicate and required property checks, before deserialization.</summary>
     private static void RequireObject(JsonElement element, params string[] required)
     {
         if (element.ValueKind != JsonValueKind.Object) throw InvalidState();
@@ -209,6 +216,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         if (required.Any(name => !properties.Contains(name))) throw InvalidState();
     }
 
+    /// <summary>Serializes a validated guardrail ledger and writes it through an atomic replacement.</summary>
     private async Task WriteStateAsync(GuardrailState state, CancellationToken cancellationToken)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
@@ -216,6 +224,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         await WriteAtomicAsync(_directory, _statePath, bytes, cancellationToken);
     }
 
+    /// <summary>Writes bytes to a sibling temporary file and atomically replaces the target after flushing.</summary>
     private static async Task WriteAtomicAsync(string directory, string targetPath, byte[] bytes, CancellationToken cancellationToken)
     {
         var temporary = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".tmp");
@@ -238,6 +247,7 @@ public sealed class FileReadGuardrails : ReadGuardrails, IReadGuardrailManagemen
         }
     }
 
+    /// <summary>Waits for an exclusive file lease while preserving cancellation behavior.</summary>
     private static async Task<FileStream> OpenExclusiveAsync(string path, CancellationToken cancellationToken)
     {
         while (true)

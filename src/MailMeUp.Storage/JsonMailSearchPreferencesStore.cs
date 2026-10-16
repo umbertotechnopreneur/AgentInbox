@@ -111,5 +111,6 @@ public sealed class JsonMailSearchPreferencesStore(string directory) : IMailSear
         }
     }
 
+    /// <summary>Defines the versioned JSON envelope for persisted mail-search defaults.</summary>
     private sealed record PreferencesDocument(int SchemaVersion, int DefaultLookbackDays);
 }
