@@ -177,6 +177,7 @@ public sealed class GoogleMailReader : IMailReader
         }
     }
 
+    /// <summary>Reads one bounded Gmail message summary and applies local inbox filtering.</summary>
     private async Task<ProviderMailSummary?> ReadSummaryAsync(
         Account account,
         string messageId,
@@ -190,6 +191,7 @@ public sealed class GoogleMailReader : IMailReader
         return ParseSearchSummary(messageId, document.RootElement, inboxOnly);
     }
 
+    /// <summary>Creates a bounded Gmail list request URL from the normalized provider query and continuation.</summary>
     internal static string CreateListRequestUrl(ProviderMailQuery query, int limit, string? cursor)
     {
         var url = new StringBuilder("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=")
@@ -211,6 +213,7 @@ public sealed class GoogleMailReader : IMailReader
         return url.ToString();
     }
 
+    /// <summary>Parses a Gmail message summary and drops it when it does not meet the requested inbox scope.</summary>
     internal static ProviderMailSummary? ParseSearchSummary(string messageId, JsonElement root, bool inboxOnly)
     {
         // A rule or another client can move the message after the IDs were listed.
@@ -222,10 +225,12 @@ public sealed class GoogleMailReader : IMailReader
         return ParseSummary(messageId, root);
     }
 
+    /// <summary>Creates the restricted Gmail fields request used for one summary.</summary>
     internal static string CreateSummaryRequestUrl(string messageId) =>
         $"https://gmail.googleapis.com/gmail/v1/users/me/messages/{Uri.EscapeDataString(messageId)}" +
         "?format=full&fields=" + Uri.EscapeDataString(SummaryFields);
 
+    /// <summary>Converts Gmail metadata into the provider-neutral mail summary contract.</summary>
     internal static ProviderMailSummary ParseSummary(string messageId, JsonElement root)
     {
         if (!root.TryGetProperty("payload", out var payload) || payload.ValueKind != JsonValueKind.Object)
@@ -245,6 +250,7 @@ public sealed class GoogleMailReader : IMailReader
             Recipients: recipients);
     }
 
+    /// <summary>Creates the narrow Gmail field projection required to construct a mail summary.</summary>
     private static string CreateSummaryFields()
     {
         // A final part ID exposes deeper nesting without selecting its body or silently reporting no attachments.
@@ -254,6 +260,7 @@ public sealed class GoogleMailReader : IMailReader
         return "id,internalDate,snippet,labelIds,payload(headers(name,value)," + part + ")";
     }
 
+    /// <summary>Translates the provider-neutral mail query into Gmail search syntax.</summary>
     private static string CreateProviderQuery(ProviderMailQuery query)
     {
         var parts = new List<string>();
@@ -295,6 +302,7 @@ public sealed class GoogleMailReader : IMailReader
         return string.Join(' ', parts);
     }
 
+    /// <summary>Sends a governed Gmail read request with the account's bearer token.</summary>
     private Task<JsonDocument> GetJsonAsync(Account account, string url, string accessToken, string endpoint, CancellationToken cancellationToken) =>
         GoogleReadRequests.Shared.GetJsonAsync(
             account, url, accessToken, _logger, endpoint, MaximumJsonBytes, cancellationToken,
@@ -321,6 +329,7 @@ public sealed class GoogleMailReader : IMailReader
         return result;
     }
 
+    /// <summary>Determines whether a Gmail message contains a specific system label.</summary>
     private static bool HasLabel(JsonElement root, string label)
     {
         if (!root.TryGetProperty("labelIds", out var labels) || labels.ValueKind != JsonValueKind.Array)
@@ -333,6 +342,7 @@ public sealed class GoogleMailReader : IMailReader
             string.Equals(item.GetString(), label, StringComparison.Ordinal));
     }
 
+    /// <summary>Determines whether a MIME part tree contains an attachment without traversing unbounded depth.</summary>
     private static bool HasAttachmentPart(JsonElement part)
     {
         if (part.TryGetProperty("filename", out var filename) &&
@@ -347,6 +357,7 @@ public sealed class GoogleMailReader : IMailReader
                parts.EnumerateArray().Any(HasAttachmentPart);
     }
 
+    /// <summary>Traverses a bounded MIME subtree for attachment indicators.</summary>
     private static bool HasAttachmentPart(JsonElement part, int depth)
     {
         if (depth > MaximumSummaryPartDepth)
@@ -357,6 +368,7 @@ public sealed class GoogleMailReader : IMailReader
             parts.EnumerateArray().Any(child => HasAttachmentPart(child, depth + 1));
     }
 
+    /// <summary>Extracts and normalizes the preferred plain-text or HTML Gmail message body.</summary>
     internal static string ReadBody(JsonElement payload)
     {
         var plain = new List<string>();
@@ -370,6 +382,7 @@ public sealed class GoogleMailReader : IMailReader
         return html.Count == 0 ? string.Empty : HtmlToText(string.Join("\n", html));
     }
 
+    /// <summary>Collects bounded plain-text and HTML MIME body fragments recursively.</summary>
     private static void CollectBodies(JsonElement part, List<string> plain, List<string> html)
     {
         // Attached files are not the message body, including text attachments.
@@ -406,6 +419,7 @@ public sealed class GoogleMailReader : IMailReader
         }
     }
 
+    /// <summary>Decodes a Gmail URL-safe Base64 body fragment as UTF-8 text.</summary>
     private static string DecodeBase64Url(string value)
     {
         var normalized = value.Replace('-', '+').Replace('_', '/');
@@ -413,6 +427,7 @@ public sealed class GoogleMailReader : IMailReader
         return Encoding.UTF8.GetString(Convert.FromBase64String(normalized));
     }
 
+    /// <summary>Reduces a bounded HTML mail body to normalized plain text for local results.</summary>
     private static string HtmlToText(string html)
     {
         var withoutTags = Regex.Replace(
@@ -425,6 +440,7 @@ public sealed class GoogleMailReader : IMailReader
         return string.Join(' ', decoded.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>Reads Gmail's required Unix-millisecond internal date into a UTC timestamp.</summary>
     private static DateTimeOffset ReadInternalDate(JsonElement root)
     {
         var value = GetOptionalString(root, "internalDate");
@@ -433,17 +449,21 @@ public sealed class GoogleMailReader : IMailReader
             : DateTimeOffset.UnixEpoch;
     }
 
+    /// <summary>Reads an optional string property from a provider object.</summary>
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
 
+    /// <summary>Returns a normalized header value or a caller-provided safe fallback.</summary>
     private static string GetHeader(IReadOnlyDictionary<string, string> headers, string name, string fallback) =>
         headers.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : fallback;
 
+    /// <summary>Converts a comma-delimited header into bounded normalized values.</summary>
     private static IReadOnlyList<string> AsHeaderList(IReadOnlyDictionary<string, string> headers, string name) =>
         headers.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? [value] : [];
 
+    /// <summary>Ensures an account is a Google account with mail reading enabled.</summary>
     private static void ValidateMailAccount(Account account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -453,6 +473,7 @@ public sealed class GoogleMailReader : IMailReader
         }
     }
 
+    /// <summary>Validates a Gmail message identifier before it is interpolated into a request path.</summary>
     private static void ValidateMessageId(string messageId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);

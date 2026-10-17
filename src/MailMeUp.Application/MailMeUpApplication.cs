@@ -502,6 +502,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             state.Query.InboxOnly);
     }
 
+    /// <summary>Reads bounded provider pages for one shared mail account and updates its resumable cursor state.</summary>
     private async Task ReadMailAccountAsync(
         string accountId,
         AccountMailCursorState accountState,
@@ -928,6 +929,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             CompactNullable(providerEvent.MeetingLink, 500));
     }
 
+    /// <summary>Builds the independent calendar targets and initial failures for an event-search continuation.</summary>
     private async Task<EventCursorState> CreateEventCursorStateAsync(
         EventSearchRequest request,
         DateTimeOffset start,
@@ -1025,6 +1027,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return new EventCursorState(start, end, scopeKey, accountIds, targets, failures);
     }
 
+    /// <summary>Reads one complete account-sharing snapshot and fingerprints it for change detection.</summary>
     private async Task<SharingSnapshot> ReadSharingSnapshotAsync(CancellationToken cancellationToken)
     {
         var accounts = await _accounts.ListAsync(cancellationToken);
@@ -1051,6 +1054,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return new SharingSnapshot(shared, settings, fingerprint);
     }
 
+    /// <summary>Prevents returning a result when sharing choices changed while its source data was read.</summary>
     private async Task EnsureSharingUnchangedAsync(SharingSnapshot snapshot, CancellationToken cancellationToken)
     {
         if (!string.Equals(snapshot.Fingerprint, (await ReadSharingSnapshotAsync(cancellationToken)).Fingerprint, StringComparison.Ordinal))
@@ -1059,27 +1063,33 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Captures the accounts, sharing settings, and comparison fingerprint used by a single read.</summary>
     private sealed record SharingSnapshot(
         IReadOnlyList<Account> Accounts,
         IReadOnlyDictionary<string, AccountSharingSettings> Settings,
         string Fingerprint)
     {
+        /// <summary>Determines whether a calendar remains shared by an account in this snapshot.</summary>
         public bool AllowsCalendar(string accountId, string calendarId) =>
             Settings.TryGetValue(accountId, out var settings) && settings.AllowsCalendar(calendarId);
 
+        /// <summary>Determines whether an account is unavailable because its sharing is disabled.</summary>
         public bool IsHidden(string accountId) => Settings.TryGetValue(accountId, out var settings) && !settings.Enabled;
     }
 
+    /// <summary>Provides an in-memory sharing store when no persistent sharing configuration was supplied.</summary>
     private sealed class MemoryAccountSharingStore : IAccountSharingStore
     {
         private readonly ConcurrentDictionary<string, AccountSharingSettings> _settings = new(StringComparer.Ordinal);
 
+        /// <inheritdoc />
         public Task<AccountSharingSettings?> GetAsync(string accountId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(_settings.GetValueOrDefault(accountId));
         }
 
+        /// <inheritdoc />
         public Task SaveAsync(AccountSharingSettings settings, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1088,16 +1098,19 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Provides process-local mail preferences when no persistent preferences store was supplied.</summary>
     private sealed class MemoryMailSearchPreferencesStore : IMailSearchPreferencesStore
     {
         private MailSearchPreferences _preferences = new();
 
+        /// <inheritdoc />
         public Task<MailSearchPreferences> GetAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(Volatile.Read(ref _preferences));
         }
 
+        /// <inheritdoc />
         public Task SaveAsync(MailSearchPreferences preferences, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1106,6 +1119,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Runs one provider operation within the shared provider-read deadline.</summary>
     private static async Task<T> ReadWithDeadlineAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1116,6 +1130,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return result;
     }
 
+    /// <summary>Runs a bounded account check while limiting concurrent provider work.</summary>
     private async Task<AccountConnectionCheck> CheckConnectionAsync(
         Account account,
         SemaphoreSlim gate,
@@ -1160,6 +1175,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Creates a complete failed-check result for every enabled account capability.</summary>
     private static AccountConnectionCheck FailedConnectionCheck(Account account, ReadFailureKind failureKind) =>
         new(
             account.Id,
@@ -1170,10 +1186,12 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             account.CalendarReadEnabled ? false : null,
             account.CalendarReadEnabled ? failureKind : null);
 
+    /// <summary>Determines whether an exception is a bounded provider-read failure that can become a result.</summary>
     private static bool IsProviderReadFailure(Exception exception, CancellationToken cancellationToken) =>
         !cancellationToken.IsCancellationRequested &&
         (exception is ProviderReadException or ProviderAuthenticationException or OperationCanceledException or ProviderPaginationException);
 
+    /// <summary>Creates actionable, non-sensitive guidance for a captured provider-read failure.</summary>
     private static string ReadFailureReason(Exception exception)
     {
         if (exception is OperationCanceledException)
@@ -1190,6 +1208,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return $"{advice.Explanation} {advice.Action}";
     }
 
+    /// <summary>Maps a provider exception to the safe category returned to callers.</summary>
     private static ReadFailureKind GetReadFailureKind(Exception exception) => exception switch
     {
         ProviderReadException provider => provider.Kind,
@@ -1199,6 +1218,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         _ => ReadFailureKind.Unknown
     };
 
+    /// <summary>Registers one provider continuation after enforcing bounded, cycle-free cursor history.</summary>
     private static void RegisterProviderCursor(HashSet<string> seenCursors, string? cursor)
     {
         if (cursor is null)
@@ -1213,6 +1233,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Validates the next provider continuation before it is persisted in an application cursor.</summary>
     private static string? ValidateProviderContinuation(HashSet<string> seenCursors, string? cursor)
     {
         if (string.IsNullOrWhiteSpace(cursor))
@@ -1228,13 +1249,16 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return cursor;
     }
 
+    /// <summary>Creates a fixed-size local fingerprint for a provider cursor without retaining its content.</summary>
     private static string ProviderCursorFingerprint(string cursor) =>
         Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(cursor)));
 
+    /// <summary>Signals an unsafe or cyclic provider pagination sequence.</summary>
     private sealed class ProviderPaginationException : Exception
     {
     }
 
+    /// <summary>Creates a deterministic continuation scope from the explicit calendar or account selection.</summary>
     private static string CreateEventScopeKey(EventSearchRequest request)
     {
         if (request.CalendarReferences is { Count: > 0 })
@@ -1251,6 +1275,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             : "acc:*";
     }
 
+    /// <summary>Selects the requested calendar-enabled accounts or every calendar-enabled shared account.</summary>
     private static IReadOnlyList<Account> SelectCalendarAccounts(
         IReadOnlyList<Account> allAccounts,
         IReadOnlyList<string>? requestedIds)
@@ -1281,6 +1306,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return selected;
     }
 
+    /// <summary>Parses an ISO 8601 event boundary that includes an explicit time-zone offset.</summary>
     private static DateTimeOffset ParseExplicitDateTime(string value, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -1300,9 +1326,11 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return result;
     }
 
+    /// <summary>Parses an optional explicit event boundary.</summary>
     private static DateTimeOffset? ParseOptionalExplicitDateTime(string? value, string parameterName) =>
         string.IsNullOrWhiteSpace(value) ? null : ParseExplicitDateTime(value, parameterName);
 
+    /// <summary>Normalizes a bounded optional mail contains-filter before sending it to a provider.</summary>
     private static string? NormalizeOptionalContains(string? value, string parameterName, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1319,6 +1347,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return normalized;
     }
 
+    /// <summary>Applies local filters to a provider mail summary before it enters a result page.</summary>
     private static bool MatchesMailFilters(ProviderMailQuery query, ProviderMailSummary item) =>
         (!query.UnreadOnly || !item.IsRead) &&
         (!query.HasAttachments.HasValue || item.HasAttachments == query.HasAttachments.Value) &&
@@ -1328,6 +1357,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         (query.Start is null || item.ReceivedAt >= query.Start.Value) &&
         (query.End is null || item.ReceivedAt < query.End.Value);
 
+    /// <summary>Selects the requested mail-enabled accounts or every mail-enabled shared account.</summary>
     private static IReadOnlyList<Account> SelectMailAccounts(
         IReadOnlyList<Account> allAccounts,
         IReadOnlyList<string>? requestedIds)
@@ -1358,6 +1388,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return selected;
     }
 
+    /// <summary>Normalizes whitespace and bounds text that will be returned in a compact result.</summary>
     private static string Compact(string? value, int maximumLength)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1369,19 +1400,30 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         return compact.Length <= maximumLength ? compact : compact[..maximumLength];
     }
 
+    /// <summary>Compacts optional text while preserving an absent value.</summary>
     private static string? CompactNullable(string? value, int maximumLength) =>
         string.IsNullOrWhiteSpace(value) ? null : Compact(value, maximumLength);
 
+    /// <summary>Associates a mail summary with the account that produced it.</summary>
     private sealed record MailCandidate(string AccountId, ProviderMailSummary Item);
+
+    /// <summary>Resolves a local mail reference to its source account and provider message.</summary>
     private sealed record MailItemAddress(string AccountId, string ProviderMessageId);
+
+    /// <summary>Resolves a local calendar reference to its source account and provider calendar.</summary>
     private sealed record CalendarAddress(string AccountId, string ProviderCalendarId);
+
+    /// <summary>Resolves a local event reference to its source account, calendar, and provider event.</summary>
     private sealed record EventAddress(
         string AccountId,
         string ProviderCalendarId,
         string ProviderEventId,
         string CalendarReference);
+
+    /// <summary>Associates an event summary with the independent calendar target that produced it.</summary>
     private sealed record EventCandidate(string TargetKey, ProviderEventSummary Event);
 
+    /// <summary>Retains all resumable state for one mail-search continuation.</summary>
     private sealed record MailCursorState(
         ProviderMailQuery RequestedQuery,
         ProviderMailQuery Query,
@@ -1389,6 +1431,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         IReadOnlyList<string> AccountIds,
         Dictionary<string, AccountMailCursorState> Accounts)
     {
+        /// <summary>Creates a detached copy that a caller can advance without mutating the stored continuation.</summary>
         public MailCursorState Copy() => new(
             RequestedQuery,
             Query,
@@ -1397,6 +1440,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             Accounts.ToDictionary(pair => pair.Key, pair => pair.Value.Copy(), StringComparer.Ordinal));
     }
 
+    /// <summary>Tracks one account's progress, items, and safe pagination history in a mail continuation.</summary>
     private sealed class AccountMailCursorState
     {
         public bool Started { get; set; }
@@ -1407,6 +1451,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         public HashSet<string> SeenProviderCursors { get; } = new(StringComparer.Ordinal);
         public List<ProviderMailSummary> Items { get; } = [];
 
+        /// <summary>Creates a detached copy of this account's resumable mail state.</summary>
         public AccountMailCursorState Copy()
         {
             var clone = new AccountMailCursorState
@@ -1423,6 +1468,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Retains all resumable state for one event-search continuation.</summary>
     private sealed record EventCursorState(
         DateTimeOffset Start,
         DateTimeOffset End,
@@ -1431,6 +1477,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         Dictionary<string, CalendarTargetCursorState> Targets,
         IReadOnlyList<AccountReadFailure> InitialFailures)
     {
+        /// <summary>Creates a detached copy that a caller can advance without mutating the stored continuation.</summary>
         public EventCursorState Copy() => new(
             Start,
             End,
@@ -1440,6 +1487,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             InitialFailures.ToArray());
     }
 
+    /// <summary>Tracks one calendar target's progress, events, and safe pagination history in a continuation.</summary>
     private sealed class CalendarTargetCursorState(
         string accountId,
         string providerCalendarId,
@@ -1456,6 +1504,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         public HashSet<string> SeenProviderCursors { get; } = new(StringComparer.Ordinal);
         public List<ProviderEventSummary> Events { get; } = [];
 
+        /// <summary>Creates a detached copy of this calendar target's resumable event state.</summary>
         public CalendarTargetCursorState Copy()
         {
             var clone = new CalendarTargetCursorState(AccountId, ProviderCalendarId, CalendarReference)
@@ -1472,12 +1521,14 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
         }
     }
 
+    /// <summary>Issues short-lived, process-local references for provider result addresses and continuation state.</summary>
     private sealed class LocalReferenceStore
     {
         private const int MaximumEntries = 4_096;
         private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
         private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
 
+        /// <summary>Stores a value under a new opaque reference with the supplied result kind prefix.</summary>
         public string Put<T>(string prefix, T value) where T : notnull
         {
             Prune();
@@ -1489,6 +1540,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             return reference;
         }
 
+        /// <summary>Resolves a non-expired reference only when it matches the expected result kind and value type.</summary>
         public T Get<T>(string reference, string prefix)
         {
             if (!reference.StartsWith(prefix, StringComparison.Ordinal) ||
@@ -1503,6 +1555,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             return value;
         }
 
+        /// <summary>Removes expired references and evicts the earliest-expiring values when capacity is reached.</summary>
         private void Prune()
         {
             var now = DateTimeOffset.UtcNow;
@@ -1522,6 +1575,7 @@ public sealed class MailMeUpApplication : IMailMeUpApplication
             }
         }
 
+        /// <summary>Stores a reference value and its expiration timestamp.</summary>
         private sealed record Entry(object Value, DateTimeOffset ExpiresAt);
     }
 }

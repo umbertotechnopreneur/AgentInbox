@@ -59,6 +59,7 @@ public sealed record CodexSetupStatus(
 /// <param name="Result">A safe description of the observed result or why it is unknown.</param>
 public sealed record CodexSetupCheck(string Name, string Result)
 {
+    /// <summary>Creates the initial pending-check list before local Codex state has been inspected.</summary>
     internal static IReadOnlyList<CodexSetupCheck> Pending() =>
     [
         new("AgentInbox command", "Not checked"),

@@ -27,9 +27,13 @@ using Spectre.Console;
 
 namespace MailMeUp.Cli;
 
+/// <summary>Defines the structured output for the connected-account list command.</summary>
 internal sealed record AccountListOutput(IReadOnlyList<Account> Accounts);
+
+/// <summary>Defines the structured output for the configured-provider status command.</summary>
 internal sealed record ProviderListOutput(IReadOnlyList<ProviderSetupStatus> Providers);
 
+/// <summary>Renders CLI results as safe JSON or accessible terminal-oriented text.</summary>
 internal sealed class CliPresentation
 {
     private const string Mint = "#71DEB7";
@@ -39,6 +43,7 @@ internal sealed class CliPresentation
     private readonly IAnsiConsole _output;
     private readonly IAnsiConsole _error;
 
+    /// <summary>Creates output and error consoles that respect redirection and color preferences.</summary>
     internal CliPresentation(CliOptions options)
     {
         _options = options;
@@ -53,6 +58,7 @@ internal sealed class CliPresentation
 
     private bool Json => _options.Json || Console.IsOutputRedirected;
 
+    /// <summary>Writes the interactive product banner unless structured output or MCP stdio is active.</summary>
     internal void WriteBanner()
     {
         if (Json || _options.Command == CliCommand.Stdio)
@@ -70,6 +76,7 @@ internal sealed class CliPresentation
         _output.WriteLine();
     }
 
+    /// <summary>Writes the grouped command-line help with safe local setup examples.</summary>
     internal void WriteHelp()
     {
         WriteBanner();
@@ -111,6 +118,7 @@ internal sealed class CliPresentation
         _output.WriteLine();
     }
 
+    /// <summary>Runs an action with an optional interactive status indicator and returns its result.</summary>
     internal async Task<T> RunWithStatusAsync<T>(string message, Func<Task<T>> action)
     {
         if (Json)
@@ -133,6 +141,7 @@ internal sealed class CliPresentation
         return await action();
     }
 
+    /// <summary>Writes a command result as compact JSON or as an appropriate interactive view.</summary>
     internal void WriteResult(object result)
     {
         if (Json)
@@ -251,6 +260,7 @@ internal sealed class CliPresentation
         _output.WriteLine();
     }
 
+    /// <summary>Writes a safe error message and optional next-step guidance.</summary>
     internal void WriteError(string message, string? nextStep = null)
     {
         var symbol = _error.Profile.Capabilities.Unicode ? "❌" : "Error:";
@@ -261,8 +271,10 @@ internal sealed class CliPresentation
         }
     }
 
+    /// <summary>Writes the standard cancellation message to the error console.</summary>
     internal void WriteCancelled() => _error.MarkupLine("[yellow]AgentInbox: operation cancelled.[/]");
 
+    /// <summary>Renders one account with its enabled provider read capabilities.</summary>
     private void WriteAccount(Account account)
     {
         _output.MarkupLine($"[bold]{Safe(account.DisplayName)}[/]  [dim]({Safe(ProviderName(account.Provider))})[/]");
@@ -278,6 +290,7 @@ internal sealed class CliPresentation
         Field("Account ID", account.Id);
     }
 
+    /// <summary>Renders one provider registration status and its safe next action.</summary>
     private void WriteProvider(ProviderSetupStatus provider)
     {
         var state = provider.Configured ? $"[{Mint}]Ready for sign-in[/]" : $"[{Coral}]Setup needed[/]";
@@ -293,6 +306,7 @@ internal sealed class CliPresentation
         }
     }
 
+    /// <summary>Writes the next registration or connection command for a provider status.</summary>
     private void SetupNext(ProviderSetupStatus provider)
     {
         // Only construct executable suggestions for known providers, never from provider-controlled text.
@@ -305,6 +319,7 @@ internal sealed class CliPresentation
         Command(command, provider.Configured ? "Next: connect an account" : "Next: register your app");
     }
 
+    /// <summary>Writes a consistently styled terminal section heading.</summary>
     private void Section(string title, string emoji)
     {
         var rule = new Rule($"[bold {Mint}]{Icon(emoji, "")} {Markup.Escape(title)}[/]")
@@ -316,25 +331,31 @@ internal sealed class CliPresentation
         _output.WriteLine();
     }
 
+    /// <summary>Writes one escaped label-value row.</summary>
     private void Field(string label, string value) => _output.MarkupLine($"  [dim]{label,-11}[/] {Safe(value)}");
 
+    /// <summary>Writes one capability row with an availability indicator.</summary>
     private void Capability(string label, bool available) => _output.MarkupLine(
         $"  [dim]{label,-11}[/] {(available ? $"[{Mint}]Available[/]" : "[dim]Not implemented[/]")}");
 
+    /// <summary>Writes one escaped command and its concise explanation.</summary>
     private void Command(string command, string description)
     {
         _output.MarkupLine($"  [{Mint}]{Markup.Escape(command)}[/]");
         _output.MarkupLine($"    [dim]{Markup.Escape(description)}[/]");
     }
 
+    /// <summary>Writes one recommended next command beneath a result.</summary>
     private void Next(string description, string command)
     {
         _output.WriteLine();
         Command(command, $"Next: {description.ToLowerInvariant()}");
     }
 
+    /// <summary>Returns a Unicode icon when supported, otherwise an ASCII fallback.</summary>
     private string Icon(string emoji, string fallback) => _output.Profile.Capabilities.Unicode ? emoji : fallback;
 
+    /// <summary>Builds stable assembly metadata for the version report.</summary>
     private static string BuildDetails(Assembly assembly)
     {
         var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -343,6 +364,7 @@ internal sealed class CliPresentation
         return $"Build: {builtAt:yyyy-MM-dd HH:mm:ss} UTC{Environment.NewLine}Git commit: {metadata["BuildGitCommit"]}";
     }
 
+    /// <summary>Maps a stable provider identifier to a reader-facing display name.</summary>
     private static string ProviderName(string id) => id switch
     {
         "google" => "Google",
@@ -350,6 +372,7 @@ internal sealed class CliPresentation
         _ => id
     };
 
+    /// <summary>Escapes untrusted values before they enter terminal markup.</summary>
     private static string Safe(string value)
     {
         // Provider metadata must not inject markup, newlines, terminal commands or bidi overrides.
@@ -360,6 +383,7 @@ internal sealed class CliPresentation
         return Markup.Escape(clean);
     }
 
+    /// <summary>Creates a console writer configured for redirection and terminal capability constraints.</summary>
     private static IAnsiConsole CreateConsole(TextWriter writer, bool redirected, bool noColor)
     {
         var plain = redirected || noColor || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR")) ||

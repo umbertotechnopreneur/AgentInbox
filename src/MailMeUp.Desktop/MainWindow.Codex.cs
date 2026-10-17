@@ -26,6 +26,7 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements local Codex connection status and plugin installation interactions.</summary>
 public sealed partial class MainWindow
 {
     private string _codexReport = string.Empty;
@@ -35,12 +36,15 @@ public sealed partial class MainWindow
     private bool IsCodexSetupReady => CodexSetupPresentation.IsLocalSetupReady(_codexStatus)
         && (_codexStatus?.Code != "DirectConfigured" || _keepCodexPlugin != true);
 
+    /// <summary>Refreshes the local Codex integration status after an explicit user request.</summary>
     private async void RefreshCodexButton_Click(object sender, RoutedEventArgs e) =>
         await RunCodexSetupAsync(install: false);
 
+    /// <summary>Prepares and installs the local Codex plugin after explicit user confirmation.</summary>
     private async void InstallPluginButton_Click(object sender, RoutedEventArgs e) =>
         await RunCodexSetupAsync(install: true);
 
+    /// <summary>Runs a bounded Codex setup or refresh operation and reflects its safe result in the page.</summary>
     private async Task RunCodexSetupAsync(bool install)
     {
         if (BlockDemoAction()) return;
@@ -93,6 +97,7 @@ public sealed partial class MainWindow
         }, TimeSpan.FromMinutes(install ? 5 : 2));
     }
 
+    /// <summary>Applies the latest Codex setup status to local window state and visible controls.</summary>
     private void ApplyCodexStatus(CodexSetupStatus status)
     {
         _codexStatus = status;
@@ -115,6 +120,7 @@ public sealed partial class MainWindow
         UpdateProgress();
     }
 
+    /// <summary>Renders the Codex status, guidance, checks, and installation controls.</summary>
     private void RenderCodexPage()
     {
         if (_codexStatus is not { } status) return;
@@ -164,6 +170,7 @@ public sealed partial class MainWindow
         UpdateCodexFooter();
     }
 
+    /// <summary>Updates the Codex page heading from the current local setup state.</summary>
     private void UpdateCodexPageHeading()
     {
         if (_step != 3) return;
@@ -174,6 +181,7 @@ public sealed partial class MainWindow
                 : "Let Codex find emails and appointments in the accounts you choose.";
     }
 
+    /// <summary>Updates the Codex page footer with current setup guidance.</summary>
     private void UpdateCodexFooter()
     {
         FinishLaterButton.Visibility = ToVisibility(_step == 3 && !IsCodexSetupReady);
@@ -185,6 +193,7 @@ public sealed partial class MainWindow
         NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
     }
 
+    /// <summary>Updates the selected local Codex connection mode after the user changes it.</summary>
     private void CodexConnectionChoice_Checked(object sender, RoutedEventArgs e)
     {
         if (_renderingCodexChoices || !_loaded || _busy) return;
@@ -194,6 +203,7 @@ public sealed partial class MainWindow
         if (IsCodexSetupReady) CopyCodexPromptButton.Focus(FocusState.Programmatic);
     }
 
+    /// <summary>Switches to the alternate supported local Codex connection mode.</summary>
     private void SwitchCodexConnectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _dialogOpen) return;
@@ -203,6 +213,7 @@ public sealed partial class MainWindow
         PageScroll.ChangeView(null, 0, null, true);
     }
 
+    /// <summary>Maps a machine-readable Codex setup state to a concise reader-facing summary.</summary>
     private static string CodexStatusSummary(CodexSetupStatus status) => status.Code switch
     {
         "ReadyToInstall" => "The local plugin is ready to add to Codex.",
@@ -224,6 +235,7 @@ public sealed partial class MainWindow
         _ => "Review the setup details and next steps to continue."
     };
 
+    /// <summary>Renders bounded local Codex prerequisite and registration checks.</summary>
     private void RenderCodexChecks(IReadOnlyList<CodexSetupCheck> checks)
     {
         CodexChecks.Children.Clear();
@@ -241,6 +253,7 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Copies the supported local Codex setup prompt after explicit user selection.</summary>
     private void CopyCodexPromptButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !IsCodexSetupReady) return;
@@ -258,6 +271,7 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Copies the current bounded Codex setup result for troubleshooting or handoff.</summary>
     private void CopyCodexResultsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || string.IsNullOrEmpty(_codexReport)) return;

@@ -200,6 +200,7 @@ public sealed class LoggingMailMeUpApplication(
         }
     }
 
+    /// <summary>Formats distinct safe failure categories for structured operation diagnostics.</summary>
     private static string FormatFailureCategories(IEnumerable<ReadFailureKind> kinds) =>
         string.Join(", ", kinds
             .GroupBy(kind => kind)

@@ -37,6 +37,7 @@ internal sealed class MicrosoftReadRequests
     private readonly Func<DateTimeOffset> _utcNow;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
+    /// <summary>Creates a request helper with injectable HTTP, governor, clock, and delay dependencies.</summary>
     internal MicrosoftReadRequests(
         HttpClient client,
         IProviderRequestGovernor? governor = null,
@@ -49,6 +50,7 @@ internal sealed class MicrosoftReadRequests
         _delay = delay ?? ((duration, token) => Task.Delay(duration, token));
     }
 
+    /// <summary>Sends one governed Microsoft read request and returns a bounded JSON object response.</summary>
     internal async Task<JsonDocument> GetJsonAsync(
         Account account, string url, string accessToken, ILogger logger, string endpoint,
         int maximumBytes, bool preferText, CancellationToken cancellationToken, bool preferUtc = false)
@@ -109,6 +111,7 @@ internal sealed class MicrosoftReadRequests
         }
     }
 
+    /// <summary>Maps a Microsoft Graph HTTP status to its default safe reader failure category.</summary>
     internal static ReadFailureKind ClassifyStatus(int statusCode) => statusCode switch
     {
         400 => ReadFailureKind.InvalidRequest,
@@ -121,6 +124,7 @@ internal sealed class MicrosoftReadRequests
         _ => ReadFailureKind.Unknown
     };
 
+    /// <summary>Determines whether an unsuccessful Microsoft Graph response can be retried within the read budget.</summary>
     private static bool IsTransient(int statusCode) => statusCode is 408 or 429 or 500 or 502 or 503 or 504;
 }
 
@@ -133,6 +137,7 @@ internal sealed class MicrosoftExcludedFolderCache
     private readonly Func<DateTimeOffset> _utcNow;
     private readonly int _capacity;
 
+    /// <summary>Creates a bounded cache with optional deterministic time and capacity seams.</summary>
     internal MicrosoftExcludedFolderCache(Func<DateTimeOffset>? utcNow = null, int capacity = 128)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
@@ -140,6 +145,7 @@ internal sealed class MicrosoftExcludedFolderCache
         _capacity = capacity;
     }
 
+    /// <summary>Returns cached exclusions or coalesces one refresh without caching a failed request.</summary>
     internal async Task<IReadOnlyList<string>> GetAsync(
         string clientId, string accountId,
         Func<CancellationToken, Task<IReadOnlyList<string>>> read,
@@ -177,7 +183,11 @@ internal sealed class MicrosoftExcludedFolderCache
         }
 
         // A full cache of active refreshes must not grow or prevent an uncached, governed request.
-        if (entry is null) return await read(cancellationToken);
+        if (entry is null)
+        {
+            return await read(cancellationToken);
+        }
+
         if (refresh)
         {
             try
@@ -206,6 +216,7 @@ internal sealed class MicrosoftExcludedFolderCache
         return await entry.Result.Task.WaitAsync(cancellationToken);
     }
 
+    /// <summary>Holds one shared exclusion-folder refresh and its expiry.</summary>
     private sealed class Entry
     {
         internal TaskCompletionSource<IReadOnlyList<string>> Result { get; } =

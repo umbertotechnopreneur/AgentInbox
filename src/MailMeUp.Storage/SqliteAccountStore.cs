@@ -118,6 +118,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
         return Task.FromResult(database.Changes == 1);
     }
 
+    /// <summary>Opens the account database and creates or migrates only when the requested mode permits it.</summary>
     private Database Open(SqliteOpenMode mode)
     {
         EnsureInitialized();
@@ -172,6 +173,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
         }
     }
 
+    /// <summary>Initializes the SQLite provider without invoking unsupported packaged-app storage APIs.</summary>
     private static void EnsureInitialized()
     {
         lock (InitializationLock)
@@ -188,6 +190,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
         }
     }
 
+    /// <summary>Defines the supported SQLite open modes for account metadata operations.</summary>
     private enum SqliteOpenMode
     {
         ReadOnly,
@@ -195,10 +198,12 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
         ReadWriteCreate
     }
 
+    /// <summary>Owns a native SQLite connection and exposes bounded statement helpers.</summary>
     private sealed class Database : IDisposable
     {
         private sqlite3? _handle;
 
+        /// <summary>Opens the native SQLite connection and configures its busy timeout.</summary>
         internal Database(string path, int flags)
         {
             var result = raw.sqlite3_open_v2(path, out var handle, flags, null);
@@ -217,6 +222,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
 
         private sqlite3 Handle => _handle ?? throw new ObjectDisposedException(nameof(Database));
 
+        /// <summary>Prepares one SQL statement owned by this database connection.</summary>
         internal Statement Prepare(string sql)
         {
             var result = raw.sqlite3_prepare_v2(Handle, sql, out var statement);
@@ -228,6 +234,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             return new Statement(this, statement);
         }
 
+        /// <summary>Executes a statement that must return exactly one integer value.</summary>
         internal int ExecuteScalarInteger(string sql)
         {
             using var statement = Prepare(sql);
@@ -242,6 +249,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             return value;
         }
 
+        /// <summary>Executes a SQL batch and translates native errors to managed exceptions.</summary>
         internal void Execute(string sql)
         {
             var result = raw.sqlite3_exec(Handle, sql);
@@ -251,6 +259,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             }
         }
 
+        /// <summary>Throws a contextual managed exception unless a native SQLite result is successful.</summary>
         internal void Check(int result, string operation)
         {
             if (result != raw.SQLITE_OK)
@@ -259,12 +268,14 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             }
         }
 
+        /// <summary>Creates a managed exception with the current native SQLite error description.</summary>
         internal InvalidOperationException Error(string operation, int result)
         {
             var message = _handle is null ? "Database handle unavailable" : raw.sqlite3_errmsg(_handle).utf8_to_string();
             return new InvalidOperationException($"SQLite could not {operation} ({result}): {message}");
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             var handle = Interlocked.Exchange(ref _handle, null);
@@ -275,6 +286,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
         }
     }
 
+    /// <summary>Owns a prepared native SQLite statement and its last execution result.</summary>
     private sealed class Statement(Database database, sqlite3_stmt handle) : IDisposable
     {
         private sqlite3_stmt? _handle = handle;
@@ -282,10 +294,13 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
 
         private sqlite3_stmt Handle => _handle ?? throw new ObjectDisposedException(nameof(Statement));
 
+        /// <summary>Binds one text value at a one-based SQLite parameter index.</summary>
         internal void BindText(int index, string value) => database.Check(raw.sqlite3_bind_text(Handle, index, value), "bind text");
 
+        /// <summary>Binds one integer value at a one-based SQLite parameter index.</summary>
         internal void BindInteger(int index, int value) => database.Check(raw.sqlite3_bind_int(Handle, index, value), "bind integer");
 
+        /// <summary>Advances the native statement and records its result for later completion checks.</summary>
         internal int Step()
         {
             var result = raw.sqlite3_step(Handle);
@@ -293,11 +308,14 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             return result;
         }
 
+        /// <summary>Reads one required text column from the current row.</summary>
         internal string Text(int index) => raw.sqlite3_column_text(Handle, index).utf8_to_string()
             ?? throw new InvalidOperationException("SQLite returned an unexpected null account field.");
 
+        /// <summary>Reads one integer column from the current row.</summary>
         internal int Integer(int index) => raw.sqlite3_column_int(Handle, index);
 
+        /// <summary>Verifies that a statement has completed rather than producing another row or an error.</summary>
         internal void ExpectDone(int? result = null)
         {
             var actual = result ?? _lastStepResult;
@@ -307,6 +325,7 @@ public sealed class SqliteAccountStore(string directory) : IAccountStore
             }
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             var statement = Interlocked.Exchange(ref _handle, null);

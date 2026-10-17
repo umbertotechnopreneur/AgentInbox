@@ -34,6 +34,7 @@ internal sealed record SetupLaunchOptions(SetupStep? Step = null, bool IsDemo = 
 {
     internal const string UsageError = "Invalid setup arguments. Use --step welcome|accounts|sharing|codex and optional --demo.";
 
+    /// <summary>Parses supported setup-window command-line arguments into a safe activation request.</summary>
     internal static bool TryParse(IReadOnlyList<string> arguments, out SetupLaunchOptions options)
     {
         SetupStep? step = null;
@@ -66,6 +67,7 @@ internal sealed record SetupLaunchOptions(SetupStep? Step = null, bool IsDemo = 
         return true;
     }
 
+    /// <summary>Parses supported app-activation arguments into a safe setup-window request.</summary>
     internal static bool TryParseActivation(IReadOnlyList<string> arguments, out SetupLaunchOptions options)
     {
         // AppLifecycle launch data can contain either a full Windows command line or arguments only.

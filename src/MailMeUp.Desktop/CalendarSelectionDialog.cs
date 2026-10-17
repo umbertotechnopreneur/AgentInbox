@@ -83,6 +83,7 @@ public sealed class CalendarSelectionDialog : ContentDialog
     /// <summary>Gets the draft selection, including saved IDs missing from current discovery.</summary>
     public IReadOnlyCollection<string> SelectedCalendarIds => _selected.ToArray();
 
+    /// <summary>Renders the current bounded page of searchable calendar selection rows.</summary>
     private void RenderPage()
     {
         var matching = _available.Where(calendar => calendar.Name.Contains(_search.Text.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
@@ -111,6 +112,7 @@ public sealed class CalendarSelectionDialog : ContentDialog
         UpdateSummary();
     }
 
+    /// <summary>Updates the selected-calendar summary and pagination controls.</summary>
     private void UpdateSummary()
     {
         _summary.Text = _selected.Count > 100

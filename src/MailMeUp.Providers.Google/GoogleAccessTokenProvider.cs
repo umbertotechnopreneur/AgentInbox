@@ -30,12 +30,14 @@ using Microsoft.Extensions.Logging;
 
 namespace MailMeUp.Providers.Google;
 
+/// <summary>Obtains valid Google access tokens from the protected per-account credential cache.</summary>
 internal sealed class GoogleAccessTokenProvider(IProviderConfigurationStore configurations, ISecretStore secrets, ILogger logger)
 {
     private const string MailScope = "https://www.googleapis.com/auth/gmail.readonly";
     private const string CalendarListScope = "https://www.googleapis.com/auth/calendar.calendarlist.readonly";
     private const string CalendarEventsScope = "https://www.googleapis.com/auth/calendar.events.readonly";
 
+    /// <summary>Returns a valid token for the account's enabled Google read capabilities.</summary>
     public async Task<string> GetAsync(Account account, CancellationToken cancellationToken)
     {
         if (!string.Equals(account.Provider, "google", StringComparison.Ordinal))
@@ -114,6 +116,7 @@ internal sealed class GoogleAccessTokenProvider(IProviderConfigurationStore conf
         }
     }
 
+    /// <summary>Builds the minimal OAuth scope set required by the account's enabled read capabilities.</summary>
     private static IReadOnlyList<string> CreateScopes(Account account)
     {
         var scopes = new List<string> { "openid", "email", "profile" };

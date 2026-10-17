@@ -62,11 +62,13 @@ public sealed class MicrosoftProviderSetupService(
         return new ProviderSetupResult(CreateStatus(configuration), SourceRetained: false);
     }
 
+    /// <summary>Creates a safe setup status without exposing provider registration secrets.</summary>
     private static ProviderSetupStatus CreateStatus(ProviderConfiguration? configuration) => new(
         "microsoft",
         configuration is not null,
         configuration is null ? null : CreateClientIdHint(configuration.ClientId),
         ProtectedSecretConfigured: false);
 
+    /// <summary>Creates a minimal client-ID hint suitable for local setup status.</summary>
     private static string CreateClientIdHint(string clientId) => clientId.Length <= 12 ? clientId : $"…{clientId[^12..]}";
 }

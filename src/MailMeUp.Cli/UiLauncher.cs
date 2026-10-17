@@ -23,13 +23,18 @@ using System.Diagnostics;
 
 namespace MailMeUp.Cli;
 
+/// <summary>Describes one navigable desktop setup step exposed by the CLI.</summary>
 internal sealed record UiStep(string Id, string Title, string Description)
 {
     public string Command => $"agentinbox ui --step {Id}";
 }
+/// <summary>Defines the structured output for a request to list desktop setup steps.</summary>
 internal sealed record UiStepsOutput(IReadOnlyList<UiStep> Steps);
+
+/// <summary>Defines the structured output for a request to launch or activate desktop setup.</summary>
 internal sealed record UiLaunchOutput(string Status, string? RequestedStep, bool Demo);
 
+/// <summary>Locates and launches the Windows setup application for supported requested steps.</summary>
 internal static class UiLauncher
 {
     internal static IReadOnlyList<UiStep> Steps { get; } = Array.AsReadOnly<UiStep>(
@@ -40,8 +45,10 @@ internal static class UiLauncher
         new("codex", "Codex", "Set up the local Codex connection and review its status.")
     ]);
 
+    /// <summary>Determines whether a step identifier is exposed by the desktop setup application.</summary>
     internal static bool IsKnownStep(string step) => Steps.Any(item => item.Id == step);
 
+    /// <summary>Lists known steps or starts the desktop executable with the requested activation arguments.</summary>
     internal static UiLaunchOutput Launch(CliOptions options)
     {
         if (!OperatingSystem.IsWindows())
@@ -67,6 +74,7 @@ internal static class UiLauncher
         }
     }
 
+    /// <summary>Creates a shell-free desktop process start request for a validated activation step.</summary>
     internal static ProcessStartInfo CreateStartInfo(
         string cliDirectory,
         string? desktopPath,
@@ -101,6 +109,7 @@ internal static class UiLauncher
         return startInfo;
     }
 
+    /// <summary>Resolves a supplied or adjacent desktop executable path after ensuring that it exists.</summary>
     private static string ResolveDesktopPath(string cliDirectory, string? desktopPath, Func<string, bool> fileExists)
     {
         if (desktopPath is not null)
@@ -130,6 +139,7 @@ internal static class UiLauncher
     }
 }
 
+/// <summary>Represents a safe error encountered while locating or starting the desktop setup application.</summary>
 internal sealed class UiLaunchException(string message) : Exception(message)
 {
 }

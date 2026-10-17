@@ -21,8 +21,10 @@
 namespace MailMeUp.Desktop.Services;
 
 // Kept independent of WinUI so state-specific guidance can use synthetic regression tests.
+/// <summary>Defines the reader-facing Codex setup heading, help label, and ordered guidance steps.</summary>
 internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IReadOnlyList<string> Steps)
 {
+    /// <summary>Determines whether the local Codex connection is fully ready to use.</summary>
     internal static bool IsLocalSetupReady(CodexSetupStatus? status) => status is
     { Code: "PluginConfigured", IsPluginConfigured: true, HasDirectRegistration: false }
         or
@@ -31,6 +33,7 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
         IsDirectRegistrationEnabled: true, IsPluginConfigured: false
     };
 
+    /// <summary>Builds concise local connection instructions for the selected installation mode.</summary>
     internal static string ConnectionInstructions(CodexSetupStatus status, bool keepPlugin)
     {
         if (keepPlugin)
@@ -54,6 +57,7 @@ internal sealed record CodexSetupPresentation(string Title, string HelpLabel, IR
             + Environment.NewLine + "2. " + next;
     }
 
+    /// <summary>Maps a machine-readable setup status to reader-facing page content.</summary>
     internal static CodexSetupPresentation FromStatus(CodexSetupStatus status) => status.Code switch
     {
         "ReadyToInstall" => new("Ready to install", "What happens next?",

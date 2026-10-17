@@ -22,6 +22,7 @@ using MailMeUp.Desktop.Services;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements external activation requests for a specific setup window step.</summary>
 public sealed partial class MainWindow
 {
     private SetupStep? _pendingStep;
@@ -35,6 +36,7 @@ public sealed partial class MainWindow
         ApplyPendingStep();
     }
 
+    /// <summary>Moves the visible setup page to the latest externally requested step.</summary>
     private void ApplyPendingStep()
     {
         if (!_loaded || _busy || _dialogOpen || _lifetime.IsCancellationRequested || _pendingStep is not { } requested)

@@ -198,6 +198,7 @@ public static class ProviderHttpDiagnostics
         }
     }
 
+    /// <summary>Parses a positive bounded provider retry delay when the response supplies one.</summary>
     private static TimeSpan? ReadRetryAfter(HttpResponseMessage response)
     {
         if (!response.Headers.TryGetValues("Retry-After", out var values) ||
@@ -208,6 +209,7 @@ public static class ProviderHttpDiagnostics
         return delay is { } duration && duration > TimeSpan.Zero ? duration : null;
     }
 
+    /// <summary>Adds an allowlisted provider error code from a JSON object property.</summary>
     private static void AddCode(JsonElement element, string name, List<string> codes)
     {
         if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var property) &&
@@ -217,6 +219,7 @@ public static class ProviderHttpDiagnostics
         }
     }
 
+    /// <summary>Returns a valid GUID request identifier without retaining arbitrary provider header content.</summary>
     private static string RequestId(HttpResponseMessage response) =>
         response.Headers.TryGetValues("request-id", out var values) &&
         Guid.TryParseExact(values.FirstOrDefault(), "D", out var id) ? id.ToString("D") : "unavailable";

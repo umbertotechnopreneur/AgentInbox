@@ -25,8 +25,10 @@ using Serilog.Sinks.SystemConsole.Themes;
 
 namespace MailMeUp.Cli;
 
+/// <summary>Creates the bounded diagnostic logger used by command-line and MCP processes.</summary>
 internal static class CliLogging
 {
+    /// <summary>Builds the CLI logger with stderr output and retained local rolling files.</summary>
     internal static Logger Create(CliOptions options, string dataDirectory)
     {
         var logDirectory = Path.Combine(dataDirectory, "logs");

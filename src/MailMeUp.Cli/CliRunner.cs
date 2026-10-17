@@ -23,8 +23,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MailMeUp.Cli;
 
+/// <summary>Routes parsed CLI commands to the shared application facade and presentation layer.</summary>
 internal sealed class CliRunner(IMailMeUpApplication application, CliPresentation presentation, ILogger<CliRunner> logger)
 {
+    /// <summary>Executes one parsed command while preserving cancellation and safe diagnostic behavior.</summary>
     internal async Task RunAsync(CliOptions options, CancellationToken cancellationToken)
     {
         presentation.WriteBanner();

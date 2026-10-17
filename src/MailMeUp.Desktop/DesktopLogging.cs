@@ -24,8 +24,10 @@ using Serilog.Events;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Creates the bounded diagnostic logger used by the Windows setup application.</summary>
 internal static class DesktopLogging
 {
+    /// <summary>Builds the desktop logger with retained local rolling files and safe console diagnostics.</summary>
     internal static Logger Create(string dataDirectory)
     {
         var logDirectory = Path.Combine(dataDirectory, "logs");

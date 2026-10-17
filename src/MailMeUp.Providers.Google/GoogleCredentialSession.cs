@@ -22,8 +22,10 @@ using MailMeUp.Security;
 
 namespace MailMeUp.Providers.Google;
 
+/// <summary>Acquires the protected credential-store session associated with a Google account.</summary>
 internal static class GoogleCredentialSession
 {
+    /// <summary>Acquires exclusive credential access for a validated Google account.</summary>
     public static ValueTask<IDisposable> AcquireAsync(
         ISecretStore secrets,
         string accountId,

@@ -26,6 +26,7 @@ using MailMeUp.Security;
 
 namespace MailMeUp.Providers.Google;
 
+/// <summary>Adapts Google's token-cache callbacks to the operating-system protected secret store.</summary>
 internal sealed class ProtectedGoogleTokenStore(
     ISecretStore secrets,
     string slot,
@@ -84,13 +85,17 @@ internal sealed class ProtectedGoogleTokenStore(
         }
     }
 
+    /// <summary>Clears the protected token cache using the request cancellation token.</summary>
     public Task ClearAsync() => ClearAsync(cancellationToken);
 
+    /// <summary>Clears the protected token cache with a dedicated cleanup cancellation token.</summary>
     internal Task ClearAsync(CancellationToken cleanupCancellationToken) =>
         secrets.DeleteAsync(_reference, cleanupCancellationToken).AsTask();
 
+    /// <summary>Creates the stable protected-store reference for a validated token-cache slot.</summary>
     internal static string CreateReference(string slot) => $"providers/google/token-cache/{ValidateSlot(slot)}";
 
+    /// <summary>Validates the constrained local token-cache slot name.</summary>
     private static string ValidateSlot(string slot)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(slot);

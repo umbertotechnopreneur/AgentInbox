@@ -24,6 +24,7 @@ using Microsoft.Identity.Client;
 
 namespace MailMeUp.Providers.Microsoft;
 
+/// <summary>Acquires the protected credential-store session associated with a Microsoft account.</summary>
 internal static class MicrosoftIdentitySession
 {
     private const string TokenCacheReference = "providers/microsoft/token-cache";

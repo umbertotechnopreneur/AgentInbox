@@ -137,6 +137,7 @@ public sealed class MicrosoftAccountConnector(IProviderConfigurationStore config
         }
     }
 
+    /// <summary>Builds the minimal Microsoft OAuth scope set for the capabilities selected during connection.</summary>
     private static IReadOnlyList<string> CreateScopes(AccountConnectionOptions options)
     {
         var scopes = new List<string> { "User.Read" };
@@ -153,6 +154,7 @@ public sealed class MicrosoftAccountConnector(IProviderConfigurationStore config
         return scopes;
     }
 
+    /// <summary>Reads the authenticated user's stable Microsoft profile fields after OAuth completes.</summary>
     private static async Task<MicrosoftProfile> ReadProfileAsync(string accessToken, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(accessToken))
@@ -182,6 +184,7 @@ public sealed class MicrosoftAccountConnector(IProviderConfigurationStore config
         return new MicrosoftProfile(email, string.IsNullOrWhiteSpace(displayName) ? email : displayName);
     }
 
+    /// <summary>Reads an optional string property from a Microsoft Graph response object.</summary>
     private static string? GetOptionalString(JsonElement parent, string propertyName) =>
         parent.TryGetProperty(propertyName, out var property) &&
         property.ValueKind == JsonValueKind.String &&
@@ -189,5 +192,6 @@ public sealed class MicrosoftAccountConnector(IProviderConfigurationStore config
             ? property.GetString()
             : null;
 
+    /// <summary>Contains the stable Microsoft identity values used to construct a local account record.</summary>
     private sealed record MicrosoftProfile(string EmailAddress, string DisplayName);
 }

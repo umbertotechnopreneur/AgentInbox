@@ -26,6 +26,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace MailMeUp.Desktop;
 
+/// <summary>Implements local mail-search preference loading, editing, and saving for the window.</summary>
 public sealed partial class MainWindow
 {
     private MailSearchPreferences _mailSearchPreferences = new();
@@ -33,6 +34,7 @@ public sealed partial class MainWindow
     private bool _loadingMailSearchPreferences;
     private bool _mailSearchPreferencesDirty;
 
+    /// <summary>Loads persisted mail-search defaults and reflects them in the settings controls.</summary>
     private async Task LoadMailSearchPreferencesAsync(CancellationToken cancellationToken)
     {
         // Account refreshes must not overwrite an edited global preference.
@@ -66,6 +68,7 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Displays a validated mail-search preference value without marking it as an unsaved edit.</summary>
     private void DisplayMailSearchPreferences(MailSearchPreferences preferences)
     {
         _loadingMailSearchPreferences = true;
@@ -85,10 +88,12 @@ public sealed partial class MainWindow
         UpdateMailSearchPreferencesDirty();
     }
 
+    /// <summary>Validates the editable lookback-day control and returns its integral value.</summary>
     private bool TryGetMailSearchLookbackDays(out int days) =>
         int.TryParse(MailSearchLookbackDaysBox.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out days)
         && days >= MailSearchPreferences.MinimumDays && days <= MailSearchPreferences.MaximumDays;
 
+    /// <summary>Updates save-state controls after a mail-search preference edit.</summary>
     private void UpdateMailSearchPreferencesDirty()
     {
         if (_loadingMailSearchPreferences || !_mailSearchPreferencesLoaded) return;
@@ -108,6 +113,7 @@ public sealed partial class MainWindow
         UpdateProgress();
     }
 
+    /// <summary>Saves a validated mail-search preference draft after explicit user confirmation.</summary>
     private async void SaveMailSearchPreferencesButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !_mailSearchPreferencesLoaded || !_mailSearchPreferencesDirty) return;
@@ -134,6 +140,7 @@ public sealed partial class MainWindow
         });
     }
 
+    /// <summary>Restores the last loaded mail-search preference value after an explicit discard request.</summary>
     private void DiscardMailSearchPreferencesButton_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !_mailSearchPreferencesLoaded) return;
@@ -141,6 +148,7 @@ public sealed partial class MainWindow
         _settingsNotice.IsOpen = false;
     }
 
+    /// <summary>Reloads persisted mail-search preferences after an explicit user request.</summary>
     private async void ReloadMailSearchPreferencesButton_Click(object sender, RoutedEventArgs e) =>
         await RunAsync("Loading the default mail search period…", LoadMailSearchPreferencesAsync);
 }

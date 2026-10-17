@@ -48,6 +48,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     /// <summary>Initializes WinUI resources.</summary>
     public App() : this(new SetupLaunchOptions()) { }
 
+    /// <summary>Creates the desktop application with parsed activation options.</summary>
     internal App(SetupLaunchOptions launchOptions)
     {
         _launchOptions = launchOptions;
@@ -121,6 +122,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.Activate();
     }
 
+    /// <summary>Marshals a new activation request to the existing setup window's UI thread.</summary>
     internal void ActivateExistingWindow(SetupLaunchOptions options) => _dispatcher.TryEnqueue(() =>
     {
         var window = _window;
@@ -142,5 +144,6 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
+    /// <summary>Brings the supplied native window handle to the foreground when Windows permits it.</summary>
     private static extern bool SetForegroundWindow(IntPtr window);
 }

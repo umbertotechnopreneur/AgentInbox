@@ -261,6 +261,7 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
                 new EventReadRequest(reference, maxDescriptionCharacters),
                 cancellationToken),
             cancellationToken);
+    /// <summary>Executes a read tool, adds only safe failure guidance, and charges serialized content before delivery.</summary>
     private async Task<CallToolResult> ReadAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken,
         bool enforceOutputBudget = true)
     {
@@ -312,9 +313,15 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
             var encodedBytes = JsonSerializer.SerializeToUtf8Bytes(envelope, JsonOptions).Length;
             // Local status and fixed product guidance remain readable even with a very small content limit.
             if (enforceOutputBudget && encodedBytes > _readBudget.Limits.ResponseBytes)
+            {
                 throw new ProviderReadException("The serialized response exceeds the local output limit.", ReadFailureKind.BudgetExceeded);
+            }
+
             if (enforceOutputBudget && ContainsReadContent(payload))
+            {
                 await _readBudget.ChargeOutputAsync(encodedBytes, cancellationToken);
+            }
+
             return CreateToolResult(payload, allFailed);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -349,11 +356,13 @@ public sealed class MailTools(IMailMeUpApplication application, IReadBudget? rea
         }
     }
 
+    /// <summary>Determines whether a serialized tool payload contains mailbox or calendar content subject to output charging.</summary>
     private static bool ContainsReadContent(JsonObject payload) =>
         payload.ContainsKey("text") || payload.ContainsKey("description") ||
         new[] { "accounts", "items", "events", "calendars", "failed_accounts" }
             .Any(name => payload[name] is JsonArray { Count: > 0 });
 
+    /// <summary>Creates matching structured and text-compatible MCP content from one safe payload.</summary>
     private static CallToolResult CreateToolResult(JsonObject payload, bool isError)
     {
         var content = JsonSerializer.SerializeToElement(payload, JsonOptions);
