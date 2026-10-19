@@ -6,7 +6,9 @@ Report security problems privately through GitHub's **Security → Report a vuln
 
 Include the version or commit, operating system and steps with made-up data.
 
-Keep passwords in protected system storage with no plain-text fallback. Validate TLS before authentication. Treat mail content as untrusted data.
+Keep passwords and Microsoft refresh tokens in protected system storage with no plain-text fallback. Windows uses Credential Manager for those secrets and DPAPI for temporary message and sign-in blobs. Native macOS Keychain and Linux Secret Service paths remain untested.
+
+Require implicit TLS or required STARTTLS with certificate and hostname validation before authentication. There is no plaintext mode or custom-CA control. Microsoft OAuth2 must be chosen explicitly; failed passwords must never trigger an automatic switch. Keep device codes, tokens and authentication exchanges out of diagnostics. Treat mail content as untrusted data.
 
 Sending starts disabled and needs local approval of each exact message. MCP cannot approve. Bypassing review, reusing approval, changing reviewed content or retrying an uncertain send is a security-sensitive defect.
 

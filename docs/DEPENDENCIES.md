@@ -2,7 +2,9 @@
 
 The Python 3.11+ mail engine uses the standard library. It has no third-party Python package dependency.
 
-Credentials use native facilities: DPAPI on Windows, Keychain on macOS, and an available unlocked Secret Service through `libsecret` and GLib on Linux. AgentInbox does not install these facilities or fall back to a plain-text password file. Native OS libraries are accessed through Python's standard-library `ctypes`; no Python package installation is required.
+Credentials use native facilities. Windows Credential Manager stores passwords and Microsoft refresh tokens; current-user DPAPI protects temporary outgoing-message and sign-in blobs. macOS uses Keychain, and Linux requires an available unlocked Secret Service through `libsecret` and GLib. AgentInbox does not install these facilities or fall back to plain-text credentials. Native OS libraries are accessed through Python's standard-library `ctypes`; no Python package installation is required.
+
+The macOS and Linux paths remain untested. Contributor pull requests with platform fixes and reproducible validation are welcome. Optional Microsoft OAuth2 uses standard-library HTTPS and requires a user-supplied public-client app registration; there is no third-party authentication SDK or Google OAuth flow.
 
 Local Python review uses tkinter and needs a graphical session. Some Python installations require a separate tkinter system package. Unavailable review must not enable sending.
 

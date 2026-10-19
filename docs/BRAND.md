@@ -6,9 +6,9 @@ Name: **AgentInbox**. Preserve capitalization; do not use spaces in the product 
 
 Tagline: **Read and send email with your AI assistant.**
 
-One-line description: **Read email through IMAP and prepare optional SMTP sends for local approval, through your AI assistant.**
+One-line description: **Read email through IMAP or POP3 and prepare optional SMTP sends for local approval, through your AI assistant.**
 
-Expanded product description: **Connect compatible mailboxes using server settings and passwords or app passwords. AgentInbox runs on your computer, reads the accounts you share and sends only the exact messages you approve locally.**
+Expanded product description: **Connect mailboxes using server settings and a password or app password, with optional Microsoft sign-in when you explicitly choose it and supply your app registration. AgentInbox runs on your computer, reads the accounts you share and sends only the exact messages you approve locally. Provider policies still apply.**
 
 The name joins an AI agent with the inboxes it can read. Envelopes and a shared mint palette connect the product to the MeUp family.
 
@@ -20,7 +20,7 @@ The first README headline must explain what AgentInbox does in one short sentenc
 
 Use "I", "me", and "my" when speaking as Umberto, the solo maintainer with help from a few contributors. Speak to the reader as "you". Avoid company-style "we", slogans that replace an explanation, hype, and formulaic AI wording. Apply this voice to all original documentation, including setup, support, and contributor guides.
 
-Say "connect your accounts" instead of "configure multi-account access," and "choose what to share" instead of "manage sharing capabilities." Keep exact command names and button labels. Explain IMAP, SMTP and MCP when the reader first needs them.
+Say "connect your accounts" instead of "configure multi-account access," and "choose what to share" instead of "manage sharing capabilities." Keep exact command names and button labels. Explain IMAP, POP3, SMTP and MCP when the reader first needs them.
 
 Be clear about what works, what's still being tried and what hasn't been tested. Keep privacy information close to the action it affects. Put build history and implementation details in the developer references. Label concept artwork and keep its source prompts and creation notes.
 

@@ -12,7 +12,9 @@ Use absolute paths when another app starts these commands. Keep passwords and me
 
 ## Local management
 
-Operations are `list_accounts`, `presets`, `save_account`, `remove_account`, `check_read`, `check_smtp`, `list_folders`, `list_pending`, `prepare_email` and `get_send_status`.
+Account and mail operations are `list_accounts`, `presets`, `save_account`, `remove_account`, `check_read`, `check_smtp`, `list_folders`, `list_pending`, `prepare_email` and `get_send_status`. Explicit Microsoft sign-in uses `start_microsoft_signin`, `poll_microsoft_signin` and `cancel_microsoft_signin`; these are local management operations, never MCP tools.
+
+Schema 3 account input uses `incoming` with `protocol: "imap"` or `"pop3"` and required `authentication`. Choose `{ "method": "password" }` by default, or explicitly use `{ "method": "microsoft_oauth", "client_id": "YOUR_PUBLIC_CLIENT_GUID", "tenant": "common" }`. Tenant can also be `organizations`, `consumers` or a tenant GUID. Supply `passwords` with both `incoming` and `smtp` keys; Microsoft OAuth2 requires both values to be empty strings. See [authentication](AUTHENTICATION.md) for registration requirements.
 
 `list_pending` returns the latest 100 outgoing records, including completed or uncertain outcomes, so local setup can show recent status as well as messages awaiting review. Its name does not mean every returned record is awaiting approval.
 

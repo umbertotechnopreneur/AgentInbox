@@ -1,6 +1,6 @@
 # Architecture
 
-AgentInbox uses a Python 3.11+ engine for local MCP, account configuration, IMAP reads and optional SMTP sends. The Windows app is a WinUI 3 client of that engine. The engine has no .NET backend and uses only the Python standard library.
+AgentInbox uses a Python 3.11+ engine for local MCP, account configuration, IMAP/POP3 reads and optional SMTP sends. The Windows app is a WinUI 3 client of that engine. The engine has no .NET backend and uses only the Python standard library.
 
 This source implementation is unvalidated. It has no compatibility layer or previous-profile importer. Unsupported configuration versions fail explicitly.
 
@@ -11,7 +11,8 @@ flowchart LR
     CLI[Local management CLI] --> PY
     PY --> CONFIG[Versioned account settings]
     PY --> VAULT[OS-protected credentials]
-    PY --> IMAP[IMAP over TLS]
+    PY --> MAIL[IMAP or POP3 over TLS]
+    PY --> AUTH[Optional explicit Microsoft sign-in]
     PY --> PENDING[Protected pending messages]
     PENDING --> REVIEW[Local user approval]
     REVIEW --> SMTP[SMTP over TLS]
@@ -22,11 +23,13 @@ flowchart LR
 - MCP and management adapters delegate to Python's `MailApplication`.
 - MCP exposes account discovery, bounded message searches and reads, send preparation and send status. It cannot save credentials, enable sending or approve a message.
 - WinUI 3 collects settings, runs requested connection checks and presents local review. It does not implement a second mail backend.
-- Versioned JSON stores non-secret account settings. Passwords are protected separately.
-- Windows uses DPAPI, macOS uses Keychain through native calls, and Linux requires an available Secret Service through native `libsecret` calls. Missing or locked secure storage fails; no plain-text credentials file is allowed.
+- Schema 3 JSON stores non-secret account settings, including incoming protocol and authentication choice. Passwords and tokens are protected separately; there are no older-schema aliases or import paths.
+- Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary outgoing-message and sign-in blobs. macOS uses Keychain through native calls, and Linux requires an available Secret Service through native `libsecret` calls. These non-Windows paths remain untested. Missing or locked secure storage fails; no plain-text credentials file is allowed.
 - IMAP uses read-only mailbox selection and non-marking retrieval. Mail content is untrusted data.
+- POP3 sends no delete commands and presents one INBOX, without server folders or unread flags. Provider retention policies still apply. Search uses headers and the message Date header rather than server-received time.
+- Password authentication is the default. Optional Microsoft OAuth2 is selected explicitly and requires public-client registration settings. Local management owns device-code sign-in; MCP cannot start it or receive its tokens. There is no Google OAuth path or automatic method fallback.
 - SMTP starts disabled and requires approval of each exact pending message.
-- Plain-text connections, invalid certificates, unsupported sign-in methods and invalid schemas fail without a weaker fallback.
+- Connections require implicit TLS or required STARTTLS with certificate and hostname validation. There is no plaintext mode or custom-CA control. Unsupported settings and invalid schemas fail without a weaker fallback.
 - Stdout contains protocol or management JSON. Diagnostics go to stderr and exclude credentials and message content.
 
 ## Sending

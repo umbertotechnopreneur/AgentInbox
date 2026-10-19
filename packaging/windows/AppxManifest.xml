@@ -29,7 +29,7 @@ VBWR E -->
   <Properties>
     <DisplayName>AgentInbox</DisplayName>
     <PublisherDisplayName>UmbertoGiacobbiDotBiz</PublisherDisplayName>
-    <Description>Local IMAP reading and optional SMTP email with your approval before every send.</Description>
+    <Description>Local IMAP or POP3 reading and optional SMTP email with your approval before every send.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
     <!-- The Python engine and Windows setup share one explicit local data directory. -->
     <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>
@@ -42,7 +42,7 @@ VBWR E -->
   </Dependencies>
   <Applications>
     <Application Id="Desktop" Executable="AgentInbox.Desktop.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
-      <uap:VisualElements DisplayName="AgentInbox" Description="Configure IMAP and SMTP connections and approve outgoing email."
+      <uap:VisualElements DisplayName="AgentInbox" Description="Configure IMAP, POP3 and SMTP connections and approve outgoing email."
         BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
     </Application>
   </Applications>

@@ -1,6 +1,6 @@
 # Repository working agreement
 
-AgentInbox is an MIT-licensed local email MCP bridge with a Python engine and a WinUI 3 Windows setup app. It reads mail through IMAP and optionally sends through SMTP after local approval of each message. All repository artifacts, code comments, CLI strings and commit messages use English. Keep conversation with the owner in their preferred language.
+AgentInbox is an MIT-licensed local email MCP bridge with a Python engine and a WinUI 3 Windows setup app. It reads mail through IMAP or POP3 and optionally sends through SMTP after local approval of each message. Password authentication is the default; Microsoft-only OAuth2 is an explicit optional choice requiring app registration. All repository artifacts, code comments, CLI strings and commit messages use English. Keep conversation with the owner in their preferred language.
 
 ## Product writing and author voice
 
@@ -62,7 +62,10 @@ AgentInbox is an MIT-licensed local email MCP bridge with a Python engine and a 
 - Add docstrings to public Python APIs and XML summaries to public C# APIs. Keep diagnostics bounded and exclude private content.
 - Advertise only implemented capabilities. Do not register placeholder mail tools or simulate successful connections.
 - Do not add a hosted service, marketplace bundle or web UI without a scoped request.
-- Protocol scope is IMAP for non-marking mail reads and optional SMTP for sending. SMTP starts disabled and requires direct local approval of each exact message; no MCP tool may approve or enable sending. Mail editing, deletion and other protocol families are outside scope.
+- Protocol scope is IMAP for non-marking mail reads, POP3 for non-deleting mailbox reads, and optional SMTP for sending. POP3 is INBOX-only, has no unread flags or server folders, searches headers, and uses the email Date header for date filters. SMTP starts disabled and requires direct local approval of each exact message; no MCP tool may approve or enable sending. Mail editing, deletion and other protocol families are outside scope.
+- Authentication defaults to password or app password. Microsoft OAuth2 requires explicit user selection and a supplied public-client app registration; never switch methods automatically or add Google OAuth.
+- Require implicit TLS or required STARTTLS with certificate and hostname checks. Do not add a plaintext mode, disabled validation or custom-CA controls without a new explicit scope decision.
+- Windows passwords and Microsoft refresh tokens use Credential Manager. Temporary outgoing-message and sign-in blobs use current-user DPAPI. macOS Keychain and Linux Secret Service use native source paths that remain untested; welcome contributor improvements with honest validation evidence.
 - Do not add compatibility shims, old command aliases, previous-data import or automatic schema conversion. Reject unsupported settings, providers and connection methods without fallback.
 - Keep public documentation short and plain. Put technical details in focused developer references.
 

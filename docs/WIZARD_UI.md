@@ -6,9 +6,11 @@ This source change has not been built or visually validated.
 
 ## Account editor
 
-Keep incoming and outgoing settings together. Offer presets and a custom option, then show the required host, port, TLS, username and password fields.
+Keep incoming and outgoing settings together. Offer presets and a custom option, an IMAP/POP3 selector before incoming fields, and the required host, port, TLS and username fields.
 
-Incoming mail uses IMAP. SMTP is optional and initially disabled. Presets requiring an unsupported sign-in method stop early with an explanation.
+Password or app password is the default. Explicit Microsoft OAuth2 shows a public client ID and tenant field, a device-code dialog and a human-triggered browser button. Never switch methods or open a browser automatically. Microsoft presets are editable settings, not proof of account compatibility. No Google OAuth path is included.
+
+POP3 fixes the folder to INBOX and explains that server folders and unread flags are unavailable. Its search uses headers and email Date values. SMTP is optional and initially disabled. TLS and hostname/certificate checks are required, without plaintext or custom-CA controls.
 
 Separate read checks, SMTP connection checks and test-message preparation. A connection check is not delivery.
 

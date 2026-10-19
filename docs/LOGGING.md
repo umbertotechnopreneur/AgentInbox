@@ -2,7 +2,7 @@
 
 Python diagnostics go to stderr. MCP stdout contains protocol messages; management stdout contains JSON responses.
 
-Do not log passwords, bodies, full recipient lists, attachment contents or raw authentication exchanges. Distinguish configuration, secure-storage, TLS, authentication, read and uncertain-send failures.
+Do not log passwords, Microsoft access or refresh tokens, device-sign-in codes, bodies, full recipient lists, attachment contents or raw authentication exchanges. Distinguish configuration, secure-storage, TLS, authentication, read and uncertain-send failures. Authentication errors must not trigger an automatic switch of sign-in method.
 
 Rejected authentication is not proof of a mistyped password; policy can block access. Report the failed step without inventing a cause.
 

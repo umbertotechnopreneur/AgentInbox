@@ -8,6 +8,8 @@ Write code, comments and docs in English. Use synthetic `example.test` accounts.
 
 Keep mail behavior in Python. Reject unsupported settings, use protected credential storage and preserve local approval for each send. Do not add compatibility shims or previous-data import.
 
+macOS Keychain and Linux Secret Service paths are implemented through native interfaces but have not been tested. Pull requests that improve these paths or document reproducible platform validation are welcome. Keep IMAP/POP3/SMTP behavior, password defaults and explicit Microsoft sign-in boundaries consistent across platforms.
+
 Follow the [Defender scan requirement](README.md#external-binary-security-policy) before adding dependencies. Follow authorization and cleanup rules in [AGENTS.md](AGENTS.md) for checks.
 
 Describe changes, evidence and untested paths in your pull request. Contributions use MIT. Include generated-artwork provenance and preserve third-party attribution.

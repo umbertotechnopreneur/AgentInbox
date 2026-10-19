@@ -24,7 +24,9 @@ Your email provider, MCP client and AI service have their own terms and may char
 
 ## Reading and sending
 
-IMAP reads depend on connection permissions, server behavior, search scope and limits. Results can be partial or fail. Check important information against the original message.
+IMAP and POP3 reads depend on connection permissions, server behavior, search scope and limits. POP3 exposes INBOX only, without unread flags or server folders; it searches headers and uses the email Date header. Results can be partial or fail. Check important information against the original message.
+
+Password authentication is the default. Optional Microsoft OAuth2 requires your explicit selection and suitable public-client app registration. Provider and tenant policies can prevent access; no preset guarantees compatibility. Authentication never switches automatically. Connections require validated TLS or STARTTLS, without plaintext or custom-CA controls.
 
 SMTP starts disabled. Every message, including a test email, needs your local approval of its exact recipients, content and attachments. Review those details before approving; sending can disclose information to recipients and their providers.
 
@@ -40,6 +42,6 @@ I do not promise uninterrupted access, a particular support response time or a s
 
 ## Stopping use and changes
 
-Remove local accounts and MCP registrations when you stop using AgentInbox. Revoke dedicated app passwords with your provider and follow the privacy policy to remove local and assistant-held copies.
+Remove local accounts and MCP registrations when you stop using AgentInbox. Revoke dedicated app passwords or Microsoft consent with your provider and follow the privacy policy to remove local and assistant-held copies.
 
 I may update these terms as the app changes. Updates do not revoke MIT rights or retroactively remove rights attached to a purchase. Changes requiring notice or consent will be handled before they apply.

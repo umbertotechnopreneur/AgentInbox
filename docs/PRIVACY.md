@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-19.
 
-AgentInbox connects your email to an assistant you choose. It uses IMAP to read mail and optional SMTP to send messages you approve locally. This policy describes the current source implementation, which remains unvalidated.
+AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 to read mail and optional SMTP to send messages you approve locally. This policy describes the current source implementation, which remains unvalidated.
 
 [Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms](https://umbertogiacobbi.biz/agentinbox/terms/)
 
@@ -14,21 +14,25 @@ This policy covers the Windows app, Python engine and local MCP connection. Agen
 
 ## Account settings and passwords
 
-You supply an email address, server names, ports, TLS settings, usernames and passwords or app passwords. AgentInbox uses them to connect directly to the email servers you select.
+You supply an email address, an incoming protocol, server names, ports, TLS settings and usernames. Password or app password is the default authentication method. AgentInbox uses these settings to connect directly to the email servers you select.
 
-Connection settings and account permissions are stored locally. Passwords use operating-system protection: DPAPI on Windows, Keychain on macOS or an available Secret Service on Linux. Missing secure storage fails instead of saving a plain-text password.
+You can explicitly choose Microsoft OAuth2 for a Microsoft account and supply a public client ID and tenant setting from your app registration. Device-code sign-in contacts Microsoft; a browser opens only when you request it. Microsoft processes your sign-in and consent under its policies. AgentInbox receives access and refresh tokens for the requested mail access. It does not provide Google OAuth or automatically change authentication methods after a failure.
 
-These facilities do not encrypt every local metadata file or protect a compromised signed-in operating-system account. Server connections require validated TLS.
+Connection settings and account permissions are stored locally. Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary outgoing-message and sign-in blobs. The source uses native Keychain on macOS and an available Secret Service on Linux; those paths remain untested. Missing secure storage fails instead of writing plain-text credentials.
+
+These facilities do not encrypt every local metadata file or protect a compromised signed-in operating-system account. Server connections require implicit TLS or required STARTTLS with certificate and hostname checks. There is no plaintext mode or custom-CA setting.
 
 ## Reading mail
 
-Requested results can contain subjects, senders, recipients, timestamps, message text, read status and attachment metadata. Search filters and requested message identifiers go to your configured IMAP server.
+Requested results can contain subjects, senders, recipients, timestamps, message text and attachment metadata. IMAP can also return read status. Protocol requests go to your configured mail server.
 
 IMAP reads use read-only mailbox selection and non-marking retrieval. Result references and search state are kept in process memory, with ten-minute message references. The engine does not create a full mailbox archive.
 
+POP3 exposes one mailbox as INBOX and has no unread flags or server folders. AgentInbox sends no delete commands; provider retention policies can still affect messages. Searches inspect message headers; dates come from the email Date header rather than server-received time. Header retrieval can therefore occur before local search filtering.
+
 The connected assistant receives requested results. It may send them to an AI service, retain conversations or process data outside your country. AgentInbox does not call an AI model itself, but local MCP does not make the whole workflow offline. Check your client's privacy, retention and training settings.
 
-Passwords are not returned as MCP tool results.
+Passwords, Microsoft tokens and device-sign-in codes are not returned as MCP tool results.
 
 ## Preparing and sending mail
 
@@ -52,7 +56,7 @@ Your operating system, backups and assistant may retain their own copies. Protec
 
 Disable assistant reads or SMTP in local account settings to stop those operations. Remove an account to remove its local access and saved credentials. Your original mailbox remains with the provider.
 
-Revoke any dedicated app password using the provider's controls when you no longer need it. Removing local settings does not revoke that password at the provider.
+Revoke any dedicated app password or Microsoft consent using the provider's controls when you no longer need it. Removing local settings does not revoke a password, token or consent at the provider.
 
 For full local cleanup, remove configured accounts, stop AgentInbox processes and remove the relevant local profile and pending data. Remove its MCP registration from your assistants. Uninstalling alone should not be relied on to erase every copy.
 
