@@ -24,7 +24,9 @@
 - Split account setup into Account, Incoming and Outgoing tabs; move Save to the header and add compact colored action, navigation and provider icons.
 - Group incoming tests and SMTP connection/test-message actions in their relevant tabs; move outgoing-request refresh to a header icon.
 - Restore guided Codex detection and explicit connection setup through its installed CLI, with atomic configuration updates, replacement confirmation, concurrent-change checks and manual setup in Advanced.
-- Remove decorative cards throughout WinUI and use a native underlined account-view selector. Show an explicit empty state and open the account form only after Create; add Cancel, a named edit selector and button tooltips.
+- Remove decorative cards throughout WinUI and use standard Account, Incoming and Outgoing tabs. Show an explicit empty state and open the account form only after Create; add Cancel, a named edit selector and button tooltips.
+- Size the initial window in logical pixels using the monitor's DPI, with a larger 1280 × 960 target limited to its work area.
+- Hide Microsoft sign-in for Gmail, iCloud and unsupported server combinations. Require a fresh authentication choice if a server edit invalidates the selected method; keep the engine's Microsoft-only endpoint validation.
 - Keep connection tests out of new-account setup and disable them for unsaved changes. Reflect committed saves and removals directly from their results instead of depending on a second account-list request.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.

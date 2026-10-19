@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using MailMeUp.Desktop.Services;
 using Microsoft.UI.Windowing;
@@ -27,7 +28,7 @@ public sealed partial class MainWindow : Window
     private string _lastRequestId = "";
     private int? _revision;
     private ComboBox _accountPicker = new();
-    private SelectorBar _accountTabs = new();
+    private TabView _accountTabs = new();
     private Grid _accountToolbar = new();
     private StackPanel _accountEditor = new();
     private StackPanel _accountEmptyState = new();
@@ -43,6 +44,7 @@ public sealed partial class MainWindow : Window
     private TextBox _label = new();
     private TextBox _email = new();
     private ComboBox _authentication = new();
+    private TextBlock _authenticationHint = new();
     private TextBox _clientId = new();
     private ComboBox _tenant = new();
     private TextBox _tenantId = new();
@@ -78,12 +80,19 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         SystemBackdrop = new MicaBackdrop();
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var width = Math.Min(1120, area.Width);
-        var height = Math.Min(900, area.Height);
+        var dpi = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
+        if (dpi == 0) throw new InvalidOperationException("The window display scale could not be determined.");
+        var scale = dpi / 96.0;
+        // AppWindow uses physical pixels; size the form in logical pixels at the monitor's scale.
+        var width = Math.Min((int)Math.Round(1280 * scale), area.Width);
+        var height = Math.Min((int)Math.Round(960 * scale), area.Height);
         AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - width) / 2,
             area.Y + (area.Height - height) / 2, width, height));
         Closed += (_, _) => _lifetime.Cancel();
     }
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern uint GetDpiForWindow(IntPtr window);
 
     internal void RequestReview(string? requestId)
     {
@@ -126,7 +135,11 @@ public sealed partial class MainWindow : Window
             tooltip: "Open the setup form for your first email account.");
         _accountEmptyState = Stack(Text("There are no accounts yet", 22), _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
-        _accountTabs = new SelectorBar { HorizontalAlignment = HorizontalAlignment.Stretch };
+        _accountTabs = new TabView
+        {
+            IsAddTabButtonVisible = false, CanDragTabs = false, CanReorderTabs = false,
+            TabWidthMode = TabViewWidthMode.SizeToContent, HorizontalAlignment = HorizontalAlignment.Stretch
+        };
         AutomationProperties.SetName(_accountTabs, "Account settings");
         _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", MinWidth = 220, HorizontalAlignment = HorizontalAlignment.Stretch };
         _accountPicker.SelectionChanged += (_, _) =>
@@ -165,9 +178,8 @@ public sealed partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(_incomingUser.Text)) _incomingUser.Text = _email.Text.Trim();
             if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
         };
-        _authentication = new ComboBox { Header = "Authentication", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _authentication = new ComboBox { Header = "Authentication", PlaceholderText = "Choose authentication", HorizontalAlignment = HorizontalAlignment.Stretch };
         _authentication.Items.Add("Password — account or app password");
-        _authentication.Items.Add("Microsoft sign-in (OAuth2)");
         _authentication.SelectionChanged += (_, _) =>
         {
             if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: true);
@@ -183,8 +195,8 @@ public sealed partial class MainWindow : Window
             Hint("Use an app registration configured for public-client device sign-in and your account type. The client ID is public, not a password. AgentInbox does not create or verify the registration."),
             _microsoftSignIn,
             Hint("Save this authentication choice before signing in. It applies to incoming mail and SMTP on this account. Password failures never switch authentication automatically."));
-        var accountContent = Section("", _preset, Pair(_label, _email), _authentication, _microsoftFields,
-            Hint("A preset fills server details. Password is the default. Use an app password when required, or explicitly choose Microsoft sign-in for a Microsoft account."));
+        _authenticationHint = Hint("");
+        var accountContent = Section("", _preset, Pair(_label, _email), _authentication, _microsoftFields, _authenticationHint);
 
         _incomingProtocol = new ComboBox { Header = "Incoming protocol", HorizontalAlignment = HorizontalAlignment.Stretch };
         _incomingProtocol.Items.Add("IMAP — mail and server folders");
@@ -223,26 +235,20 @@ public sealed partial class MainWindow : Window
         {
             _smtpFields.Visibility = _configureSmtp.IsOn ? Visibility.Visible : Visibility.Collapsed;
             if (!_configureSmtp.IsOn) _sendEnabled.IsOn = false;
+            if (!_loadingForm) UpdateAuthenticationChoices();
         };
+        _incomingHost.TextChanged += (_, _) => { if (!_loadingForm) UpdateAuthenticationChoices(); };
+        _smtpHost.TextChanged += (_, _) => { if (!_loadingForm) UpdateAuthenticationChoices(); };
         var outgoingContent = Stack(_configureSmtp,
             Hint("Outgoing mail is optional. Configure SMTP only if you want to send messages."), _smtpFields);
-        var panes = new Grid { Margin = new Thickness(0, 12, 0, 0) };
         foreach (var tab in new[] {
             AccountTab("Account", "\uE77B", 0x16856A, accountContent),
             AccountTab("Incoming", "\uE715", 0x2477C8, incomingContent),
             AccountTab("Outgoing", "\uE724", 0xC77616, outgoingContent) })
-        {
-            _accountTabs.Items.Add(tab);
-            panes.Children.Add((UIElement)tab.Tag);
-        }
-        _accountTabs.SelectionChanged += (_, _) =>
-        {
-            foreach (var tab in _accountTabs.Items)
-                ((UIElement)tab.Tag).Visibility = ReferenceEquals(tab, _accountTabs.SelectedItem) ? Visibility.Visible : Visibility.Collapsed;
-        };
-        _accountTabs.SelectedItem = _accountTabs.Items[0];
+            _accountTabs.TabItems.Add(tab);
+        _accountTabs.SelectedIndex = 0;
         _newAccountHeading = Text("New account", 22);
-        _accountEditor = Stack(_newAccountHeading, _accountTabs, panes);
+        _accountEditor = Stack(_newAccountHeading, _accountTabs);
         Page.Children.Add(_accountEditor);
         TrackAccountChanges();
         FillAccount(null);
@@ -255,7 +261,7 @@ public sealed partial class MainWindow : Window
         _creatingAccount = true;
         _accountPicker.SelectedIndex = -1;
         FillAccount(null);
-        _accountTabs.SelectedItem = _accountTabs.Items[0];
+        _accountTabs.SelectedIndex = 0;
         _label.Focus(FocusState.Programmatic);
     }
 
@@ -355,7 +361,6 @@ public sealed partial class MainWindow : Window
         _email.Text = account is { } email ? Value(email, "email") : "";
         var authentication = account?.GetProperty("authentication");
         var microsoft = authentication is { } method && Value(method, "method") == "microsoft_oauth";
-        _authentication.SelectedIndex = microsoft ? 1 : 0;
         _clientId.Text = microsoft ? Value(authentication!.Value, "client_id") : "";
         var tenant = microsoft ? Value(authentication!.Value, "tenant") : "common";
         _tenant.SelectedIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
@@ -381,6 +386,8 @@ public sealed partial class MainWindow : Window
         _configureSmtp.IsOn = hasSmtp;
         _smtpFields.Visibility = hasSmtp ? Visibility.Visible : Visibility.Collapsed;
         _sendEnabled.IsOn = account is { } sendable && sendable.GetProperty("send_enabled").GetBoolean();
+        UpdateAuthenticationChoices();
+        _authentication.SelectedIndex = microsoft ? 1 : 0;
         _save.IsEnabled = true;
         _loadingForm = false;
         UpdateIncomingPresentation();
@@ -392,12 +399,15 @@ public sealed partial class MainWindow : Window
     private void ApplyPreset()
     {
         if (_loadingForm) return;
-        if (_preset.SelectedIndex == 0) return;
+        if (_preset.SelectedIndex == 0)
+        {
+            UpdateAuthenticationChoices();
+            return;
+        }
+        _loadingForm = true;
         if (_preset.SelectedIndex == 2 && _incomingProtocol.SelectedIndex == 1)
         {
-            _loadingForm = true;
             _incomingProtocol.SelectedIndex = 0;
-            _loadingForm = false;
             ShowNotice("iCloud uses IMAP", "The iCloud preset uses IMAP for incoming mail. POP3 is not available with this preset.", InfoBarSeverity.Informational);
         }
         var pop = _incomingProtocol.SelectedIndex == 1;
@@ -420,7 +430,9 @@ public sealed partial class MainWindow : Window
         };
         _smtpPort.Text = _preset.SelectedIndex == 1 ? "465" : "587";
         _smtpTls.SelectedIndex = _preset.SelectedIndex == 1 ? 0 : 1;
+        _loadingForm = false;
         UpdateIncomingPresentation();
+        UpdateAuthenticationChoices();
         if (_preset.SelectedIndex is 3 or 4)
             ShowNotice("Microsoft cloud accounts require modern authentication", "Outlook.com requires modern authentication. Exchange Online removed Basic authentication for IMAP and POP3. Choose Microsoft sign-in and supply your app registration for these services; tenant policies can still restrict access. AgentInbox never switches authentication automatically.", InfoBarSeverity.Warning);
     }
@@ -431,7 +443,50 @@ public sealed partial class MainWindow : Window
         _incomingPort.Text = _incomingProtocol.SelectedIndex == 1 ? "995" : "993";
         _incomingTls.SelectedIndex = 0;
         if (_preset.SelectedIndex > 0) ApplyPreset();
-        else UpdateIncomingPresentation();
+        else
+        {
+            UpdateIncomingPresentation();
+            UpdateAuthenticationChoices();
+        }
+    }
+
+    private bool UsesMicrosoftMailServers()
+    {
+        var incoming = _incomingHost.Text.Trim();
+        var protocolHost = _incomingProtocol.SelectedIndex == 1 ? "pop-mail.outlook.com" : "imap-mail.outlook.com";
+        var incomingMatches = incoming.Equals("outlook.office365.com", StringComparison.OrdinalIgnoreCase)
+            || incoming.Equals(protocolHost, StringComparison.OrdinalIgnoreCase);
+        var smtp = _smtpHost.Text.Trim();
+        return incomingMatches && (!_configureSmtp.IsOn
+            || smtp.Equals("smtp.office365.com", StringComparison.OrdinalIgnoreCase)
+            || smtp.Equals("smtp-mail.outlook.com", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void UpdateAuthenticationChoices()
+    {
+        var allowMicrosoft = _preset.SelectedIndex is not (1 or 2) && UsesMicrosoftMailServers();
+        var selectedMicrosoft = _authentication.SelectedIndex == 1;
+        if (allowMicrosoft && _authentication.Items.Count == 1)
+            _authentication.Items.Add("Microsoft sign-in (OAuth2)");
+        else if (!allowMicrosoft && _authentication.Items.Count == 2)
+        {
+            _authentication.Items.RemoveAt(1);
+            if (selectedMicrosoft)
+            {
+                // Changing servers invalidates the choice; do not silently switch authentication.
+                _authentication.SelectedIndex = -1;
+                if (!_loadingForm)
+                    ShowNotice("Choose authentication for this server", "The selected servers do not support Microsoft sign-in. Choose password or app password before saving.", InfoBarSeverity.Informational);
+            }
+        }
+        _authenticationHint.Text = _preset.SelectedIndex switch
+        {
+            1 => "Use a Gmail app password. Availability depends on your Google account settings.",
+            2 => "Use an app-specific password for iCloud.",
+            _ when allowMicrosoft => "Choose Microsoft sign-in explicitly for Outlook.com or Microsoft 365. It requires your public-client app registration.",
+            _ => "Use the password or app password required by your mail provider. A preset fills in the server settings."
+        };
+        if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: false);
     }
 
     private void UpdateIncomingPresentation()
@@ -477,6 +532,10 @@ public sealed partial class MainWindow : Window
 
     private async Task SaveAccountAsync()
     {
+        if (_authentication.SelectedIndex < 0)
+            throw new EngineException("Choose an authentication method for the selected mail servers.");
+        if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
+            throw new EngineException("Microsoft sign-in is available only for Outlook.com and Microsoft 365 mail servers.");
         var pop = _incomingProtocol.SelectedIndex == 1;
         var folders = pop ? new[] { "INBOX" } : _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (folders.Length == 0 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
@@ -1085,12 +1144,16 @@ public sealed partial class MainWindow : Window
         return item;
     }
 
-    private static SelectorBarItem AccountTab(string name, string glyph, uint color, FrameworkElement content)
+    private static TabViewItem AccountTab(string name, string glyph, uint color, FrameworkElement content)
     {
-        content.Visibility = Visibility.Collapsed;
-        return new SelectorBarItem
+        content.Margin = new Thickness(0, 20, 0, 0);
+        return new TabViewItem
         {
-            Text = name, Icon = ColoredIcon(glyph, color), Tag = content
+            Header = name, IsClosable = false, Content = content,
+            IconSource = new FontIconSource
+            {
+                Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = IconBrush(color)
+            }
         };
     }
 
