@@ -115,6 +115,7 @@ public sealed partial class MainWindow : Window
         await RunAsync(async () =>
         {
             Page.Children.Clear();
+            PageScroll.ChangeView(0, 0, null, disableAnimation: true);
             switch (item.Tag as string)
             {
                 case "accounts": BuildAccountsPage(); await LoadAccountsAsync(); break;
@@ -138,10 +139,13 @@ public sealed partial class MainWindow : Window
         _accountTabs = new TabView
         {
             IsAddTabButtonVisible = false, CanDragTabs = false, CanReorderTabs = false,
-            TabWidthMode = TabViewWidthMode.SizeToContent, HorizontalAlignment = HorizontalAlignment.Stretch
+            TabWidthMode = TabViewWidthMode.SizeToContent, HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Top, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Top,
+            Resources = (ResourceDictionary)Microsoft.UI.Xaml.Application.Current.Resources["AccountTabResources"]
         };
         AutomationProperties.SetName(_accountTabs, "Account settings");
-        _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", MinWidth = 220, HorizontalAlignment = HorizontalAlignment.Stretch };
+        _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", HorizontalAlignment = HorizontalAlignment.Stretch };
         _accountPicker.SelectionChanged += (_, _) =>
         {
             if (_loadingForm || _accountPicker.SelectedItem is not ComboBoxItem { Tag: string id }) return;
@@ -159,9 +163,20 @@ public sealed partial class MainWindow : Window
         _accountToolbar = new Grid { ColumnSpacing = 12 };
         _accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _accountToolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _accountToolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _accountToolbar.Children.Add(_accountPicker);
         Grid.SetColumn(accountActions, 1);
         _accountToolbar.Children.Add(accountActions);
+        _accountToolbar.SizeChanged += (_, args) =>
+        {
+            var compact = args.NewSize.Width < 400;
+            Grid.SetColumnSpan(_accountPicker, compact ? 2 : 1);
+            Grid.SetRow(accountActions, compact ? 1 : 0);
+            Grid.SetColumn(accountActions, compact ? 0 : 1);
+            Grid.SetColumnSpan(accountActions, compact ? 2 : 1);
+            _accountToolbar.RowSpacing = compact ? 8 : 0;
+        };
         Page.Children.Add(_accountToolbar);
 
         _preset = new ComboBox { Header = "Server preset", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -1099,14 +1114,27 @@ public sealed partial class MainWindow : Window
 
     private static Grid PageHeading(string title, string subtitle, FrameworkElement action)
     {
-        var header = new Grid { ColumnSpacing = 16 };
+        var header = new Grid { ColumnSpacing = 16, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(Heading(title, subtitle));
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var heading = Heading(title, subtitle);
+        header.Children.Add(heading);
         action.HorizontalAlignment = HorizontalAlignment.Right;
         action.VerticalAlignment = VerticalAlignment.Top;
         Grid.SetColumn(action, 1);
         header.Children.Add(action);
+        header.SizeChanged += (_, args) =>
+        {
+            var compact = args.NewSize.Width < 620;
+            Grid.SetColumnSpan(heading, compact ? 2 : 1);
+            Grid.SetRow(action, compact ? 1 : 0);
+            Grid.SetColumn(action, compact ? 0 : 1);
+            Grid.SetColumnSpan(action, compact ? 2 : 1);
+            action.HorizontalAlignment = compact ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+            action.Margin = compact ? new Thickness(0, 12, 0, 0) : new Thickness(0);
+        };
         return header;
     }
 
@@ -1149,7 +1177,8 @@ public sealed partial class MainWindow : Window
         content.Margin = new Thickness(0, 20, 0, 0);
         return new TabViewItem
         {
-            Header = name, IsClosable = false, Content = content,
+            Header = name, IsClosable = false, Content = content, MinWidth = 144,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top,
             IconSource = new FontIconSource
             {
                 Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = IconBrush(color)
@@ -1159,7 +1188,7 @@ public sealed partial class MainWindow : Window
 
     private static StackPanel Stack(params UIElement[] children)
     {
-        var panel = new StackPanel { Spacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var panel = new StackPanel { Spacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
         foreach (var child in children) panel.Children.Add(child);
         return panel;
     }
@@ -1177,9 +1206,20 @@ public sealed partial class MainWindow : Window
         var grid = new Grid { ColumnSpacing = 16 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.Children.Add(left);
         Grid.SetColumn(right, 1);
         grid.Children.Add(right);
+        grid.SizeChanged += (_, args) =>
+        {
+            var compact = args.NewSize.Width < 560;
+            Grid.SetColumnSpan(left, compact ? 2 : 1);
+            Grid.SetRow(right, compact ? 1 : 0);
+            Grid.SetColumn(right, compact ? 0 : 1);
+            Grid.SetColumnSpan(right, compact ? 2 : 1);
+            grid.RowSpacing = compact ? 12 : 0;
+        };
         return grid;
     }
 

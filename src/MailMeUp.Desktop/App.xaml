@@ -41,6 +41,29 @@ VBWR E -->
                     <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#D9071525" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <ResourceDictionary x:Key="AccountTabResources">
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Default">
+                        <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#405850" />
+                        <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="White" />
+                        <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="#71DEB7" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Light">
+                        <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#DCEFE9" />
+                        <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#14342F" />
+                        <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="#115C63" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="{ThemeResource SystemColorWindowColor}" />
+                        <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="{ThemeResource SystemColorHighlightColor}" />
+                        <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+                <x:Double x:Key="TabViewItemMinHeight">44</x:Double>
+                <x:Double x:Key="TabViewItemHeaderFontSize">15</x:Double>
+                <Thickness x:Key="TabViewItemHeaderPadding">16,10,16,10</Thickness>
+                <Thickness x:Key="TabViewSelectedItemBorderThickness">1,1,1,0</Thickness>
+            </ResourceDictionary>
             <Style x:Key="BodyText" TargetType="TextBlock">
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="FontSize" Value="14" />

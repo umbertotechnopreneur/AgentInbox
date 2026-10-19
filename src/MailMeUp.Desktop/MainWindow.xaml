@@ -19,6 +19,7 @@
             </StackPanel>
         </Grid>
         <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
+                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                         OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Accounts" Tag="accounts" ToolTipService.ToolTip="Create or edit your email accounts.">
@@ -31,8 +32,11 @@
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Link" Foreground="#8B62CF" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="Page" Padding="28,12,36,32" Spacing="20" MaxWidth="940" HorizontalAlignment="Stretch" />
+            <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          HorizontalScrollMode="Disabled" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
+                <StackPanel x:Name="Page" Padding="28,12,36,32" Spacing="20" MaxWidth="1040"
+                            Width="{Binding ViewportWidth, ElementName=PageScroll, Mode=OneWay}"
+                            HorizontalAlignment="Left" VerticalAlignment="Top" />
             </ScrollViewer>
         </NavigationView>
         <StackPanel Grid.Row="2" Padding="28,8,28,16" Spacing="8">
