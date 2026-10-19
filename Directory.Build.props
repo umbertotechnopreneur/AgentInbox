@@ -39,6 +39,7 @@ VBWR E -->
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts/desktop/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts/desktop/bin/$(MSBuildProjectName)/</BaseOutputPath>
     <NuGetLockFilePath>$(BaseIntermediateOutputPath)packages.lock.json</NuGetLockFilePath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**</DefaultItemExcludes>
   </PropertyGroup>
   <Target Name="CaptureAgentInboxBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
     <PropertyGroup>
