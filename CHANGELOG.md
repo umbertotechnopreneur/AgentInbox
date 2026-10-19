@@ -29,11 +29,11 @@
 - Size the initial window in logical pixels using the monitor's DPI, with a larger 1280 × 960 target limited to its work area.
 - Anchor pages at the top left, bind their width to the visible scroll viewport and stack header/account actions and paired fields in narrow windows.
 - Fix the account-page startup failure caused by assigning an application-owned resource dictionary to TabView. Use the stock WinUI TabView theme and sizing with native leading tab icons. Replace incomplete pages with an explicit retry state and report unexpected setup errors without incorrectly blaming Python.
-- Hide Microsoft sign-in for Gmail, iCloud and unsupported server combinations. Require a fresh authentication choice if a server edit invalidates the selected method; keep the engine's Microsoft-only endpoint validation.
+- Hide Microsoft web authorization for Gmail, iCloud and unsupported server combinations. Require a fresh connection choice if a server edit invalidates the selected method; keep the engine's Microsoft-only endpoint validation.
 - Keep connection tests out of new-account setup and disable them for unsaved changes. Reflect committed saves and removals directly from their results instead of depending on a second account-list request.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
 - Add synthetic tests for protocol, account, approval and authentication boundaries; all 77 pass locally on Windows.
 
-Debug MSIX 1.0.9.0 built, signed and installed locally on Windows x64 with package status `Ok`, without build-time antivirus scans. Isolated UI interaction covered account-form navigation, selected tabs, resizing, error recovery and packaged desktop startup. The earlier 77 Python tests and nine Codex setup checks remain separate evidence. Live providers, native credential stores and packaged CLI/MCP entry points remain unvalidated. See [validation](docs/VALIDATION.md).
+Debug MSIX 1.0.10.0 was built and signed locally from current source on Windows x64, with no antivirus scan during the build. It was not installed; 1.0.9.0 remains installed with package status `Ok`. The 77 synthetic Python tests passed again after the wording changes. Earlier 1.0.9.0 UI checks and nine Codex setup checks remain separate evidence. Live providers, native credential stores and packaged CLI/MCP entry points remain unvalidated. See [validation](docs/VALIDATION.md).
