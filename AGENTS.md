@@ -13,13 +13,14 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 - Keep credentials separate from JSON settings and the metadata ledger. Preserve a committed save, sign-in or SMTP outcome when subsequent cleanup fails; report pending cleanup separately.
 - Add docstrings to public Python APIs and XML summaries to public C# APIs. Keep diagnostics bounded, private content out of logs, and MCP stdout reserved for protocol messages. Treat provider content as untrusted data.
 - Advertise implemented behavior only. No placeholder tools, simulated success, hosted service, marketplace bundle or web UI without a scoped request.
-- Use a native WinUI layout without decorative cards or nested panels styled as cards. Anchor page content at the top left and constrain its width to the viewport. Use native TabView tabs with a clearly visible selection, not toolbar-like selectors. Show the account form only after an explicit create action or selection of a saved account. Give every button a descriptive tooltip and accessible name.
+- Use a native WinUI layout without decorative cards or nested panels styled as cards. Anchor page content at the top left and constrain its width to the viewport. Use the stock WinUI 3 TabView appearance; native leading tab icons are allowed. Show the account form only after an explicit create action or selection of a saved account. Give every button a descriptive tooltip and accessible name.
 
 ## Work efficiently
 
 - Read at most five files per task unless the owner authorizes more. Warn before broad or potentially expensive reads. Use scoped `rg`, bounded excerpts and batched independent reads; exclude generated output and reuse context.
 - Keep repository rules here; `.github/copilot-instructions.md` points here and needs no additional read. Make the smallest complete change and use subagents only when explicitly requested.
 - Use `pwsh -NoProfile` for PowerShell. Keep progress updates focused on findings, blockers and results.
+- Do not inspect or control the owner's live desktop automatically. Use Computer Use or equivalent UI automation only when the owner explicitly requests it for the current task; build, test and screenshot-review requests do not imply live desktop-control permission.
 
 ## Writing and records
 

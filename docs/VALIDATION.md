@@ -33,6 +33,12 @@ On 2026-10-19, Debug MSIX **1.0.9.0 x64** was built locally from commit `1eaf1c5
 
 The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
 
+## Stock TabView source build (not installed)
+
+On 2026-10-19, the account editor was changed to use the WinUI 3 TabView theme and default sizing without local tab resources. Its three tabs use native leading icons without forced colors. An isolated offline Debug x64 restore and publish completed for this final source. It reused unchanged imported packages and started no antivirus scan. This establishes compilation only: the final UI was not controlled or visually verified, and no 1.0.10.0 MSIX was built or installed. The installed version remains 1.0.9.0.
+
+Matching `dotnet clean` completed for the three 1.0.10 source-preview builds. Automatic approval review rejected deletion of the task-owned UI build output with `blocked by policy`; no alternate deletion was attempted. `artifacts/ui-check-1.0.10/`, `artifacts/ui-check-1.0.10-contrast/` and `artifacts/ui-check-1.0.10-stock-icon/` remain at approximately 380 MiB each (1.11 GiB total). The first two are superseded experiments; the third is the final source build. Cleanup is incomplete.
+
 The retained installer is 104,641,178 bytes. The packaging checksum record reports this SHA-256:
 
 ```text
