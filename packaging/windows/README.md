@@ -35,7 +35,7 @@ The dependency manifest has this shape; replace every placeholder:
 }
 ```
 
-List every package required for the chosen architecture, including transitive and runtime dependencies. The two direct WinUI references alone are not a complete closure. Official NuGet URLs must use an accepted NuGet host. Restore uses only the staged local feed and isolated task caches; missing dependencies fail without network fallback.
+List every package required for the chosen architecture, including transitive and runtime dependencies. The two direct WinUI references alone are not a complete closure. Self-contained restore can require the selected SDK's `Microsoft.NETCore.App.Runtime`, `Microsoft.WindowsDesktop.App.Runtime` and `Microsoft.AspNetCore.App.Runtime` packages. Official NuGet URLs must use an accepted NuGet host. Restore uses only the staged local feed and isolated task caches; missing dependencies fail without network fallback.
 
 ## Defender is required before use
 

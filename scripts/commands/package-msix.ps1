@@ -242,7 +242,7 @@ try {
         $signTool = Resolve-SdkTool 'SignTool.exe' $SignToolPath
         if ((Split-Path -Parent $signTool) -ine (Split-Path -Parent $makeAppx)) { Invoke-TargetedScan (Split-Path -Parent $signTool) }
     }
-    foreach ($key in @('NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_CLI_HOME', 'TEMP', 'TMP', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE')) {
+    foreach ($key in @('NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_CLI_HOME', 'TEMP', 'TMP', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DOTNET_GENERATE_ASPNET_CERTIFICATE', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE')) {
         $originalEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
     }
     $env:NUGET_PACKAGES = $packages
@@ -252,6 +252,7 @@ try {
     $env:TEMP = Join-Path $taskRoot 'temp'
     $env:TMP = $env:TEMP
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
+    $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
     $env:DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE = 'true'
     $nugetConfig = Join-Path $taskRoot 'NuGet.Config'
