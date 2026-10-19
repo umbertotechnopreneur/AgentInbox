@@ -68,7 +68,7 @@ function Assert-OutputAncestors([string]$Path) {
     }
     $current = Get-Item -LiteralPath $candidate -Force
     while ($null -ne $current) {
-        if (-not $current.PSIsContainer -or ($current.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        if ($current -isnot [IO.DirectoryInfo] -or ($current.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
             throw 'Output directories must have regular, non-linked parent directories.'
         }
         $current = $current.Parent
