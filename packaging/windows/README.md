@@ -2,11 +2,11 @@
 
 The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-The current packaging source has not been run. No build, targeted scan, signing result, installation or runtime behavior is validated by this document.
+Debug MSIX 1.0.6.4 built, signed and installed locally on Windows x64 with package status `Ok`. Store, ARM64 and application startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
 
 ## Prerequisites and inputs
 
-After explicit owner authorization, use Windows with PowerShell 7, the required .NET SDK, Windows SDK tools and available Microsoft Windows Defender. The scripts do not install these tools.
+After explicit owner authorization, use Windows with PowerShell 7, the required .NET SDK and Windows SDK tools. The scripts do not install these tools or start antivirus scans.
 
 Stage runtime archives, extracted runtimes and NuGet inputs under a task-specific `artifacts/` directory. For single-architecture packaging or Debug installation, supply these inputs through `scripts/AgentInbox.ps1`:
 
@@ -37,11 +37,11 @@ The dependency manifest has this shape; replace every placeholder:
 
 List every package required for the chosen architecture, including transitive and runtime dependencies. The two direct WinUI references alone are not a complete closure. Self-contained restore can require the selected SDK's `Microsoft.NETCore.App.Runtime`, `Microsoft.WindowsDesktop.App.Runtime` and `Microsoft.AspNetCore.App.Runtime` packages. Official NuGet URLs must use an accepted NuGet host. Restore uses only the staged local feed and isolated task caches; missing dependencies fail without network fallback.
 
-## Defender is required before use
+## Scan new imports once
 
-The source runs explicit targeted Defender scans on imported archives and extracted files, required tool directories, restored packages and the final payload before packaging. It records the official source, version or hash, scan command and result.
+Before first introducing a new external runtime or dependency, scan only its archive and extracted files/dependencies with Microsoft Windows Defender. Keep source, version or SHA-256, scan command and clean result with the import evidence. A new version or changed content needs a new import scan; unchanged inputs reuse their existing evidence.
 
-Real-time protection alone is insufficient. An unavailable, disabled, failed or unfinished scan, or a detection, stops the operation. Do not use exclusions, allowlisting or disabled protection to bypass a result. These requirements do not certify existing dependencies and do not grant permission to build or install.
+Builds do not run Defender, scan installed SDK/runtime trees, restored copies or generated payloads. They still check official source URLs, archive hashes and extracted Python contents. A missing or unsuccessful first-import scan blocks the new import, not a later build of unchanged inputs. Never bypass detections or certify unscanned dependencies. See the [repository policy](../../README.md#external-binary-security-policy).
 
 ## Build or install
 
@@ -96,7 +96,7 @@ The runtime manifest contains exactly these fields; replace every placeholder:
 }
 ```
 
-Both runtime entries, paths, Python versions, hashes and new destination directories are checked before either architecture starts. The shared dependency manifest must contain the full offline closure for both architectures. Each engine invocation performs the required Defender scans before integrating its inputs. Package paths are returned only after both builds succeed; if the second build fails, the first completed package is preserved and reported. An unsigned MSIX is a build artifact, not an installed or approved release.
+Both runtime entries, paths, Python versions, hashes and new destination directories are checked before either architecture starts. The shared dependency manifest must contain the full offline closure for both architectures. First-import scan evidence is a separate prerequisite; neither build starts antivirus scans. Package paths are returned only after both builds succeed; if the second build fails, the first completed package is preserved and reported. An unsigned MSIX is a build artifact, not an installed or approved release.
 
 The Store recipe accepts a three-part `-Version` with a nonzero first component and appends `.0`. Every package-version component must be from 0 to 65535. The single-architecture engine also rejects Store versions whose first component is zero or fourth component is nonzero.
 

@@ -9,7 +9,7 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 ![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
-> **In development.** All 77 synthetic Python tests passed locally on Windows. WinUI behavior, real-provider access and MSIX installation remain unvalidated. See [validation](docs/VALIDATION.md).
+> **In development.** All 77 synthetic Python tests passed locally on Windows. Debug MSIX 1.0.6.4 built and installed on Windows x64 with package status `Ok`. WinUI behavior and real-provider access remain unvalidated. See [validation](docs/VALIDATION.md).
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 
@@ -87,6 +87,6 @@ I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software
 
 ## External binary security policy
 
-Before importing, integrating, copying or running an external library or prebuilt binary in this repository or a deliverable, run an explicit targeted Microsoft Windows Defender scan on the downloaded package or archive and the extracted files to be used, including required third-party dependencies. This includes components supplied without source code. Keep the files staged until scanning finishes; real-time protection alone is not sufficient.
+When first introducing an external library or prebuilt binary, scan its archive and extracted files/dependencies once with targeted Microsoft Windows Defender. Keep the import staged until the scan finishes. A new version or changed third-party content is a new import; reuse the evidence for unchanged files. Builds, tests, packaging and installation do not trigger scans, and installed SDK/system trees are outside this import check.
 
-Proceed only after the scan completes without detections. Record the official source, version or SHA-256, scan command and result. An unavailable, disabled, failed or unfinished scan, or any detection, blocks the import. Do not bypass detections with exclusions, allowlisting, restored quarantine items or disabled protection. Any exception requires separate explicit owner approval. This requirement applies to future imports; it does not certify existing dependencies.
+Proceed only after the scan completes without detections. Record the official source, version or SHA-256, scan command and result. A missing, failed, unfinished or unavailable scan blocks the new import. Never bypass detections with exclusions, allowlisting, restored quarantine items or disabled protection. This first-import requirement does not certify existing dependencies.

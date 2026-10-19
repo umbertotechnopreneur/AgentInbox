@@ -18,7 +18,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $IsWindows) { throw 'MSIX packaging requires Windows and Microsoft Defender.' }
+if (-not $IsWindows) { throw 'MSIX packaging requires Windows.' }
 if ($Channel -eq 'Store' -and $env:GITHUB_ACTIONS -ceq 'true') { throw 'Distributed Store MSIX packages must be built locally, following the PromptMeUp workflow.' }
 if ([version]$PythonVersion -lt [version]'3.11.0') { throw 'Python 3.11 or later is required.' }
 if ($Unsigned -and $CertificateThumbprint) { throw 'Choose either an unsigned package or a signing certificate.' }
@@ -32,7 +32,6 @@ $taskRoot = Join-Path $artifacts "work/$taskName"
 $runtime = "win-$Architecture"
 $configuration = if ($Channel -eq 'Store') { 'Release' } else { 'Debug' }
 $project = Join-Path $repository 'src/MailMeUp.Desktop/MailMeUp.Desktop.csproj'
-$records = [Collections.Generic.List[object]]::new()
 $imports = [Collections.Generic.List[object]]::new()
 $publishStarted = $false
 $succeeded = $false
@@ -89,28 +88,6 @@ function Resolve-SdkTool([string]$Name, [string]$ExplicitPath) {
     throw "Install the Windows SDK or supply the path of $Name. This script does not install tools."
 }
 
-function Invoke-TargetedScan([string]$Target) {
-    $targetPath = Assert-RegularTree $Target
-    $status = Get-MpComputerStatus -ErrorAction Stop
-    if (-not $status.AMServiceEnabled -or -not $status.AntivirusEnabled) { throw 'Microsoft Defender is unavailable or disabled. Import stopped.' }
-    $log = Join-Path $taskRoot ('scan-' + $records.Count + '.log')
-    $started = [DateTime]::UtcNow
-    $arguments = @('-Scan', '-ScanType', '3', '-File', $targetPath, '-DisableRemediation')
-    & $script:defender @arguments *> $log
-    $code = $LASTEXITCODE
-    $record = [ordered]@{
-        executable = $script:defender; arguments = $arguments
-        started_utc = $started.ToString('o'); completed_utc = [DateTime]::UtcNow.ToString('o')
-        exit_code = $code; result = $(if ($code -eq 0) { 'completed_without_detections' } else { 'failed_or_detected' })
-        signature_version = $status.AntivirusSignatureVersion
-        output_tail = @(Get-Content -LiteralPath $log -Tail 12)
-    }
-    $records.Add($record)
-    # DisableRemediation ignores exclusions, scans archives, and cannot turn a detection into a remediated success.
-    # Official behavior: https://learn.microsoft.com/defender-endpoint/command-line-arguments-microsoft-defender-antivirus
-    if ($code -ne 0) { throw "Targeted Defender scan failed or detected a threat. Import stopped; scan log: $log" }
-}
-
 function Confirm-Archive([string]$Path, [string]$ExpectedHash, [string]$Source, [string[]]$Hosts) {
     $uri = [uri]$Source
     if (-not $uri.IsAbsoluteUri -or $uri.Scheme -cne 'https' -or $uri.Host -notin $Hosts -or $uri.UserInfo) {
@@ -120,7 +97,6 @@ function Confirm-Archive([string]$Path, [string]$ExpectedHash, [string]$Source, 
     if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'An import archive must be a file.' }
     $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($ExpectedHash -notmatch '^[a-fA-F0-9]{64}$' -or $hash -ine $ExpectedHash) { throw "Import SHA-256 did not match: $archive" }
-    Invoke-TargetedScan $archive
     $imports.Add([ordered]@{ archive = [IO.Path]::GetFileName($archive); source = $Source; sha256 = $hash })
     return $archive
 }
@@ -192,10 +168,6 @@ $recordPath = Join-Path $destination 'package-record.json'
 $buildLog = Join-Path $taskRoot 'build.log'
 Push-Location $repository
 try {
-    $platform = Join-Path $env:ProgramData 'Microsoft/Windows Defender/Platform'
-    $script:defender = Get-ChildItem -LiteralPath $platform -Filter MpCmdRun.exe -File -Recurse |
-        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-    if (-not $script:defender) { throw 'A current Microsoft Defender command-line scanner is required.' }
     foreach ($directory in @($payload, $packages, $feed, $extracted, (Join-Path $taskRoot 'temp'))) {
         New-Item -ItemType Directory -Path $directory | Out-Null
     }
@@ -204,7 +176,6 @@ try {
         throw 'The Python source must name the matching official embeddable archive for this version and architecture.'
     }
     $archive = Confirm-Archive $PythonArchive $PythonSha256 $PythonSource @('www.python.org', 'python.org')
-    Invoke-TargetedScan $PythonDirectory
     Assert-ArchiveMatchesDirectory $archive $PythonDirectory
     $pythonExecutable = Join-Path $PythonDirectory 'python.exe'
     $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($pythonExecutable))
@@ -224,13 +195,10 @@ try {
         $folder = Join-Path $extracted ([IO.Path]::GetFileNameWithoutExtension($source))
         if (Test-Path -LiteralPath $folder) { throw "Duplicate dependency archive name: $packageName" }
         [IO.Compression.ZipFile]::ExtractToDirectory($source, $folder)
-        Invoke-TargetedScan $folder
         Copy-Item -LiteralPath $source -Destination (Join-Path $feed $packageName)
     }
     $makeAppx = Resolve-SdkTool 'MakeAppx.exe' $MakeAppxPath
-    Invoke-TargetedScan (Split-Path -Parent $makeAppx)
     $dotnet = (Get-Command dotnet -CommandType Application -ErrorAction Stop).Source
-    Invoke-TargetedScan (Split-Path -Parent $dotnet)
     $signTool = $null
     [xml]$manifest = Get-Content -LiteralPath (Join-Path $repository 'packaging/windows/AppxManifest.xml') -Raw
     if (-not $Unsigned) {
@@ -240,7 +208,6 @@ try {
             throw 'Use a valid current-user signing certificate matching the MSIX publisher.'
         }
         $signTool = Resolve-SdkTool 'SignTool.exe' $SignToolPath
-        if ((Split-Path -Parent $signTool) -ine (Split-Path -Parent $makeAppx)) { Invoke-TargetedScan (Split-Path -Parent $signTool) }
     }
     foreach ($key in @('NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_CLI_HOME', 'TEMP', 'TMP', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DOTNET_GENERATE_ASPNET_CERTIFICATE', 'MSBUILDDISABLENODEREUSE', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE')) {
         $originalEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
@@ -258,7 +225,7 @@ try {
     $env:DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE = 'true'
     $nugetConfig = Join-Path $taskRoot 'NuGet.Config'
     $feedXml = [Security.SecurityElement]::Escape($feed)
-    "<configuration><packageSources><clear/><add key=`"scanned-offline-feed`" value=`"$feedXml`"/></packageSources><fallbackPackageFolders><clear/></fallbackPackageFolders></configuration>" |
+    "<configuration><packageSources><clear/><add key=`"offline-feed`" value=`"$feedXml`"/></packageSources><fallbackPackageFolders><clear/></fallbackPackageFolders></configuration>" |
         Set-Content -LiteralPath $nugetConfig -Encoding utf8NoBOM
     $platformName = if ($Architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
     $buildProperties = @("-p:BaseIntermediateOutputPath=$obj", "-p:MSBuildProjectExtensionsPath=$obj", "-p:BaseOutputPath=$bin", "-p:Platform=$platformName",
@@ -269,7 +236,6 @@ try {
     if ($Channel -eq 'Store') { $buildProperties += @('-p:DebugType=None', '-p:DebugSymbols=false') }
     & $dotnet restore $project --runtime $runtime --configfile $nugetConfig --packages $packages @buildProperties *> $buildLog
     if ($LASTEXITCODE -ne 0) { throw 'Offline restore failed. Supply the missing pinned dependencies; no network fallback is allowed.' }
-    Invoke-TargetedScan $packages
     $publishStarted = $true
     & $dotnet publish $project --configuration $configuration --runtime $runtime --self-contained true --no-restore --output $payload @buildProperties *>> $buildLog
     if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
@@ -297,7 +263,6 @@ try {
         New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
         Copy-Item -LiteralPath $file.FullName -Destination $target
     }
-    Invoke-TargetedScan $payload
     & $makeAppx pack /d $payload /p $packagePath *> (Join-Path $taskRoot 'package.log')
     if ($LASTEXITCODE -ne 0) { throw 'MakeAppx did not create a valid package.' }
     if ($signTool) {
@@ -330,7 +295,7 @@ try {
         package_version = $Version; architecture = $Architecture; channel = $Channel; configuration = $configuration
         python_version = $PythonVersion; package_created = $succeeded; signed = (-not $Unsigned -and $succeeded)
         tests = 'not run'; installation = 'not run by packaging'; published = $false
-        imports = $imports; defender_scans = $records; cleanup_warning = $cleanupFailure
+        imports = $imports; antivirus = 'not run by build; first-import evidence is a separate prerequisite'; cleanup_warning = $cleanupFailure
     } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $recordPath -Encoding utf8NoBOM
     try { & (Join-Path $PSScriptRoot 'clean-artifacts.ps1') -TaskDirectory $taskRoot | Write-Host }
     catch { Write-Warning "Cleanup incomplete at $taskRoot. $($_.Exception.Message)"; throw }

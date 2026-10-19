@@ -32,9 +32,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Linux and macOS execution need a Windows-scanned runtime supply path first.
 # This job validates synthetic Python behavior on Windows only; it does not
 # claim provider, desktop, package, or other-platform validation.
+# Initial scans for newly introduced external dependencies are a separate import
+# prerequisite. Test runs do not scan installed runtimes or certify prior scans.
 jobs:
   python-windows:
     name: Python source tests (Windows)
@@ -42,7 +43,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Scan the preinstalled Python runtime before execution
+      - name: Prepare isolated output and locate the Python runtime
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -52,27 +53,12 @@ jobs:
           $pythonExecutable = (Get-Command python.exe -CommandType Application -ErrorAction Stop).Source
           $pythonRoot = Split-Path -Parent $pythonExecutable
           if (-not (Test-Path -LiteralPath (Join-Path $pythonRoot 'Lib/unittest/__init__.py'))) { throw 'Python must resolve to a complete preinstalled runtime, not a launcher or Store alias.' }
-          $defender = Get-ChildItem -LiteralPath "$env:ProgramData/Microsoft/Windows Defender/Platform" -Filter MpCmdRun.exe -Recurse -File |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $defender) { throw 'Windows Defender is unavailable; no runtime will be executed.' }
-          $status = Get-MpComputerStatus
-          if (-not $status.AMServiceEnabled -or -not $status.AntivirusEnabled) { throw 'Windows Defender is disabled.' }
-          $scanStart = Get-Date
-          & $defender.FullName -Scan -ScanType 3 -File $pythonRoot -DisableRemediation 2>&1 |
-            Out-File -LiteralPath (Join-Path $taskRoot 'defender-python.log') -Encoding utf8
-          $scanExit = $LASTEXITCODE
-          if ($scanExit -ne 0) { throw "Targeted Python scan did not complete cleanly (exit $scanExit)." }
-          $detections = @(Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $scanStart })
-          if ($detections.Count) { throw 'Windows Defender reported a detection; runtime execution is blocked.' }
           [ordered]@{
             source = 'https://github.com/actions/runner-images'
             runnerImage = $env:ImageVersion
             executable = $pythonExecutable
             executableSha256 = (Get-FileHash -LiteralPath $pythonExecutable -Algorithm SHA256).Hash
-            command = "MpCmdRun.exe -Scan -ScanType 3 -File `"$pythonRoot`" -DisableRemediation"
-            exitCode = $scanExit
-            detections = 0
-          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $taskRoot 'runtime-scan.json') -Encoding utf8
+          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $taskRoot 'runtime-inputs.json') -Encoding utf8
           "AGENTINBOX_CI_PYTHON=$pythonExecutable" >> $env:GITHUB_ENV
       - name: Run synthetic standard-library tests
         shell: pwsh
@@ -90,14 +76,13 @@ jobs:
           & $env:AGENTINBOX_CI_PYTHON -B -m unittest discover -s python/tests -t python -v 2>&1 |
             Tee-Object -FilePath (Join-Path $taskRoot 'tests.log')
           if ($LASTEXITCODE -ne 0) { throw 'Python source tests failed.' }
-      - name: Keep the scan record and test result
+      - name: Keep runtime metadata and the test result
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-windows-record
           path: |
-            artifacts/ci/runtime-scan.json
-            artifacts/ci/defender-python.log
+            artifacts/ci/runtime-inputs.json
             artifacts/ci/tests.log
           if-no-files-found: ignore
           retention-days: 7

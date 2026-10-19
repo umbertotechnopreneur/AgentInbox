@@ -51,11 +51,13 @@ concurrency:
   group: msix-${{ github.ref }}-Debug-${{ inputs.architecture }}
   cancel-in-progress: false
 
-# This workflow stages owner-selected inputs, scans them and creates an unsigned
+# This workflow stages owner-selected inputs and creates an unsigned
 # Debug MSIX artifact. Store submission packages are built locally, following
 # the PromptMeUp workflow. This workflow does not tag or publish anything.
-# Missing runtimes, an incomplete offline dependency closure, unavailable scans
-# or missing SDKs fail the run instead of falling back to a network restore.
+# Missing runtimes, an incomplete offline dependency closure or missing SDKs
+# fail the run instead of falling back to a network restore.
+# Initial scans for new dependency versions or contents are a separate import
+# prerequisite. Packaging does not run scans or certify that prerequisite.
 jobs:
   source-tests:
     uses: ./.github/workflows/ci.yml
@@ -78,7 +80,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Stage inputs and scan the build tools
+      - name: Stage pinned inputs and locate the build tools
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -94,35 +96,16 @@ jobs:
           New-Item -ItemType Directory -Path $env:TEMP | Out-Null
           "TMP=$env:TMP" >> $env:GITHUB_ENV
           "TEMP=$env:TEMP" >> $env:GITHUB_ENV
-          $defender = Get-ChildItem -LiteralPath "$env:ProgramData/Microsoft/Windows Defender/Platform" -Filter MpCmdRun.exe -Recurse -File |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $defender) { throw 'Windows Defender is unavailable; no imported runtime will be executed.' }
-          $status = Get-MpComputerStatus
-          if (-not $status.AMServiceEnabled -or -not $status.AntivirusEnabled) { throw 'Windows Defender is disabled.' }
-          $scanRecords = [Collections.Generic.List[object]]::new()
-          function Invoke-RequiredScan([string]$Target, [string]$Name) {
-            $started = Get-Date
-            & $defender.FullName -Scan -ScanType 3 -File $Target -DisableRemediation 2>&1 |
-              Out-File -LiteralPath (Join-Path $stage ($Name + '.log')) -Encoding utf8
-            $scanExit = $LASTEXITCODE
-            if ($scanExit -ne 0) { throw "Targeted scan of $Name failed or found a detection (exit $scanExit)." }
-            if (@(Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $started }).Count) { throw "Windows Defender reported a detection during $Name." }
-            $scanRecords.Add([ordered]@{target=$Target; command="MpCmdRun.exe -Scan -ScanType 3 -File `"$Target`" -DisableRemediation"; exitCode=$scanExit; detections=0})
-          }
           $dotnetRoot = Join-Path $env:ProgramFiles 'dotnet'
           $windowsSdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10'
           if (-not (Test-Path -LiteralPath (Join-Path $dotnetRoot 'dotnet.exe')) -or -not (Test-Path -LiteralPath $windowsSdk)) { throw 'The required preinstalled .NET and Windows SDK tools are unavailable.' }
-          Invoke-RequiredScan $dotnetRoot 'dotnet-tools'
-          Invoke-RequiredScan $windowsSdk 'windows-sdk'
           $pythonArchitecture = if ($env:PACKAGE_ARCHITECTURE -eq 'x64') { 'amd64' } else { 'arm64' }
           $pythonSource = "https://www.python.org/ftp/python/$env:PYTHON_VERSION/python-$env:PYTHON_VERSION-embed-$pythonArchitecture.zip"
           $pythonArchive = Join-Path $stage 'python-runtime.zip'
           Invoke-WebRequest -Uri $pythonSource -OutFile $pythonArchive -MaximumRedirection 0
           if ((Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash -ne $env:PYTHON_SHA256) { throw 'Python archive hash differs from the owner-supplied value.' }
-          Invoke-RequiredScan $pythonArchive 'python-archive'
           $pythonDirectory = Join-Path $stage 'python-runtime'
           Expand-Archive -LiteralPath $pythonArchive -DestinationPath $pythonDirectory
-          Invoke-RequiredScan $pythonDirectory 'python-extracted'
           $manifest = $env:NUGET_PACKAGES | ConvertFrom-Json -AsHashtable
           if ($manifest -isnot [System.Collections.IDictionary] -or $manifest.Count -ne 1 -or -not $manifest.ContainsKey('packages') -or
               $manifest.packages -isnot [array] -or $manifest.packages.Count -lt 1 -or $manifest.packages.Count -gt 300) { throw 'Supply a bounded packages manifest with the full pinned NuGet closure.' }
@@ -150,16 +133,14 @@ jobs:
             pythonSource=$pythonSource
             pythonVersion=$env:PYTHON_VERSION
             pythonSha256=$env:PYTHON_SHA256
-            scans=$scanRecords
           } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $stage 'workflow-inputs.json') -Encoding utf8
           "PACKAGE_PYTHON_SOURCE=$pythonSource" >> $env:GITHUB_ENV
-      - name: Create the unsigned Windows MSIX from scanned offline inputs
+      - name: Create the unsigned Windows MSIX from offline inputs
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $stage = Join-Path $env:GITHUB_WORKSPACE 'artifacts/ci-msix-inputs'
-          # The packaging script scans NuGet archives and extracted contents before
-          # using its offline feed, then scans restored dependencies before publish.
+          # The packaging script uses the pinned inputs through its offline feed.
           pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix `
             -Channel Debug -Architecture $env:PACKAGE_ARCHITECTURE -Version $env:PACKAGE_VERSION `
             -PythonArchive (Join-Path $stage 'python-runtime.zip') -PythonDirectory (Join-Path $stage 'python-runtime') `
@@ -184,7 +165,6 @@ jobs:
           name: msix-failure-${{ inputs.architecture }}
           path: |
             artifacts/ci-msix-inputs/workflow-inputs.json
-            artifacts/ci-msix-inputs/*.log
             artifacts/msix/**/package-record.json
           if-no-files-found: ignore
           retention-days: 7

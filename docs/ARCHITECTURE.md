@@ -2,7 +2,7 @@
 
 AgentInbox uses a Python 3.11+ engine for local MCP, account configuration, IMAP/POP3 reads and optional SMTP sends. The Windows app is a WinUI 3 client of that engine. The engine has no .NET backend and uses only the Python standard library.
 
-The synthetic Python suite passes locally on Windows; UI, provider and package validation remain pending. There is no compatibility layer or previous-profile importer. Unsupported configuration versions fail explicitly.
+The synthetic Python suite passes locally on Windows, and Debug MSIX 1.0.6.4 built and installed on Windows x64. UI behavior, live providers and packaged entry points remain unvalidated. There is no compatibility layer or previous-profile importer. Unsupported configuration versions fail explicitly.
 
 ```mermaid
 flowchart LR

@@ -9,7 +9,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $IsWindows) { throw 'Local Store packaging requires Windows and Microsoft Defender.' }
+if (-not $IsWindows) { throw 'Local Store packaging requires Windows.' }
 if ($env:GITHUB_ACTIONS -ceq 'true') { throw 'Build Store packages locally; GitHub Actions is not the Store build path.' }
 
 function Assert-ExactKeys($Value, [string[]]$Keys, [string]$Description) {

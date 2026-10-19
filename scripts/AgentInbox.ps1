@@ -38,7 +38,7 @@ Packaging requires an existing Python 3.11+ embeddable archive and matching extr
 The dependency manifest contains all required NuGet archives, including transitive dependencies:
   {"packages":[{"archive":"ABSOLUTE_PATH.nupkg","source":"OFFICIAL_NUGET_URL","sha256":"EXPECTED_SHA256"}]}
 
-All archives and extracted contents receive targeted Defender scans before use.
+Scan new external imports once before staging; builds never launch Defender scans.
 Restore is offline and fails when a package is missing. Nothing is downloaded or installed implicitly.
 Supply -CertificateThumbprint for signing, or -Unsigned for an unsigned build.
 Store recipe: -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <JSON> -DependencyManifest <JSON>.

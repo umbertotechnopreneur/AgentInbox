@@ -14,7 +14,7 @@ pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command help
 | `install-debug-msix` | Build, sign and immediately install a local Debug MSIX |
 | `clean-artifacts` | Remove one exact task-owned directory under `artifacts/work/` |
 
-A command's availability does not authorize a build, installation or Store task. The current script changes have not been executed: no build, scan, installation or runtime validation is claimed.
+A command's availability does not authorize a build, installation or Store task. Debug 1.0.6.4 built and installed locally on Windows x64; see [validation](../docs/VALIDATION.md) for evidence and limits.
 
 ## Packaging inputs
 
@@ -37,15 +37,15 @@ Follow the shared PromptMeUp command shape after explicit authorization:
 pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <runtime-manifest.json> -DependencyManifest <dependency-manifest.json>
 ```
 
-This builds Release x64 and ARM64 unsigned MSIX packages locally, with package version `X.Y.Z.0`, under `artifacts/store/X.Y.Z.0/<architecture>/`. The runtime manifest supplies both architectures; the shared dependency manifest must contain the complete closure for both. The wrapper checks both runtime entries, archive hashes and destination directories before either package build starts. The existing packaging engine performs the required scans and offline builds.
+This builds Release x64 and ARM64 unsigned MSIX packages locally, with package version `X.Y.Z.0`, under `artifacts/store/X.Y.Z.0/<architecture>/`. The runtime manifest supplies both architectures; the shared dependency manifest must contain the complete closure for both. The wrapper checks both runtime entries, archive hashes and destination directories before either offline build starts. It does not run antivirus scans.
 
 Store builds are rejected inside GitHub Actions. They do not install, upload, publish or create tags. `-MakeAppxPath` can select an existing SDK tool; signing options and single-architecture switches do not apply to `build-store-msix`. See the [runtime manifest](../packaging/windows/README.md#local-store-build) and the separate signed Debug installation recipe.
 
 The restore uses the supplied offline NuGet closure. Missing packages fail instead of triggering a network fallback. There is no implicit dependency download or installation. See [Windows packaging](../packaging/windows/README.md) for the manifest shape, output and signing requirements.
 
-## Targeted security scans
+## First-import security scans
 
-Before importing or running external libraries or binaries, scan their archives and extracted files with Microsoft Windows Defender. The packaging source enforces targeted scans before use, checks archive hashes and records official sources and scan results. Real-time protection alone is insufficient.
+Scan a new external library or binary once when first introducing its archive and extracted files/dependencies. Reuse the evidence for unchanged inputs; a new third-party version or changed content is a new import. Build, test and packaging scripts do not start Defender scans or scan installed SDK/system trees. Packaging keeps its source and SHA-256 checks.
 
 Unavailable, disabled, failed or unfinished scans and detections stop the import. Do not add exclusions or bypass a detection. Preserve the official source, version or SHA-256, scan command and completed clean result. No existing dependency is certified by these instructions. See the [repository policy](../README.md#external-binary-security-policy).
 

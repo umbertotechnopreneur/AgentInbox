@@ -10,8 +10,8 @@ Local Python review uses tkinter and needs a graphical session. Some Python inst
 
 WinUI 3 setup targets `net10.0-windows10.0.19041.0`. Its direct references are `Microsoft.WindowsAppSDK` 2.4.0 and `Microsoft.Windows.SDK.BuildTools` 10.0.26100.9169; the latter uses `PrivateAssets="all"`. Versions come from `Directory.Packages.props`. This is a source inventory, not a restored transitive graph. Linux and macOS do not use the Windows UI.
 
-A bundled Python interpreter and Windows runtime components are external binaries. Follow the targeted Microsoft Windows Defender scan requirement in the [README](../README.md#external-binary-security-policy) before importing or running new packages and extracted dependencies. Record source, version or hash, command and clean result.
+A bundled Python interpreter and Windows runtime components are external binaries. Follow the [first-import scan rule](../README.md#external-binary-security-policy) when introducing new packages or changed third-party content. Record source, version or hash, command and clean result once; unchanged inputs are not rescanned during builds.
 
 Preserve required third-party licenses and attribution. An old notice does not prove its component belongs in a new package; inventories must match actual shipped files. See [third-party notices](../THIRD_PARTY_NOTICES.md) and [retained license provenance](licenses/SOURCES.md).
 
-No new dependency scan, runtime validation or package certification is claimed here.
+See [validation](VALIDATION.md) for the local Debug package result and its limits. This inventory does not certify other dependencies or runtime behavior.

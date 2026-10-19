@@ -20,9 +20,10 @@
 - Fix the WinUI paired-control layout types and exclude stale `bin`/`obj` files from source discovery.
 - Keep isolated builds free of compiler-server file locks and automatic HTTPS certificate setup; retain packaging diagnostics on failure.
 - Declare multiple-instance support required by the console execution alias.
+- Scan new external imports once; stop repeated antivirus scans during local builds and CI while retaining archive hashes and official-source checks.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
 - Add synthetic tests for protocol, account, approval and authentication boundaries; all 77 pass locally on Windows.
 
-WinUI, live providers, native credential stores and package installation remain unvalidated. See [validation](docs/VALIDATION.md) for the local test result and its limits.
+Debug MSIX 1.0.6.4 built, signed and installed locally on Windows x64 with package status `Ok`. WinUI behavior, live providers, native credential stores and packaged entry points remain unvalidated. See [validation](docs/VALIDATION.md) for evidence and limits.
