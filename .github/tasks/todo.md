@@ -7,4 +7,4 @@ The Python mail engine, WinUI setup and local MSIX build commands are written. A
 - [ ] When separately authorized, check real-provider reading, Microsoft sign-in and SMTP acceptance/delivery boundaries.
 - [ ] When Store packaging is requested, validate local Release MSIX output for x64 and ARM64 before submission.
 
-Linux/macOS native credential paths remain untested. Keep test/build/provider evidence in `docs/VALIDATION.md`; do not repeat completed implementation checklists here.
+Linux/macOS native credential paths remain untested. Keep test/build/provider evidence in [validation](../../docs/VALIDATION.md), reusable findings in [lessons](lessons.md) and completed technical work in [archive](archive.md).
