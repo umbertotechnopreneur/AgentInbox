@@ -27,25 +27,31 @@ Tests exercise real application/storage behavior with synthetic `example.test` a
 
 These results do not prove network interoperability, native credential protection, GUI behavior or packaged startup.
 
-## Local Debug MSIX
+## Local Debug MSIX 1.0.6.5
 
-On 2026-10-19, Debug MSIX **1.0.6.4 x64** was built locally from commit `27ca249`, signed with the existing current-user certificate and installed over 1.0.6.3. Windows reports version `1.0.6.4`, architecture `X64` and package status `Ok`.
+On 2026-10-19, Debug MSIX **1.0.6.5 x64** was built locally from commit `7b39156`, signed with the existing current-user certificate and installed over 1.0.6.4. Windows reports version `1.0.6.5`, architecture `X64` and package status `Ok`.
 
-The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore and WinUI publish succeeded. The first install attempt returned `0x80073D02` because the old app was in use; installation then succeeded with `ForceApplicationShutdown`.
+The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
 
-The retained installer is 104,603,525 bytes. Its SHA-256 matches the adjacent checksum:
+The retained installer is 104,628,956 bytes. Its SHA-256 matches the adjacent checksum:
 
 ```text
-918867374f3ab127efe09c8b4dae8f430ff504b8df905e1864a1b060e9675302
+8350baad4af2bd9657841d05b9255c4f429532fb5706519e848108007ce8269f
 ```
 
-The build exposed and corrected output-path validation, a WinUI layout type error, stale `obj` source discovery, compiler-server cleanup locks and the console alias's multiple-instance declaration. Matching `dotnet clean` and task-directory cleanup completed for the successful build.
+Earlier build failures were corrected as recorded in the changelog. Matching `dotnet clean` and task-directory cleanup completed for this successful build.
 
-That build completed 48 targeted Defender scans without detections under the previous policy. The owner then replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Packaging and CI sources now follow that rule; those later script/workflow changes have not been executed remotely or through another package build.
+The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Evidence for the 22 unchanged imported archives and their extracted files is retained separately under ignored `artifacts/imports/first-import-scans-20261019.json`. The local 1.0.6.5 build follows the new rule; remote workflows remain unexecuted.
 
-The MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.6.4/`. Automatic approval review rejected removal of `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB) and the tiny `artifacts/debug/1.0.6.3/` record. Those paths remain; this is not a completed artifact cleanup.
+The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.6.5/`. Automatic approval review rejected removal of `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded 1.0.6.4 installer (99.76 MiB) and the tiny `artifacts/debug/1.0.6.3/` record. Those paths remain; this is not a completed artifact cleanup.
 
 No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation.
+
+## Guided Codex setup checks
+
+Nine local checks passed against the installed Codex CLI with a synthetic temporary `CODEX_HOME`: detection, registration, preservation of unrelated settings/comments, unchanged-connection recognition, replacement detection, refusal without confirmation, confirmed replacement, rejection of a stale detection snapshot and temporary-profile cleanup.
+
+The final run completed in 0.88 seconds after the last service change. It did not start a mail server, change the owner's Codex configuration or claim a verified MCP connection. The temporary profile was removed and matching `dotnet clean` completed. The small harness, result and build records remain under ignored `artifacts/verification/assistant-20261019-6d8a492c/` (0.43 MiB). WinUI interaction and real client connection still need separate validation.
 
 ## Not yet validated
 

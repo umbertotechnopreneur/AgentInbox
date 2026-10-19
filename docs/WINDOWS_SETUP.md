@@ -2,7 +2,7 @@
 
 The WinUI 3 app configures a bundled Python mail engine. See [validation](VALIDATION.md) for package, test and live-provider evidence.
 
-Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.6.4 built and installed locally on x64; the revised interface is being prepared as 1.0.6.5.
+Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.6.5, including the revised interface, built and installed locally on x64. Visual interaction and live mail access remain unvalidated.
 
 ## Configure an account
 

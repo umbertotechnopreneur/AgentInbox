@@ -2,7 +2,7 @@
 
 The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-Debug MSIX 1.0.6.4 built, signed and installed locally on Windows x64 with package status `Ok`. Store, ARM64 and application startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
+Debug MSIX 1.0.6.5 built, signed and installed locally on Windows x64 with package status `Ok`, without build-time antivirus scans. Store, ARM64 and application startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
 
 ## Prerequisites and inputs
 

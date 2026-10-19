@@ -6,7 +6,8 @@ Keep short completed-work records here. Open work stays in [todo](todo.md), reus
 
 - Replaced the mail source with a Python standard-library engine for IMAP, POP3 and optional SMTP, with local approval of each exact outgoing message. Aligned WinUI, CLI, MCP and documentation with the mail-only contract and explicit Microsoft authentication choice.
 - Completed the source audit of bounded protocol reads, strict settings, persistent management sessions, stable packaged entry points and cleanup after committed outcomes. See the changelog for individual changes.
-- Aligned the MSIX scripts with local packaging and built, signed and installed Debug 1.0.6.4 on Windows x64. Package status is `Ok`; GUI and packaged CLI/MCP behavior were not tested.
+- Aligned the MSIX scripts with local packaging and built, signed and installed Debug 1.0.6.5 on Windows x64. Package status is `Ok`; GUI and packaged CLI/MCP behavior were not tested.
 - Ran all 77 synthetic Python tests successfully on Windows with Python 3.13.15. Live providers and native credential APIs still require separate evidence.
 - Condensed the working agreement and kept the active todo limited to remaining validation.
 - Centralized first-import scans and CI priority in the global agreement. Removed repeated build/CI antivirus scans; later workflow changes remain unexecuted.
+- Added the three-tab account editor, colored icons, header actions and guided Codex configuration. Nine isolated setup checks pass; the revised interface is included in 1.0.6.5.
