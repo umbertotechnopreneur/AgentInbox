@@ -27,25 +27,25 @@ Tests exercise real application/storage behavior with synthetic `example.test` a
 
 These results do not prove network interoperability, native credential protection, GUI behavior or packaged startup.
 
-## Local Debug MSIX 1.0.7.0
+## Local Debug MSIX 1.0.8.0
 
-On 2026-10-19, Debug MSIX **1.0.7.0 x64** was built locally from commit `2563b38`, signed with the existing current-user certificate and installed over 1.0.6.6. Windows reports version `1.0.7.0`, architecture `X64` and package status `Ok`.
+On 2026-10-19, Debug MSIX **1.0.8.0 x64** was built locally from commit `e200ca1`, signed with the existing current-user certificate and installed over 1.0.7.0. Windows reports version `1.0.8.0`, architecture `X64` and package status `Ok`.
 
 The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
 
-The retained installer is 104,632,407 bytes. The packaging checksum record reports this SHA-256:
+The retained installer is 104,635,244 bytes. The packaging checksum record reports this SHA-256:
 
 ```text
-c86a2485dd3c1ed459aca242f92896e826818188177614f803614fd4b9e44d61
+8f5b7bd213d477e71e2258f244dee63734dfb1dfdc695b425bed2d48c47e474e
 ```
 
 Earlier build failures were corrected as recorded in the changelog. Matching `dotnet clean` and task-directory cleanup completed for this successful build.
 
 The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Evidence for the 22 unchanged imported archives and their extracted files is retained separately under ignored `artifacts/imports/first-import-scans-20261019.json`. Subsequent local builds follow the new rule; remote workflows remain unexecuted.
 
-The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.7.0/`. The task-owned build directory was removed and `artifacts/work/` has no remaining build directories. Earlier automatic approval review rejected obsolete-artifact deletion with `blocked by policy`; that restriction was not bypassed or retried. Remaining obsolete paths are `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded installers under `artifacts/msix/debug/x64/1.0.6.4/` (99.76 MiB), `1.0.6.5/` (99.78 MiB) and `1.0.6.6/` (99.78 MiB), and the tiny `artifacts/debug/1.0.6.3/` record. This is not a completed artifact cleanup.
+The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.8.0/`. The task-owned build directory was removed and `artifacts/work/` has no remaining build directories. Earlier automatic approval review rejected obsolete-artifact deletion with `blocked by policy`; that restriction was not bypassed or retried. Remaining obsolete paths are `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded installers under `artifacts/msix/debug/x64/1.0.6.4/` (99.76 MiB), `1.0.6.5/` (99.78 MiB), `1.0.6.6/` (99.78 MiB) and `1.0.7.0/` (99.79 MiB), and the tiny `artifacts/debug/1.0.6.3/` record. This is not a completed artifact cleanup.
 
-Static review covered the larger DPI-scaled initial window, standard WinUI tabs, provider-specific authentication choices and invalidated-choice handling. The engine's Microsoft-only endpoint validation was inspected and remains unchanged. No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation. The earlier Python and guided-setup checks were not repeated for this UI change.
+Static review covered viewport-bound page width, top-left anchoring, narrow-window header/account actions and paired fields, and native tab theme resources. Resource names were checked against the imported WinUI package's `generic.xaml`; no control template was replaced. No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation. The earlier Python and guided-setup checks were not repeated for this layout change.
 
 ## Guided Codex setup checks
 

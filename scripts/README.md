@@ -14,7 +14,7 @@ pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command help
 | `install-debug-msix` | Build, sign and immediately install a local Debug MSIX |
 | `clean-artifacts` | Remove one exact task-owned directory under `artifacts/work/` |
 
-A command's availability does not authorize a build, installation or Store task. Debug 1.0.7.0 built and installed locally on Windows x64; see [validation](../docs/VALIDATION.md) for evidence and limits.
+A command's availability does not authorize a build, installation or Store task. Debug 1.0.8.0 built and installed locally on Windows x64; see [validation](../docs/VALIDATION.md) for evidence and limits.
 
 ## Packaging inputs
 
