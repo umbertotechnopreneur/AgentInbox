@@ -823,7 +823,7 @@ public sealed partial class MainWindow : Window
         return new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SetupCard"], Child = content };
     }
 
-    private static Grid Pair(UIElement left, UIElement right)
+    private static Grid Pair(FrameworkElement left, FrameworkElement right)
     {
         var grid = new Grid { ColumnSpacing = 16 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
