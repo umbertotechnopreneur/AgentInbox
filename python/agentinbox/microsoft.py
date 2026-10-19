@@ -31,7 +31,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Never forward an authorization POST to another endpoint."""
 
     def redirect_request(self, request, response, code, message, headers, new_url):
-        raise MailError("microsoft_redirect", "Microsoft returned an unexpected redirect. Sign-in stopped.")
+        raise MailError("microsoft_redirect", "Microsoft returned an unexpected redirect. Web authorization stopped.")
 
 
 def _bounded_string(value, maximum, label):
@@ -60,7 +60,7 @@ def _guid(value):
 
 def _flow_key(flow_id):
     if not isinstance(flow_id, str) or not re.fullmatch(r"[a-f0-9]{32}", flow_id):
-        raise MailError("invalid_reference", "Invalid Microsoft sign-in reference.")
+        raise MailError("invalid_reference", "Invalid Microsoft web authorization reference.")
     return "signin-" + flow_id
 
 
@@ -96,18 +96,18 @@ class MicrosoftAuth:
         account = self.store.account(identity)
         authentication = account.get("authentication")
         if not isinstance(authentication, dict) or set(authentication) != {"method", "client_id", "tenant"} or authentication["method"] != "microsoft_oauth":
-            raise MailError("microsoft_configuration", "Select Microsoft sign-in explicitly in local account setup.")
+            raise MailError("microsoft_configuration", "Select Microsoft web authorization in local account setup.")
         _guid(authentication["client_id"])
         tenant = authentication["tenant"]
         if tenant not in {"common", "organizations", "consumers"}:
             _guid(tenant)
         incoming = account["incoming"]
         if incoming["protocol"] not in INCOMING_HOSTS or incoming["host"] not in INCOMING_HOSTS[incoming["protocol"]]:
-            raise MailError("microsoft_configuration", "Microsoft sign-in requires a supported Microsoft incoming mail server.")
+            raise MailError("microsoft_configuration", "Microsoft web authorization needs a supported Microsoft incoming mail server.")
         if account["smtp"] is not None and account["smtp"]["host"] not in SMTP_HOSTS:
             raise MailError("microsoft_configuration", "Microsoft tokens may only be used with a supported Microsoft SMTP server.")
         if revision is not None and account["revision"] != revision:
-            raise MailError("configuration_changed", "Account settings changed. Start Microsoft sign-in again.")
+            raise MailError("configuration_changed", "Account settings changed. Start Microsoft web authorization again.")
         return account
 
     @staticmethod
@@ -125,7 +125,7 @@ class MicrosoftAuth:
         if tenant not in {"common", "organizations", "consumers"}:
             tenant = _guid(tenant)
         if operation not in {"devicecode", "token"}:
-            raise MailError("microsoft_configuration", "Unsupported Microsoft authorization operation.")
+            raise MailError("microsoft_configuration", "This Microsoft web authorization step is not supported.")
         return f"{AUTHORITY}/{tenant}/oauth2/v2.0/{operation}"
 
     def _post(self, account, operation, fields):
@@ -147,35 +147,35 @@ class MicrosoftAuth:
                 response = error
             with response:
                 if response.geturl() != endpoint:
-                    raise MailError("microsoft_redirect", "Microsoft returned an unexpected authorization endpoint.")
+                    raise MailError("microsoft_redirect", "Microsoft returned an unexpected address during web authorization.")
                 status = response.getcode()
                 content = response.read(MAX_RESPONSE + 1)
             if len(content) > MAX_RESPONSE:
                 raise MailError("microsoft_response", "Microsoft's response exceeded the size limit.")
             result = json.loads(content.decode("utf-8"))
             if not isinstance(result, dict) or (status != 200 and not isinstance(result.get("error"), str)):
-                raise MailError("microsoft_response", "Microsoft returned an unexpected authorization response.")
+                raise MailError("microsoft_response", "Microsoft returned an unexpected response during web authorization.")
             if status != 200 and status not in {400, 401, 403, 429}:
-                raise MailError("microsoft_unavailable", "Microsoft sign-in is temporarily unavailable. Try again later.")
+                raise MailError("microsoft_unavailable", "Microsoft web authorization is temporarily unavailable. Try again later.")
             return result
         except MailError:
             raise
         except (OSError, urllib.error.URLError, http.client.HTTPException, ValueError, UnicodeError):
-            raise MailError("microsoft_unavailable", "Microsoft sign-in could not complete over a verified connection. Try again later.") from None
+            raise MailError("microsoft_unavailable", "Microsoft web authorization could not complete over a verified connection. Try again later.") from None
 
     @staticmethod
     def _raise_error(response):
         error = response.get("error")
         if "error" in response and (not isinstance(error, str) or not error or len(error) > 128):
-            raise MailError("microsoft_response", "Microsoft returned an invalid authorization error.")
+            raise MailError("microsoft_response", "Microsoft returned an invalid web authorization error.")
         if error in {"authorization_declined", "access_denied"}:
-            raise MailError("authorization_declined", "Microsoft sign-in was declined or blocked by account policy.")
+            raise MailError("authorization_declined", "Microsoft web authorization was declined or blocked by account policy.")
         if error in {"expired_token", "bad_verification_code"}:
-            raise MailError("signin_expired", "Microsoft sign-in expired or is no longer valid. Start again.")
+            raise MailError("signin_expired", "Microsoft web authorization expired or is no longer valid. Start again.")
         if error in {"invalid_client", "unauthorized_client", "invalid_scope", "invalid_request"}:
             raise MailError("microsoft_configuration", "Check the app registration, public-client setting, tenant and delegated mail permissions.")
         if error in {"invalid_grant", "interaction_required", "consent_required", "login_required"}:
-            raise MailError("microsoft_reauthentication", "Microsoft requires a new sign-in or administrator consent. Reconnect this account locally.")
+            raise MailError("microsoft_reauthentication", "Authorize this Microsoft account on the web again, or ask your administrator for approval. Reconnect it locally.")
         if error:
             raise MailError("microsoft_policy", "Microsoft did not authorize this connection. Check its app registration and your organization's policy.")
 
@@ -183,7 +183,7 @@ class MicrosoftAuth:
     def _lease(self, kind, identity):
         """Serialize a single flow or refresh without holding the settings lock."""
         if kind not in {"flow", "account"} or not isinstance(identity, str) or not re.fullmatch(r"[a-f0-9]{32}", identity):
-            raise MailError("invalid_reference", "Invalid Microsoft authorization reference.")
+            raise MailError("invalid_reference", "Invalid Microsoft web authorization reference.")
         directory = self.store.root / "microsoft-locks"
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         with (directory / f"{kind}-{identity}.lock").open("a+b") as stream:
@@ -200,7 +200,7 @@ class MicrosoftAuth:
                     import fcntl
                     fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError:
-                raise MailError("signin_busy", "Another Microsoft sign-in operation is running. Try again shortly.") from None
+                raise MailError("signin_busy", "Microsoft web authorization is already running. Try again shortly.") from None
             try:
                 yield
             finally:
@@ -213,7 +213,7 @@ class MicrosoftAuth:
     def _load_flow(self, flow_id):
         try:
             if self.store.cleanup_queued(_flow_key(flow_id)):
-                raise MailError("signin_expired", "This Microsoft sign-in was already consumed or cancelled. Start again.")
+                raise MailError("signin_expired", "This Microsoft web authorization was already used or cancelled. Start again.")
             state = json.loads(self.store.vault.get(_flow_key(flow_id)))
             if not isinstance(state, dict) or set(state) != {"account_id", "revision", "device_code", "expires", "interval", "next_poll", "scope"}:
                 raise ValueError()
@@ -228,7 +228,7 @@ class MicrosoftAuth:
                 raise ValueError()
             return state
         except (ValueError, KeyError, TypeError):
-            raise MailError("signin_invalid", "The protected Microsoft sign-in state is invalid. Start again.") from None
+            raise MailError("signin_invalid", "The protected Microsoft web authorization data is invalid. Start again.") from None
 
     def _save_flow(self, flow_id, state):
         with self.store.locked():
@@ -304,10 +304,10 @@ class MicrosoftAuth:
             if time.time() >= state["expires"]:
                 cleanup = self._discard(flow_id)
                 suffix = " Protected-data cleanup remains pending; retry cleanup locally." if cleanup["cleanup_pending"] else ""
-                raise MailError("signin_expired", "Microsoft sign-in expired. Start again." + suffix)
+                raise MailError("signin_expired", "Microsoft web authorization expired. Start again." + suffix)
             account = self._account(state["account_id"], state["revision"])
             if state["scope"] != self._scopes(account):
-                raise MailError("configuration_changed", "Mail permissions changed. Start Microsoft sign-in again.")
+                raise MailError("configuration_changed", "Mail permissions changed. Start Microsoft web authorization again.")
             remaining = state["next_poll"] - time.time()
             if remaining > 0:
                 return {"status": "pending", "interval": max(1, math.ceil(remaining))}
@@ -328,17 +328,17 @@ class MicrosoftAuth:
                 try:
                     access, refresh, lifetime = self._token_response(response, account, True)
                     if time.time() >= state["expires"]:
-                        raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")
+                        raise MailError("signin_expired", "Microsoft web authorization expired. Start again.")
                     connected = self.store.connect_oauth(
                         account["id"], account["revision"], refresh,
                         consumed_references=(_flow_key(flow_id),),
                     )
                 except Exception as failure:
-                    error = failure if isinstance(failure, MailError) else MailError("microsoft_persistence", "Microsoft sign-in could not be saved. Start again after checking local storage.")
+                    error = failure if isinstance(failure, MailError) else MailError("microsoft_persistence", "Microsoft web authorization could not be saved. Start again after checking local storage.")
                     try:
                         cleanup = self._discard(flow_id)
                     except Exception:
-                        raise MailError(error.code, str(error) + " Cleanup could not be queued; retry cancelling this sign-in locally.") from None
+                        raise MailError(error.code, str(error) + " Cleanup could not be queued; retry cancelling this web authorization locally.") from None
                     if cleanup["cleanup_pending"]:
                         raise MailError(error.code, str(error) + " Protected-data cleanup remains pending; retry cleanup locally.") from None
                     raise error from None

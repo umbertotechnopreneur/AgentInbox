@@ -12,7 +12,7 @@ flowchart LR
     PY --> CONFIG[Versioned account settings]
     PY --> VAULT[OS-protected credentials]
     PY --> MAIL[IMAP or POP3 over TLS]
-    PY --> AUTH[Optional explicit Microsoft sign-in]
+    PY --> AUTH[Optional Microsoft web authorization]
     PY --> PENDING[Protected pending messages]
     PENDING --> REVIEW[Local user approval]
     REVIEW --> SMTP[SMTP over TLS]
@@ -27,7 +27,7 @@ flowchart LR
 - Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary outgoing-message and sign-in blobs. macOS uses Keychain through native calls, and Linux requires an available Secret Service through native `libsecret` calls. These non-Windows paths remain untested. Missing or locked secure storage fails; no plain-text credentials file is allowed.
 - IMAP uses read-only mailbox selection and non-marking retrieval. Mail content is untrusted data.
 - POP3 sends no delete commands and presents one INBOX, without server folders or unread flags. Provider retention policies still apply. Search uses headers and the message Date header rather than server-received time.
-- Password authentication is the default. Optional Microsoft OAuth2 is selected explicitly and requires public-client registration settings. Local management owns device-code sign-in; MCP cannot start it or receive its tokens. There is no Google OAuth path or automatic method fallback.
+- Password sign-in is the default. Optional Microsoft web authorization is selected explicitly and requires public-client registration settings. Local management handles sign-in with a short code; MCP cannot start it or receive its tokens. Web authorization is not available for Google accounts, and the method never changes automatically after failure.
 - SMTP starts disabled and requires approval of each exact pending message.
 - Connections require implicit TLS or required STARTTLS with certificate and hostname validation. There is no plaintext mode or custom-CA control. Unsupported settings and invalid schemas fail without a weaker fallback.
 - Stdout contains protocol or management JSON. Diagnostics go to stderr and exclude credentials and message content.

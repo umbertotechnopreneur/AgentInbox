@@ -33,13 +33,13 @@ PRESETS = {
                     "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                 "smtp": {"host": "smtp-mail.outlook.com", "port": 587, "tls": "starttls"},
                 "authentication_methods": ["password", "microsoft_oauth"],
-                "notice": "Microsoft requires modern authentication for Outlook.com. Select Microsoft sign-in explicitly; there is no automatic fallback."},
+                "notice": "Outlook.com requires Microsoft web authorization. Select it yourself when setting up this account; AgentInbox will not switch automatically."},
     "microsoft365": {"label": "Microsoft 365", "incoming": {
                          "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                          "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                      "smtp": {"host": "smtp.office365.com", "port": 587, "tls": "starttls"},
                      "authentication_methods": ["password", "microsoft_oauth"],
-                     "notice": "Exchange Online no longer accepts IMAP/POP password authentication. Select Microsoft sign-in explicitly; tenant and SMTP AUTH policies apply."},
+                     "notice": "Microsoft 365 no longer accepts IMAP or POP3 passwords. Select Microsoft web authorization yourself. Your organization may still block access or sending."},
 }
 
 
@@ -140,14 +140,14 @@ def authentication(value: object) -> dict:
     if value == {"method": "password"}:
         return dict(value)
     if not isinstance(value, dict) or set(value) != {"method", "client_id", "tenant"} or value["method"] != "microsoft_oauth":
-        raise MailError("invalid_configuration", "Choose password or Microsoft sign-in authentication.")
+        raise MailError("invalid_configuration", "Choose a password or Microsoft web authorization.")
     try:
         client_id = str(uuid.UUID(value["client_id"]))
         tenant = value["tenant"]
         if tenant not in {"common", "organizations", "consumers"}:
             tenant = str(uuid.UUID(tenant))
     except (ValueError, TypeError, AttributeError) as error:
-        raise MailError("invalid_configuration", "Microsoft sign-in requires a public client ID and a valid tenant.") from error
+        raise MailError("invalid_configuration", "Microsoft web authorization needs a public app ID and a valid Microsoft account type or directory ID.") from error
     return {"method": "microsoft_oauth", "client_id": client_id, "tenant": tenant}
 
 

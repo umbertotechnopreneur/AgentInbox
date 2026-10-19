@@ -8,7 +8,7 @@ This source change has not been built or visually validated.
 
 Keep incoming and outgoing settings together. Offer presets and a custom option, an IMAP/POP3 selector before incoming fields, and the required host, port, TLS and username fields.
 
-Password or app password is the default. Explicit Microsoft OAuth2 shows a public client ID and tenant field, a device-code dialog and a human-triggered browser button. Never switch methods or open a browser automatically. Microsoft presets are editable settings, not proof of account compatibility. No Google OAuth path is included.
+Password or app password is the default. Explicit Microsoft **Web authorization** shows a public client ID and tenant field, a short-code dialog and a browser button that you must press. Never switch methods or open a browser automatically. Microsoft presets are editable settings, not proof of account compatibility. Web authorization is not available for Google accounts.
 
 POP3 fixes the folder to INBOX and explains that server folders and unread flags are unavailable. Its search uses headers and email Date values. SMTP is optional and initially disabled. TLS and hostname/certificate checks are required, without plaintext or custom-CA controls.
 

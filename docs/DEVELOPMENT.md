@@ -16,7 +16,7 @@ Management reads JSON from stdin. Isolate experiments using `AGENTINBOX_DATA_DIR
 
 Reject unknown schemas and unsupported connections. Do not add compatibility shims, old command aliases or previous-data import.
 
-Schema 3 stores `incoming.protocol` as `imap` or `pop3` and an explicit `authentication` object. Password is the default; Microsoft OAuth2 requires user selection and public-client registration settings. The engine never changes authentication after a failure. Keep Google OAuth outside scope.
+Schema 3 stores `incoming.protocol` as `imap` or `pop3` and an explicit `authentication` object. Password is the default; Microsoft web authorization requires user selection and public-client registration settings. The engine never changes the sign-in method after a failure. Web authorization for Google accounts is outside scope.
 
 Preserve POP3's INBOX-only, no-unread-flags and header/date-search boundaries. Require implicit TLS or required STARTTLS with certificate and hostname validation, without plaintext or custom-CA controls. Windows credentials use Credential Manager; DPAPI protects temporary blobs. Native macOS Keychain and Linux Secret Service paths remain untested; contributor improvements are welcome.
 

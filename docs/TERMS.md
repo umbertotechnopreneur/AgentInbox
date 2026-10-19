@@ -26,7 +26,7 @@ Your email provider, MCP client and AI service have their own terms and may char
 
 IMAP and POP3 reads depend on connection permissions, server behavior, search scope and limits. POP3 exposes INBOX only, without unread flags or server folders; it searches headers and uses the email Date header. Results can be partial or fail. Check important information against the original message.
 
-Password authentication is the default. Optional Microsoft OAuth2 requires your explicit selection and suitable public-client app registration. Provider and tenant policies can prevent access; no preset guarantees compatibility. Authentication never switches automatically. Connections require validated TLS or STARTTLS, without plaintext or custom-CA controls.
+Password sign-in is the default. Optional Microsoft **Web authorization** requires your explicit selection and your own suitable app registration. Provider and organization rules can prevent access; no preset guarantees compatibility. AgentInbox never switches sign-in methods automatically. Connections require validated TLS or STARTTLS, without plaintext or custom-CA controls.
 
 SMTP starts disabled. Every message, including a test email, needs your local approval of its exact recipients, content and attachments. Review those details before approving; sending can disclose information to recipients and their providers.
 

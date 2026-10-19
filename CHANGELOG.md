@@ -4,7 +4,8 @@
 
 - Replace the mail engine with Python 3.11+ and standard-library IMAP, POP3 and SMTP.
 - Keep WinUI 3 for Windows setup and local message confirmation.
-- Use passwords or app passwords by default, with an explicit Microsoft-only OAuth2 option that requires a suitable app registration; never switch automatically.
+- Use passwords or app passwords by default, with an explicit Microsoft-only web authorization choice that requires a suitable app registration; never switch automatically.
+- Explain the optional Microsoft connection as "Web authorization" in the app, local-management messages and reader-facing guides; retain the technical protocol and configuration keys.
 - Add POP3 mailbox reading with INBOX-only, header-search and email-Date boundaries; no unread flags or deletion.
 - Store Windows passwords and Microsoft refresh tokens in Credential Manager; protect temporary outgoing and sign-in blobs with DPAPI.
 - Require TLS or STARTTLS with certificate and hostname validation; omit plaintext and custom-CA settings.

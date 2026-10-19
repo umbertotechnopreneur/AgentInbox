@@ -270,7 +270,7 @@ class Store:
             raise MailError("invalid_credentials", "Enter valid incoming and SMTP passwords in the local setup app.")
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
-            raise MailError("invalid_credentials", "Microsoft sign-in does not accept account passwords.")
+            raise MailError("invalid_credentials", "Microsoft web authorization does not use account passwords.")
         with self.locked():
             accounts = self.accounts()
             previous = next((item for item in accounts if item["id"] == account["id"]), None)
@@ -320,7 +320,7 @@ class Store:
             accounts = self.accounts()
             account = next((item for item in accounts if item["id"] == identity), None)
             if account is None or account["revision"] != expected_revision or account["authentication"]["method"] != "microsoft_oauth":
-                raise MailError("configuration_changed", "Account settings changed. Start Microsoft sign-in again.")
+                raise MailError("configuration_changed", "Account settings changed. Start Microsoft web authorization again.")
             old_reference = account["oauth_secret"]
             reference = "oauth-" + uuid.uuid4().hex
             self._queue_cleanup_locked([reference, *([old_reference] if old_reference else []), *consumed_references])
@@ -332,7 +332,7 @@ class Store:
             except Exception:
                 cleanup = self._retry_cleanup_locked()
                 if cleanup["cleanup_pending"]:
-                    raise MailError("signin_failed_cleanup_pending", "Microsoft sign-in was not saved. Protected-data cleanup remains pending; retry cleanup locally.") from None
+                    raise MailError("signin_failed_cleanup_pending", "Microsoft web authorization was not saved. Protected-data cleanup remains pending; retry cleanup locally.") from None
                 raise
             cleanup = self._retry_cleanup_locked()
             return {**self.public(account), **cleanup}

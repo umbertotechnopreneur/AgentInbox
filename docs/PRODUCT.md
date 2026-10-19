@@ -2,7 +2,7 @@
 
 I built AgentInbox so you can search your mailboxes from one conversation. It uses IMAP or POP3 to read messages and optional SMTP to send them.
 
-Enter server settings and a password or app password, as in a regular mail client. Presets help fill parameters; custom IMAP/POP3/SMTP servers can be entered manually. Microsoft OAuth2 is an explicit optional choice requiring your app registration. It never starts automatically after a password failure. Provider and tenant policies still apply.
+Enter server settings and a password or app password, as in a regular mail client. Presets help fill parameters; custom IMAP/POP3/SMTP servers can be entered manually. For a Microsoft account, you can explicitly choose **Web authorization** with your own app registration. It never starts automatically after a password failure. Provider and organization rules still apply.
 
 POP3 exposes INBOX only, without unread flags or server folders; its searches use headers and email Date values. TLS or required STARTTLS always validates certificates and hostnames. There is no plaintext mode or custom-CA setting.
 

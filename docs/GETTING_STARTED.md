@@ -4,22 +4,22 @@ AgentInbox connects to email servers through IMAP or POP3 for reading and option
 
 ## 1. Check your provider
 
-Choose an incoming protocol supported by your provider. Password or app password is the default; Microsoft accounts also have an explicit Microsoft OAuth2 choice. Sending needs SMTP access.
+Choose an incoming protocol supported by your provider. Password or app password is the default. For Outlook.com or Microsoft 365, you can explicitly choose **Web authorization** and sign in with Microsoft using a short code. Sending needs SMTP access.
 
 - Gmail requires an eligible account with an app password; organization policies can restrict access.
 - iCloud Mail requires an app-specific password.
 - Other providers can work when they support these connections.
-- Outlook.com and Microsoft 365 presets fill server settings. Outlook.com requires modern authentication; Exchange Online removed Basic authentication for IMAP and POP3. Explicit Microsoft OAuth2 requires a suitable public-client app registration, and tenant policies can still restrict access.
+- Outlook.com and Microsoft 365 presets fill server settings. Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. This choice requires your own Microsoft app registration, and organization rules can still restrict access.
 
 Use the settings published by your provider. A preset fills parameters; it does not guarantee your account is eligible.
 
 ## 2. Enter incoming mail settings
 
-In Windows setup, choose a preset or custom connection and select IMAP or POP3. Enter the account address, host, port, TLS mode and username. Keep Password selected and enter a password, or explicitly choose Microsoft sign-in and supply the client ID and tenant settings. Save before testing or starting Microsoft sign-in. Choose whether your assistant may read that account.
+In Windows setup, choose a preset or custom connection and select IMAP or POP3. Enter the account address, host, port, TLS mode and username. Keep Password selected and enter a password, or explicitly choose **Web authorization with Microsoft** for a Microsoft account and supply the client ID and tenant settings. Save before testing or starting web authorization. Choose whether your assistant may read that account.
 
 IMAP supports selected server folders. POP3 exposes only INBOX, without unread flags or server folders; its searches use headers and the email Date header. The iCloud preset uses IMAP. See [authentication](AUTHENTICATION.md).
 
-Use implicit TLS or required STARTTLS. Certificate and hostname checks cannot be disabled; there is no plaintext mode or custom-CA setting. Authentication never switches methods automatically, and Google OAuth is not included.
+Use implicit TLS or required STARTTLS. Certificate and hostname checks cannot be disabled; there is no plaintext mode or custom-CA setting. AgentInbox never switches sign-in methods automatically. Web authorization is not available for Google accounts.
 
 The read check tests authentication and a bounded mailbox read. It does not prove that every folder or later search will work. An empty mailbox can be a successful connection with no message to sample.
 

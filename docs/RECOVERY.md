@@ -4,7 +4,7 @@ Identify the failed step: settings, protected storage, TLS, authentication, mail
 
 Use current settings from your provider. Confirm protocol, hostname, port, TLS mode and username. TLS or required STARTTLS validates certificates and hostnames. There is no plaintext mode or custom-CA setting; do not bypass a certificate failure.
 
-Gmail or iCloud can require an eligible app password. Organization policies can disable protocol access. Outlook.com requires modern authentication; Exchange Online removed Basic authentication for IMAP and POP3. For these services, explicitly choose Microsoft OAuth2 with a suitable public-client app registration. Client registration, consent and tenant policy are separate requirements. A preset never guarantees access, and AgentInbox never switches authentication automatically. See [authentication](AUTHENTICATION.md).
+Gmail or iCloud can require an eligible app password. Organization rules can disable mail access. Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. For these services, explicitly choose **Web authorization** with your own Microsoft app registration. The registration, your consent and your organization's rules are separate requirements. A preset never guarantees access, and AgentInbox never switches sign-in methods automatically. See [account settings](AUTHENTICATION.md).
 
 Unlock the operating-system credential store before retrying. Do not put passwords in configuration JSON. Unknown settings formats fail; create a fresh profile instead of copying previous data.
 

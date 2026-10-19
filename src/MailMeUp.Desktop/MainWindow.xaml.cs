@@ -210,23 +210,23 @@ public sealed partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(_incomingUser.Text)) _incomingUser.Text = _email.Text.Trim();
             if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
         };
-        _authentication = new ComboBox { Header = "Authentication", PlaceholderText = "Choose authentication", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _authentication = new ComboBox { Header = "How to connect", PlaceholderText = "Choose how to connect", HorizontalAlignment = HorizontalAlignment.Stretch };
         _authentication.Items.Add("Password — account or app password");
         _authentication.SelectionChanged += (_, _) =>
         {
             if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: true);
         };
-        _clientId = Field("Microsoft app registration · Application (client) ID", "Public client ID from your app registration");
+        _clientId = Field("Microsoft app ID", "Application (client) ID from Microsoft");
         _tenant = new ComboBox { Header = "Microsoft account type", HorizontalAlignment = HorizontalAlignment.Stretch };
         foreach (var name in new[] { "Personal and work accounts (common)", "Work or school accounts (organizations)", "Personal accounts (consumers)", "Specific tenant ID" })
             _tenant.Items.Add(name);
         _tenantId = Field("Tenant ID", "Directory (tenant) GUID");
         _tenant.SelectionChanged += (_, _) => _tenantId.Visibility = _tenant.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
-        _microsoftSignIn = Action("Sign in to Microsoft…", () => _ = RunAsync(SignInMicrosoftAsync));
+        _microsoftSignIn = Action("Start web authorization…", () => _ = RunAsync(SignInMicrosoftAsync));
         _microsoftFields = Stack(_clientId, _tenant, _tenantId,
-            Hint("Use an app registration configured for public-client device sign-in and your account type. The client ID is public, not a password. AgentInbox does not create or verify the registration."),
+            Hint("You need a Microsoft app ID that allows sign-in on this device and your account type. The ID is not a password. AgentInbox cannot create or check it for you."),
             _microsoftSignIn,
-            Hint("Save this authentication choice before signing in. It applies to incoming mail and SMTP on this account. Password failures never switch authentication automatically."));
+            Hint("Save this choice before starting web authorization. It applies to incoming mail and, if enabled, sending. A wrong password never switches to web authorization automatically."));
         _authenticationHint = Hint("");
         var accountContent = Section("", _preset, Pair(_label, _email), _authentication, _microsoftFields, _authenticationHint);
 
@@ -244,7 +244,7 @@ public sealed partial class MainWindow : Window
         _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
         var incomingSettings = Section("", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
             Pair(_incomingUser, _incomingPassword), _folders, _folderHint,
-            Hint("Passwords and Microsoft sign-in tokens stay in Windows Credential Manager. Assistant configuration contains neither."), _readEnabled);
+            Hint("Passwords and Microsoft web authorization credentials stay in Windows Credential Manager. Your assistant's settings contain neither."), _readEnabled);
         _testRead = Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync));
         _incomingChecks = Stack(_testRead, Hint("Save changes before testing. This check uses the saved incoming settings."));
         var incomingContent = Stack(incomingSettings, _incomingChecks);
@@ -466,7 +466,7 @@ public sealed partial class MainWindow : Window
         UpdateIncomingPresentation();
         UpdateAuthenticationChoices();
         if (_preset.SelectedIndex is 3 or 4)
-            ShowNotice("Microsoft cloud accounts require modern authentication", "Outlook.com requires modern authentication. Exchange Online removed Basic authentication for IMAP and POP3. Choose Microsoft sign-in and supply your app registration for these services; tenant policies can still restrict access. AgentInbox never switches authentication automatically.", InfoBarSeverity.Warning);
+            ShowNotice("Use web authorization with Microsoft", "Outlook.com and Microsoft 365 may reject a regular password for mail access. Choose web authorization and enter your Microsoft app ID. Your work or school may still block this connection. AgentInbox never changes your choice automatically.", InfoBarSeverity.Warning);
     }
 
     private void IncomingProtocolChanged()
@@ -499,7 +499,7 @@ public sealed partial class MainWindow : Window
         var allowMicrosoft = _preset.SelectedIndex is not (1 or 2) && UsesMicrosoftMailServers();
         var selectedMicrosoft = _authentication.SelectedIndex == 1;
         if (allowMicrosoft && _authentication.Items.Count == 1)
-            _authentication.Items.Add("Microsoft sign-in (OAuth2)");
+            _authentication.Items.Add("Web authorization with Microsoft");
         else if (!allowMicrosoft && _authentication.Items.Count == 2)
         {
             _authentication.Items.RemoveAt(1);
@@ -508,14 +508,14 @@ public sealed partial class MainWindow : Window
                 // Changing servers invalidates the choice; do not silently switch authentication.
                 _authentication.SelectedIndex = -1;
                 if (!_loadingForm)
-                    ShowNotice("Choose authentication for this server", "The selected servers do not support Microsoft sign-in. Choose password or app password before saving.", InfoBarSeverity.Informational);
+                    ShowNotice("Choose how to connect to this server", "Web authorization with Microsoft is only available for supported Microsoft mail servers. Choose a password or app password before saving.", InfoBarSeverity.Informational);
             }
         }
         _authenticationHint.Text = _preset.SelectedIndex switch
         {
             1 => "Use a Gmail app password. Availability depends on your Google account settings.",
             2 => "Use an app-specific password for iCloud.",
-            _ when allowMicrosoft => "Choose Microsoft sign-in explicitly for Outlook.com or Microsoft 365. It requires your public-client app registration.",
+            _ when allowMicrosoft => "For Outlook.com or Microsoft 365, you can choose web authorization with Microsoft. You will need your Microsoft app ID.",
             _ => "Use the password or app password required by your mail provider. A preset fills in the server settings."
         };
         if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: false);
@@ -552,8 +552,8 @@ public sealed partial class MainWindow : Window
         }
         if (microsoft)
         {
-            _incomingPassword.PlaceholderText = "Uses your Microsoft sign-in";
-            _smtpPassword.PlaceholderText = "Uses your Microsoft sign-in";
+            _incomingPassword.PlaceholderText = "Uses Microsoft web authorization";
+            _smtpPassword.PlaceholderText = "Uses Microsoft web authorization";
         }
         else
         {
@@ -565,9 +565,9 @@ public sealed partial class MainWindow : Window
     private async Task SaveAccountAsync()
     {
         if (_authentication.SelectedIndex < 0)
-            throw new EngineException("Choose an authentication method for the selected mail servers.");
+            throw new EngineException("Choose how to connect to these mail servers.");
         if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
-            throw new EngineException("Microsoft sign-in is available only for Outlook.com and Microsoft 365 mail servers.");
+            throw new EngineException("Web authorization with Microsoft is available only for Outlook.com and Microsoft 365 mail servers.");
         var pop = _incomingProtocol.SelectedIndex == 1;
         var folders = pop ? new[] { "INBOX" } : _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (folders.Length == 0 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
@@ -633,35 +633,35 @@ public sealed partial class MainWindow : Window
         var saved = _accounts.First(account => Value(account, "id") == _accountId);
         var savedAuthentication = saved.GetProperty("authentication");
         if (Value(savedAuthentication, "method") != "microsoft_oauth")
-            throw new EngineException("Save the Microsoft sign-in authentication choice before starting sign-in.");
+            throw new EngineException("Save your web authorization choice before starting it.");
         var selectedTenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
         if (_authentication.SelectedIndex != 1 ||
             !string.Equals(Value(savedAuthentication, "client_id"), _clientId.Text.Trim(), StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(savedAuthentication, "tenant"), selectedTenant, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(saved, "email"), _email.Text.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new EngineException("Save your account and Microsoft app-registration changes before starting sign-in.");
+            throw new EngineException("Save your account and Microsoft app ID changes before starting web authorization.");
         var start = await _engine.ManageAsync("start_microsoft_signin", new { account_id = _accountId }, _lifetime.Token);
         var flowId = Value(start, "flow_id");
         var verificationUri = MicrosoftVerificationUri(Value(start, "verification_uri"));
         var expiresIn = start.GetProperty("expires_in").GetInt32();
         var interval = start.GetProperty("interval").GetInt32();
         if (flowId.Length == 0 || expiresIn is < 1 or > 3600 || interval is < 1 or > 300)
-            throw new EngineException("Microsoft returned an invalid sign-in flow. Start a new sign-in request.");
+            throw new EngineException("Microsoft could not start web authorization. Try starting it again.");
         var deadline = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
         using var flowCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        var status = Text("Waiting for you to complete sign-in with Microsoft.");
+        var status = Text("Waiting for you to finish web authorization with Microsoft.");
         var userCode = new TextBox
         {
             Header = "Enter this code on Microsoft's page", Text = Value(start, "user_code"),
             IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas")
         };
-        var openBrowser = Action("Open Microsoft sign-in", async () =>
+        var openBrowser = Action("Open Microsoft authorization page", async () =>
         {
             try
             {
                 var opened = await Windows.System.Launcher.LaunchUriAsync(verificationUri);
                 status.Text = opened
-                    ? "Complete sign-in in your browser. This window will wait for Microsoft's response."
+                    ? "Finish web authorization in your browser. This window will wait for Microsoft's response."
                     : "Windows could not open the browser. Open the displayed Microsoft address manually.";
             }
             catch (Exception)
@@ -671,13 +671,13 @@ public sealed partial class MainWindow : Window
         }, accent: true);
         var dialog = new ContentDialog
         {
-            XamlRoot = Root.XamlRoot, Title = "Sign in to Microsoft", CloseButtonText = "Cancel",
-            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft sign-in."),
+            XamlRoot = Root.XamlRoot, Title = "Web authorization with Microsoft", CloseButtonText = "Cancel",
+            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft web authorization."),
             DefaultButton = ContentDialogButton.Close,
             Content = Stack(
-                Hint("You chose Microsoft sign-in for this account. The browser opens only when you press the button below."),
+                Hint("You chose web authorization for this Microsoft account. The browser opens only when you press the button below."),
                 userCode, Text(verificationUri.AbsoluteUri), openBrowser, status,
-                Hint($"This code expires at {deadline.ToLocalTime():t}. Sign-in does not test mail reading or sending."))
+                Hint($"This code expires at {deadline.ToLocalTime():t}. Web authorization does not test mail reading or sending."))
         };
         var connected = false;
         string? failure = null;
@@ -690,9 +690,9 @@ public sealed partial class MainWindow : Window
                 while (!flowCancellation.IsCancellationRequested)
                 {
                     var remaining = deadline - DateTimeOffset.UtcNow;
-                    if (remaining <= TimeSpan.Zero) throw new EngineException("The Microsoft sign-in code expired. Start sign-in again.");
+                    if (remaining <= TimeSpan.Zero) throw new EngineException("The Microsoft code expired. Start web authorization again.");
                     await Task.Delay(remaining < TimeSpan.FromSeconds(interval) ? remaining : TimeSpan.FromSeconds(interval), flowCancellation.Token);
-                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("The Microsoft sign-in code expired. Start sign-in again.");
+                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("The Microsoft code expired. Start web authorization again.");
                     var result = await _engine.ManageAsync("poll_microsoft_signin", new { flow_id = flowId }, flowCancellation.Token);
                     switch (Value(result, "status"))
                     {
@@ -706,7 +706,7 @@ public sealed partial class MainWindow : Window
                             if (interval is < 1 or > 300) throw new EngineException("Microsoft returned an invalid polling interval.");
                             break;
                         default:
-                            throw new EngineException("Microsoft returned an unexpected sign-in status.");
+                            throw new EngineException("Microsoft returned an unexpected authorization status.");
                     }
                 }
             }
@@ -714,7 +714,7 @@ public sealed partial class MainWindow : Window
             catch (EngineException exception) { failure = exception.Message; dialog.Hide(); }
             catch (Exception)
             {
-                failure = "Microsoft sign-in could not finish. Check the account and app registration before trying again.";
+                failure = "Microsoft web authorization could not finish. Check the account and app ID before trying again.";
                 dialog.Hide();
             }
         }
@@ -731,7 +731,7 @@ public sealed partial class MainWindow : Window
                 try { cleanupResult = await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
                 catch (EngineException exception)
                 {
-                    CleanupNotice.Message = "Local sign-in cleanup could not be confirmed. " + exception.Message;
+                    CleanupNotice.Message = "Local web authorization cleanup could not be confirmed. " + exception.Message;
                     CleanupNotice.IsOpen = true;
                 }
             }
@@ -742,9 +742,9 @@ public sealed partial class MainWindow : Window
         if (connected)
         {
             await LoadAccountsAsync();
-            ShowNotice("Microsoft sign-in completed", "Test incoming mail reading and the optional SMTP connection separately.", InfoBarSeverity.Success);
+            ShowNotice("Microsoft web authorization completed", "Test incoming mail reading and the optional SMTP connection separately.", InfoBarSeverity.Success);
         }
-        else ShowNotice("Microsoft sign-in closed", "No completed connection was reported for this sign-in request. Authentication was not switched to a password.", InfoBarSeverity.Informational);
+        else ShowNotice("Microsoft web authorization closed", "The connection was not completed. Your choice was not changed to a password.", InfoBarSeverity.Informational);
     }
 
     private static Uri MicrosoftVerificationUri(string value)
@@ -753,7 +753,7 @@ public sealed partial class MainWindow : Window
             value.Contains('@') || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
             (uri.Host != "microsoft.com" && uri.Host != "www.microsoft.com") ||
             (uri.AbsolutePath != "/devicelogin" && uri.AbsolutePath != "/devicelogin/"))
-            throw new EngineException("Microsoft returned an unexpected verification address. Sign-in was stopped.");
+            throw new EngineException("Microsoft returned an unexpected web address. Web authorization was stopped.");
         return uri;
     }
 

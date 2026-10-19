@@ -15,14 +15,14 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 
 ## Connect your mailbox
 
-Choose IMAP or POP3, then enter the server, port, encrypted connection type and username. Password or app password is the default. Microsoft accounts also have an optional Microsoft sign-in choice; it requires a suitable public-client app registration and must be selected explicitly.
+Choose IMAP or POP3, then enter the server, port, encrypted connection type and username. Password or app password is the default. For Outlook.com or Microsoft 365, you can explicitly choose **Web authorization**: Microsoft gives you a short code to sign in. This choice requires your own Microsoft app registration.
 
 | Mail service | Connection requirement |
 | --- | --- |
-| Gmail | An eligible account with an app password and the chosen mail protocol allowed; no Google OAuth flow |
+| Gmail | An eligible account with an app password and the chosen mail protocol allowed; Web authorization is not available for Google accounts |
 | iCloud Mail | An app-specific password |
 | Other providers | IMAP or POP3 over TLS with a password or app password |
-| Outlook.com / Microsoft 365 | Outlook.com requires modern authentication; Exchange Online removed Basic authentication for IMAP and POP3. Explicit Microsoft OAuth2 requires your app registration; tenant policies can still restrict access |
+| Outlook.com / Microsoft 365 | Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. This choice requires your own app registration; organization rules can still restrict access |
 
 Your provider or organization can disable access even when the server settings are correct. AgentInbox reports the problem without automatically switching sign-in methods. Presets fill settings; no provider connection has been validated for this implementation.
 

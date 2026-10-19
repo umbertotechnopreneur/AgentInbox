@@ -8,7 +8,7 @@ Tagline: **Read and send email with your AI assistant.**
 
 One-line description: **Read email through IMAP or POP3 and prepare optional SMTP sends for local approval, through your AI assistant.**
 
-Expanded product description: **Connect mailboxes using server settings and a password or app password, with optional Microsoft sign-in when you explicitly choose it and supply your app registration. AgentInbox runs on your computer, reads the accounts you share and sends only the exact messages you approve locally. Provider policies still apply.**
+Expanded product description: **Connect mailboxes using server settings and a password or app password. For a Microsoft account, you can explicitly choose Web authorization with your own app registration. AgentInbox runs on your computer, reads the accounts you share and sends only the exact messages you approve locally. Provider policies still apply.**
 
 The name joins an AI agent with the inboxes it can read. Envelopes and a shared mint palette connect the product to the MeUp family.
 

@@ -1,6 +1,6 @@
 # Accounts and authentication
 
-Choose IMAP or POP3 for incoming mail and optional SMTP for outgoing mail. Authentication is a separate choice: password or app password by default, or explicitly selected Microsoft sign-in.
+Choose IMAP or POP3 for incoming mail and optional SMTP for outgoing mail. Choose how to sign in separately: password or app password by default, or **Web authorization** for a Microsoft account.
 
 Synthetic authentication tests pass with mocked transports and protected stores. Live sign-in and native credential storage remain unvalidated. Changing an authentication setting does not prove the account can connect.
 
@@ -10,13 +10,13 @@ Enter the host, port, TLS mode and username for each connection. Use TLS from th
 
 Supply passwords through local setup, never in an assistant conversation, command-line argument, issue report or log. Gmail can require an eligible app password; iCloud Mail requires an app-specific password. Provider and organization policies still apply.
 
-Google browser sign-in is not implemented. AgentInbox does not try a different authentication method after a rejected password.
+Web authorization is not available for Google accounts. AgentInbox does not try a different sign-in method after a rejected password.
 
-Outlook.com requires modern authentication. Exchange Online has removed Basic authentication for IMAP and POP. Selecting password mode or supplying an app password cannot bypass those restrictions. Use the explicit Microsoft sign-in option for these services. [Outlook.com authentication requirements](https://support.microsoft.com/en-us/support/known-issues/modern-authentication-methods-now-needed-to-continue-syncing-outlook-email-in-non-microsoft-email-ap), [Exchange Online Basic authentication removal](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online).
+Outlook.com requires Web authorization with Microsoft. Exchange Online no longer accepts ordinary passwords for IMAP and POP. Selecting password mode or supplying an app password cannot bypass those restrictions. Choose **Web authorization** for these services. [Outlook.com authentication requirements](https://support.microsoft.com/en-us/support/known-issues/modern-authentication-methods-now-needed-to-continue-syncing-outlook-email-in-non-microsoft-email-ap), [Exchange Online password sign-in removal](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online).
 
-## Optional Microsoft sign-in
+## Optional Microsoft web authorization
 
-For Outlook.com or Microsoft 365, choose **Microsoft sign-in** explicitly. Microsoft documents delegated authorization for IMAP, POP and SMTP for both account types. This authenticates the standard mail connection; AgentInbox does not use Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
+For Outlook.com or Microsoft 365, choose **Web authorization with Microsoft** explicitly. AgentInbox shows a short code; you use it to sign in on Microsoft's page and decide whether to grant mail access. Microsoft documents this option for IMAP, POP and SMTP for both account types. AgentInbox then connects through the standard mail protocols, not Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
 
 The connection requires a Microsoft Entra app registration configured as a public client. In that registration:
 
@@ -27,7 +27,7 @@ The connection requires a Microsoft Entra app registration configured as a publi
 
 Registration creates the application identity; AgentInbox does not create or verify it for you. [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app), [public-client configuration](https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-applications).
 
-After saving the account, start sign-in locally. AgentInbox displays a short code and a Microsoft verification address. You choose to open that address, sign in and review the requested permissions. The engine polls at Microsoft's required interval and stops on cancellation, expiry or rejection. It does not open a browser automatically. [Device authorization flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code).
+After saving the account, start web authorization locally. AgentInbox displays a short code and a Microsoft sign-in address. You choose to open that address, sign in and review the requested permissions. The engine checks for your decision at Microsoft's required interval and stops on cancellation, expiry or rejection. It does not open a browser automatically. [How the Microsoft sign-in code works](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code).
 
 The requested scopes are:
 
