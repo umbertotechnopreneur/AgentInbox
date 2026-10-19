@@ -21,6 +21,9 @@
 - Keep isolated builds free of compiler-server file locks and automatic HTTPS certificate setup; retain packaging diagnostics on failure.
 - Declare multiple-instance support required by the console execution alias.
 - Scan new external imports once; stop repeated antivirus scans during local builds and CI while retaining archive hashes and official-source checks.
+- Split account setup into Account, Incoming and Outgoing tabs; move Save to the header and add compact colored action, navigation and provider icons.
+- Group incoming tests and SMTP connection/test-message actions in their relevant tabs; move outgoing-request refresh to a header icon.
+- Restore guided Codex detection and explicit connection setup through its installed CLI, with atomic configuration updates, replacement confirmation, concurrent-change checks and manual setup in Advanced.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.

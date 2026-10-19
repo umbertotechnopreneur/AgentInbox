@@ -1,12 +1,14 @@
 # Windows setup
 
-The WinUI 3 app configures a separate Python mail engine. Current source changes are unbuilt and untested.
+The WinUI 3 app configures a bundled Python mail engine. See [validation](VALIDATION.md) for package, test and live-provider evidence.
 
-Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. There is no validated package for this implementation yet.
+Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.6.4 built and installed locally on x64; the revised interface is being prepared as 1.0.6.5.
 
 ## Configure an account
 
-Choose a preset or custom server settings, then select IMAP or POP3. Enter the account address, incoming hostname, port, TLS mode and username. Password or app password is the default authentication choice.
+Choose an account or use the colored add, remove and refresh icons beside its selector. The editor has three tabs: **Account**, **Incoming** and **Outgoing**. **Save account** stays at the top right.
+
+In **Account**, choose a provider preset or custom server and enter the account name, address and authentication choice. In **Incoming**, select IMAP or POP3, enter the hostname, port, TLS mode and username, then save before testing the saved connection. Password or app password is the default authentication choice.
 
 For a Microsoft account, you can explicitly select Microsoft sign-in (OAuth2), enter your public-client app registration ID and tenant, save, then press **Sign in to Microsoft…**. The dialog shows a code and opens Microsoft's page only when you press its browser button. A password failure does not start this flow automatically. Registration and tenant policies can still prevent access; see [authentication](AUTHENTICATION.md).
 
@@ -14,7 +16,7 @@ POP3 uses only INBOX and has no unread flags or server folders. Its search inspe
 
 Enable assistant reads for the accounts you want to share. The read check tests authentication and a bounded mailbox read.
 
-Sending is a separate opt-in. Enter SMTP settings and run its connection check. Checking SMTP does not send a message.
+Sending is a separate opt-in in **Outgoing**. Save SMTP settings, then use **Test SMTP connection**. **Send a test email…** is a separate action that opens the normal review flow. Checking SMTP does not send a message.
 
 ## Review every send
 
@@ -28,7 +30,7 @@ The app and engine share schema 3 settings. Passwords and Microsoft refresh toke
 
 An MSIX installation uses `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`; a source launch uses `%LOCALAPPDATA%\AgentInbox`. The packaged Python alias and native app select the same physical profile. The copied MCP configuration includes that exact path. An explicit `AGENTINBOX_DATA_DIR` overrides either default and must be absolute. The local `profile_info` operation reports the selected paths without secrets.
 
-**Connect assistant** exports the stable `AgentInbox.exe` alias with `-B -m agentinbox mcp`. It avoids saved version-specific package paths, and outgoing review locates the current installed app. See [client setup](CODEX_SETUP.md).
+**Connect assistant** detects Codex and guides registration through its installed CLI. Replacement of an existing AgentInbox entry requires confirmation. Manual configuration is under **Advanced setup**. Both paths use the stable `AgentInbox.exe` alias with `-B -m agentinbox mcp`, without version-specific package paths; outgoing review locates the current installed app. See [client setup](CODEX_SETUP.md).
 
 A save, account removal, completed sign-in or outgoing result can succeed while protected-data deletion remains pending. The app shows a separate **Local cleanup is pending** notice. **Retry cleanup** retries queued local deletion without repeating the completed operation or sending another email. Keep the warning until the engine reports that the shared queue is clear.
 

@@ -1,10 +1,16 @@
 # Connect a local MCP client
 
-AgentInbox supplies a Python MCP server. Client setup for this implementation has not been validated.
+AgentInbox supplies a Python MCP server. Guided Codex configuration passed isolated local checks; a live client-to-mail connection remains unvalidated.
 
 ## Installed Windows app
 
-Open **Connect assistant** in AgentInbox and copy its local MCP configuration. The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, with these separate arguments:
+Open **Connect assistant**. AgentInbox detects the native Codex CLI, including the copy supplied by the Codex Windows app, and shows the configuration it can update. Press **Connect Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. Other settings remain intact; a changed detection snapshot requires another check.
+
+The app prepares the change in a temporary Codex home and uses the installed CLI to edit its own TOML. It then replaces the configuration atomically. No mail server is started during setup. Python is included in the MSIX; you do not need to install it separately.
+
+Start a new Codex task after saving. A saved configuration is not proof that the assistant has connected or accessed a mailbox. If Codex cannot be detected, open or update Codex and refresh detection, or use **Advanced setup** for manual configuration and other MCP clients. See the [official Codex MCP commands](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, with these separate arguments:
 
 ```text
 -B -m agentinbox mcp

@@ -21,12 +21,18 @@
         <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
                         OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Accounts" Tag="accounts" Icon="Mail" />
-                <NavigationViewItem Content="Outgoing mail" Tag="outgoing" Icon="Send" />
-                <NavigationViewItem Content="Connect assistant" Tag="assistant" Icon="Link" />
+                <NavigationViewItem Content="Accounts" Tag="accounts">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="Mail" Foreground="#16856A" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Outgoing mail" Tag="outgoing">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="Send" Foreground="#C77616" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Connect assistant" Tag="assistant">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="Link" Foreground="#8B62CF" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="Page" Padding="28,12,36,32" Spacing="20" MaxWidth="940" HorizontalAlignment="Left" />
+                <StackPanel x:Name="Page" Padding="28,12,36,32" Spacing="20" MaxWidth="940" HorizontalAlignment="Stretch" />
             </ScrollViewer>
         </NavigationView>
         <StackPanel Grid.Row="2" Padding="28,8,28,16" Spacing="8">
