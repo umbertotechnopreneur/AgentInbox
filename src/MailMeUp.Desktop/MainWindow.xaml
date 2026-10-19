@@ -32,6 +32,11 @@
         <StackPanel Grid.Row="2" Padding="28,8,28,16" Spacing="8">
             <ProgressBar x:Name="Progress" IsIndeterminate="True" Visibility="Collapsed" />
             <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
+            <InfoBar x:Name="CleanupNotice" IsOpen="False" IsClosable="False" Severity="Warning" Title="Local cleanup is pending">
+                <InfoBar.ActionButton>
+                    <Button x:Name="CleanupRetryButton" Content="Retry cleanup" Click="RetryCleanup_Click" />
+                </InfoBar.ActionButton>
+            </InfoBar>
             <TextBlock Text="Built by Umberto Giacobbi · VibeWare · MIT" Style="{StaticResource SubtleText}" />
         </StackPanel>
     </Grid>

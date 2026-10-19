@@ -60,7 +60,16 @@ class SyntheticStore:
             raise MailError("account_not_found", "Synthetic account was removed.")
         return copy.deepcopy(self.saved)
 
-    def connect_oauth(self, account_id, expected_revision, refresh_token):
+    def cleanup_queued(self, reference):
+        return False
+
+    def retire_protected(self, references):
+        with self.locked():
+            for reference in references:
+                self.vault.delete(reference)
+        return {"cleanup_pending": False, "cleanup_pending_count": 0, "cleanup_error": None}
+
+    def connect_oauth(self, account_id, expected_revision, refresh_token, *, consumed_references=()):
         with self.locked():
             current = self.account(account_id)
             if current["revision"] != expected_revision:
@@ -69,7 +78,10 @@ class SyntheticStore:
             self.vault.put(reference, refresh_token)
             self.saved["oauth_secret"] = reference
             self.saved["revision"] += 1
-            return {key: value for key, value in self.saved.items() if not key.endswith("_secret")}
+            for consumed in consumed_references:
+                self.vault.delete(consumed)
+            return {**{key: value for key, value in self.saved.items() if not key.endswith("_secret")},
+                    "cleanup_pending": False, "cleanup_pending_count": 0, "cleanup_error": None}
 
 
 class MicrosoftAuthorizationTests(unittest.TestCase):
@@ -325,3 +337,80 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
             with self.assertRaises(MailError) as disconnected:
                 auth.access_token(store.account(saved["id"]))
             self.assertEqual("microsoft_signin_required", disconnected.exception.code)
+
+    def test_connected_flow_reports_pending_cleanup_without_replaying_consumed_code(self):
+        store, saved = self.real_store()
+        auth = MicrosoftAuth(store)
+        delete = store.vault.delete
+
+        def fail_flow_cleanup(reference):
+            if reference.startswith("signin-"):
+                raise MailError("secure_storage_unavailable", "Synthetic sign-in blob is locked.")
+            delete(reference)
+
+        with mock.patch.object(auth, "_post", return_value=self.device_response()) as post:
+            started = auth.start(saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response()
+            with mock.patch.object(store.vault, "delete", side_effect=fail_flow_cleanup):
+                connected = auth.poll(started["flow_id"])
+                with self.assertRaises(MailError) as reused:
+                    auth.poll(started["flow_id"])
+
+        self.assertEqual("connected", connected["status"])
+        self.assertTrue(connected["account"]["microsoft_connected"])
+        self.assertTrue(connected["cleanup_pending"])
+        self.assertEqual("secure_storage_unavailable", connected["cleanup_error"])
+        self.assertEqual("signin_expired", reused.exception.code)
+        self.assertEqual(2, post.call_count)
+        self.assertIn("signin-" + started["flow_id"], store.vault.values)
+        self.assertFalse(store.retry_cleanup()["cleanup_pending"])
+        self.assertNotIn("signin-" + started["flow_id"], store.vault.values)
+
+    def test_connected_flow_does_not_reacquire_settings_lock_after_commit(self):
+        store, saved = self.real_store()
+        auth = MicrosoftAuth(store)
+        connect = store.connect_oauth
+        lock = store.locked
+        committed = False
+
+        def connect_then_compete(*args, **kwargs):
+            nonlocal committed
+            result = connect(*args, **kwargs)
+            committed = True
+            return result
+
+        @contextlib.contextmanager
+        def busy_after_commit():
+            if committed:
+                raise MailError("profile_busy", "Synthetic concurrent settings writer.")
+            with lock():
+                yield
+
+        with mock.patch.object(auth, "_post", return_value=self.device_response()) as post:
+            started = auth.start(saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response()
+            with mock.patch.object(store, "locked", side_effect=busy_after_commit):
+                with mock.patch.object(store, "connect_oauth", side_effect=connect_then_compete):
+                    result = auth.poll(started["flow_id"])
+
+        self.assertEqual("connected", result["status"])
+        self.assertTrue(result["account"]["microsoft_connected"])
+        self.assertFalse(result["cleanup_pending"])
+
+    def test_cancelled_flow_remains_consumed_when_protected_blob_deletion_fails(self):
+        store, saved = self.real_store()
+        auth = MicrosoftAuth(store)
+        with mock.patch.object(auth, "_post", return_value=self.device_response()) as post:
+            started = auth.start(saved["id"])
+            with mock.patch.object(store.vault, "delete", side_effect=MailError("secure_storage_unavailable", "Synthetic locked blob.")):
+                cancelled = auth.cancel(started["flow_id"])
+            self.clock.return_value = 1005
+            with self.assertRaises(MailError) as reused:
+                auth.poll(started["flow_id"])
+
+        self.assertEqual("cancelled", cancelled["status"])
+        self.assertTrue(cancelled["cleanup_pending"])
+        self.assertEqual("signin_expired", reused.exception.code)
+        self.assertEqual(1, post.call_count)

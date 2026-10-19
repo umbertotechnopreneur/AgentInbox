@@ -368,6 +368,7 @@ public sealed partial class MainWindow : Window
         passwords.Clear();
         await LoadAccountsAsync();
         ShowNotice("Account saved", "Your assistant can use only the access you enabled.", InfoBarSeverity.Success);
+        ShowCleanup(saved);
     }
 
     private async Task RemoveAccountAsync()
@@ -375,10 +376,11 @@ public sealed partial class MainWindow : Window
         RequireSavedAccount();
         var dialog = Dialog("Remove this account?", Text("This removes local connection settings and saved credentials. Mail on the server stays in place."), "Remove account");
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        await _engine.ManageAsync("remove_account", new { account_id = _accountId }, _lifetime.Token);
+        var removed = await _engine.ManageAsync("remove_account", new { account_id = _accountId }, _lifetime.Token);
         _accountId = "";
         await LoadAccountsAsync();
         ShowNotice("Account removed", "The local connection is no longer available to your assistant.", InfoBarSeverity.Success);
+        ShowCleanup(removed);
     }
 
     private async Task SignInMicrosoftAsync()
@@ -434,6 +436,7 @@ public sealed partial class MainWindow : Window
         };
         var connected = false;
         string? failure = null;
+        JsonElement? cleanupResult = null;
 
         async Task PollAsync()
         {
@@ -449,6 +452,7 @@ public sealed partial class MainWindow : Window
                     switch (Value(result, "status"))
                     {
                         case "connected":
+                            cleanupResult = result.Clone();
                             connected = true;
                             dialog.Hide();
                             return;
@@ -479,11 +483,16 @@ public sealed partial class MainWindow : Window
             await polling;
             if (!connected && !_lifetime.IsCancellationRequested)
             {
-                try { await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
-                catch (EngineException) { }
+                try { cleanupResult = await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
+                catch (EngineException exception)
+                {
+                    CleanupNotice.Message = "Local sign-in cleanup could not be confirmed. " + exception.Message;
+                    CleanupNotice.IsOpen = true;
+                }
             }
         }
         if (_lifetime.IsCancellationRequested) return;
+        if (cleanupResult is { } cleanup) ShowCleanup(cleanup);
         if (failure is not null) throw new EngineException(failure);
         if (connected)
         {
@@ -556,6 +565,7 @@ public sealed partial class MainWindow : Window
         else Page.Children.Add(Hint("The latest 100 requests are shown, including completed and expired requests."));
         foreach (var request in requests.EnumerateArray())
         {
+            ShowCleanup(request);
             var id = Value(request, "id");
             var status = Value(request, "status");
             var content = Stack(Text($"Request {id}", 16), Text($"Status: {StatusLabel(status)}"), Hint($"Created: {Timestamp(request, "created")} · Expires: {Timestamp(request, "expires")}"));
@@ -593,7 +603,7 @@ public sealed partial class MainWindow : Window
             Clipboard.SetContent(package);
             ShowNotice("Configuration copied", "Add the server entry to your client's MCP settings and reconnect it.", InfoBarSeverity.Success);
         }, accent: true));
-        Page.Children.Add(Hint("This configuration contains paths, not passwords. Keep AgentInbox at these paths. Only accounts you share are available for reading, and every outgoing message still opens a Windows approval dialog."));
+        Page.Children.Add(Hint("This configuration contains paths, not passwords. Keep it in your MCP client's settings. Only accounts you share are available for reading, and every outgoing message still opens a Windows approval dialog."));
     }
 
     private async Task DrainReviewsAsync()
@@ -644,6 +654,7 @@ public sealed partial class MainWindow : Window
         if (_busy || _lifetime.IsCancellationRequested) return;
         _busy = true;
         Navigation.IsEnabled = false;
+        CleanupRetryButton.IsEnabled = false;
         Progress.Visibility = Visibility.Visible;
         Notice.IsOpen = false;
         try { await operation(); }
@@ -661,6 +672,7 @@ public sealed partial class MainWindow : Window
         {
             _busy = false;
             Navigation.IsEnabled = true;
+            CleanupRetryButton.IsEnabled = true;
             Progress.Visibility = Visibility.Collapsed;
         }
         if (!_reviewing) await DrainReviewsAsync();
@@ -680,6 +692,34 @@ public sealed partial class MainWindow : Window
         Notice.Message = message;
         Notice.Severity = severity;
         Notice.IsOpen = true;
+    }
+
+    private void ShowCleanup(JsonElement result, bool clearWhenComplete = false)
+    {
+        if (!result.TryGetProperty("cleanup_pending", out var pending) ||
+            pending.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return;
+        if (!pending.GetBoolean())
+        {
+            // Only the aggregate retry result can clear warnings from other accounts or requests.
+            if (clearWhenComplete) CleanupNotice.IsOpen = false;
+            return;
+        }
+        var message = "Protected local data is still waiting to be removed. Retry cleanup when secure storage is available.";
+        if (result.TryGetProperty("cleanup_error", out var error) && error.ValueKind == JsonValueKind.String &&
+            error.GetString() is { Length: > 0 and <= 2048 } detail) message += " " + detail;
+        CleanupNotice.Message = message;
+        CleanupNotice.IsOpen = true;
+    }
+
+    private async void RetryCleanup_Click(object sender, RoutedEventArgs args)
+    {
+        await RunAsync(async () =>
+        {
+            var result = await _engine.ManageAsync("retry_cleanup", new { }, _lifetime.Token);
+            ShowCleanup(result, clearWhenComplete: true);
+            if (!result.GetProperty("cleanup_pending").GetBoolean())
+                ShowNotice("Local cleanup completed", "The engine reports no remaining queued cleanup.", InfoBarSeverity.Success);
+        });
     }
 
     private void ShowSendOutcome(JsonElement result)
@@ -705,6 +745,7 @@ public sealed partial class MainWindow : Window
             _ => InfoBarSeverity.Informational
         };
         ShowNotice(StatusLabel(status), message + (id.Length > 0 ? $" Request: {id}" : ""), severity);
+        ShowCleanup(result);
     }
 
     private ContentDialog Dialog(string title, UIElement content, string primary) => new()

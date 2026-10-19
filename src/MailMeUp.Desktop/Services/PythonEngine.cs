@@ -54,22 +54,38 @@ internal sealed class PythonEngine
 
     internal string CreateClientConfiguration()
     {
-        var executable = Environment.ProcessPath;
-        if (string.IsNullOrWhiteSpace(executable) || !Path.IsPathFullyQualified(executable))
-            throw new EngineException("AgentInbox could not locate its Windows review application.");
+        var packaged = HasPackageIdentity();
+        var environment = new Dictionary<string, string>
+        {
+            ["AGENTINBOX_DATA_DIR"] = ResolveDataDirectory(packaged)
+        };
+        string command;
+        string[] arguments;
+        if (packaged)
+        {
+            // The execution alias survives package updates; WindowsApps package paths do not.
+            command = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "WindowsApps", "AgentInbox.exe");
+            arguments = ["-B", "-m", "agentinbox", "mcp"];
+        }
+        else
+        {
+            var executable = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(executable) || !Path.IsPathFullyQualified(executable))
+                throw new EngineException("AgentInbox could not locate its Windows review application.");
+            command = ResolvePython();
+            arguments = ["-B", ResolveEntryPoint(), "mcp"];
+            environment["AGENTINBOX_REVIEW_APP"] = executable;
+        }
         return JsonSerializer.Serialize(new
         {
             mcpServers = new Dictionary<string, object>
             {
                 ["agentinbox"] = new
                 {
-                    command = ResolvePython(),
-                    args = new[] { "-B", ResolveEntryPoint(), "mcp" },
-                    env = new Dictionary<string, string>
-                    {
-                        ["AGENTINBOX_DATA_DIR"] = ResolveDataDirectory(),
-                        ["AGENTINBOX_REVIEW_APP"] = executable
-                    }
+                    command,
+                    args = arguments,
+                    env = environment
                 }
             }
         }, IndentedJson);
@@ -146,7 +162,7 @@ internal sealed class PythonEngine
         throw new EngineException("Python 3.11 or later is required. Set AGENTINBOX_PYTHON to the absolute path of an installed runtime.");
     }
 
-    private static string ResolveDataDirectory()
+    private static string ResolveDataDirectory(bool? packaged = null)
     {
         var configured = Environment.GetEnvironmentVariable("AGENTINBOX_DATA_DIR");
         if (configured is not null)
@@ -155,14 +171,20 @@ internal sealed class PythonEngine
                 throw new EngineException("AGENTINBOX_DATA_DIR must be an absolute directory path.");
             return Path.GetFullPath(configured);
         }
+        if (packaged ?? HasPackageIdentity())
+            return Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "AgentInbox");
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AgentInbox");
+    }
+
+    private static bool HasPackageIdentity()
+    {
         uint nameLength = 0;
         var identityStatus = GetCurrentPackageFullName(ref nameLength, IntPtr.Zero);
-        if (identityStatus is 0 or 122)
-            return Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "AgentInbox");
+        if (identityStatus is 0 or 122) return true;
         // Only APPMODEL_ERROR_NO_PACKAGE selects the unpackaged profile; all other errors fail closed.
         if (identityStatus != 15700)
             throw new EngineException("AgentInbox could not resolve its package identity and local data directory.");
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AgentInbox");
+        return false;
     }
 
     [DllImport("kernel32.dll", ExactSpelling = true)]

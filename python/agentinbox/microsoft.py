@@ -35,7 +35,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _bounded_string(value, maximum, label):
-    if not isinstance(value, str) or not value or len(value) > maximum or any(ord(c) < 33 or ord(c) == 127 for c in value):
+    if not isinstance(value, str) or not value or len(value) > maximum or any(ord(c) < 33 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value):
         raise MailError("microsoft_response", f"Microsoft returned an invalid {label}.")
     return value
 
@@ -212,6 +212,8 @@ class MicrosoftAuth:
 
     def _load_flow(self, flow_id):
         try:
+            if self.store.cleanup_queued(_flow_key(flow_id)):
+                raise MailError("signin_expired", "This Microsoft sign-in was already consumed or cancelled. Start again.")
             state = json.loads(self.store.vault.get(_flow_key(flow_id)))
             if not isinstance(state, dict) or set(state) != {"account_id", "revision", "device_code", "expires", "interval", "next_poll", "scope"}:
                 raise ValueError()
@@ -234,8 +236,7 @@ class MicrosoftAuth:
             self.store.vault.put(_flow_key(flow_id), json.dumps(state, separators=(",", ":")))
 
     def _discard(self, flow_id):
-        with self.store.locked():
-            self.store.vault.delete(_flow_key(flow_id))
+        return self.store.retire_protected([_flow_key(flow_id)])
 
     def start(self, account_id):
         """Start a user-requested Microsoft device flow without opening a browser."""
@@ -301,8 +302,9 @@ class MicrosoftAuth:
         with self._lease("flow", flow_id):
             state = self._load_flow(flow_id)
             if time.time() >= state["expires"]:
-                self._discard(flow_id)
-                raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")
+                cleanup = self._discard(flow_id)
+                suffix = " Protected-data cleanup remains pending; retry cleanup locally." if cleanup["cleanup_pending"] else ""
+                raise MailError("signin_expired", "Microsoft sign-in expired. Start again." + suffix)
             account = self._account(state["account_id"], state["revision"])
             if state["scope"] != self._scopes(account):
                 raise MailError("configuration_changed", "Mail permissions changed. Start Microsoft sign-in again.")
@@ -327,20 +329,36 @@ class MicrosoftAuth:
                     access, refresh, lifetime = self._token_response(response, account, True)
                     if time.time() >= state["expires"]:
                         raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")
-                    connected = self.store.connect_oauth(account["id"], account["revision"], refresh)
+                    connected = self.store.connect_oauth(
+                        account["id"], account["revision"], refresh,
+                        consumed_references=(_flow_key(flow_id),),
+                    )
+                except Exception as failure:
+                    error = failure if isinstance(failure, MailError) else MailError("microsoft_persistence", "Microsoft sign-in could not be saved. Start again after checking local storage.")
+                    try:
+                        cleanup = self._discard(flow_id)
+                    except Exception:
+                        raise MailError(error.code, str(error) + " Cleanup could not be queued; retry cancelling this sign-in locally.") from None
+                    if cleanup["cleanup_pending"]:
+                        raise MailError(error.code, str(error) + " Protected-data cleanup remains pending; retry cleanup locally.") from None
+                    raise error from None
+                # The connection and consumed-flow marker are already committed. Cache
+                # population is optional and must not turn that outcome into a failure.
+                try:
                     current = self._account(connected["id"], connected["revision"])
+                except MailError:
+                    pass
+                else:
                     self._tokens[self._cache_key(current)] = (access, started + lifetime)
-                finally:
-                    # A final token response is not replayed, even if local persistence fails.
-                    self._discard(flow_id)
-                return {"status": "connected", "account": connected}
+                return {"status": "connected", "account": connected,
+                        **{key: connected[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error")}}
 
     def cancel(self, flow_id):
         """Forget one local device flow without changing an existing connection."""
         _flow_key(flow_id)
         with self._lease("flow", flow_id):
-            self._discard(flow_id)
-        return {"status": "cancelled"}
+            cleanup = self._discard(flow_id)
+        return {"status": "cancelled", **cleanup}
 
     def access_token(self, account):
         """Refresh under a per-account lease; never persist access tokens."""

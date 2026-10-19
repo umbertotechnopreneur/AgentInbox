@@ -33,6 +33,23 @@ TOOLS = [
 ]
 
 
+def validate_arguments(arguments, schema):
+    """Enforce the implemented flat tool schemas before application dispatch."""
+    if not isinstance(arguments, dict) or set(arguments) - set(schema["properties"]) or set(schema["required"]) - set(arguments):
+        raise MailError("invalid_arguments", "The tool arguments do not match its schema.")
+    for name, value in arguments.items():
+        definition = schema["properties"][name]
+        kind = definition["type"]
+        valid = ((kind == "string" and isinstance(value, str))
+                 or (kind == "boolean" and type(value) is bool)
+                 or (kind == "integer" and type(value) is int)
+                 or (kind == "array" and isinstance(value, list) and all(isinstance(item, str) for item in value)))
+        if not valid:
+            raise MailError("invalid_arguments", f"{name} has an invalid type.")
+        if kind == "integer" and not definition.get("minimum", value) <= value <= definition.get("maximum", value):
+            raise MailError("invalid_arguments", f"{name} is outside the supported range.")
+
+
 def _write(value):
     payload = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     sys.stdout.buffer.write(payload.encode("utf-8") + b"\n")
@@ -88,8 +105,7 @@ def serve(application):
                     raise MailError("unknown_tool", "This mail tool is not implemented.")
                 arguments = parameters.get("arguments", {})
                 schema = definitions[name]["inputSchema"]
-                if not isinstance(arguments, dict) or set(arguments) - set(schema["properties"]) or set(schema["required"]) - set(arguments):
-                    raise MailError("invalid_arguments", "The tool arguments do not match its schema.")
+                validate_arguments(arguments, schema)
                 try:
                     value = getattr(application, name)(**arguments)
                     result = {"content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False)}], "isError": False}

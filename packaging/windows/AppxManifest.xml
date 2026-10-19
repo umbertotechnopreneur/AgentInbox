@@ -20,10 +20,11 @@ VBWR E -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 desktop6 rescap">
+  IgnorableNamespaces="uap uap5 uap10 desktop6 rescap">
   <!-- Keep the owner-assigned Store identity. -->
   <Identity Name="UmbertoGiacobbiDotBiz.AgentInbox" Publisher="CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510" Version="2.0.0.0" ProcessorArchitecture="x64" />
   <Properties>
@@ -44,6 +45,14 @@ VBWR E -->
     <Application Id="Desktop" Executable="AgentInbox.Desktop.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
       <uap:VisualElements DisplayName="AgentInbox" Description="Configure IMAP, POP3 and SMTP connections and approve outgoing email."
         BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="runtime\python.exe"
+          uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
+          <uap5:AppExecutionAlias uap10:Subsystem="console">
+            <uap5:ExecutionAlias Alias="AgentInbox.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
     </Application>
   </Applications>
   <Capabilities>

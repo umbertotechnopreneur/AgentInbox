@@ -10,13 +10,14 @@ import mimetypes
 import os
 import secrets
 import subprocess
+import sys
 import time
 import uuid
 from email.message import EmailMessage
 from pathlib import Path
 
 from . import mail, pop
-from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, address, flag, text
+from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, SCHEMA_VERSION, address, flag, text, windows_package_family
 from .errors import MailError
 from .storage import Outbox, Store
 from .microsoft import MicrosoftAuth
@@ -179,7 +180,7 @@ class MailApplication:
         if sum(item["status"] == "pending_approval" for item in self.outbox.pending()) >= 20:
             raise MailError("pending_limit", "Review or cancel existing outgoing requests before preparing more. The limit is twenty pending messages.")
         groups = []
-        for group in (to, cc or [], bcc or []):
+        for group in (to, [] if cc is None else cc, [] if bcc is None else bcc):
             if not isinstance(group, list) or len(group) > MAX_RECIPIENTS:
                 raise MailError("invalid_recipients", "Supply a list of at most 25 explicit recipient addresses.")
             groups.append([address(value) for value in group])
@@ -189,7 +190,7 @@ class MailApplication:
         subject = text(subject, "Subject", 300)
         if not isinstance(body, str) or not body.strip() or len(body) > MAX_BODY_CHARS or "\0" in body:
             raise MailError("invalid_body", "Enter a nonempty message of at most 100,000 characters.")
-        paths = attachments or []
+        paths = [] if attachments is None else attachments
         if not isinstance(paths, list) or len(paths) > 10:
             raise MailError("attachment_limit", "Attach at most ten files with a combined size of 5 MiB.")
         message = EmailMessage(policy=email.policy.SMTP)
@@ -224,21 +225,41 @@ class MailApplication:
         serialized = json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode("utf-8")
         request_id = uuid.uuid4().hex
         self.outbox.add(request_id, account, hashlib.sha256(serialized).hexdigest(), frozen)
-        self._open_review(request_id)
+        review_error = None
+        try:
+            self._open_review(request_id)
+        except MailError as error:
+            review_error = error.code
         return {"request_id": request_id, "status": "pending_approval", "expires_in_seconds": 600,
+                "review_error": review_error,
                 "message": "Open AgentInbox Outgoing to review and approve this exact message. Nothing has been sent."}
 
-    def _open_review(self, request_id: str):
+    def _open_review(self, request_id: str) -> bool:
         executable = os.environ.get("AGENTINBOX_REVIEW_APP")
+        if not executable and windows_package_family():
+            # Resolve the current package, never a versioned path saved by an older installation.
+            executable = str(Path(__file__).resolve().parents[2] / "AgentInbox.Desktop.exe")
         if executable:
             path = Path(executable)
             if path.is_absolute() and path.is_file() and path.name.lower() == "agentinbox.desktop.exe":
                 try:
                     subprocess.Popen([str(path), "--review", request_id], stdin=subprocess.DEVNULL,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    return True
                 except OSError:
                     # The durable request remains visible for manual review in the app.
                     pass
+        return False
+
+    def open_review(self, request_id: str) -> dict:
+        """Request native local review without approving or submitting the message."""
+        record = self.outbox.get(request_id)
+        if record["status"] != "pending_approval":
+            raise MailError("approval_unavailable", "This request is no longer awaiting approval.")
+        self._send_account(record["account_id"], record["revision"])
+        if not self._open_review(request_id):
+            raise MailError("review_unavailable", "The local review app could not be opened. Use AgentInbox Outgoing mail; nothing was sent.")
+        return {"request_id": request_id, "status": "pending_approval", "review_requested": True}
 
     def review_snapshot(self, request_id: str) -> tuple[dict, dict]:
         """Load the exact pending snapshot for a private local review session."""
@@ -284,6 +305,7 @@ class MailApplication:
         record = self.outbox.get(request_id)
         self._send_account(record["account_id"])
         return {"request_id": record["id"], "status": record["status"], "error": record["error"],
+                **{key: record[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error") if key in record},
                 "delivery_confirmed": False}
 
     def manage(self, operation: str, arguments: dict):
@@ -292,6 +314,17 @@ class MailApplication:
             raise MailError("invalid_arguments", "Arguments must be an object.")
         if operation == "presets" and not arguments:
             return PRESETS
+        if operation == "profile_info" and not arguments:
+            protection = "Windows Credential Manager" if sys.platform == "win32" else "macOS Keychain" if sys.platform == "darwin" else "Linux Secret Service"
+            return {"schema_version": SCHEMA_VERSION, "data_directory": str(self.store.root),
+                    "settings_file": str(self.store.settings), "outgoing_ledger": str(self.outbox.path),
+                    "cleanup_queue_file": str(self.store.cleanup_path),
+                    "temporary_protected_directory": str(self.store.root / "protected"),
+                    "credential_store": protection,
+                    "temporary_store": "current-user DPAPI" if sys.platform == "win32" else protection,
+                    **self.store.cleanup_status()}
+        if operation == "retry_cleanup" and not arguments:
+            return self.store.retry_cleanup()
         if operation == "list_accounts" and not arguments:
             return [self.store.public(item) for item in self.store.accounts()]
         if operation == "save_account" and set(arguments) == {"account", "passwords", "expected_revision"}:
@@ -300,6 +333,12 @@ class MailApplication:
             return self.outbox.pending()
         if operation == "prepare_email":
             return self.prepare_email(**arguments)
+        if operation == "search_mail":
+            return self.search_mail(**arguments)
+        if operation == "read_mail" and set(arguments) == {"reference"}:
+            return self.read_mail(**arguments)
+        if operation == "cancel_email" and set(arguments) == {"request_id"}:
+            return self.outbox.cancel(arguments["request_id"])
         if operation == "get_send_status" and set(arguments) == {"request_id"}:
             return self.get_send_status(**arguments)
         if operation == "poll_microsoft_signin" and set(arguments) == {"flow_id"}:
@@ -311,8 +350,7 @@ class MailApplication:
             if operation == "start_microsoft_signin":
                 return self.microsoft.start(account["id"])
             if operation == "remove_account":
-                self.store.remove(account["id"])
-                return {"removed": True}
+                return self.store.remove(account["id"])
             if operation == "check_read":
                 return self._incoming(account).check_read(account["incoming"], folder=account["folders"][0], **self._credentials(account, "incoming"))
             if operation == "list_folders":

@@ -1,6 +1,7 @@
 """Strict configuration for mail protocols and explicitly selected authentication."""
 
 import os
+import ctypes
 import re
 import sys
 import uuid
@@ -42,6 +43,29 @@ PRESETS = {
 }
 
 
+def windows_package_family() -> str | None:
+    """Resolve package identity, accepting only the explicit unpackaged result."""
+    if sys.platform != "win32":
+        return None
+    try:
+        api = ctypes.WinDLL("kernel32", use_last_error=True)
+        function = api.GetCurrentPackageFamilyName
+        function.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_wchar_p]
+        function.restype = ctypes.c_long
+        length = ctypes.c_uint32()
+        result = function(ctypes.byref(length), None)
+        if result == 15700:  # APPMODEL_ERROR_NO_PACKAGE
+            return None
+        if result != 122 or not 1 < length.value <= 256:
+            raise OSError()
+        buffer = ctypes.create_unicode_buffer(length.value)
+        if function(ctypes.byref(length), buffer) != 0 or not re.fullmatch(r"[A-Za-z0-9._-]+", buffer.value):
+            raise OSError()
+        return buffer.value
+    except (OSError, AttributeError) as error:
+        raise MailError("invalid_directory", "Windows package identity could not be resolved.") from error
+
+
 def data_directory() -> Path:
     """Resolve only the current profile; never migrate or fall back to old data."""
     if os.environ.get("MAILMEUP_DATA_DIR"):
@@ -54,11 +78,15 @@ def data_directory() -> Path:
     elif sys.platform == "win32":
         if not os.environ.get("LOCALAPPDATA"):
             raise MailError("invalid_directory", "The Windows local application directory is unavailable.")
-        path = Path(os.environ["LOCALAPPDATA"]) / "AgentInbox"
+        family = windows_package_family()
+        base = Path(os.environ["LOCALAPPDATA"])
+        path = base / "Packages" / family / "LocalState" / "AgentInbox" if family else base / "AgentInbox"
     elif sys.platform == "darwin":
         path = Path.home() / "Library" / "Application Support" / "AgentInbox"
     else:
         path = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "agentinbox"
+    if not path.is_absolute():
+        raise MailError("invalid_directory", "The profile base directory must be absolute.")
     path = path.resolve()
     if (path / "accounts.db").exists() or (path / "provider-settings.json").exists():
         raise MailError("unsupported_configuration", "This directory contains an incompatible profile. Choose a new directory and configure your mail servers.")
