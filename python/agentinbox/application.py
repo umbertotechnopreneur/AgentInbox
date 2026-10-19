@@ -15,10 +15,11 @@ import uuid
 from email.message import EmailMessage
 from pathlib import Path
 
-from . import mail
+from . import mail, pop
 from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, address, flag, text
 from .errors import MailError
 from .storage import Outbox, Store
+from .microsoft import MicrosoftAuth
 
 
 class MailApplication:
@@ -27,8 +28,23 @@ class MailApplication:
     def __init__(self, root: Path):
         self.store = Store(root)
         self.outbox = Outbox(self.store)
+        self.microsoft = MicrosoftAuth(self.store)
         self.references = {}
         self.continuations = {}
+
+    def _credentials(self, account: dict, protocol: str) -> dict:
+        if account["authentication"]["method"] == "microsoft_oauth":
+            return {"password": "", "access_token": self.microsoft.access_token(account)}
+        return {"password": self.store.vault.get(account[protocol + "_secret"])}
+
+    @staticmethod
+    def _incoming(account: dict):
+        return pop if account["incoming"]["protocol"] == "pop3" else mail
+
+    def _incoming_connection(self, account: dict):
+        module = self._incoming(account)
+        connect = pop.pop_connection if module is pop else mail.imap_connection
+        return connect(account["incoming"], **self._credentials(account, "incoming"))
 
     def _read_account(self, identity: str, folder: str) -> dict:
         account = self.store.account(identity)
@@ -48,6 +64,7 @@ class MailApplication:
         """List only accounts enabled for assistant reading or approved sending."""
         return {"accounts": [{"id": item["id"], "label": item["label"], "email": item["email"],
                               "read_enabled": item["read_enabled"], "send_enabled": item["send_enabled"],
+                              "incoming_protocol": item["incoming"]["protocol"],
                               "folders": item["folders"] if item["read_enabled"] else []}
                              for item in self.store.accounts() if item["read_enabled"] or item["send_enabled"]]}
 
@@ -78,6 +95,7 @@ class MailApplication:
             parameters = saved["parameters"]
             candidates, validity, offset = saved["candidates"], saved["validity"], saved["offset"]
             truncated = saved["truncated"]
+            undated = saved["undated"]
         else:
             folder = text(folder, "Folder")
             account = self._read_account(account_id, folder)
@@ -91,9 +109,10 @@ class MailApplication:
                 raise MailError("invalid_date_range", "Choose a positive date range of at most 31 days.")
             parameters = {"folder": folder, "start": beginning, "end": stop, "query": query, "unread": unread, "limit": limit}
             candidates, validity, offset, truncated = None, None, 0, False
-        password = self.store.vault.get(account["imap_secret"])
-        with mail.imap_connection(account["imap"], password) as connection:
-            page = mail.search(connection, **parameters, candidates=candidates, expected_validity=validity, offset=offset)
+            undated = 0
+        module = self._incoming(account)
+        with self._incoming_connection(account) as connection:
+            page = module.search(connection, **parameters, candidates=candidates, expected_validity=validity, offset=offset)
         # Do not release results after sharing was changed while the network request ran.
         current = self._read_account(account_id, parameters["folder"])
         if current["revision"] != account["revision"]:
@@ -108,18 +127,22 @@ class MailApplication:
                             **{key: value for key, value in item.items() if key not in {"uid", "uid_validity"}}})
         next_token = None
         truncated = truncated or page["candidate_limit_reached"]
+        undated += page.get("undated_messages_skipped", 0)
         if page["more"]:
             next_token = secrets.token_urlsafe(24)
             self.continuations[next_token] = {"account_id": account_id, "folder": parameters["folder"],
                                              "revision": account["revision"], "parameters": parameters,
                                              "candidates": page["candidates"], "validity": page["uid_validity"],
-                                             "offset": page["next_offset"], "truncated": truncated, "expires": time.time() + 600}
+                                             "offset": page["next_offset"], "truncated": truncated, "undated": undated, "expires": time.time() + 600}
         if continuation:
             self.continuations.pop(continuation, None)
         return {"messages": results, "continuation": next_token,
                 "start": parameters["start"].isoformat(), "end": parameters["end"].isoformat(),
                 "folder": parameters["folder"], "account_id": account_id,
-                "coverage_complete": not page["more"] and not truncated,
+                "coverage_complete": not page["more"] and not truncated and not undated,
+                "date_basis": page.get("date_basis", "server_received_time"),
+                "search_scope": page.get("search_scope", "server_text"),
+                "undated_messages_skipped": undated, "date_filter_incomplete": bool(undated),
                 "candidate_limit_reached": truncated,
                 "notice": "Narrow the date range to search beyond the newest 300 candidates." if truncated else None}
 
@@ -141,8 +164,8 @@ class MailApplication:
         account = self._read_account(saved["account_id"], saved["folder"])
         if account["revision"] != saved["revision"]:
             raise MailError("configuration_changed", "The account changed since this reference was created. Search again.")
-        with mail.imap_connection(account["imap"], self.store.vault.get(account["imap_secret"])) as connection:
-            result = mail.read(connection, saved["folder"], saved["uid"], saved["validity"])
+        with self._incoming_connection(account) as connection:
+            result = self._incoming(account).read(connection, saved["folder"], saved["uid"], saved["validity"])
         if self._read_account(account["id"], saved["folder"])["revision"] != account["revision"]:
             raise MailError("configuration_changed", "The account changed while reading. Search again.")
         result.pop("uid", None)
@@ -236,7 +259,7 @@ class MailApplication:
         if not approved:
             return self.outbox.cancel(identity)
         account = self._send_account(record["account_id"], record["revision"])
-        password = self.store.vault.get(account["smtp_secret"])
+        credentials = self._credentials(account, "smtp")
         # Freeze review content in memory; verify the current record before consuming it.
         current, current_message = self.review_snapshot(identity)
         if current["digest"] != record["digest"] or current_message != frozen:
@@ -246,9 +269,10 @@ class MailApplication:
                 raise MailError("approval_unavailable", "Another review is already submitting this message.")
             self.outbox.claim(identity)
             try:
-                outcome = mail.submit(account["smtp"], password, frozen["from"], frozen["recipients"],
+                outcome = mail.submit(account["smtp"], credentials["password"], frozen["from"], frozen["recipients"],
                                       base64.b64decode(frozen["mime"], validate=True),
-                                      lambda: self._send_account(account["id"], account["revision"]))
+                                      lambda: self._send_account(account["id"], account["revision"]),
+                                      **{key: value for key, value in credentials.items() if key != "password"})
             except MailError as error:
                 return self.outbox.finish(identity, "rejected", error.code)
             except Exception:
@@ -278,19 +302,27 @@ class MailApplication:
             return self.prepare_email(**arguments)
         if operation == "get_send_status" and set(arguments) == {"request_id"}:
             return self.get_send_status(**arguments)
+        if operation == "poll_microsoft_signin" and set(arguments) == {"flow_id"}:
+            return self.microsoft.poll(arguments["flow_id"])
+        if operation == "cancel_microsoft_signin" and set(arguments) == {"flow_id"}:
+            return self.microsoft.cancel(arguments["flow_id"])
         if set(arguments) == {"account_id"}:
             account = self.store.account(arguments["account_id"])
+            if operation == "start_microsoft_signin":
+                return self.microsoft.start(account["id"])
             if operation == "remove_account":
                 self.store.remove(account["id"])
                 return {"removed": True}
             if operation == "check_read":
-                return mail.check_read(account["imap"], self.store.vault.get(account["imap_secret"]), account["folders"][0])
+                return self._incoming(account).check_read(account["incoming"], folder=account["folders"][0], **self._credentials(account, "incoming"))
             if operation == "list_folders":
-                with mail.imap_connection(account["imap"], self.store.vault.get(account["imap_secret"])) as connection:
+                if account["incoming"]["protocol"] == "pop3":
+                    return ["INBOX"]
+                with self._incoming_connection(account) as connection:
                     return mail.folders(connection)
             if operation == "check_smtp":
                 self._send_account(account["id"])
-                with mail.smtp_connection(account["smtp"], self.store.vault.get(account["smtp_secret"])):
+                with mail.smtp_connection(account["smtp"], **self._credentials(account, "smtp")):
                     return {"connection": "passed", "authentication": "passed", "sent": False,
                             "message": "SMTP authentication succeeded. No email was sent; delivery has not been tested."}
         raise MailError("invalid_operation", "Unsupported local operation or arguments.")

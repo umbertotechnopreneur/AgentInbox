@@ -73,13 +73,18 @@ class MailApplicationCase(unittest.TestCase):
             "agentinbox.mail.smtp_connection",
             side_effect=AssertionError("Unexpected SMTP connection."),
         )
+        self.pop = self._patch(
+            "agentinbox.pop.pop_connection",
+            side_effect=AssertionError("Unexpected POP3 connection."),
+        )
         self._patch("agentinbox.application.MailApplication._open_review")
         self.app = MailApplication(self.root)
         self.draft = {
             "id": "",
             "label": "Synthetic account",
             "email": "sender@example.test",
-            "imap": {
+            "incoming": {
+                "protocol": "imap",
                 "host": "imap.example.test",
                 "port": 993,
                 "tls": "tls",
@@ -91,13 +96,14 @@ class MailApplicationCase(unittest.TestCase):
                 "tls": "tls",
                 "username": "sender@example.test",
             },
+            "authentication": {"method": "password"},
             "read_enabled": True,
             "send_enabled": True,
             "folders": ["INBOX"],
         }
         self.account = self.app.store.save(
             copy.deepcopy(self.draft),
-            {"imap": "synthetic-imap-password", "smtp": "synthetic-smtp-password"},
+            {"incoming": "synthetic-incoming-password", "smtp": "synthetic-smtp-password"},
             None,
         )
         self.draft["id"] = self.account["id"]
@@ -122,7 +128,7 @@ class MailApplicationCase(unittest.TestCase):
         draft = copy.deepcopy(self.draft)
         draft.update(changes)
         self.account = self.app.store.save(
-            draft, {"imap": "", "smtp": ""}, self.account["revision"]
+            draft, {"incoming": "", "smtp": ""}, self.account["revision"]
         )
         self.draft = draft
         return self.account

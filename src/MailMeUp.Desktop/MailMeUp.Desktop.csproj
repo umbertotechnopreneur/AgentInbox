@@ -40,7 +40,7 @@ VBWR E -->
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Description>Configure IMAP mail and review optional SMTP sends for AgentInbox.</Description>
+    <Description>Configure IMAP or POP3 mail and review optional SMTP sends for AgentInbox.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />

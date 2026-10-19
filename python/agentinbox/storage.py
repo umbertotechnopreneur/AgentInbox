@@ -67,17 +67,27 @@ class Store:
                 raise ValueError()
             identities = set()
             for saved in accounts:
-                base = {key: value for key, value in saved.items() if key not in {"revision", "imap_secret", "smtp_secret"}}
+                secret_fields = {"incoming_secret", "smtp_secret", "oauth_secret"}
+                if not isinstance(saved, dict) or not secret_fields <= saved.keys():
+                    raise ValueError()
+                base = {key: value for key, value in saved.items() if key not in {"revision", *secret_fields}}
                 validated = account_input(base)
                 if not validated["id"] or validated != base or saved["id"] in identities:
                     raise ValueError()
                 if type(saved["revision"]) is not int or saved["revision"] < 1:
                     raise ValueError()
-                self.vault._key(saved["imap_secret"])
-                if saved["smtp"] is not None:
-                    self.vault._key(saved["smtp_secret"])
-                elif saved["smtp_secret"] is not None:
+                if saved["authentication"]["method"] == "password":
+                    self.vault._key(saved["incoming_secret"])
+                    if saved["smtp"] is not None:
+                        self.vault._key(saved["smtp_secret"])
+                    elif saved["smtp_secret"] is not None:
+                        raise ValueError()
+                    if saved["oauth_secret"] is not None:
+                        raise ValueError()
+                elif saved["incoming_secret"] is not None or saved["smtp_secret"] is not None:
                     raise ValueError()
+                elif saved["oauth_secret"] is not None:
+                    self.vault._key(saved["oauth_secret"])
                 identities.add(saved["id"])
             return accounts
         except (ValueError, TypeError, KeyError, OSError, MailError) as error:
@@ -105,8 +115,13 @@ class Store:
     def save(self, value: dict, passwords: dict, expected_revision: int | None) -> dict:
         """Save explicit account settings and newly protected credentials atomically."""
         account = account_input(value)
-        if set(passwords) != {"imap", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
-            raise MailError("invalid_credentials", "Enter valid IMAP and SMTP passwords in the local setup app.")
+        if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
+            raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
+        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
+            raise MailError("invalid_credentials", "Enter valid incoming and SMTP passwords in the local setup app.")
+        oauth = account["authentication"]["method"] == "microsoft_oauth"
+        if oauth and any(passwords.values()):
+            raise MailError("invalid_credentials", "Microsoft sign-in does not accept account passwords.")
         with self.locked():
             accounts = self.accounts()
             previous = next((item for item in accounts if item["id"] == account["id"]), None)
@@ -121,21 +136,26 @@ class Store:
             created = []
             obsolete = []
             try:
-                for protocol in ("imap", "smtp"):
+                for protocol in ("incoming", "smtp"):
                     field = protocol + "_secret"
-                    if account[protocol] is None:
+                    if oauth or account[protocol] is None:
                         account[field] = None
                     elif passwords[protocol]:
                         reference = protocol + "-" + uuid.uuid4().hex
                         self.vault.put(reference, passwords[protocol])
                         created.append(reference)
                         account[field] = reference
-                    elif previous and previous[protocol] == account[protocol]:
+                    elif previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol] and previous[field]:
                         account[field] = previous[field]
                     else:
                         raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
                     if previous and previous[field] and previous[field] != account[field]:
                         obsolete.append(previous[field])
+                account["oauth_secret"] = None
+                if oauth and previous and all(previous[key] == account[key] for key in ("authentication", "incoming", "smtp", "email")) and (not account["send_enabled"] or previous["send_enabled"]):
+                    account["oauth_secret"] = previous["oauth_secret"]
+                if previous and previous["oauth_secret"] and previous["oauth_secret"] != account["oauth_secret"]:
+                    obsolete.append(previous["oauth_secret"])
                 self._write([item for item in accounts if item["id"] != account["id"]] + [account])
             except Exception:
                 for reference in created:
@@ -145,19 +165,41 @@ class Store:
                 self.vault.delete(reference)
         return self.public(account)
 
+    def connect_oauth(self, identity: str, expected_revision: int, refresh_token: str) -> dict:
+        """Attach a completed Microsoft sign-in only to its unchanged account."""
+        with self.locked():
+            accounts = self.accounts()
+            account = next((item for item in accounts if item["id"] == identity), None)
+            if account is None or account["revision"] != expected_revision or account["authentication"]["method"] != "microsoft_oauth":
+                raise MailError("configuration_changed", "Account settings changed. Start Microsoft sign-in again.")
+            old_reference = account["oauth_secret"]
+            reference = "oauth-" + uuid.uuid4().hex
+            self.vault.put(reference, refresh_token)
+            account["oauth_secret"] = reference
+            account["revision"] += 1
+            try:
+                self._write(accounts)
+            except Exception:
+                self.vault.delete(reference)
+                raise
+            if old_reference:
+                self.vault.delete(old_reference)
+            return self.public(account)
+
     def remove(self, identity: str) -> None:
         """Revoke local access before removing its protected credentials."""
         with self.locked():
             account = self.account(identity)
             self._write([item for item in self.accounts() if item["id"] != identity])
-            self.vault.delete(account["imap_secret"])
-            if account["smtp_secret"]:
-                self.vault.delete(account["smtp_secret"])
+            for field in ("incoming_secret", "smtp_secret", "oauth_secret"):
+                if account[field]:
+                    self.vault.delete(account[field])
 
     @staticmethod
     def public(account: dict) -> dict:
         """Return settings without credential references or values."""
-        return {key: value for key, value in account.items() if not key.endswith("_secret")}
+        return {**{key: value for key, value in account.items() if not key.endswith("_secret")},
+                "microsoft_connected": bool(account.get("oauth_secret"))}
 
 
 class Outbox:
@@ -212,9 +254,9 @@ class Outbox:
                 if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1").fetchone():
                     raise MailError("invalid_profile", "The outgoing ledger is not an empty current-format database. Use a new profile.")
                 connection.execute("CREATE TABLE IF NOT EXISTS outgoing (id TEXT PRIMARY KEY, account_id TEXT NOT NULL, revision INTEGER NOT NULL, digest TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL, status TEXT NOT NULL, error TEXT)")
-                connection.execute("PRAGMA user_version=2")
+                connection.execute("PRAGMA user_version=3")
                 connection.commit()
-            elif version != 2:
+            elif version != 3:
                 raise MailError("invalid_profile", "The outgoing ledger uses an unsupported schema.")
             yield connection
         finally:

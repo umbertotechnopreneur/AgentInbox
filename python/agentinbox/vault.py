@@ -26,7 +26,9 @@ class Vault:
     def put(self, key: str, value: str) -> None:
         """Protect a value before making it available to an account or request."""
         key = self._key(key)
-        if sys.platform == "win32":
+        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+            self._wincred(key, value.encode("utf-8"))
+        elif sys.platform == "win32":
             self.root.mkdir(parents=True, exist_ok=True)
             encrypted = self._windows(value.encode("utf-8"), protect=True)
             path = self.root / (key + ".bin")
@@ -47,6 +49,8 @@ class Vault:
     def get(self, key: str) -> str:
         """Read one protected value without exposing backend error details."""
         key = self._key(key)
+        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+            return self._wincred(key).decode("utf-8")
         if sys.platform == "win32":
             try:
                 return self._windows((self.root / (key + ".bin")).read_bytes(), protect=False).decode("utf-8")
@@ -59,12 +63,62 @@ class Vault:
     def delete(self, key: str) -> None:
         """Remove a protected value, failing if the secure store cannot be reached."""
         key = self._key(key)
-        if sys.platform == "win32":
+        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+            self._wincred(key, delete=True)
+        elif sys.platform == "win32":
             (self.root / (key + ".bin")).unlink(missing_ok=True)
         elif sys.platform == "darwin":
             self._macos(key, delete=True)
         else:
             self._linux(key, delete=True)
+
+    @staticmethod
+    def _wincred(key: str, value: bytes | None = None, *, delete: bool = False) -> bytes:
+        """Store credentials in the current user's Windows Credential Manager."""
+        class Credential(ctypes.Structure):
+            _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD),
+                        ("TargetName", wintypes.LPWSTR), ("Comment", wintypes.LPWSTR),
+                        ("LastWritten", wintypes.FILETIME), ("CredentialBlobSize", wintypes.DWORD),
+                        ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)), ("Persist", wintypes.DWORD),
+                        ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
+                        ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR)]
+
+        try:
+            api = ctypes.WinDLL("advapi32", use_last_error=True)
+            api.CredWriteW.argtypes = [ctypes.POINTER(Credential), wintypes.DWORD]
+            api.CredWriteW.restype = wintypes.BOOL
+            api.CredReadW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.POINTER(Credential))]
+            api.CredReadW.restype = wintypes.BOOL
+            api.CredDeleteW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD]
+            api.CredDeleteW.restype = wintypes.BOOL
+            api.CredFree.argtypes = [ctypes.c_void_p]
+            api.CredFree.restype = None
+        except (OSError, AttributeError) as error:
+            raise MailError("secure_storage_unavailable", "Windows Credential Manager is unavailable.") from error
+        target = "AgentInbox/" + key
+        if delete:
+            if not api.CredDeleteW(target, 1, 0) and ctypes.get_last_error() != 1168:
+                raise MailError("secure_storage_unavailable", "Windows Credential Manager could not remove this credential.")
+            return b""
+        if value is not None:
+            # CRED_MAX_CREDENTIAL_BLOB_SIZE is 5 * 512 bytes; never truncate a secret.
+            if not 0 < len(value) <= 2560:
+                raise MailError("credential_too_large", "Windows Credential Manager requires a nonempty credential of at most 2560 UTF-8 bytes.")
+            buffer = (ctypes.c_ubyte * len(value)).from_buffer_copy(value)
+            credential = Credential(Type=1, TargetName=target, CredentialBlobSize=len(value),
+                                    CredentialBlob=buffer, Persist=2, UserName="AgentInbox")
+            if not api.CredWriteW(ctypes.byref(credential), 0):
+                raise MailError("secure_storage_unavailable", "Windows Credential Manager could not protect this credential.")
+            return b""
+        found = ctypes.POINTER(Credential)()
+        if not api.CredReadW(target, 1, 0, ctypes.byref(found)):
+            raise MailError("credential_unavailable", "The Windows credential is unavailable. Re-enter it or sign in again.")
+        try:
+            if not 0 < found.contents.CredentialBlobSize <= 2560:
+                raise MailError("credential_unavailable", "The Windows credential has an invalid size.")
+            return ctypes.string_at(found.contents.CredentialBlob, found.contents.CredentialBlobSize)
+        finally:
+            api.CredFree(found)
 
     @staticmethod
     def _windows(value: bytes, *, protect: bool) -> bytes:

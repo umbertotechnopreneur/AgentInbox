@@ -17,7 +17,7 @@ def write(value):
 
 def main(arguments=None):
     """Run one explicit current command without legacy aliases or migration."""
-    parser = argparse.ArgumentParser(prog="agentinbox", description="Local IMAP reads and individually approved SMTP sending.")
+    parser = argparse.ArgumentParser(prog="agentinbox", description="Local IMAP/POP3 reads and individually approved SMTP sending.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("mcp", help="Run the local MCP server over stdio.")
     commands.add_parser("manage", help="Read one local setup request as JSON from stdin.")

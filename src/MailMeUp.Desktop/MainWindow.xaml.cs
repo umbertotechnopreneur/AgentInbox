@@ -29,12 +29,20 @@ public sealed partial class MainWindow : Window
     private ComboBox _preset = new();
     private TextBox _label = new();
     private TextBox _email = new();
-    private TextBox _imapHost = new();
-    private TextBox _imapPort = new();
-    private ComboBox _imapTls = new();
-    private TextBox _imapUser = new();
-    private PasswordBox _imapPassword = new();
+    private ComboBox _authentication = new();
+    private TextBox _clientId = new();
+    private ComboBox _tenant = new();
+    private TextBox _tenantId = new();
+    private StackPanel _microsoftFields = new();
+    private Button _microsoftSignIn = new();
+    private ComboBox _incomingProtocol = new();
+    private TextBox _incomingHost = new();
+    private TextBox _incomingPort = new();
+    private ComboBox _incomingTls = new();
+    private TextBox _incomingUser = new();
+    private PasswordBox _incomingPassword = new();
     private TextBox _folders = new();
+    private TextBlock _folderHint = new();
     private ToggleSwitch _readEnabled = new();
     private ToggleSwitch _configureSmtp = new();
     private ToggleSwitch _sendEnabled = new();
@@ -45,6 +53,7 @@ public sealed partial class MainWindow : Window
     private PasswordBox _smtpPassword = new();
     private StackPanel _smtpFields = new();
     private Button _save = new();
+    private Button _testRead = new();
 
     internal MainWindow(PythonEngine engine)
     {
@@ -105,29 +114,52 @@ public sealed partial class MainWindow : Window
             Action("Refresh", () => _ = RunAsync(LoadAccountsAsync))));
 
         _preset = new ComboBox { Header = "Server preset", HorizontalAlignment = HorizontalAlignment.Stretch };
-        foreach (var name in new[] { "Custom IMAP server", "Gmail", "iCloud", "Outlook.com / Microsoft 365 — unavailable" })
+        foreach (var name in new[] { "Custom mail server", "Gmail", "iCloud", "Outlook.com", "Microsoft 365" })
             _preset.Items.Add(name);
         _preset.SelectionChanged += (_, _) => ApplyPreset();
         _label = Field("Account name", "Personal, work, or a name you recognize");
         _email = Field("Email address", "you@example.com");
         _email.LostFocus += (_, _) =>
         {
-            if (string.IsNullOrWhiteSpace(_imapUser.Text)) _imapUser.Text = _email.Text.Trim();
+            if (string.IsNullOrWhiteSpace(_incomingUser.Text)) _incomingUser.Text = _email.Text.Trim();
             if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
         };
-        Page.Children.Add(Section("Account", _preset, Pair(_label, _email),
-            Hint("A preset fills server details. Your provider must allow password-based IMAP access. Gmail and iCloud normally need an app password.")));
+        _authentication = new ComboBox { Header = "Authentication", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _authentication.Items.Add("Password — account or app password");
+        _authentication.Items.Add("Microsoft sign-in (OAuth2)");
+        _authentication.SelectionChanged += (_, _) =>
+        {
+            if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: true);
+        };
+        _clientId = Field("Microsoft app registration · Application (client) ID", "Public client ID from your app registration");
+        _tenant = new ComboBox { Header = "Microsoft account type", HorizontalAlignment = HorizontalAlignment.Stretch };
+        foreach (var name in new[] { "Personal and work accounts (common)", "Work or school accounts (organizations)", "Personal accounts (consumers)", "Specific tenant ID" })
+            _tenant.Items.Add(name);
+        _tenantId = Field("Tenant ID", "Directory (tenant) GUID");
+        _tenant.SelectionChanged += (_, _) => _tenantId.Visibility = _tenant.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        _microsoftSignIn = Action("Sign in to Microsoft…", () => _ = RunAsync(SignInMicrosoftAsync));
+        _microsoftFields = Stack(_clientId, _tenant, _tenantId,
+            Hint("Use an app registration configured for public-client device sign-in and your account type. The client ID is public, not a password. AgentInbox does not create or verify the registration."),
+            _microsoftSignIn,
+            Hint("Save this authentication choice before signing in. It applies to incoming mail and SMTP on this account. Password failures never switch authentication automatically."));
+        Page.Children.Add(Section("Account", _preset, Pair(_label, _email), _authentication, _microsoftFields,
+            Hint("A preset fills server details. Password is the default. Use an app password when required, or explicitly choose Microsoft sign-in for a Microsoft account.")));
 
-        _imapHost = Field("IMAP server", "imap.example.com");
-        _imapPort = Field("Port", "993");
-        _imapTls = TlsField();
-        _imapUser = Field("Username", "Usually your full email address");
-        _imapPassword = Password("IMAP password");
+        _incomingProtocol = new ComboBox { Header = "Incoming protocol", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _incomingProtocol.Items.Add("IMAP — mail and server folders");
+        _incomingProtocol.Items.Add("POP3 — mailbox messages");
+        _incomingProtocol.SelectionChanged += (_, _) => IncomingProtocolChanged();
+        _incomingHost = Field("Incoming server", "imap.example.com");
+        _incomingPort = Field("Port", "993");
+        _incomingTls = TlsField();
+        _incomingUser = Field("Username", "Usually your full email address");
+        _incomingPassword = Password("Incoming password");
         _folders = Field("Folders available to your assistant", "INBOX");
+        _folderHint = Hint("");
         _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
-        Page.Children.Add(Section("Incoming mail · IMAP", Pair(_imapHost, _imapPort), _imapTls,
-            Pair(_imapUser, _imapPassword), _folders,
-            Hint("Separate exact folder names with commas. Use ASCII folder names, such as INBOX. Reading does not mark messages as read."), _readEnabled));
+        Page.Children.Add(Section("Incoming mail", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
+            Pair(_incomingUser, _incomingPassword), _folders, _folderHint,
+            Hint("Passwords and Microsoft sign-in tokens stay in Windows Credential Manager. Assistant configuration contains neither."), _readEnabled));
 
         _configureSmtp = new ToggleSwitch { Header = "Configure outgoing SMTP", OnContent = "Configured", OffContent = "Off" };
         _smtpHost = Field("SMTP server", "smtp.example.com");
@@ -145,7 +177,8 @@ public sealed partial class MainWindow : Window
         };
         Page.Children.Add(Section("Outgoing mail · SMTP", _configureSmtp, _smtpFields));
         _save = Action("Save account", () => _ = RunAsync(SaveAccountAsync), accent: true);
-        Page.Children.Add(Actions(_save, Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync)),
+        _testRead = Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync));
+        Page.Children.Add(Actions(_save, _testRead,
             Action("Test SMTP connection", () => _ = RunAsync(TestSmtpAsync)),
             Action("Send a test email…", () => _ = RunAsync(PrepareTestAsync))));
         Page.Children.Add(Hint("Save changes before testing. Connection tests use the saved settings. A test email opens the same approval step as any other send."));
@@ -176,13 +209,21 @@ public sealed partial class MainWindow : Window
         _preset.SelectedIndex = 0;
         _label.Text = account is { } name ? Value(name, "label") : "";
         _email.Text = account is { } email ? Value(email, "email") : "";
-        var imap = account?.GetProperty("imap");
-        _imapHost.Text = imap is { } incoming ? Value(incoming, "host") : "";
-        _imapPort.Text = imap is { } incomingPort ? incomingPort.GetProperty("port").ToString() : "993";
-        _imapTls.SelectedIndex = imap is { } incomingTls && Value(incomingTls, "tls") == "starttls" ? 1 : 0;
-        _imapUser.Text = imap is { } incomingUser ? Value(incomingUser, "username") : "";
-        _imapPassword.Password = "";
-        _imapPassword.PlaceholderText = account is null ? "Required for a new account" : "Leave blank to keep the saved password";
+        var authentication = account?.GetProperty("authentication");
+        var microsoft = authentication is { } method && Value(method, "method") == "microsoft_oauth";
+        _authentication.SelectedIndex = microsoft ? 1 : 0;
+        _clientId.Text = microsoft ? Value(authentication!.Value, "client_id") : "";
+        var tenant = microsoft ? Value(authentication!.Value, "tenant") : "common";
+        _tenant.SelectedIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
+        _tenantId.Text = _tenant.SelectedIndex == 3 ? tenant : "";
+        var connection = account?.GetProperty("incoming");
+        _incomingProtocol.SelectedIndex = connection is { } protocol && Value(protocol, "protocol") == "pop3" ? 1 : 0;
+        _incomingHost.Text = connection is { } incoming ? Value(incoming, "host") : "";
+        _incomingPort.Text = connection is { } incomingPort ? incomingPort.GetProperty("port").ToString() : "993";
+        _incomingTls.SelectedIndex = connection is { } incomingTls && Value(incomingTls, "tls") == "starttls" ? 1 : 0;
+        _incomingUser.Text = connection is { } incomingUser ? Value(incomingUser, "username") : "";
+        _incomingPassword.Password = "";
+        _incomingPassword.PlaceholderText = account is null ? "Required for a new account" : "Leave blank to keep the saved password";
         _folders.Text = account is { } folders ? string.Join(", ", folders.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString())) : "INBOX";
         _readEnabled.IsOn = account is { } readable && readable.GetProperty("read_enabled").GetBoolean();
         var smtp = account?.GetProperty("smtp");
@@ -198,42 +239,123 @@ public sealed partial class MainWindow : Window
         _sendEnabled.IsOn = account is { } sendable && sendable.GetProperty("send_enabled").GetBoolean();
         _save.IsEnabled = true;
         _loadingForm = false;
+        UpdateIncomingPresentation();
+        UpdateAuthenticationPresentation(clearPasswords: false);
     }
 
     private void ApplyPreset()
     {
         if (_loadingForm) return;
-        _save.IsEnabled = _preset.SelectedIndex != 3;
-        if (_preset.SelectedIndex == 3)
+        if (_preset.SelectedIndex == 0) return;
+        if (_preset.SelectedIndex == 2 && _incomingProtocol.SelectedIndex == 1)
         {
-            ShowNotice("This connection is unavailable", "Outlook.com and Microsoft 365 do not accept the password connection used by AgentInbox. Choose a provider that supports IMAP and SMTP with an account or app password.", InfoBarSeverity.Warning);
-            return;
+            _loadingForm = true;
+            _incomingProtocol.SelectedIndex = 0;
+            _loadingForm = false;
+            ShowNotice("iCloud uses IMAP", "The iCloud preset uses IMAP for incoming mail. POP3 is not available with this preset.", InfoBarSeverity.Informational);
         }
-        if (_preset.SelectedIndex is not (1 or 2)) return;
-        var gmail = _preset.SelectedIndex == 1;
-        _imapHost.Text = gmail ? "imap.gmail.com" : "imap.mail.me.com";
-        _imapPort.Text = "993";
-        _imapTls.SelectedIndex = 0;
-        _smtpHost.Text = gmail ? "smtp.gmail.com" : "smtp.mail.me.com";
-        _smtpPort.Text = gmail ? "465" : "587";
-        _smtpTls.SelectedIndex = gmail ? 0 : 1;
+        var pop = _incomingProtocol.SelectedIndex == 1;
+        _incomingHost.Text = _preset.SelectedIndex switch
+        {
+            1 => pop ? "pop.gmail.com" : "imap.gmail.com",
+            2 => "imap.mail.me.com",
+            3 or 4 => "outlook.office365.com",
+            _ => ""
+        };
+        _incomingPort.Text = pop ? "995" : "993";
+        _incomingTls.SelectedIndex = 0;
+        _smtpHost.Text = _preset.SelectedIndex switch
+        {
+            1 => "smtp.gmail.com",
+            2 => "smtp.mail.me.com",
+            3 => "smtp-mail.outlook.com",
+            4 => "smtp.office365.com",
+            _ => ""
+        };
+        _smtpPort.Text = _preset.SelectedIndex == 1 ? "465" : "587";
+        _smtpTls.SelectedIndex = _preset.SelectedIndex == 1 ? 0 : 1;
+        UpdateIncomingPresentation();
+        if (_preset.SelectedIndex is 3 or 4)
+            ShowNotice("Microsoft cloud accounts require modern authentication", "Outlook.com requires modern authentication. Exchange Online removed Basic authentication for IMAP and POP3. Choose Microsoft sign-in and supply your app registration for these services; tenant policies can still restrict access. AgentInbox never switches authentication automatically.", InfoBarSeverity.Warning);
+    }
+
+    private void IncomingProtocolChanged()
+    {
+        if (_loadingForm) return;
+        _incomingPort.Text = _incomingProtocol.SelectedIndex == 1 ? "995" : "993";
+        _incomingTls.SelectedIndex = 0;
+        if (_preset.SelectedIndex > 0) ApplyPreset();
+        else UpdateIncomingPresentation();
+    }
+
+    private void UpdateIncomingPresentation()
+    {
+        var pop = _incomingProtocol.SelectedIndex == 1;
+        _folders.IsEnabled = !pop;
+        if (pop) _folders.Text = "INBOX";
+        _folderHint.Text = pop
+            ? "POP3 exposes one mailbox as INBOX. It has no server folders or unread flags. AgentInbox leaves messages on the server."
+            : "Separate exact folder names with commas. Use ASCII folder names, such as INBOX. Reading does not mark messages as read.";
+        _incomingHost.Header = pop ? "POP3 server" : "IMAP server";
+        _incomingHost.PlaceholderText = pop ? "pop.example.com" : "imap.example.com";
+        _incomingPassword.Header = pop ? "POP3 password" : "IMAP password";
+        _testRead.Content = pop ? "Test POP3 reading" : "Test IMAP reading";
+    }
+
+    private void UpdateAuthenticationPresentation(bool clearPasswords)
+    {
+        var microsoft = _authentication.SelectedIndex == 1;
+        _microsoftFields.Visibility = microsoft ? Visibility.Visible : Visibility.Collapsed;
+        _incomingPassword.IsEnabled = !microsoft;
+        _smtpPassword.IsEnabled = !microsoft;
+        if (microsoft && clearPasswords)
+        {
+            _incomingPassword.Password = "";
+            _smtpPassword.Password = "";
+        }
+        if (microsoft)
+        {
+            _incomingPassword.PlaceholderText = "Uses your Microsoft sign-in";
+            _smtpPassword.PlaceholderText = "Uses your Microsoft sign-in";
+        }
+        else
+        {
+            _incomingPassword.PlaceholderText = _accountId.Length == 0 ? "Required for a new account" : "Enter a password or keep the saved password";
+            _smtpPassword.PlaceholderText = "Enter a password or keep the saved password";
+        }
     }
 
     private async Task SaveAccountAsync()
     {
-        if (_preset.SelectedIndex == 3) throw new EngineException("Choose a supported password-based IMAP provider.");
-        var folders = _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var pop = _incomingProtocol.SelectedIndex == 1;
+        var folders = pop ? new[] { "INBOX" } : _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (folders.Length == 0 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
             throw new EngineException("Enter at least one ASCII folder name, such as INBOX.");
-        var passwords = new Dictionary<string, string>();
-        if (_imapPassword.Password.Length > 0) passwords["imap"] = _imapPassword.Password;
-        if (_configureSmtp.IsOn && _smtpPassword.Password.Length > 0) passwords["smtp"] = _smtpPassword.Password;
+        var passwords = new Dictionary<string, string> { ["incoming"] = "", ["smtp"] = "" };
+        var authentication = new Dictionary<string, string> { ["method"] = "password" };
+        if (_authentication.SelectedIndex == 1)
+        {
+            if (!Guid.TryParse(_clientId.Text.Trim(), out var clientId))
+                throw new EngineException("Enter the Application (client) ID from your Microsoft app registration.");
+            var tenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
+            if (_tenant.SelectedIndex == 3 && !Guid.TryParse(tenant, out _))
+                throw new EngineException("Enter your Microsoft directory's tenant GUID.");
+            authentication = new() { ["method"] = "microsoft_oauth", ["client_id"] = clientId.ToString(), ["tenant"] = tenant };
+            passwords["incoming"] = "";
+            passwords["smtp"] = "";
+        }
+        else
+        {
+            if (_incomingPassword.Password.Length > 0) passwords["incoming"] = _incomingPassword.Password;
+            if (_configureSmtp.IsOn && _smtpPassword.Password.Length > 0) passwords["smtp"] = _smtpPassword.Password;
+        }
         var account = new
         {
             id = _accountId,
             label = _label.Text.Trim(),
             email = _email.Text.Trim(),
-            imap = Connection(_imapHost, _imapPort, _imapTls, _imapUser),
+            authentication,
+            incoming = Connection(_incomingHost, _incomingPort, _incomingTls, _incomingUser, pop ? "pop3" : "imap"),
             smtp = _configureSmtp.IsOn ? Connection(_smtpHost, _smtpPort, _smtpTls, _smtpUser) : null,
             read_enabled = _readEnabled.IsOn,
             send_enabled = _configureSmtp.IsOn && _sendEnabled.IsOn,
@@ -241,7 +363,7 @@ public sealed partial class MainWindow : Window
         };
         var saved = await _engine.ManageAsync("save_account", new { account, passwords, expected_revision = _revision }, _lifetime.Token);
         _accountId = Value(saved, "id");
-        _imapPassword.Password = "";
+        _incomingPassword.Password = "";
         _smtpPassword.Password = "";
         passwords.Clear();
         await LoadAccountsAsync();
@@ -259,12 +381,136 @@ public sealed partial class MainWindow : Window
         ShowNotice("Account removed", "The local connection is no longer available to your assistant.", InfoBarSeverity.Success);
     }
 
+    private async Task SignInMicrosoftAsync()
+    {
+        RequireSavedAccount();
+        var saved = _accounts.First(account => Value(account, "id") == _accountId);
+        var savedAuthentication = saved.GetProperty("authentication");
+        if (Value(savedAuthentication, "method") != "microsoft_oauth")
+            throw new EngineException("Save the Microsoft sign-in authentication choice before starting sign-in.");
+        var selectedTenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
+        if (_authentication.SelectedIndex != 1 ||
+            !string.Equals(Value(savedAuthentication, "client_id"), _clientId.Text.Trim(), StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Value(savedAuthentication, "tenant"), selectedTenant, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Value(saved, "email"), _email.Text.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new EngineException("Save your account and Microsoft app-registration changes before starting sign-in.");
+        var start = await _engine.ManageAsync("start_microsoft_signin", new { account_id = _accountId }, _lifetime.Token);
+        var flowId = Value(start, "flow_id");
+        var verificationUri = MicrosoftVerificationUri(Value(start, "verification_uri"));
+        var expiresIn = start.GetProperty("expires_in").GetInt32();
+        var interval = start.GetProperty("interval").GetInt32();
+        if (flowId.Length == 0 || expiresIn is < 1 or > 3600 || interval is < 1 or > 300)
+            throw new EngineException("Microsoft returned an invalid sign-in flow. Start a new sign-in request.");
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
+        using var flowCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var status = Text("Waiting for you to complete sign-in with Microsoft.");
+        var userCode = new TextBox
+        {
+            Header = "Enter this code on Microsoft's page", Text = Value(start, "user_code"),
+            IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas")
+        };
+        var openBrowser = Action("Open Microsoft sign-in", async () =>
+        {
+            try
+            {
+                var opened = await Windows.System.Launcher.LaunchUriAsync(verificationUri);
+                status.Text = opened
+                    ? "Complete sign-in in your browser. This window will wait for Microsoft's response."
+                    : "Windows could not open the browser. Open the displayed Microsoft address manually.";
+            }
+            catch (Exception)
+            {
+                status.Text = "Windows could not open the browser. Open the displayed Microsoft address manually.";
+            }
+        }, accent: true);
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot, Title = "Sign in to Microsoft", CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            Content = Stack(
+                Hint("You chose Microsoft sign-in for this account. The browser opens only when you press the button below."),
+                userCode, Text(verificationUri.AbsoluteUri), openBrowser, status,
+                Hint($"This code expires at {deadline.ToLocalTime():t}. Sign-in does not test mail reading or sending."))
+        };
+        var connected = false;
+        string? failure = null;
+
+        async Task PollAsync()
+        {
+            try
+            {
+                while (!flowCancellation.IsCancellationRequested)
+                {
+                    var remaining = deadline - DateTimeOffset.UtcNow;
+                    if (remaining <= TimeSpan.Zero) throw new EngineException("The Microsoft sign-in code expired. Start sign-in again.");
+                    await Task.Delay(remaining < TimeSpan.FromSeconds(interval) ? remaining : TimeSpan.FromSeconds(interval), flowCancellation.Token);
+                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("The Microsoft sign-in code expired. Start sign-in again.");
+                    var result = await _engine.ManageAsync("poll_microsoft_signin", new { flow_id = flowId }, flowCancellation.Token);
+                    switch (Value(result, "status"))
+                    {
+                        case "connected":
+                            connected = true;
+                            dialog.Hide();
+                            return;
+                        case "pending":
+                            interval = result.GetProperty("interval").GetInt32();
+                            if (interval is < 1 or > 300) throw new EngineException("Microsoft returned an invalid polling interval.");
+                            break;
+                        default:
+                            throw new EngineException("Microsoft returned an unexpected sign-in status.");
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (flowCancellation.IsCancellationRequested) { }
+            catch (EngineException exception) { failure = exception.Message; dialog.Hide(); }
+            catch (Exception)
+            {
+                failure = "Microsoft sign-in could not finish. Check the account and app registration before trying again.";
+                dialog.Hide();
+            }
+        }
+
+        using var windowCancellation = _lifetime.Token.Register(() => DispatcherQueue.TryEnqueue(dialog.Hide));
+        var polling = PollAsync();
+        try { await dialog.ShowAsync(); }
+        finally
+        {
+            flowCancellation.Cancel();
+            await polling;
+            if (!connected && !_lifetime.IsCancellationRequested)
+            {
+                try { await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
+                catch (EngineException) { }
+            }
+        }
+        if (_lifetime.IsCancellationRequested) return;
+        if (failure is not null) throw new EngineException(failure);
+        if (connected)
+        {
+            await LoadAccountsAsync();
+            ShowNotice("Microsoft sign-in completed", "Test incoming mail reading and the optional SMTP connection separately.", InfoBarSeverity.Success);
+        }
+        else ShowNotice("Microsoft sign-in closed", "No completed connection was reported for this sign-in request. Authentication was not switched to a password.", InfoBarSeverity.Informational);
+    }
+
+    private static Uri MicrosoftVerificationUri(string value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.Port != 443 ||
+            value.Contains('@') || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
+            (uri.Host != "microsoft.com" && uri.Host != "www.microsoft.com") ||
+            (uri.AbsolutePath != "/devicelogin" && uri.AbsolutePath != "/devicelogin/"))
+            throw new EngineException("Microsoft returned an unexpected verification address. Sign-in was stopped.");
+        return uri;
+    }
+
     private async Task TestReadAsync()
     {
         RequireSavedAccount();
         var result = await _engine.ManageAsync("check_read", new { account_id = _accountId }, _lifetime.Token);
         var sampleRead = Value(result, "message_read") == "passed";
-        ShowNotice(sampleRead ? "IMAP reading succeeded" : "IMAP connection succeeded", SafeResult(result),
+        var saved = _accounts.First(account => Value(account, "id") == _accountId);
+        var protocol = Value(saved.GetProperty("incoming"), "protocol").ToUpperInvariant();
+        ShowNotice(sampleRead ? $"{protocol} reading succeeded" : $"{protocol} connection succeeded", SafeResult(result),
             sampleRead ? InfoBarSeverity.Success : InfoBarSeverity.Informational);
     }
 
@@ -467,11 +713,17 @@ public sealed partial class MainWindow : Window
         CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close
     };
 
-    private static object Connection(TextBox host, TextBox port, ComboBox tls, TextBox username)
+    private static Dictionary<string, object> Connection(TextBox host, TextBox port, ComboBox tls, TextBox username, string? protocol = null)
     {
         if (!int.TryParse(port.Text, out var number) || number is < 1 or > 65535)
             throw new EngineException("The server port must be a number from 1 to 65535.");
-        return new { host = host.Text.Trim(), port = number, tls = tls.SelectedIndex == 1 ? "starttls" : "tls", username = username.Text.Trim() };
+        var connection = new Dictionary<string, object>
+        {
+            ["host"] = host.Text.Trim(), ["port"] = number,
+            ["tls"] = tls.SelectedIndex == 1 ? "starttls" : "tls", ["username"] = username.Text.Trim()
+        };
+        if (protocol is not null) connection["protocol"] = protocol;
+        return connection;
     }
 
     private static string Value(JsonElement element, string property) => element.TryGetProperty(property, out var value)

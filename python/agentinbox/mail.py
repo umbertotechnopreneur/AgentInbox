@@ -30,7 +30,7 @@ def _ok(result: tuple, message: str) -> list:
 
 
 @contextlib.contextmanager
-def imap_connection(settings: dict, password: str):
+def imap_connection(settings: dict, password: str, *, access_token: str | None = None):
     """Require verified TLS before transmitting credentials."""
     connection = None
     try:
@@ -41,9 +41,14 @@ def imap_connection(settings: dict, password: str):
             connection = imaplib.IMAP4(settings["host"], settings["port"], timeout=TIMEOUT)
             _ok(connection.starttls(ssl_context=context), "The IMAP server did not establish STARTTLS.")
         try:
-            connection.login(settings["username"], password)
+            if access_token is not None:
+                response = f"user={settings['username']}\x01auth=Bearer {access_token}\x01\x01".encode("utf-8")
+                responses = iter((response,))
+                connection.authenticate("XOAUTH2", lambda _: next(responses, b""))
+            else:
+                connection.login(settings["username"], password)
         except imaplib.IMAP4.error as error:
-            raise MailError("authentication_failed", "IMAP sign-in failed. Check the username, password or app password and the provider's IMAP settings.") from error
+            raise MailError("authentication_failed", "IMAP sign-in failed. Check the selected authentication method, credentials and provider settings.") from error
         yield connection
     except ssl.SSLError as error:
         raise MailError("tls_failed", "The server's TLS connection or certificate could not be verified.") from error
@@ -199,9 +204,9 @@ def read(connection, folder: str, uid: str, validity: str) -> dict:
             "attachments": attachments, "content_is_untrusted": True}
 
 
-def check_read(settings: dict, password: str, folder: str) -> dict:
+def check_read(settings: dict, password: str, folder: str, *, access_token: str | None = None) -> dict:
     """Verify a real bounded read, distinguishing an empty folder from a read sample."""
-    with imap_connection(settings, password) as connection:
+    with imap_connection(settings, password, access_token=access_token) as connection:
         available = folders(connection)
         validity = select_folder(connection, folder)
         counts = connection.response("EXISTS")[1]
@@ -223,7 +228,7 @@ def check_read(settings: dict, password: str, folder: str) -> dict:
 
 
 @contextlib.contextmanager
-def smtp_connection(settings: dict, password: str):
+def smtp_connection(settings: dict, password: str, *, access_token: str | None = None):
     """Connect and authenticate to a configured submission server over verified TLS."""
     connection = None
     try:
@@ -235,10 +240,14 @@ def smtp_connection(settings: dict, password: str):
             connection.ehlo()
             connection.starttls(context=context)
         connection.ehlo()
-        connection.login(settings["username"], password)
+        if access_token is not None:
+            response = f"user={settings['username']}\x01auth=Bearer {access_token}\x01\x01"
+            connection.auth("XOAUTH2", lambda challenge=None: response if challenge is None else "", initial_response_ok=True)
+        else:
+            connection.login(settings["username"], password)
         yield connection
     except smtplib.SMTPAuthenticationError as error:
-        raise MailError("authentication_failed", "SMTP sign-in failed. Check its username, password or app password and provider settings.") from error
+        raise MailError("authentication_failed", "SMTP sign-in failed. Check the selected authentication method, credentials and provider settings.") from error
     except ssl.SSLError as error:
         raise MailError("tls_failed", "The SMTP TLS connection or certificate could not be verified.") from error
     except (OSError, smtplib.SMTPException) as error:
@@ -251,9 +260,9 @@ def smtp_connection(settings: dict, password: str):
                 pass
 
 
-def submit(settings: dict, password: str, sender: str, recipients: list[str], content: bytes, before_data) -> str:
+def submit(settings: dict, password: str, sender: str, recipients: list[str], content: bytes, before_data, *, access_token: str | None = None) -> str:
     """Submit once; reject any recipient failure before transmitting message DATA."""
-    with smtp_connection(settings, password) as connection:
+    with smtp_connection(settings, password, access_token=access_token) as connection:
         if connection.mail(sender)[0] != 250:
             return "rejected"
         for recipient in recipients:
