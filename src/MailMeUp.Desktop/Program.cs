@@ -43,8 +43,7 @@ internal static class Program
             WinRT.ComWrappersSupport.InitializeComWrappers();
             // Read the activation payload once, before packaged launch data can become unavailable.
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
-            var instance = AppInstance.FindOrRegisterForKey(
-                options.IsDemo ? "AgentInbox.Desktop.Setup.Demo" : "AgentInbox.Desktop.Setup");
+            var instance = AppInstance.FindOrRegisterForKey("AgentInbox.Desktop.Mail");
             if (!instance.IsCurrent) return RedirectToExistingInstance(instance, activation);
 
             App? app = null;
@@ -52,7 +51,7 @@ internal static class Program
             var pendingActivations = new Queue<SetupLaunchOptions>();
             void OnActivated(object? sender, AppActivationArguments arguments)
             {
-                if (!TryParseActivation(arguments, out var requested) || requested.IsDemo != options.IsDemo)
+                if (!TryParseActivation(arguments, out var requested))
                 {
                     Console.Error.WriteLine(SetupLaunchOptions.UsageError);
                     return;

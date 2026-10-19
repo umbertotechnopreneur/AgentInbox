@@ -1,821 +1,581 @@
 // SPDX-License-Identifier: MIT
 
-/* VBWR B
- *
- * Project: AgentInbox
- * Repository: https://github.com/umbertotechnopreneur/AgentInbox
- * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
- *
- * VibeWare: Human intent, AI execution, and plenty of tokens
- * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
- *
- * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
- * Human guidance: Umberto Giacobbi; requested VibeWare branding.
- *
- * Copyright (c) 2026 Umberto Giacobbi
- * License: MIT - see LICENSE
- * SPDX-License-Identifier: MIT
- *
- * VBWR E */
-
-using System.Runtime.InteropServices;
-using MailMeUp.Application;
-using MailMeUp.Core;
+using System.Text.Json;
 using MailMeUp.Desktop.Services;
-using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
-using Windows.Storage.Pickers;
-using Windows.System;
-using Windows.UI.ViewManagement;
 
 namespace MailMeUp.Desktop;
 
-/// <summary>Provides local account, sharing and Codex onboarding through the shared application boundary.</summary>
+/// <summary>Configures standard mail connections and collects approval for each outgoing email.</summary>
 public sealed partial class MainWindow : Window
 {
-    private readonly IMailMeUpApplication _application;
-    private readonly CodexSetupService _codex;
-    private readonly ILogger<MainWindow> _logger;
+    private readonly PythonEngine _engine;
     private readonly CancellationTokenSource _lifetime = new();
-    private readonly AccessibilitySettings _accessibility = new();
-    private CancellationTokenSource? _operation;
-    private IReadOnlyList<Account> _accounts = [];
-    private IReadOnlyList<ProviderSetupStatus> _providers = [];
-    private Dictionary<string, AccountSharingSettings> _sharing = new(StringComparer.Ordinal);
-    private Dictionary<string, AccountConnectionCheck> _connectionChecks = new(StringComparer.Ordinal);
-    private CodexSetupStatus? _codexStatus;
+    private readonly Queue<string> _reviewRequests = new();
+    private readonly List<JsonElement> _accounts = [];
     private bool _loaded;
     private bool _busy;
-    private bool _dialogOpen;
-    private bool _allowClose;
-    private bool _welcomeReviewed;
-    private bool _sharingReviewed;
-    private bool _sharingDirty;
-    private int _step;
-    private bool _stackAccountActions;
-    private bool _highContrastSubscribed;
-    private bool IsDemo => _application is DemoMailMeUpApplication;
+    private bool _reviewing;
+    private bool _loadingForm;
+    private string _accountId = "";
+    private string _lastRequestId = "";
+    private int? _revision;
+    private ComboBox _accountPicker = new();
+    private ComboBox _preset = new();
+    private TextBox _label = new();
+    private TextBox _email = new();
+    private TextBox _imapHost = new();
+    private TextBox _imapPort = new();
+    private ComboBox _imapTls = new();
+    private TextBox _imapUser = new();
+    private PasswordBox _imapPassword = new();
+    private TextBox _folders = new();
+    private ToggleSwitch _readEnabled = new();
+    private ToggleSwitch _configureSmtp = new();
+    private ToggleSwitch _sendEnabled = new();
+    private TextBox _smtpHost = new();
+    private TextBox _smtpPort = new();
+    private ComboBox _smtpTls = new();
+    private TextBox _smtpUser = new();
+    private PasswordBox _smtpPassword = new();
+    private StackPanel _smtpFields = new();
+    private Button _save = new();
 
-    /// <summary>Creates the setup window without starting sign-in or reading mailbox content.</summary>
-    public MainWindow(IMailMeUpApplication application, CodexSetupService codex, ILogger<MainWindow> logger)
+    internal MainWindow(PythonEngine engine)
     {
-        _application = application;
-        _codex = codex;
-        _logger = logger;
+        _engine = engine;
         InitializeComponent();
-        InitializePageScrolling();
-        InitializeReadGuardrails();
-        SettingsContent.SizeChanged += (_, _) => UpdateSettingsLayout();
-        DemoBanner.IsOpen = IsDemo;
-        if (IsDemo) Title = "AgentInbox — UI preview";
-        MailSearchLookbackDaysBox.Minimum = MailSearchPreferences.MinimumDays;
-        MailSearchLookbackDaysBox.Maximum = MailSearchPreferences.MaximumDays;
-        MailSearchLookbackDaysBox.RegisterPropertyChangedCallback(NumberBox.TextProperty,
-            (_, _) => UpdateMailSearchPreferencesDirty());
-        RenderCodexChecks(CodexSetupCheck.Pending());
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
-        UpdateTitleBar();
-        CenterWindow();
-        Root.Loaded += Root_Loaded;
-        PageScroll.SizeChanged += (_, _) => { if (_loaded) UpdateLayout(); };
-        Root.ActualThemeChanged += (_, _) =>
-        {
-            UpdateTitleBar();
-            if (_loaded)
-            {
-                RenderCodexPage();
-                UpdateProgress();
-                RenderSharingAccounts();
-            }
-        };
-        try
-        {
-            _accessibility.HighContrastChanged += Accessibility_HighContrastChanged;
-            _highContrastSubscribed = true;
-        }
-        catch (COMException exception) when ((uint)exception.HResult == 0x80070490)
-        {
-            // Some desktop configurations do not expose this optional WinRT event.
-            // Current high-contrast state is still read when the window is initialized.
-            _logger.LogDebug("High-contrast change notification is unavailable.");
-        }
-        AppWindow.Closing += AppWindow_Closing;
-        Closed += (_, _) =>
-        {
-            StopObservingDisplayRoot();
-            if (_highContrastSubscribed)
-                _accessibility.HighContrastChanged -= Accessibility_HighContrastChanged;
-            _lifetime.Cancel();
-            _operation?.Cancel();
-        };
-    }
-
-    private void CenterWindow()
-    {
+        SystemBackdrop = new MicaBackdrop();
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var scale = Math.Max(1.0, GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0);
-        var width = Math.Min((int)(1180 * scale), area.Width);
-        var height = Math.Min((int)(820 * scale), area.Height);
+        var width = Math.Min(1120, area.Width);
+        var height = Math.Min(900, area.Height);
         AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - width) / 2,
             area.Y + (area.Height - height) / 2, width, height));
+        Closed += (_, _) => _lifetime.Cancel();
     }
 
-    [DllImport("user32.dll", ExactSpelling = true)]
-    private static extern uint GetDpiForWindow(IntPtr window);
-
-    private void UpdateTitleBar()
+    internal void RequestReview(string? requestId)
     {
-        var scale = Root.XamlRoot?.RasterizationScale
-            ?? GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;
-        if (scale <= 0) scale = 1;
-        AppTitleBar.Padding = new Thickness(20 + AppWindow.TitleBar.LeftInset / scale, 0,
-            Math.Max(16, AppWindow.TitleBar.RightInset / scale + 12), 0);
-        AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
-        AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
-        AppWindow.TitleBar.ButtonForegroundColor = _accessibility.HighContrast
-            ? new UISettings().GetColorValue(UIColorType.Foreground)
-            : Root.ActualTheme == ElementTheme.Dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black;
+        if (requestId is null) return;
+        if (!_reviewRequests.Contains(requestId)) _reviewRequests.Enqueue(requestId);
+        if (_loaded) _ = DrainReviewsAsync();
     }
 
-    private void Accessibility_HighContrastChanged(AccessibilitySettings sender, object args) =>
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (!_lifetime.IsCancellationRequested)
-            {
-                UpdateTitleBar();
-                RenderCodexPage();
-                UpdateLayout();
-            }
-        });
-
-    private async void Root_Loaded(object sender, RoutedEventArgs e)
+    private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
-        ObserveDisplayRoot();
         if (_loaded) return;
         _loaded = true;
-        Steps.SelectedIndex = 0;
-        ShowStep(0);
-        UpdateLayout();
-        await RunAsync("Loading local setup…", RefreshAccountsAsync);
-        ApplyPendingStep();
+        Navigation.SelectedItem = Navigation.MenuItems[0];
+        await DrainReviewsAsync();
     }
 
-    private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
+    private async void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (_loaded && !_displayRefreshQueued) UpdateLayout();
-    }
-
-    private void UpdateLayout()
-    {
-        var compact = Root.ActualWidth < 900;
-        RailColumn.Width = new GridLength(compact ? 68 : 184);
-        RailLayout.Padding = new Thickness(compact ? 6 : 12, 28, compact ? 6 : 12, 20);
-        foreach (var label in new[] { WelcomeLabel, AccountsLabel, SharingLabel, CodexLabel, HelpLabel, ReadOnlyLabel })
-            label.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        ContentLayout.Padding = new Thickness(compact ? 24 : 40, 28, compact ? 24 : 40, 24);
-        var availableWidth = Math.Max(0, Math.Min(1080, Root.ActualWidth - RailColumn.Width.Value)
-            - ContentLayout.Padding.Left - ContentLayout.Padding.Right);
-        var showHero = availableWidth >= 690 && Root.ActualHeight >= 650 && !_accessibility.HighContrast;
-        WelcomeArtwork.Visibility = ToVisibility(showHero);
-        HeroColumn.Width = new GridLength(showHero ? 280 : 0);
-        WelcomeHero.MinHeight = showHero ? 250 : 220;
-        PageTitle.FontSize = _step == 0 ? (availableWidth < 500 ? 30 : 36) : (availableWidth < 500 ? 26 : 30);
-        UpdateSettingsLayout();
-        UpdateAddAccountLayout();
-        CodexActions.Orientation = availableWidth < 620 ? Orientation.Vertical : Orientation.Horizontal;
-        FooterActions.Orientation = availableWidth < 420 ? Orientation.Vertical : Orientation.Horizontal;
-        NextButton.MinWidth = availableWidth < 360 ? 120 : 144;
-        var stackCodexBadges = availableWidth < 560;
-        CodexPluginBadgeColumn.Width = CodexDirectBadgeColumn.Width = stackCodexBadges ? new GridLength(0) : GridLength.Auto;
-        foreach (var badge in new[] { CodexPluginChoiceStatus, CodexDirectChoiceStatus })
+        if (!_loaded || args.SelectedItem is not NavigationViewItem item) return;
+        await RunAsync(async () =>
         {
-            Grid.SetColumn(badge, stackCodexBadges ? 0 : 1);
-            Grid.SetRow(badge, stackCodexBadges ? 1 : 0);
-            badge.MaxWidth = stackCodexBadges ? double.PositiveInfinity : 140;
-        }
-        var stackActions = availableWidth < 520;
-        AccountsActionsColumn.Width = stackActions ? new GridLength(0) : GridLength.Auto;
-        Grid.SetColumn(AccountsToolbarActions, stackActions ? 0 : 1);
-        Grid.SetRow(AccountsToolbarActions, stackActions ? 1 : 0);
-        AccountsToolbarActions.Orientation = availableWidth < 320 ? Orientation.Vertical : Orientation.Horizontal;
-        PreviewLabel.Visibility = ToVisibility(_step != 3 && availableWidth >= 600);
-        if (_stackAccountActions != stackActions)
-        {
-            _stackAccountActions = stackActions;
-            RenderConnectedAccounts();
-        }
-        UpdateSharingLayout();
-        UpdateActiveDialogLayout();
-        RefreshPageScrollChrome();
-    }
-
-    private void ShowStep(int step)
-    {
-        _step = step;
-        PageTitle.Text = step switch
-        {
-            0 => "Your email. Your AI assistant.",
-            1 => "Your accounts",
-            2 => "What you share",
-            _ => "Finish connecting to Codex"
-        };
-        PageSubtitle.Text = step switch
-        {
-            0 => "Connect your Google and Microsoft accounts to Codex, Claude, Visual Studio Code, or other apps that support MCP.",
-            1 => "Connect personal, work and client email accounts from Google or Microsoft.",
-            2 => "Choose which accounts, emails and calendars your AI assistant can read.",
-            _ => "Let Codex find emails and appointments in the accounts you choose."
-        };
-        WelcomePage.Visibility = ToVisibility(step == 0);
-        AccountsPage.Visibility = ToVisibility(step == 1);
-        SharingPage.Visibility = ToVisibility(step == 2);
-        CodexPage.Visibility = ToVisibility(step == 3);
-        BackButton.Visibility = ToVisibility(step > 0);
-        BackButton.IsEnabled = step > 0 && !_busy;
-        PreviewLabel.Text = IsDemo ? "Sample data · changes stay in this preview" : step switch
-        {
-            0 => "Your choices stay on this device",
-            1 => "Next, choose what to share",
-            2 => "Save your choices before continuing",
-            _ => "You can return to setup at any time"
-        };
-        NextButton.Content = step switch
-        {
-            0 => "Get started", 1 => "Choose what to share", 2 => "Connect to Codex", _ => "Check setup"
-        };
-        NextButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
-        RenderCodexPage();
-        UpdateCodexPageHeading();
-        UpdateCodexFooter();
-        PageScroll.ChangeView(null, 0, null, true);
-        UpdateLayout();
-        UpdateProgress();
-    }
-
-    private void Steps_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_loaded || Steps.SelectedIndex < 0 || Steps.SelectedIndex == _step) return;
-        if (_busy || !CanLeaveSharing())
-        {
-            Steps.SelectedIndex = _step;
-            return;
-        }
-        if (_step == 0) _welcomeReviewed = true;
-        if (_step == 2 && _accounts.Count > 0) _sharingReviewed = true;
-        ShowStep(Steps.SelectedIndex);
-    }
-
-    private bool CanLeaveSharing()
-    {
-        if (_sharingDirty)
-        {
-            if (_sharingDialog is null) _ = ShowSharingEditorAsync();
-            return false;
-        }
-        if (_mailSearchPreferencesDirty)
-        {
-            _ = ShowSharingSettingsAsync();
-            return false;
-        }
-        if (_readGuardrailsDirty)
-        {
-            _ = ShowSharingSettingsAsync();
-            return false;
-        }
-        return true;
-    }
-
-    private void UpdateProgress()
-    {
-        UpdateSharingSettingsSummary();
-        if (_step == 2 && !IsDemo)
-            PreviewLabel.Text = _sharingDirty || _mailSearchPreferencesDirty || _readGuardrailsDirty
-                ? "You have unsaved changes"
-                : "You choose what your assistant can read";
-        var icons = new[] { WelcomeIcon, AccountsIcon, SharingIcon, CodexIcon };
-        string[] glyphs = ["\uE80F", "\uE77B", "\uE716", "\uE943"];
-        string[] labels = ["Welcome", "Accounts", "Sharing", "Connect to Codex"];
-        bool[] completed = [_welcomeReviewed, _accounts.Count > 0, _sharingReviewed && !_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty, IsCodexSetupReady];
-        for (var index = 0; index < icons.Length; index++)
-        {
-            var active = index == _step;
-            icons[index].Glyph = completed[index] && !active ? "\uE73E" : glyphs[index];
-            icons[index].Foreground = ThemeBrush(active || completed[index] ? "WizardAccentBrush" : "TextFillColorSecondaryBrush");
-            var item = (ListBoxItem)Steps.Items[index];
-            AutomationProperties.SetName(item, labels[index]);
-            AutomationProperties.SetItemStatus(item, active ? "Current stage" : completed[index] ? "Completed" : "Upcoming");
-        }
-    }
-
-    private void BackButton_Click(object sender, RoutedEventArgs e) => Steps.SelectedIndex = Math.Max(0, _step - 1);
-    private async void NextButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _dialogOpen) return;
-        if (_step != 3)
-        {
-            Steps.SelectedIndex = _step + 1;
-            return;
-        }
-
-        if (IsCodexSetupReady) Close();
-        else await RunCodexSetupAsync(install: _codexStatus is { CanInstall: true });
-    }
-
-    private void FinishLaterButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_busy && !_dialogOpen) Close();
-    }
-
-    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
-    {
-        if (_allowClose || (!_sharingDirty && !_mailSearchPreferencesDirty && !_readGuardrailsDirty)) return;
-        args.Cancel = true;
-        if (_busy || _dialogOpen) return;
-        var result = await ShowDialogAsync(new ContentDialog
-        {
-            Title = "Discard unsaved choices?",
-            Content = Body("Your saved sharing choices, default mail search period and read limits will stay unchanged."),
-            PrimaryButtonText = "Discard and close",
-            CloseButtonText = "Keep editing",
-            DefaultButton = ContentDialogButton.Close
+            Page.Children.Clear();
+            switch (item.Tag as string)
+            {
+                case "accounts": BuildAccountsPage(); await LoadAccountsAsync(); break;
+                case "outgoing": await BuildOutgoingPageAsync(); break;
+                case "assistant": BuildAssistantPage(); break;
+            }
         });
-        if (result == ContentDialogResult.Primary)
+    }
+
+    private void BuildAccountsPage()
+    {
+        Page.Children.Add(Heading("Email accounts", "Connect with your mail server's settings and an account or app password."));
+        _accountPicker = new ComboBox { Header = "Account", MinWidth = 300, HorizontalAlignment = HorizontalAlignment.Stretch };
+        _accountPicker.SelectionChanged += (_, _) =>
         {
-            _allowClose = true;
-            Close();
-        }
+            if (_loadingForm || _accountPicker.SelectedItem is not ComboBoxItem { Tag: string id }) return;
+            var selected = _accounts.FirstOrDefault(account => Value(account, "id") == id);
+            if (selected.ValueKind != JsonValueKind.Undefined) FillAccount(selected);
+        };
+        Page.Children.Add(_accountPicker);
+        Page.Children.Add(Actions(Action("Add account", () => { _accountPicker.SelectedIndex = -1; FillAccount(null); }),
+            Action("Remove account", () => _ = RunAsync(RemoveAccountAsync)),
+            Action("Refresh", () => _ = RunAsync(LoadAccountsAsync))));
+
+        _preset = new ComboBox { Header = "Server preset", HorizontalAlignment = HorizontalAlignment.Stretch };
+        foreach (var name in new[] { "Custom IMAP server", "Gmail", "iCloud", "Outlook.com / Microsoft 365 — unavailable" })
+            _preset.Items.Add(name);
+        _preset.SelectionChanged += (_, _) => ApplyPreset();
+        _label = Field("Account name", "Personal, work, or a name you recognize");
+        _email = Field("Email address", "you@example.com");
+        _email.LostFocus += (_, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(_imapUser.Text)) _imapUser.Text = _email.Text.Trim();
+            if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
+        };
+        Page.Children.Add(Section("Account", _preset, Pair(_label, _email),
+            Hint("A preset fills server details. Your provider must allow password-based IMAP access. Gmail and iCloud normally need an app password.")));
+
+        _imapHost = Field("IMAP server", "imap.example.com");
+        _imapPort = Field("Port", "993");
+        _imapTls = TlsField();
+        _imapUser = Field("Username", "Usually your full email address");
+        _imapPassword = Password("IMAP password");
+        _folders = Field("Folders available to your assistant", "INBOX");
+        _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
+        Page.Children.Add(Section("Incoming mail · IMAP", Pair(_imapHost, _imapPort), _imapTls,
+            Pair(_imapUser, _imapPassword), _folders,
+            Hint("Separate exact folder names with commas. Use ASCII folder names, such as INBOX. Reading does not mark messages as read."), _readEnabled));
+
+        _configureSmtp = new ToggleSwitch { Header = "Configure outgoing SMTP", OnContent = "Configured", OffContent = "Off" };
+        _smtpHost = Field("SMTP server", "smtp.example.com");
+        _smtpPort = Field("Port", "465");
+        _smtpTls = TlsField();
+        _smtpUser = Field("Username", "Usually your full email address");
+        _smtpPassword = Password("SMTP password");
+        _sendEnabled = new ToggleSwitch { Header = "Enable sending from this account", OnContent = "Enabled", OffContent = "Disabled" };
+        _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, _smtpPassword), _sendEnabled,
+            Hint("Every email still needs your approval in a separate review window. Enabling SMTP never approves a message."));
+        _configureSmtp.Toggled += (_, _) =>
+        {
+            _smtpFields.Visibility = _configureSmtp.IsOn ? Visibility.Visible : Visibility.Collapsed;
+            if (!_configureSmtp.IsOn) _sendEnabled.IsOn = false;
+        };
+        Page.Children.Add(Section("Outgoing mail · SMTP", _configureSmtp, _smtpFields));
+        _save = Action("Save account", () => _ = RunAsync(SaveAccountAsync), accent: true);
+        Page.Children.Add(Actions(_save, Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync)),
+            Action("Test SMTP connection", () => _ = RunAsync(TestSmtpAsync)),
+            Action("Send a test email…", () => _ = RunAsync(PrepareTestAsync))));
+        Page.Children.Add(Hint("Save changes before testing. Connection tests use the saved settings. A test email opens the same approval step as any other send."));
+        FillAccount(null);
     }
 
-    private async Task RefreshAccountsAsync(CancellationToken cancellationToken)
+    private async Task LoadAccountsAsync()
     {
-        await LoadMailSearchPreferencesAsync(cancellationToken);
-        await LoadReadGuardrailsAsync(cancellationToken);
-        var accounts = await _application.ListAccountsAsync(cancellationToken);
-        var providers = await _application.ListProviderSetupAsync(cancellationToken);
-        var settings = await _application.ListAccountSharingAsync(cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        _accounts = accounts;
-        _providers = providers;
-        _sharing = settings.ToDictionary(item => item.AccountId, StringComparer.Ordinal);
-        var connectedIds = accounts.Select(account => account.Id).ToHashSet(StringComparer.Ordinal);
-        _connectionChecks = _connectionChecks
-            .Where(pair => connectedIds.Contains(pair.Key))
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-        ProviderStatusText.Text = string.Join(" · ", new[] { "google", "microsoft" }.Select(id =>
-            $"{ProviderName(id)}: {(providers.Any(provider => provider.ProviderId == id && provider.Configured) ? "configured" : "setup needed")}"));
-        _sharingDirty = false;
-        _sharingReviewed = false;
-        SelectSharingAccount(_accounts.FirstOrDefault(account => account.Id == _selectedAccount?.Id) ?? _accounts.FirstOrDefault());
-        UpdateLayout();
-        RenderConnectedAccounts();
-        RenderSharingAccounts();
-        UpdateProgress();
-    }
-
-    private void RenderConnectedAccounts()
-    {
-        AccountsCountText.Text = $"{_accounts.Count} {(_accounts.Count == 1 ? "account" : "accounts")}";
-        CheckConnectionsButton.IsEnabled = _accounts.Count > 0 && !IsDemo;
-        CheckConnectionsButton.Visibility = ToVisibility(_accounts.Count > 0);
-        AddAccountButton.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
-            _accounts.Count == 0 ? "AccentButtonStyle" : "DefaultButtonStyle"];
-        ConnectedAccounts.Children.Clear();
+        var selected = _accountId;
+        var result = await _engine.ManageAsync("list_accounts", new { }, _lifetime.Token);
+        _accounts.Clear();
+        _accounts.AddRange(result.EnumerateArray().Select(account => account.Clone()));
+        _loadingForm = true;
+        _accountPicker.Items.Clear();
         foreach (var account in _accounts)
-        {
-            var row = AccountRow(account, includeStatus: false);
-            var connection = _connectionChecks.GetValueOrDefault(account.Id);
-            if (NeedsReadAttention(connection))
-            {
-                var reconnect = AccountActionButton(
-                    "Try to reconnect", $"Try to reconnect {account.EmailAddress}",
-                    "Try to reconnect", account, ReconnectAccountButton_Click);
-                reconnect.Foreground = new SolidColorBrush(Microsoft.UI.Colors.IndianRed);
-                PlaceAccountNotice(reconnect);
-                row.Children.Add(reconnect);
-            }
-            else if (GetReadFailures(connection).Contains(ReadFailureKind.RateLimited))
-            {
-                var limited = AccountActionButton(
-                    "Read limit reached", $"Read limit reached for {account.EmailAddress}; show guidance",
-                    "Wait before trying again. A shorter search period makes fewer requests.",
-                    account, ReadRateLimitButton_Click);
-                PlaceAccountNotice(limited);
-                row.Children.Add(limited);
-            }
-            else if (GetReadFailures(connection).Contains(ReadFailureKind.BudgetExceeded))
-            {
-                var limited = AccountActionButton(
-                    "Read budget reached", $"Read budget reached for {account.EmailAddress}; show guidance",
-                    "The local request budget has been reached. Wait for its window to reset.",
-                    account, ReadBudgetButton_Click);
-                PlaceAccountNotice(limited);
-                row.Children.Add(limited);
-            }
-            var menu = new MenuFlyout();
-            var reconnectItem = new MenuFlyoutItem { Text = "Reconnect", Tag = account };
-            reconnectItem.Click += ReconnectAccountButton_Click;
-            menu.Items.Add(reconnectItem);
-            var removeItem = new MenuFlyoutItem { Text = "Remove from device", Tag = account };
-            removeItem.Click += RemoveAccountButton_Click;
-            menu.Items.Add(removeItem);
-            var actions = new Button
-            {
-                Content = new FontIcon { Glyph = "\uE712", FontSize = 16 },
-                Flyout = menu,
-                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
-                Padding = new Thickness(8),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            AutomationProperties.SetName(actions, $"Account actions for {account.EmailAddress}");
-            ToolTipService.SetToolTip(actions, "Account actions");
-            Grid.SetColumn(actions, 3);
-            row.Children.Add(actions);
-            ConnectedAccounts.Children.Add(new Border
-            {
-                Child = row, BorderThickness = new Thickness(0, 0, 0, 1),
-                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"), Padding = new Thickness(0, 12, 0, 12)
-            });
-        }
-        if (_accounts.Count == 0)
-        {
-            var empty = new StackPanel { Spacing = 12, Margin = new Thickness(0, 28, 0, 28) };
-            empty.Children.Add(new FontIcon { Glyph = "\uE715", FontSize = 36, HorizontalAlignment = HorizontalAlignment.Left, Foreground = ThemeBrush("TextFillColorSecondaryBrush") });
-            empty.Children.Add(new TextBlock { Text = "Start with one account", FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            empty.Children.Add(Body("Choose Add account to connect a Google or Microsoft email account."));
-            empty.Children.Add(Body("Some business accounts may require additional approval. Your provider will ask for it."));
-            ConnectedAccounts.Children.Add(empty);
-        }
+            _accountPicker.Items.Add(new ComboBoxItem { Content = $"{Value(account, "label")} · {Value(account, "email")}", Tag = Value(account, "id") });
+        _loadingForm = false;
+        var index = _accounts.FindIndex(account => Value(account, "id") == selected);
+        _accountPicker.SelectedIndex = index >= 0 ? index : _accounts.Count > 0 ? 0 : -1;
+        if (_accounts.Count == 0) FillAccount(null);
     }
 
-    private void PlaceAccountNotice(FrameworkElement notice)
+    private void FillAccount(JsonElement? account)
     {
-        Grid.SetColumn(notice, _stackAccountActions ? 1 : 2);
-        Grid.SetRow(notice, _stackAccountActions ? 1 : 0);
-        Grid.SetColumnSpan(notice, _stackAccountActions ? 2 : 1);
-        notice.HorizontalAlignment = HorizontalAlignment.Left;
+        _loadingForm = true;
+        _accountId = account is { } value ? Value(value, "id") : "";
+        _revision = account is { } current ? current.GetProperty("revision").GetInt32() : null;
+        _preset.SelectedIndex = 0;
+        _label.Text = account is { } name ? Value(name, "label") : "";
+        _email.Text = account is { } email ? Value(email, "email") : "";
+        var imap = account?.GetProperty("imap");
+        _imapHost.Text = imap is { } incoming ? Value(incoming, "host") : "";
+        _imapPort.Text = imap is { } incomingPort ? incomingPort.GetProperty("port").ToString() : "993";
+        _imapTls.SelectedIndex = imap is { } incomingTls && Value(incomingTls, "tls") == "starttls" ? 1 : 0;
+        _imapUser.Text = imap is { } incomingUser ? Value(incomingUser, "username") : "";
+        _imapPassword.Password = "";
+        _imapPassword.PlaceholderText = account is null ? "Required for a new account" : "Leave blank to keep the saved password";
+        _folders.Text = account is { } folders ? string.Join(", ", folders.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString())) : "INBOX";
+        _readEnabled.IsOn = account is { } readable && readable.GetProperty("read_enabled").GetBoolean();
+        var smtp = account?.GetProperty("smtp");
+        var hasSmtp = smtp is { ValueKind: JsonValueKind.Object };
+        _smtpHost.Text = hasSmtp ? Value(smtp!.Value, "host") : "";
+        _smtpPort.Text = hasSmtp ? smtp!.Value.GetProperty("port").ToString() : "465";
+        _smtpTls.SelectedIndex = hasSmtp && Value(smtp!.Value, "tls") == "starttls" ? 1 : 0;
+        _smtpUser.Text = hasSmtp ? Value(smtp!.Value, "username") : "";
+        _smtpPassword.Password = "";
+        _smtpPassword.PlaceholderText = hasSmtp ? "Leave blank to keep the saved password" : "Enter the SMTP password";
+        _configureSmtp.IsOn = hasSmtp;
+        _smtpFields.Visibility = hasSmtp ? Visibility.Visible : Visibility.Collapsed;
+        _sendEnabled.IsOn = account is { } sendable && sendable.GetProperty("send_enabled").GetBoolean();
+        _save.IsEnabled = true;
+        _loadingForm = false;
     }
 
-    private Grid AccountRow(Account account, bool includeStatus)
+    private void ApplyPreset()
     {
-        var row = new Grid { ColumnSpacing = 14, RowSpacing = 6, MinHeight = 36 };
-        row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var logo = new Image { Source = ProviderLogo(account.Provider), Width = 24, Height = 24 };
-        AutomationProperties.SetName(logo, ProviderName(account.Provider));
-        row.Children.Add(logo);
-        var details = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-        var address = new TextBlock { Text = account.EmailAddress, TextTrimming = TextTrimming.CharacterEllipsis };
-        ToolTipService.SetToolTip(address, account.EmailAddress);
-        AutomationProperties.SetName(address, account.EmailAddress);
-        details.Children.Add(address);
-        if (includeStatus)
-            details.Children.Add(new TextBlock { Text = IsShared(account) ? "Shared" : "Sharing off", FontSize = 12, Foreground = ThemeBrush("TextFillColorSecondaryBrush") });
-        Grid.SetColumn(details, 1);
-        row.Children.Add(details);
-        return row;
-    }
-
-    private Button AccountActionButton(
-        string text,
-        string automationName,
-        string tooltip,
-        Account account,
-        RoutedEventHandler handler)
-    {
-        var button = new Button
+        if (_loadingForm) return;
+        _save.IsEnabled = _preset.SelectedIndex != 3;
+        if (_preset.SelectedIndex == 3)
         {
-            Content = text,
-            Tag = account,
-            Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
-            Padding = new Thickness(8, 4, 8, 4),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        AutomationProperties.SetName(button, automationName);
-        ToolTipService.SetToolTip(button, tooltip);
-        button.Click += handler;
-        return button;
-    }
-
-    private static bool NeedsReadAttention(AccountConnectionCheck? check) =>
-        GetReadFailures(check).Any(kind => kind is not (ReadFailureKind.ResultLimit or ReadFailureKind.RateLimited or ReadFailureKind.BudgetExceeded));
-
-    private static IReadOnlyList<ReadFailureKind> GetReadFailures(AccountConnectionCheck? check)
-    {
-        if (check is null || !check.HasFailures)
-            return [];
-        // Missing samples, bounded checks and rate limits are not broken connections.
-        var failures = new List<ReadFailureKind>();
-        if (check.MailReachable == false || check.MailFailureKind is not null)
-            failures.Add(check.MailFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
-        if (check.CalendarReachable == false || check.CalendarFailureKind is not null)
-            failures.Add(check.CalendarFailureKind ?? check.FailureKind ?? ReadFailureKind.Unknown);
-        if (failures.Count == 0)
-            failures.Add(check.FailureKind ?? ReadFailureKind.Unknown);
-        return failures;
-    }
-
-    private void ReadRateLimitButton_Click(object sender, RoutedEventArgs e) =>
-        SetNotice("Read limit reached",
-            "Your provider is temporarily limiting requests. Wait before trying again, use a shorter mail search period and check read access later. This error does not require reconnecting the account.",
-            InfoBarSeverity.Warning);
-
-    private void ReadBudgetButton_Click(object sender, RoutedEventArgs e) =>
-        SetNotice("Read budget reached", ReadFailureGuidance.Describe(ReadFailureKind.BudgetExceeded).Action, InfoBarSeverity.Warning);
-
-    private static ImageSource ProviderLogo(string provider) =>
-        new SvgImageSource(new Uri($"ms-appx:///Assets/{(provider == "google" ? "Google" : "Microsoft")}.svg"));
-
-    private bool IsShared(Account account)
-    {
-        var setting = _sharing.GetValueOrDefault(account.Id) ?? new AccountSharingSettings(account.Id);
-        return setting.Enabled && (setting.ShareMail && account.MailReadEnabled
-            || setting.ShareCalendars && account.CalendarReadEnabled && setting.CalendarIds is not { Count: 0 });
-    }
-
-    private async void CheckConnectionsButton_Click(object sender, RoutedEventArgs e) => await RunAsync(
-        "Checking read access…",
-        async cancellationToken =>
-        {
-            if (BlockDemoAction()) return;
-            // A failed or cancelled retry must never retain a previous successful result.
-            _connectionChecks.Clear();
-            RenderConnectedAccounts();
-            try
-            {
-                var result = await _application.CheckConnectionsAsync(cancellationToken);
-                _connectionChecks = result.Accounts.ToDictionary(check => check.AccountId, StringComparer.Ordinal);
-                foreach (var account in _accounts)
-                {
-                    if (!_connectionChecks.ContainsKey(account.Id))
-                        _connectionChecks[account.Id] = UnavailableCheck(account);
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                _logger.LogInformation("Desktop read check cancelled; previous results cleared");
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning("Desktop read check failed ({ErrorType}); no successful result assumed", exception.GetType().Name);
-                _connectionChecks = _accounts.ToDictionary(account => account.Id, UnavailableCheck, StringComparer.Ordinal);
-            }
-            for (var index = 0; index < _accounts.Count; index++)
-            {
-                var account = _accounts[index];
-                var check = _connectionChecks.GetValueOrDefault(account.Id);
-                _logger.LogInformation(
-                    "Desktop read check row={AccountRow}; account={AccountKey}; resultPresent={ResultPresent}; failures={HasFailures}; mail={MailReachable}/{MailFailureCategory}/{MailEvidence}; calendar={CalendarReachable}/{CalendarFailureCategory}/{CalendarEvidence}",
-                    index + 1, MailMeUp.Diagnostics.ReadDiagnostics.AccountKey(account.Id), check is not null,
-                    check?.HasFailures, check?.MailReachable, check?.MailFailureKind, check?.MailEvidence,
-                    check?.CalendarReachable, check?.CalendarFailureKind, check?.CalendarEvidence);
-            }
-            RenderConnectedAccounts();
-            Notice.IsOpen = false;
-        },
-        TimeSpan.FromMinutes(2.5));
-
-    private static AccountConnectionCheck UnavailableCheck(Account account) => new(account.Id, false,
-        ReadFailureKind.Unknown, account.MailReadEnabled ? false : null,
-        account.MailReadEnabled ? ReadFailureKind.Unknown : null, account.CalendarReadEnabled ? false : null,
-        account.CalendarReadEnabled ? ReadFailureKind.Unknown : null);
-
-
-    private async void ReconnectAccountButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
-        if (!CanLeaveSharing()) return;
-        await ConnectAsync(account.Provider, account);
-    }
-
-    private async void RemoveAccountButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (BlockDemoAction()) return;
-        if (_busy || _dialogOpen || sender is not FrameworkElement { Tag: Account account }) return;
-        if (!CanLeaveSharing()) return;
-
-        var content = new StackPanel { Spacing = 12 };
-        content.Children.Add(Body($"Remove {account.EmailAddress} from AgentInbox on this device?"));
-        content.Children.Add(Body("AgentInbox will forget this account and its saved sign-in details on this device. Your emails and calendars will stay unchanged. Permissions granted to Google or Microsoft stay in place. You can add the account again later."));
-        var confirmation = await ShowDialogAsync(new ContentDialog
-        {
-            Title = "Remove account?",
-            Content = content,
-            PrimaryButtonText = "Remove from device",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        });
-        if (confirmation != ContentDialogResult.Primary) return;
-
-        await RunAsync($"Removing {account.EmailAddress} from this device…", async cancellationToken =>
-        {
-            var removal = await _application.RemoveAccountAsync(account.Id, cancellationToken);
-            if (!removal.Removed)
-            {
-                SetNotice("Account not found", "The local account was already removed. Refresh the account list and connect it again if needed.", InfoBarSeverity.Informational);
-                await RefreshAccountsAsync(cancellationToken);
-                return;
-            }
-
-            if (_selectedAccount?.Id == account.Id)
-            {
-                _selectedAccount = null;
-                _selectedCalendarIds.Clear();
-            }
-            _connectionChecks.Remove(account.Id);
-            await RefreshAccountsAsync(cancellationToken);
-            SetNotice("Account removed", "AgentInbox has forgotten this account on this device. Your emails, calendars and Google or Microsoft permissions are unchanged. You can add it again at any time.", InfoBarSeverity.Success);
-        }, TimeSpan.FromMinutes(2.5));
-    }
-
-    private async Task ConnectAsync(string provider, Account? reconnectAccount = null)
-    {
-        if (BlockDemoAction()) return;
-        var includeMail = reconnectAccount?.MailReadEnabled ?? RequestMail.IsChecked == true;
-        var includeCalendar = reconnectAccount?.CalendarReadEnabled ?? RequestCalendars.IsChecked == true;
-        if (reconnectAccount is not null && !includeMail && !includeCalendar)
-        {
-            includeMail = true;
-            includeCalendar = true;
-        }
-        if (reconnectAccount is null && !includeMail && !includeCalendar)
-        {
-            SetNotice("Choose read access", "Select mail, calendars, or both before signing in.", InfoBarSeverity.Warning);
+            ShowNotice("This connection is unavailable", "Outlook.com and Microsoft 365 do not accept the password connection used by AgentInbox. Choose a provider that supports IMAP and SMTP with an account or app password.", InfoBarSeverity.Warning);
             return;
         }
-        var activity = reconnectAccount is null
-            ? $"Connecting {ProviderName(provider)} — finish sign-in in your browser…"
-            : $"Reconnecting {reconnectAccount.EmailAddress} — choose the same account in your browser…";
-        await RunAsync(activity, async cancellationToken =>
+        if (_preset.SelectedIndex is not (1 or 2)) return;
+        var gmail = _preset.SelectedIndex == 1;
+        _imapHost.Text = gmail ? "imap.gmail.com" : "imap.mail.me.com";
+        _imapPort.Text = "993";
+        _imapTls.SelectedIndex = 0;
+        _smtpHost.Text = gmail ? "smtp.gmail.com" : "smtp.mail.me.com";
+        _smtpPort.Text = gmail ? "465" : "587";
+        _smtpTls.SelectedIndex = gmail ? 0 : 1;
+    }
+
+    private async Task SaveAccountAsync()
+    {
+        if (_preset.SelectedIndex == 3) throw new EngineException("Choose a supported password-based IMAP provider.");
+        var folders = _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (folders.Length == 0 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
+            throw new EngineException("Enter at least one ASCII folder name, such as INBOX.");
+        var passwords = new Dictionary<string, string>();
+        if (_imapPassword.Password.Length > 0) passwords["imap"] = _imapPassword.Password;
+        if (_configureSmtp.IsOn && _smtpPassword.Password.Length > 0) passwords["smtp"] = _smtpPassword.Password;
+        var account = new
         {
-            var setup = await _application.ListProviderSetupAsync(cancellationToken);
-            if (!setup.Any(item => item.ProviderId == provider && item.Configured))
-            {
-                var configured = provider == "google"
-                    ? await ConfigureGoogleAsync(cancellationToken)
-                    : await ConfigureMicrosoftAsync(cancellationToken, signIn: true);
-                if (!configured) return;
-            }
-            var connection = await _application.ConnectAccountAsync(provider,
-                new AccountConnectionOptions(includeMail, includeCalendar, ShareWithAssistant: false), cancellationToken);
-            _connectionChecks.Remove(connection.Account.Id);
-            await RefreshAccountsAsync(cancellationToken);
-            if (reconnectAccount is not null && !string.Equals(connection.Account.Id, reconnectAccount.Id, StringComparison.Ordinal))
-            {
-                SetNotice("Different account connected", $"{connection.Account.EmailAddress} was connected. The original account remains in the list.", InfoBarSeverity.Warning);
-            }
+            id = _accountId,
+            label = _label.Text.Trim(),
+            email = _email.Text.Trim(),
+            imap = Connection(_imapHost, _imapPort, _imapTls, _imapUser),
+            smtp = _configureSmtp.IsOn ? Connection(_smtpHost, _smtpPort, _smtpTls, _smtpUser) : null,
+            read_enabled = _readEnabled.IsOn,
+            send_enabled = _configureSmtp.IsOn && _sendEnabled.IsOn,
+            folders
+        };
+        var saved = await _engine.ManageAsync("save_account", new { account, passwords, expected_revision = _revision }, _lifetime.Token);
+        _accountId = Value(saved, "id");
+        _imapPassword.Password = "";
+        _smtpPassword.Password = "";
+        passwords.Clear();
+        await LoadAccountsAsync();
+        ShowNotice("Account saved", "Your assistant can use only the access you enabled.", InfoBarSeverity.Success);
+    }
+
+    private async Task RemoveAccountAsync()
+    {
+        RequireSavedAccount();
+        var dialog = Dialog("Remove this account?", Text("This removes local connection settings and saved credentials. Mail on the server stays in place."), "Remove account");
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        await _engine.ManageAsync("remove_account", new { account_id = _accountId }, _lifetime.Token);
+        _accountId = "";
+        await LoadAccountsAsync();
+        ShowNotice("Account removed", "The local connection is no longer available to your assistant.", InfoBarSeverity.Success);
+    }
+
+    private async Task TestReadAsync()
+    {
+        RequireSavedAccount();
+        var result = await _engine.ManageAsync("check_read", new { account_id = _accountId }, _lifetime.Token);
+        var sampleRead = Value(result, "message_read") == "passed";
+        ShowNotice(sampleRead ? "IMAP reading succeeded" : "IMAP connection succeeded", SafeResult(result),
+            sampleRead ? InfoBarSeverity.Success : InfoBarSeverity.Informational);
+    }
+
+    private async Task TestSmtpAsync()
+    {
+        RequireSavedAccount();
+        await _engine.ManageAsync("check_smtp", new { account_id = _accountId }, _lifetime.Token);
+        ShowNotice("SMTP connection succeeded", "The server accepted authentication. No email was sent.", InfoBarSeverity.Success);
+    }
+
+    private async Task PrepareTestAsync()
+    {
+        RequireSavedAccount();
+        var saved = _accounts.First(account => Value(account, "id") == _accountId);
+        var recipient = Field("Recipient", "you@example.com");
+        recipient.Text = Value(saved, "email");
+        var dialog = Dialog("Prepare a test email", Stack(recipient, Hint("The next screen shows the exact email. It sends only after you approve it.")), "Review test email");
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        var result = await _engine.ManageAsync("prepare_email", new
+        {
+            account_id = _accountId, to = new[] { recipient.Text.Trim() }, cc = Array.Empty<string>(), bcc = Array.Empty<string>(),
+            subject = "AgentInbox SMTP test", body = "This is a test email sent from AgentInbox after your explicit approval.", attachments = Array.Empty<string>()
+        }, _lifetime.Token);
+        var requestId = Value(result, "request_id");
+        if (requestId.Length == 0) throw new EngineException("The engine did not return a review request.");
+        RequestReview(requestId);
+    }
+
+    private async Task BuildOutgoingPageAsync()
+    {
+        Page.Children.Clear();
+        Page.Children.Add(Heading("Outgoing mail", "Review the exact recipients, message and attachments before any email can leave."));
+        Page.Children.Add(Action("Refresh requests", () => _ = RunAsync(BuildOutgoingPageAsync)));
+        var requestLookup = Field("Check an earlier request", "Request ID");
+        requestLookup.Text = _lastRequestId;
+        Page.Children.Add(Section("Request status", requestLookup, Action("Check status", () => _ = RunAsync(async () =>
+        {
+            var result = await _engine.ManageAsync("get_send_status", new { request_id = requestLookup.Text.Trim() }, _lifetime.Token);
+            ShowSendOutcome(result);
+        }))));
+        var requests = await _engine.ManageAsync("list_pending", new { }, _lifetime.Token);
+        if (requests.GetArrayLength() == 0) Page.Children.Add(Hint("There are no outgoing requests. Ask your assistant to prepare an email, or send a test from Accounts."));
+        else Page.Children.Add(Hint("The latest 100 requests are shown, including completed and expired requests."));
+        foreach (var request in requests.EnumerateArray())
+        {
+            var id = Value(request, "id");
+            var status = Value(request, "status");
+            var content = Stack(Text($"Request {id}", 16), Text($"Status: {StatusLabel(status)}"), Hint($"Created: {Timestamp(request, "created")} · Expires: {Timestamp(request, "expires")}"));
+            if (status == "pending_approval") content.Children.Add(Action("Review email…", () => RequestReview(id), accent: true));
             else
             {
-                SetNotice(
-                    reconnectAccount is null ? "Account connected" : "Account reconnected",
-                    reconnectAccount is null
-                        ? "New accounts start with sharing off. Reconnected accounts keep their saved choices."
-                        : "The local sign-in was renewed and the saved sharing choices were kept.",
-                    InfoBarSeverity.Success);
+                content.Children.Add(Hint("Only requests waiting for approval can be reviewed."));
+                content.Children.Add(Action("Show result", () => _ = RunAsync(async () =>
+                {
+                    var result = await _engine.ManageAsync("get_send_status", new { request_id = id }, _lifetime.Token);
+                    ShowSendOutcome(result);
+                })));
             }
-        }, TimeSpan.FromMinutes(5));
-    }
-
-    private async Task<bool> ConfigureGoogleAsync(CancellationToken cancellationToken)
-    {
-        if (!await ShowProviderSetupPromptAsync("Google JSON file required", "Before AgentInbox can connect a Google account, you need the JSON file from your Google Desktop app registration.", "Choose a file"))
-            return false;
-        ActivityText.Text = "Choose the JSON setup file you downloaded from Google…";
-        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.Downloads, ViewMode = PickerViewMode.List };
-        picker.FileTypeFilter.Add(".json");
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-        var file = await picker.PickSingleFileAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-        if (file is null)
-        {
-            ActivityText.Text = "Google setup was not completed.";
-            return false;
+            Page.Children.Add(Section("", content));
         }
-        await _application.ConfigureProviderAsync("google", file.Path, cancellationToken);
-        SetNotice("Google app configured", "The original JSON stays in its folder. Keep it private.", InfoBarSeverity.Informational);
-        ActivityText.Text = "Google app configured.";
-        return true;
+        Page.Children.Add(Hint("An SMTP acceptance means the server accepted responsibility for the email. It does not confirm delivery to the recipient. An uncertain send must be checked before preparing another request."));
     }
 
-    private async Task<bool> ConfigureMicrosoftAsync(CancellationToken cancellationToken, bool signIn)
+    private void BuildAssistantPage()
     {
-        if (!await ShowProviderSetupPromptAsync("Microsoft client ID required", "Before AgentInbox can connect a Microsoft account, you need the Application (client) ID from your Microsoft app registration.", "Enter client ID"))
-            return false;
-        var input = new TextBox { Header = "Application (client) ID", PlaceholderText = "00000000-0000-0000-0000-000000000000" };
-        var content = new StackPanel { Spacing = 14 };
-        content.Children.Add(Body("Paste the Application (client) ID from your Microsoft app registration. This identifies the app; it is not your password. You do not need a client secret."));
-        content.Children.Add(input);
-        var dialog = new ContentDialog
+        Page.Children.Add(Heading("Connect your assistant", "Use the local Python engine in an MCP client that supports standard input and output."));
+        Page.Children.Add(Hint("Python 3.11 or later must already be available. To choose a runtime, set AGENTINBOX_PYTHON to its absolute executable path and reopen AgentInbox."));
+        var configuration = _engine.CreateClientConfiguration();
+        var box = new TextBox
         {
-            Title = "Set up Microsoft sign-in", Content = content,
-            PrimaryButtonText = signIn ? "Save and sign in" : "Save",
-            CloseButtonText = "Cancel", IsPrimaryButtonEnabled = false, DefaultButton = ContentDialogButton.Primary
+            Text = configuration, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Consolas"), MinHeight = 260, MaxHeight = 480,
+            Header = "Local MCP configuration (.mcp.json)", HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        input.TextChanged += (_, _) => dialog.IsPrimaryButtonEnabled = Guid.TryParseExact(input.Text.Trim(), "D", out _);
-        using var registration = cancellationToken.Register(() => DispatcherQueue.TryEnqueue(() => dialog.Hide()));
-        if (await ShowDialogAsync(dialog) != ContentDialogResult.Primary) return false;
-        cancellationToken.ThrowIfCancellationRequested();
-        await _application.ConfigureProviderAsync("microsoft", input.Text.Trim(), cancellationToken);
-        return true;
+        Page.Children.Add(box);
+        Page.Children.Add(Action("Copy configuration", () =>
+        {
+            var package = new DataPackage();
+            package.SetText(configuration);
+            Clipboard.SetContent(package);
+            ShowNotice("Configuration copied", "Add the server entry to your client's MCP settings and reconnect it.", InfoBarSeverity.Success);
+        }, accent: true));
+        Page.Children.Add(Hint("This configuration contains paths, not passwords. Keep AgentInbox at these paths. Only accounts you share are available for reading, and every outgoing message still opens a Windows approval dialog."));
     }
 
-    private async Task<bool> ShowProviderSetupPromptAsync(string title, string message, string continueButtonText)
+    private async Task DrainReviewsAsync()
     {
-        var dialog = DetailsDialog(title, Body(message));
-        dialog.PrimaryButtonText = continueButtonText;
-        dialog.SecondaryButtonText = "More info";
-        dialog.CloseButtonText = "Not now";
-        dialog.DefaultButton = ContentDialogButton.Close;
-        var result = await ShowDialogAsync(dialog);
-        if (result == ContentDialogResult.Secondary)
-            await OpenAppRegistrationGuideAsync();
-        return result == ContentDialogResult.Primary;
+        if (!_loaded || _busy || _reviewing || _lifetime.IsCancellationRequested) return;
+        _reviewing = true;
+        try
+        {
+            while (_reviewRequests.TryDequeue(out var id) && !_lifetime.IsCancellationRequested)
+                await RunAsync(() => ReviewAsync(id));
+        }
+        finally { _reviewing = false; }
     }
 
-    private async Task OpenAppRegistrationGuideAsync()
+    private async Task ReviewAsync(string requestId)
     {
-        if (!await Launcher.LaunchUriAsync(new Uri("https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/APP_REGISTRATION.md")))
-            SetNotice("Could not open the guide", "Open the app registration guide from the AgentInbox GitHub repository and try again.", InfoBarSeverity.Warning);
+        _lastRequestId = requestId;
+        using var session = await _engine.OpenReviewAsync(requestId, _lifetime.Token);
+        var preview = session.Preview;
+        var content = Stack(
+            Hint("Approval applies to this exact email once. Closing or cancelling never approves a send."),
+            Hint("Request: " + requestId),
+            Text("From: " + Value(preview, "from")),
+            Text("To: " + Addresses(preview, "to")),
+            Text("CC: " + Addresses(preview, "cc")),
+            Text("BCC: " + Addresses(preview, "bcc")),
+            Text("Subject: " + Value(preview, "subject"), 16),
+            Text(Value(preview, "body")));
+        foreach (var attachment in preview.GetProperty("attachments").EnumerateArray())
+            content.Children.Add(Text($"Attachment: {Value(attachment, "name")} ({attachment.GetProperty("size")} bytes)\nSHA-256: {Value(attachment, "sha256")}"));
+        content.Children.Add(Hint("Expires: " + Timestamp(preview, "expires")));
+        var dialog = Dialog("Review outgoing email", new ScrollViewer
+        {
+            Content = content, MaxHeight = 520, MinWidth = 420,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        }, "Send this email");
+        using var cancellation = _lifetime.Token.Register(() => DispatcherQueue.TryEnqueue(dialog.Hide));
+        var decision = await dialog.ShowAsync();
+        if (_lifetime.IsCancellationRequested) return;
+        // Only this direct native dialog result can authorize the private review channel.
+        var result = await session.CompleteAsync(decision == ContentDialogResult.Primary, _lifetime.Token);
+        ShowSendOutcome(result);
+        if (Navigation.SelectedItem is NavigationViewItem { Tag: "outgoing" }) await BuildOutgoingPageAsync();
     }
 
-
-    private void CancelButton_Click(object sender, RoutedEventArgs e) => _operation?.Cancel();
-
-    private async Task RunAsync(string activity, Func<CancellationToken, Task> action, TimeSpan? timeout = null)
+    private async Task RunAsync(Func<Task> operation)
     {
         if (_busy || _lifetime.IsCancellationRequested) return;
         _busy = true;
-        using var operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        _operation = operation;
-        operation.CancelAfter(timeout ?? TimeSpan.FromSeconds(60));
-        PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = FinishLaterButton.IsEnabled = BackButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = false;
-        ActivityText.Text = activity;
-        Activity.Visibility = Visibility.Visible;
+        Navigation.IsEnabled = false;
+        Progress.Visibility = Visibility.Visible;
         Notice.IsOpen = false;
-        UpdateSettingsActivity(activity);
-        UpdateSharingActivity(activity);
-        try
+        try { await operation(); }
+        catch (EngineException exception) { ShowNotice("Could not complete this action", exception.Message + ReviewFailureHint(), InfoBarSeverity.Error); }
+        catch (OperationCanceledException) when (!_lifetime.IsCancellationRequested)
         {
-            await action(operation.Token);
+            ShowNotice("The operation timed out", "Check the saved settings and server connection. If this happened during a send, check its status before preparing another email." + ReviewFailureHint(), InfoBarSeverity.Warning);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) { }
+        catch (Exception)
         {
-            if (!_lifetime.IsCancellationRequested)
-                SetNotice("Operation stopped", "The operation was cancelled or timed out. Completed changes remain saved.", InfoBarSeverity.Warning);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning("Desktop setup operation failed ({ErrorType})", exception.GetType().Name);
-            if (!_lifetime.IsCancellationRequested)
-                SetNotice("Could not complete setup", "Check provider setup, network and local storage access, then retry. Saved choices are kept.", InfoBarSeverity.Error);
+            ShowNotice("Could not complete this action", "The local engine could not complete the request. Check your Python runtime and saved account settings. No automatic retry was made." + ReviewFailureHint(), InfoBarSeverity.Error);
         }
         finally
         {
-            _operation = null;
             _busy = false;
-            if (!_lifetime.IsCancellationRequested)
-            {
-                PageHost.IsEnabled = Steps.IsEnabled = NextButton.IsEnabled = AboutButton.IsEnabled = PrivacyButton.IsEnabled = HelpButton.IsEnabled = true;
-                BackButton.IsEnabled = _step > 0;
-                Activity.Visibility = Visibility.Collapsed;
-                UpdateSettingsActivity(string.Empty);
-                UpdateSharingActivity(string.Empty);
-                UpdateCodexFooter();
-                ApplyPendingStep();
-            }
+            Navigation.IsEnabled = true;
+            Progress.Visibility = Visibility.Collapsed;
         }
+        if (!_reviewing) await DrainReviewsAsync();
     }
 
-    private bool BlockDemoAction()
+    private void RequireSavedAccount()
     {
-        if (!IsDemo) return false;
-        SetNotice("UI preview", "This action is disabled for sample accounts. Open AgentInbox without --demo to configure real accounts or Codex.", InfoBarSeverity.Informational);
-        return true;
+        if (_accountId.Length == 0) throw new EngineException("Save an account before using this action.");
     }
 
-    private void SetNotice(string title, string message, InfoBarSeverity severity)
+    private string ReviewFailureHint() => _reviewing && _lastRequestId.Length > 0
+        ? $" Use Outgoing mail to check request {_lastRequestId}." : "";
+
+    private void ShowNotice(string title, string message, InfoBarSeverity severity)
     {
-        var notice = _settingsDialog is not null ? _settingsNotice
-            : _sharingDialog is not null ? _sharingNotice
-            : _addAccountDialog is not null ? _addAccountNotice : Notice;
-        notice.Title = title;
-        notice.Message = message;
-        notice.Severity = severity;
-        notice.IsOpen = true;
+        Notice.Title = title;
+        Notice.Message = message;
+        Notice.Severity = severity;
+        Notice.IsOpen = true;
     }
 
-    private static Visibility ToVisibility(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
-    private static Brush ThemeBrush(string key) => (Brush)Microsoft.UI.Xaml.Application.Current.Resources[key];
-    private static string ProviderName(string provider) => provider == "google" ? "Google" : provider == "microsoft" ? "Microsoft" : provider;
-    private static TextBlock Body(string text) => new() { Text = text, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["BodyText"] };
+    private void ShowSendOutcome(JsonElement result)
+    {
+        var status = Value(result, "status");
+        var id = Value(result, "request_id");
+        if (id.Length == 0) id = Value(result, "id");
+        var message = status switch
+        {
+            "accepted_by_server" => "The SMTP server accepted the email. Delivery to the recipient has not been confirmed.",
+            "outcome_unknown" => "The connection ended without a definite result. Check your mailbox and provider before preparing another request. No automatic retry was made.",
+            "rejected" => "The email was not accepted for sending. Check your connection settings before preparing a new request.",
+            "cancelled" => "This request was cancelled without sending.",
+            "expired" => "This approval request expired. Prepare a new message to continue.",
+            "submitting" => "The request is being submitted or ended during submission. Check its status before preparing another email.",
+            "pending_approval" => "The message is waiting for your approval. Nothing has been sent.",
+            _ => "The engine returned an unrecognized state. Check the request before preparing another email."
+        };
+        var severity = status switch
+        {
+            "accepted_by_server" => InfoBarSeverity.Success,
+            "outcome_unknown" or "rejected" or "submitting" => InfoBarSeverity.Warning,
+            _ => InfoBarSeverity.Informational
+        };
+        ShowNotice(StatusLabel(status), message + (id.Length > 0 ? $" Request: {id}" : ""), severity);
+    }
+
+    private ContentDialog Dialog(string title, UIElement content, string primary) => new()
+    {
+        XamlRoot = Root.XamlRoot, Title = title, Content = content, PrimaryButtonText = primary,
+        CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close
+    };
+
+    private static object Connection(TextBox host, TextBox port, ComboBox tls, TextBox username)
+    {
+        if (!int.TryParse(port.Text, out var number) || number is < 1 or > 65535)
+            throw new EngineException("The server port must be a number from 1 to 65535.");
+        return new { host = host.Text.Trim(), port = number, tls = tls.SelectedIndex == 1 ? "starttls" : "tls", username = username.Text.Trim() };
+    }
+
+    private static string Value(JsonElement element, string property) => element.TryGetProperty(property, out var value)
+        ? value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString() : "";
+
+    private static string Addresses(JsonElement element, string property)
+    {
+        var value = string.Join(", ", element.GetProperty(property).EnumerateArray().Select(address => address.GetString()));
+        return value.Length == 0 ? "(none)" : value;
+    }
+
+    private static string SafeResult(JsonElement result) => result.TryGetProperty("message", out var message)
+        ? message.GetString() ?? "The operation completed." : "The operation completed.";
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "pending_approval" => "Waiting for your approval",
+        "accepted_by_server" => "Accepted by the SMTP server",
+        "outcome_unknown" => "Sending outcome unknown",
+        "submitting" => "Submission in progress",
+        "cancelled" => "Cancelled",
+        "expired" => "Expired",
+        "rejected" => "Rejected",
+        _ => "Unknown request state"
+    };
+
+    private static string Timestamp(JsonElement element, string property)
+    {
+        var value = element.GetProperty(property);
+        return value.ValueKind == JsonValueKind.Number
+            ? DateTimeOffset.FromUnixTimeSeconds((long)value.GetDouble()).ToLocalTime().ToString("g")
+            : value.ToString();
+    }
+
+    private static TextBlock Text(string value, double size = 14) => new()
+    { Text = value, TextWrapping = TextWrapping.Wrap, FontSize = size, IsTextSelectionEnabled = true };
+
+    private static TextBlock Hint(string value) => new()
+    { Text = value, TextWrapping = TextWrapping.Wrap, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SubtleText"] };
+
+    private static StackPanel Heading(string title, string subtitle) => Stack(
+        new TextBlock { Text = title, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SectionTitle"] }, Hint(subtitle));
+
+    private static StackPanel Stack(params UIElement[] children)
+    {
+        var panel = new StackPanel { Spacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch };
+        foreach (var child in children) panel.Children.Add(child);
+        return panel;
+    }
+
+    private static Border Section(string title, params UIElement[] children)
+    {
+        var content = Stack();
+        if (title.Length > 0) content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        foreach (var child in children) content.Children.Add(child);
+        return new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SetupCard"], Child = content };
+    }
+
+    private static Grid Pair(UIElement left, UIElement right)
+    {
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.Children.Add(left);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(right);
+        return grid;
+    }
+
+    private static TextBox Field(string label, string placeholder) => new()
+    { Header = label, PlaceholderText = placeholder, HorizontalAlignment = HorizontalAlignment.Stretch, MaxLength = 1024 };
+
+    private static PasswordBox Password(string label) => new()
+    { Header = label, PasswordRevealMode = PasswordRevealMode.Peek, MaxLength = 1024, HorizontalAlignment = HorizontalAlignment.Stretch };
+
+    private static ComboBox TlsField()
+    {
+        var field = new ComboBox { Header = "Connection security", HorizontalAlignment = HorizontalAlignment.Stretch };
+        field.Items.Add("TLS — encrypted from connection start");
+        field.Items.Add("STARTTLS — require encryption before signing in");
+        field.SelectedIndex = 0;
+        return field;
+    }
+
+    private static Button Action(string caption, Action handler, bool accent = false)
+    {
+        var button = new Button { Content = caption };
+        if (accent) button.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
+        button.Click += (_, _) => handler();
+        return button;
+    }
+
+    private static Grid Actions(params Button[] buttons)
+    {
+        var panel = new Grid { ColumnSpacing = 12, RowSpacing = 8 };
+        panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            if (index % 2 == 0) panel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(buttons[index], index / 2);
+            Grid.SetColumn(buttons[index], index % 2);
+            panel.Children.Add(buttons[index]);
+        }
+        return panel;
+    }
 }

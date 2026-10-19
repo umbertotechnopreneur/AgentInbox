@@ -209,6 +209,8 @@ class Outbox:
         try:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             if version == 0:
+                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1").fetchone():
+                    raise MailError("invalid_profile", "The outgoing ledger is not an empty current-format database. Use a new profile.")
                 connection.execute("CREATE TABLE IF NOT EXISTS outgoing (id TEXT PRIMARY KEY, account_id TEXT NOT NULL, revision INTEGER NOT NULL, digest TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL, status TEXT NOT NULL, error TEXT)")
                 connection.execute("PRAGMA user_version=2")
                 connection.commit()
@@ -224,6 +226,10 @@ class Outbox:
         now = time.time()
         try:
             with self.database() as database:
+                database.execute("BEGIN IMMEDIATE")
+                count = database.execute("SELECT COUNT(*) FROM outgoing WHERE status='pending_approval' AND expires>?", (now,)).fetchone()[0]
+                if count >= 20:
+                    raise MailError("pending_limit", "Review or cancel existing requests before preparing more. The limit is twenty pending messages.")
                 database.execute("INSERT INTO outgoing VALUES (?, ?, ?, ?, ?, ?, 'pending_approval', NULL)",
                                  (identity, account["id"], account["revision"], digest, now, now + 600))
                 database.commit()
@@ -256,7 +262,7 @@ class Outbox:
         return result
 
     def pending(self) -> list[dict]:
-        """List current review requests without exposing message content."""
+        """List the newest hundred states without exposing message content."""
         if not self.path.exists():
             return []
         with self.database() as database:

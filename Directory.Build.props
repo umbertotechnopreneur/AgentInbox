@@ -24,7 +24,7 @@ VBWR E -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
     <Product>AgentInbox</Product>
     <Title>AgentInbox</Title>
     <Authors>Umberto Giacobbi</Authors>
@@ -35,8 +35,10 @@ VBWR E -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(MailMeUpPortableBuild)' == 'true'">
-    <NuGetLockFilePath>$(MSBuildThisFileDirectory)eng/locks/$(MailMeUpPortableRuntime)/$(MSBuildProjectName).json</NuGetLockFilePath>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts/desktop/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts/desktop/bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <NuGetLockFilePath>$(BaseIntermediateOutputPath)packages.lock.json</NuGetLockFilePath>
   </PropertyGroup>
   <Target Name="CaptureAgentInboxBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
     <PropertyGroup>

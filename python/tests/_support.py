@@ -1,6 +1,7 @@
 """Isolated test fixtures with fake credentials and no permitted network access."""
 
 import copy
+import os
 import re
 import tempfile
 import unittest
@@ -40,10 +41,20 @@ class MailApplicationCase(unittest.TestCase):
 
     def setUp(self):
         repository = Path(__file__).resolve().parents[2]
-        self.test_root = repository / "artifacts" / "tests"
+        artifacts = repository / "artifacts"
+        self.test_root = Path(
+            os.environ.get("AGENTINBOX_TEST_ROOT", str(artifacts / "tests"))
+        ).expanduser()
         # Refuse redirected artifact roots before creating or cleaning test output.
-        if self.test_root.resolve() != self.test_root:
+        if (
+            not self.test_root.is_absolute()
+            or artifacts.resolve() != artifacts
+            or self.test_root.resolve() != self.test_root
+            or self.test_root == artifacts
+            or not self.test_root.is_relative_to(artifacts)
+        ):
             raise RuntimeError("Test artifacts must not be redirected outside the checkout.")
+        self.created_test_root = not self.test_root.exists()
         self.test_root.mkdir(parents=True, exist_ok=True)
         self.temporary = tempfile.TemporaryDirectory(prefix="mail-", dir=self.test_root)
         self.root = Path(self.temporary.name).resolve()
@@ -102,6 +113,10 @@ class MailApplicationCase(unittest.TestCase):
         if resolved != self.root or resolved.parent != self.test_root:
             raise RuntimeError("Refusing cleanup outside this test's profile.")
         self.temporary.cleanup()
+        if self.created_test_root and self.test_root.exists():
+            # Remove only an empty container created by this test, never other runs.
+            if not any(self.test_root.iterdir()):
+                self.test_root.rmdir()
 
     def update_account(self, **changes):
         draft = copy.deepcopy(self.draft)
