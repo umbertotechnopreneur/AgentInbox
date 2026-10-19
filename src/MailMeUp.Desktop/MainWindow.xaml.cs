@@ -1195,18 +1195,33 @@ public sealed partial class MainWindow : Window
         return item;
     }
 
+    /// <summary>Centers each tab icon and label without changing the stock TabViewItem template.</summary>
     private static TabViewItem AccountTab(string name, string glyph, FrameworkElement content)
     {
         content.Margin = new Thickness(0, 20, 0, 0);
-        return new TabViewItem
+        content.VerticalAlignment = VerticalAlignment.Top;
+        var header = new StackPanel
         {
-            Header = name, IsClosable = false, Content = content,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top,
-            IconSource = new FontIconSource
-            {
-                Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons")
-            }
+            Orientation = Orientation.Horizontal, Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center
         };
+        header.Children.Add(new FontIcon
+        {
+            Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"),
+            FontSize = 16, VerticalAlignment = VerticalAlignment.Center
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = name, TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var tab = new TabViewItem
+        {
+            Header = header, IsClosable = false, Content = content,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top
+        };
+        AutomationProperties.SetName(tab, name);
+        return tab;
     }
 
     private static StackPanel Stack(params UIElement[] children)
