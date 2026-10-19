@@ -6,7 +6,9 @@ Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debu
 
 ## Configure an account
 
-Choose an account or use the colored add, remove and refresh icons beside its selector. The editor has three tabs: **Account**, **Incoming** and **Outgoing**. **Save account** stays at the top right.
+If no accounts are saved, choose **Create your first account** to open the form. **Cancel** returns to the empty state. To edit an existing account, use **Edit account**, which shows its name and email address. The colored add icon opens a separate new-account form; Cancel returns to the previous account. Remove and refresh sit beside the selector. Buttons have tooltips.
+
+The flat editor has three views: **Account**, **Incoming** and **Outgoing**. The selected view is underlined. **Create account** or **Save changes** stays at the top right. Connection tests appear after saving and stay disabled while changes are pending. Outgoing tests appear only when SMTP is configured; the test-message action also requires sending to be enabled.
 
 In **Account**, choose a provider preset or custom server and enter the account name, address and authentication choice. In **Incoming**, select IMAP or POP3, enter the hostname, port, TLS mode and username, then save before testing the saved connection. Password or app password is the default authentication choice.
 

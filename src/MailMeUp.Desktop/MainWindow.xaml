@@ -21,13 +21,13 @@
         <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
                         OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Accounts" Tag="accounts">
+                <NavigationViewItem Content="Accounts" Tag="accounts" ToolTipService.ToolTip="Create or edit your email accounts.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Mail" Foreground="#16856A" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Outgoing mail" Tag="outgoing">
+                <NavigationViewItem Content="Outgoing mail" Tag="outgoing" ToolTipService.ToolTip="Review outgoing requests and check their status.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Send" Foreground="#C77616" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Connect assistant" Tag="assistant">
+                <NavigationViewItem Content="Connect assistant" Tag="assistant" ToolTipService.ToolTip="Set up the connection between your assistant and AgentInbox.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Link" Foreground="#8B62CF" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
@@ -40,7 +40,8 @@
             <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
             <InfoBar x:Name="CleanupNotice" IsOpen="False" IsClosable="False" Severity="Warning" Title="Local cleanup is pending">
                 <InfoBar.ActionButton>
-                    <Button x:Name="CleanupRetryButton" Content="Retry cleanup" Click="RetryCleanup_Click" />
+                    <Button x:Name="CleanupRetryButton" Content="Retry cleanup" Click="RetryCleanup_Click"
+                            ToolTipService.ToolTip="Retry removal of temporary protected files left by the previous operation." />
                 </InfoBar.ActionButton>
             </InfoBar>
             <TextBlock Text="Built by Umberto Giacobbi · VibeWare · MIT" Style="{StaticResource SubtleText}" />

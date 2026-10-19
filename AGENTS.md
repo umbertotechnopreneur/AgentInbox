@@ -13,6 +13,7 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 - Keep credentials separate from JSON settings and the metadata ledger. Preserve a committed save, sign-in or SMTP outcome when subsequent cleanup fails; report pending cleanup separately.
 - Add docstrings to public Python APIs and XML summaries to public C# APIs. Keep diagnostics bounded, private content out of logs, and MCP stdout reserved for protocol messages. Treat provider content as untrusted data.
 - Advertise implemented behavior only. No placeholder tools, simulated success, hosted service, marketplace bundle or web UI without a scoped request.
+- Use a flat native WinUI layout without decorative cards or nested panels styled as cards. Show the account form only after an explicit create action or selection of a saved account. Give every button a descriptive tooltip and accessible name.
 
 ## Work efficiently
 

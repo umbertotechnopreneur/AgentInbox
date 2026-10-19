@@ -27,7 +27,18 @@ public sealed partial class MainWindow : Window
     private string _lastRequestId = "";
     private int? _revision;
     private ComboBox _accountPicker = new();
-    private TabView _accountTabs = new();
+    private SelectorBar _accountTabs = new();
+    private Grid _accountToolbar = new();
+    private StackPanel _accountEditor = new();
+    private StackPanel _accountEmptyState = new();
+    private Button _createFirstAccount = new();
+    private Button _removeAccount = new();
+    private Button _cancelAccount = new();
+    private TextBlock _newAccountHeading = new();
+    private bool _accountsLoaded;
+    private bool _creatingAccount;
+    private bool _hasUnsavedChanges;
+    private string _previousAccountId = "";
     private ComboBox _preset = new();
     private TextBox _label = new();
     private TextBox _email = new();
@@ -56,6 +67,10 @@ public sealed partial class MainWindow : Window
     private StackPanel _smtpFields = new();
     private Button _save = new();
     private Button _testRead = new();
+    private StackPanel _incomingChecks = new();
+    private StackPanel _smtpChecks = new();
+    private Button _testSmtp = new();
+    private Button _sendTest = new();
 
     internal MainWindow(PythonEngine engine)
     {
@@ -102,14 +117,18 @@ public sealed partial class MainWindow : Window
 
     private void BuildAccountsPage()
     {
-        _save = Action("Save account", () => _ = RunAsync(SaveAccountAsync), accent: true);
-        Page.Children.Add(PageHeading("Email accounts", "Manage your connections and choose what your assistant can read or send.", _save));
-        _accountTabs = new TabView
-        {
-            IsAddTabButtonVisible = false, CanDragTabs = false, CanReorderTabs = false,
-            TabWidthMode = TabViewWidthMode.Equal, HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-        _accountPicker = new ComboBox { Header = "Selected account", MinWidth = 220, HorizontalAlignment = HorizontalAlignment.Stretch };
+        _accountsLoaded = false;
+        _creatingAccount = false;
+        _save = Action("Save changes", () => _ = RunAsync(SaveAccountAsync), accent: true);
+        _cancelAccount = Action("Cancel", CancelNewAccount, tooltip: "Discard this new account and return to your saved accounts.");
+        Page.Children.Add(PageHeading("Email accounts", "Manage your connections and choose what your assistant can read or send.", Actions(_cancelAccount, _save)));
+        _createFirstAccount = Action("Create your first account", StartNewAccount, accent: true,
+            tooltip: "Open the setup form for your first email account.");
+        _accountEmptyState = Stack(Text("There are no accounts yet", 22), _createFirstAccount);
+        Page.Children.Add(_accountEmptyState);
+        _accountTabs = new SelectorBar { HorizontalAlignment = HorizontalAlignment.Stretch };
+        AutomationProperties.SetName(_accountTabs, "Account settings");
+        _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", MinWidth = 220, HorizontalAlignment = HorizontalAlignment.Stretch };
         _accountPicker.SelectionChanged += (_, _) =>
         {
             if (_loadingForm || _accountPicker.SelectedItem is not ComboBoxItem { Tag: string id }) return;
@@ -117,21 +136,20 @@ public sealed partial class MainWindow : Window
             if (selected.ValueKind != JsonValueKind.Undefined) FillAccount(selected);
         };
         var accountActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom };
-        accountActions.Children.Add(IconAction("Add account", "\uE710", 0x16856A, () =>
-        {
-            _accountPicker.SelectedIndex = -1;
-            FillAccount(null);
-            _accountTabs.SelectedIndex = 0;
-        }));
-        accountActions.Children.Add(IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync)));
-        accountActions.Children.Add(IconAction("Refresh accounts", "\uE72C", 0x2477C8, () => _ = RunAsync(LoadAccountsAsync)));
-        var accountToolbar = new Grid { ColumnSpacing = 12 };
-        accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        accountToolbar.Children.Add(_accountPicker);
+        accountActions.Children.Add(IconAction("Add account", "\uE710", 0x16856A, StartNewAccount,
+            "Open the setup form for another email account."));
+        _removeAccount = IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync),
+            "Remove this account's local settings and credentials. Messages on the server stay in place.");
+        accountActions.Children.Add(_removeAccount);
+        accountActions.Children.Add(IconAction("Refresh accounts", "\uE72C", 0x2477C8, () => _ = RunAsync(LoadAccountsAsync),
+            "Reload saved accounts and their settings."));
+        _accountToolbar = new Grid { ColumnSpacing = 12 };
+        _accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _accountToolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _accountToolbar.Children.Add(_accountPicker);
         Grid.SetColumn(accountActions, 1);
-        accountToolbar.Children.Add(accountActions);
-        Page.Children.Add(accountToolbar);
+        _accountToolbar.Children.Add(accountActions);
+        Page.Children.Add(_accountToolbar);
 
         _preset = new ComboBox { Header = "Server preset", HorizontalAlignment = HorizontalAlignment.Stretch };
         _preset.Items.Add(PresetItem("Custom mail server", "\uE713", 0x667789));
@@ -184,8 +202,8 @@ public sealed partial class MainWindow : Window
             Pair(_incomingUser, _incomingPassword), _folders, _folderHint,
             Hint("Passwords and Microsoft sign-in tokens stay in Windows Credential Manager. Assistant configuration contains neither."), _readEnabled);
         _testRead = Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync));
-        var incomingContent = Stack(incomingSettings, Section("Check incoming mail",
-            Hint("Save changes before testing. This check uses the saved incoming settings."), _testRead));
+        _incomingChecks = Stack(_testRead, Hint("Save changes before testing. This check uses the saved incoming settings."));
+        var incomingContent = Stack(incomingSettings, _incomingChecks);
 
         _configureSmtp = new ToggleSwitch { Header = "Configure outgoing SMTP", OnContent = "Configured", OffContent = "Off" };
         _smtpHost = Field("SMTP server", "smtp.example.com");
@@ -194,24 +212,113 @@ public sealed partial class MainWindow : Window
         _smtpUser = Field("Username", "Usually your full email address");
         _smtpPassword = Password("SMTP password");
         _sendEnabled = new ToggleSwitch { Header = "Enable sending from this account", OnContent = "Enabled", OffContent = "Disabled" };
+        _testSmtp = Action("Test SMTP connection", () => _ = RunAsync(TestSmtpAsync),
+            tooltip: "Check the saved SMTP connection without sending an email.");
+        _sendTest = Action("Send a test email…", () => _ = RunAsync(PrepareTestAsync),
+            tooltip: "Choose a recipient, then review and approve the exact test message before sending.");
+        _smtpChecks = Stack(Actions(_testSmtp, _sendTest), Hint("Enable sending and save changes before testing SMTP. A test email still requires your approval."));
         _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, _smtpPassword), _sendEnabled,
-            Hint("Every email still needs your approval in a separate review window. Enabling SMTP never approves a message."));
+            Hint("Every email still needs your approval in a separate review window. Enabling SMTP never approves a message."), _smtpChecks);
         _configureSmtp.Toggled += (_, _) =>
         {
             _smtpFields.Visibility = _configureSmtp.IsOn ? Visibility.Visible : Visibility.Collapsed;
             if (!_configureSmtp.IsOn) _sendEnabled.IsOn = false;
         };
-        var outgoingContent = Stack(Section("", _configureSmtp, _smtpFields),
-            Section("1. Check the connection", Hint("Save changes first. This checks the saved SMTP settings without sending an email."),
-                Action("Test SMTP connection", () => _ = RunAsync(TestSmtpAsync))),
-            Section("2. Send a test email", Hint("Choose a recipient, then review and approve the exact message before it is sent."),
-                Action("Send a test email…", () => _ = RunAsync(PrepareTestAsync), accent: true)));
-        _accountTabs.TabItems.Add(AccountTab("Account", "\uE77B", 0x16856A, accountContent));
-        _accountTabs.TabItems.Add(AccountTab("Incoming", "\uE715", 0x2477C8, incomingContent));
-        _accountTabs.TabItems.Add(AccountTab("Outgoing", "\uE724", 0xC77616, outgoingContent));
-        _accountTabs.SelectedIndex = 0;
-        Page.Children.Add(_accountTabs);
+        var outgoingContent = Stack(_configureSmtp,
+            Hint("Outgoing mail is optional. Configure SMTP only if you want to send messages."), _smtpFields);
+        var panes = new Grid { Margin = new Thickness(0, 12, 0, 0) };
+        foreach (var tab in new[] {
+            AccountTab("Account", "\uE77B", 0x16856A, accountContent),
+            AccountTab("Incoming", "\uE715", 0x2477C8, incomingContent),
+            AccountTab("Outgoing", "\uE724", 0xC77616, outgoingContent) })
+        {
+            _accountTabs.Items.Add(tab);
+            panes.Children.Add((UIElement)tab.Tag);
+        }
+        _accountTabs.SelectionChanged += (_, _) =>
+        {
+            foreach (var tab in _accountTabs.Items)
+                ((UIElement)tab.Tag).Visibility = ReferenceEquals(tab, _accountTabs.SelectedItem) ? Visibility.Visible : Visibility.Collapsed;
+        };
+        _accountTabs.SelectedItem = _accountTabs.Items[0];
+        _newAccountHeading = Text("New account", 22);
+        _accountEditor = Stack(_newAccountHeading, _accountTabs, panes);
+        Page.Children.Add(_accountEditor);
+        TrackAccountChanges();
         FillAccount(null);
+    }
+
+    private void StartNewAccount()
+    {
+        if (_busy) return;
+        _previousAccountId = _accountId;
+        _creatingAccount = true;
+        _accountPicker.SelectedIndex = -1;
+        FillAccount(null);
+        _accountTabs.SelectedItem = _accountTabs.Items[0];
+        _label.Focus(FocusState.Programmatic);
+    }
+
+    private void CancelNewAccount()
+    {
+        if (_busy) return;
+        _creatingAccount = false;
+        var index = _accounts.FindIndex(account => Value(account, "id") == _previousAccountId);
+        _accountPicker.SelectedIndex = index >= 0 ? index : _accounts.Count > 0 ? 0 : -1;
+        if (_accounts.Count == 0) FillAccount(null);
+        UpdateAccountPresentation();
+        if (_accounts.Count == 0) _createFirstAccount.Focus(FocusState.Programmatic);
+        else _accountPicker.Focus(FocusState.Programmatic);
+    }
+
+    private void UpdateAccountPresentation()
+    {
+        var editing = _accountsLoaded && (_creatingAccount || _accountId.Length > 0);
+        _accountEmptyState.Visibility = _accountsLoaded && _accounts.Count == 0 && !_creatingAccount ? Visibility.Visible : Visibility.Collapsed;
+        _accountToolbar.Visibility = _accountsLoaded && _accounts.Count > 0 && !_creatingAccount ? Visibility.Visible : Visibility.Collapsed;
+        _accountEditor.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
+        _save.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
+        _cancelAccount.Visibility = _creatingAccount ? Visibility.Visible : Visibility.Collapsed;
+        _newAccountHeading.Visibility = _creatingAccount ? Visibility.Visible : Visibility.Collapsed;
+        _removeAccount.IsEnabled = _accountId.Length > 0;
+        _save.Content = _creatingAccount ? "Create account" : "Save changes";
+        AutomationProperties.SetName(_save, (string)_save.Content);
+        ToolTipService.SetToolTip(_save, _creatingAccount
+            ? "Save this new account and store its credentials securely."
+            : "Save changes to the selected account and its credentials.");
+        UpdateAccountChecks();
+    }
+
+    private void TrackAccountChanges()
+    {
+        foreach (var field in new[] { _label, _email, _clientId, _tenantId, _incomingHost, _incomingPort, _incomingUser, _folders, _smtpHost, _smtpPort, _smtpUser })
+            field.TextChanged += (_, _) => MarkAccountChanged();
+        foreach (var field in new[] { _incomingPassword, _smtpPassword })
+            field.PasswordChanged += (_, _) => MarkAccountChanged();
+        foreach (var field in new[] { _preset, _authentication, _tenant, _incomingProtocol, _incomingTls, _smtpTls })
+            field.SelectionChanged += (_, _) => MarkAccountChanged();
+        foreach (var field in new[] { _readEnabled, _configureSmtp, _sendEnabled })
+            field.Toggled += (_, _) => MarkAccountChanged();
+    }
+
+    private void MarkAccountChanged()
+    {
+        if (_loadingForm) return;
+        _hasUnsavedChanges = true;
+        UpdateAccountChecks();
+    }
+
+    private void UpdateAccountChecks()
+    {
+        var saved = _accountId.Length > 0 && !_creatingAccount;
+        var ready = saved && !_hasUnsavedChanges;
+        _incomingChecks.Visibility = saved ? Visibility.Visible : Visibility.Collapsed;
+        _smtpChecks.Visibility = saved && _configureSmtp.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        _testRead.IsEnabled = ready;
+        _testSmtp.IsEnabled = ready && _sendEnabled.IsOn;
+        _sendTest.IsEnabled = ready;
+        _sendTest.Visibility = _sendEnabled.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        _microsoftSignIn.IsEnabled = ready;
     }
 
     private async Task LoadAccountsAsync()
@@ -220,6 +327,13 @@ public sealed partial class MainWindow : Window
         var result = await _engine.ManageAsync("list_accounts", new { }, _lifetime.Token);
         _accounts.Clear();
         _accounts.AddRange(result.EnumerateArray().Select(account => account.Clone()));
+        _accountsLoaded = true;
+        _creatingAccount = false;
+        PopulateAccountPicker(selected);
+    }
+
+    private void PopulateAccountPicker(string selected)
+    {
         _loadingForm = true;
         _accountPicker.Items.Clear();
         foreach (var account in _accounts)
@@ -233,6 +347,7 @@ public sealed partial class MainWindow : Window
     private void FillAccount(JsonElement? account)
     {
         _loadingForm = true;
+        if (account is not null) _creatingAccount = false;
         _accountId = account is { } value ? Value(value, "id") : "";
         _revision = account is { } current ? current.GetProperty("revision").GetInt32() : null;
         _preset.SelectedIndex = 0;
@@ -270,6 +385,8 @@ public sealed partial class MainWindow : Window
         _loadingForm = false;
         UpdateIncomingPresentation();
         UpdateAuthenticationPresentation(clearPasswords: false);
+        _hasUnsavedChanges = false;
+        UpdateAccountPresentation();
     }
 
     private void ApplyPreset()
@@ -329,6 +446,10 @@ public sealed partial class MainWindow : Window
         _incomingHost.PlaceholderText = pop ? "pop.example.com" : "imap.example.com";
         _incomingPassword.Header = pop ? "POP3 password" : "IMAP password";
         _testRead.Content = pop ? "Test POP3 reading" : "Test IMAP reading";
+        AutomationProperties.SetName(_testRead, (string)_testRead.Content);
+        ToolTipService.SetToolTip(_testRead, pop
+            ? "Check saved POP3 settings by reading mail without deleting messages."
+            : "Check saved IMAP settings by reading mail without marking messages as read.");
     }
 
     private void UpdateAuthenticationPresentation(bool clearPasswords)
@@ -391,11 +512,13 @@ public sealed partial class MainWindow : Window
             folders
         };
         var saved = await _engine.ManageAsync("save_account", new { account, passwords, expected_revision = _revision }, _lifetime.Token);
-        _accountId = Value(saved, "id");
-        _incomingPassword.Password = "";
-        _smtpPassword.Password = "";
         passwords.Clear();
-        await LoadAccountsAsync();
+        // The save response contains the committed public account, including its new revision.
+        var savedId = Value(saved, "id");
+        _accounts.RemoveAll(item => Value(item, "id") == savedId);
+        _accounts.Add(saved.Clone());
+        _creatingAccount = false;
+        PopulateAccountPicker(savedId);
         ShowNotice("Account saved", "Your assistant can use only the access you enabled.", InfoBarSeverity.Success);
         ShowCleanup(saved);
     }
@@ -406,8 +529,9 @@ public sealed partial class MainWindow : Window
         var dialog = Dialog("Remove this account?", Text("This removes local connection settings and saved credentials. Mail on the server stays in place."), "Remove account");
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
         var removed = await _engine.ManageAsync("remove_account", new { account_id = _accountId }, _lifetime.Token);
+        _accounts.RemoveAll(item => Value(item, "id") == _accountId);
         _accountId = "";
-        await LoadAccountsAsync();
+        PopulateAccountPicker("");
         ShowNotice("Account removed", "The local connection is no longer available to your assistant.", InfoBarSeverity.Success);
         ShowCleanup(removed);
     }
@@ -457,6 +581,7 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             XamlRoot = Root.XamlRoot, Title = "Sign in to Microsoft", CloseButtonText = "Cancel",
+            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft sign-in."),
             DefaultButton = ContentDialogButton.Close,
             Content = Stack(
                 Hint("You chose Microsoft sign-in for this account. The browser opens only when you press the button below."),
@@ -844,8 +969,20 @@ public sealed partial class MainWindow : Window
     private ContentDialog Dialog(string title, UIElement content, string primary) => new()
     {
         XamlRoot = Root.XamlRoot, Title = title, Content = content, PrimaryButtonText = primary,
-        CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close
+        CloseButtonText = "Cancel", DefaultButton = ContentDialogButton.Close,
+        PrimaryButtonStyle = DialogButtonStyle(primary),
+        CloseButtonStyle = DialogButtonStyle("Cancel and close this dialog.")
     };
+
+    private static Style DialogButtonStyle(string tooltip)
+    {
+        var style = new Style(typeof(Button))
+        {
+            BasedOn = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DefaultButtonStyle"]
+        };
+        style.Setters.Add(new Setter(ToolTipService.ToolTipProperty, tooltip));
+        return style;
+    }
 
     private static Dictionary<string, object> Connection(TextBox host, TextBox port, ComboBox tls, TextBox username, string? protocol = null)
     {
@@ -923,7 +1060,7 @@ public sealed partial class MainWindow : Window
         Foreground = IconBrush(color), Width = 20, Height = 20, VerticalAlignment = VerticalAlignment.Center
     };
 
-    private static Button IconAction(string name, string glyph, uint color, Action handler)
+    private static Button IconAction(string name, string glyph, uint color, Action handler, string? tooltip = null)
     {
         var button = new Button
         {
@@ -933,7 +1070,7 @@ public sealed partial class MainWindow : Window
             VerticalContentAlignment = VerticalAlignment.Center
         };
         AutomationProperties.SetName(button, name);
-        ToolTipService.SetToolTip(button, name);
+        ToolTipService.SetToolTip(button, tooltip ?? name);
         button.Click += (_, _) => handler();
         return button;
     }
@@ -948,16 +1085,12 @@ public sealed partial class MainWindow : Window
         return item;
     }
 
-    private static TabViewItem AccountTab(string name, string glyph, uint color, FrameworkElement content)
+    private static SelectorBarItem AccountTab(string name, string glyph, uint color, FrameworkElement content)
     {
-        content.Margin = new Thickness(0, 16, 0, 0);
-        return new TabViewItem
+        content.Visibility = Visibility.Collapsed;
+        return new SelectorBarItem
         {
-            Header = name, IsClosable = false, Content = content,
-            IconSource = new FontIconSource
-            {
-                Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = IconBrush(color)
-            }
+            Text = name, Icon = ColoredIcon(glyph, color), Tag = content
         };
     }
 
@@ -968,12 +1101,12 @@ public sealed partial class MainWindow : Window
         return panel;
     }
 
-    private static Border Section(string title, params UIElement[] children)
+    private static StackPanel Section(string title, params UIElement[] children)
     {
         var content = Stack();
         if (title.Length > 0) content.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         foreach (var child in children) content.Children.Add(child);
-        return new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SetupCard"], Child = content };
+        return content;
     }
 
     private static Grid Pair(FrameworkElement left, FrameworkElement right)
@@ -1002,10 +1135,12 @@ public sealed partial class MainWindow : Window
         return field;
     }
 
-    private static Button Action(string caption, Action handler, bool accent = false)
+    private static Button Action(string caption, Action handler, bool accent = false, string? tooltip = null)
     {
         var button = new Button { Content = caption };
         if (accent) button.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
+        AutomationProperties.SetName(button, caption);
+        ToolTipService.SetToolTip(button, tooltip ?? caption);
         button.Click += (_, _) => handler();
         return button;
     }
