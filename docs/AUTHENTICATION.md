@@ -2,7 +2,7 @@
 
 Choose IMAP or POP3 for incoming mail and optional SMTP for outgoing mail. Authentication is a separate choice: password or app password by default, or explicitly selected Microsoft sign-in.
 
-This source implementation has not been built or tested. Changing an authentication setting does not prove the account can connect.
+Synthetic authentication tests pass with mocked transports and protected stores. Live sign-in and native credential storage remain unvalidated. Changing an authentication setting does not prove the account can connect.
 
 ## Passwords and app passwords
 

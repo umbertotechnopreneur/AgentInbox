@@ -9,7 +9,7 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 ![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
-> **This implementation is in development and unvalidated.** No build, runtime check or package installation has validated the Python engine and Windows setup changes. See [validation](docs/VALIDATION.md).
+> **In development.** All 77 synthetic Python tests passed locally on Windows. WinUI behavior, real-provider access and MSIX installation remain unvalidated. See [validation](docs/VALIDATION.md).
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 

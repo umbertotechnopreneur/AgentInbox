@@ -19,6 +19,6 @@
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
-- Author synthetic tests for protocol, account, approval and authentication boundaries; execution is pending.
+- Add synthetic tests for protocol, account, approval and authentication boundaries; all 77 pass locally on Windows.
 
-The implementation remains unvalidated. No package or runtime validation is claimed.
+WinUI, live providers, native credential stores and package installation remain unvalidated. See [validation](docs/VALIDATION.md) for the local test result and its limits.

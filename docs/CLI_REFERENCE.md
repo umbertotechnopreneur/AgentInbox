@@ -1,6 +1,6 @@
 # Python command reference
 
-The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. This command surface remains unvalidated.
+The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. Synthetic management-session tests pass; process startup and packaged commands still need end-to-end validation.
 
 ## Windows installation
 
