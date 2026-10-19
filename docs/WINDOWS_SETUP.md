@@ -2,13 +2,13 @@
 
 The WinUI 3 app configures a bundled Python mail engine. See [validation](VALIDATION.md) for package, test and live-provider evidence.
 
-Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.6.5, including the revised interface, built and installed locally on x64. Visual interaction and live mail access remain unvalidated.
+Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.6.6, including the flat account editor, built and installed locally on x64. Visual interaction and live mail access remain unvalidated.
 
 ## Configure an account
 
 If no accounts are saved, choose **Create your first account** to open the form. **Cancel** returns to the empty state. To edit an existing account, use **Edit account**, which shows its name and email address. The colored add icon opens a separate new-account form; Cancel returns to the previous account. Remove and refresh sit beside the selector. Buttons have tooltips.
 
-The flat editor has three views: **Account**, **Incoming** and **Outgoing**. The selected view is underlined. **Create account** or **Save changes** stays at the top right. Connection tests appear after saving and stay disabled while changes are pending. Outgoing tests appear only when SMTP is configured; the test-message action also requires sending to be enabled.
+The flat editor has three views: **Account**, **Incoming** and **Outgoing**. The selected view is underlined. **Create account** or **Save changes** stays at the top right. Connection tests appear after saving and stay disabled while changes are pending. Outgoing tests appear only when SMTP is configured and require sending to be enabled. The test-message action is hidden while sending is off.
 
 In **Account**, choose a provider preset or custom server and enter the account name, address and authentication choice. In **Incoming**, select IMAP or POP3, enter the hostname, port, TLS mode and username, then save before testing the saved connection. Password or app password is the default authentication choice.
 

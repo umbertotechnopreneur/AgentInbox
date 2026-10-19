@@ -1,6 +1,6 @@
 # Open work
 
-All 77 synthetic Python tests and nine isolated Codex setup checks pass locally on Windows. Debug MSIX 1.0.6.5 built and installed on Windows x64 with package status `Ok`; remaining work is listed below. See [validation](../../docs/VALIDATION.md) and [change history](../../CHANGELOG.md).
+All 77 synthetic Python tests and nine isolated Codex setup checks pass locally on Windows. Debug MSIX 1.0.6.6 built and installed on Windows x64 with package status `Ok`; remaining work is listed below. See [validation](../../docs/VALIDATION.md) and [change history](../../CHANGELOG.md).
 
 - [ ] Remove obsolete input staging and superseded packages when the automatic deletion block can be resolved; exact paths and sizes are in validation.
 - [ ] When requested, exercise WinUI account setup, native review, the packaged CLI/MCP alias and configuration after a package update.
