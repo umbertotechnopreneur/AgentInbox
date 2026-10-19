@@ -27,25 +27,41 @@ Tests exercise real application/storage behavior with synthetic `example.test` a
 
 These results do not prove network interoperability, native credential protection, GUI behavior or packaged startup.
 
-## Local Debug MSIX 1.0.8.0
+## Local Debug MSIX 1.0.9.0
 
-On 2026-10-19, Debug MSIX **1.0.8.0 x64** was built locally from commit `e200ca1`, signed with the existing current-user certificate and installed over 1.0.7.0. Windows reports version `1.0.8.0`, architecture `X64` and package status `Ok`.
+On 2026-10-19, Debug MSIX **1.0.9.0 x64** was built locally from commit `1eaf1c5`, signed with the existing current-user certificate and installed over 1.0.8.0. Windows reports version `1.0.9.0`, architecture `X64` and package status `Ok`.
 
 The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
 
-The retained installer is 104,635,244 bytes. The packaging checksum record reports this SHA-256:
+The retained installer is 104,641,178 bytes. The packaging checksum record reports this SHA-256:
 
 ```text
-8f5b7bd213d477e71e2258f244dee63734dfb1dfdc695b425bed2d48c47e474e
+60332d079f5e1318f6a4dffd1ab5570cdbcdd76169172968593607316e68a75e
 ```
 
 Earlier build failures were corrected as recorded in the changelog. Matching `dotnet clean` and task-directory cleanup completed for this successful build.
 
 The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Evidence for the 22 unchanged imported archives and their extracted files is retained separately under ignored `artifacts/imports/first-import-scans-20261019.json`. Subsequent local builds follow the new rule; remote workflows remain unexecuted.
 
-The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.8.0/`. The task-owned build directory was removed and `artifacts/work/` has no remaining build directories. Earlier automatic approval review rejected obsolete-artifact deletion with `blocked by policy`; that restriction was not bypassed or retried. Remaining obsolete paths are `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded installers under `artifacts/msix/debug/x64/1.0.6.4/` (99.76 MiB), `1.0.6.5/` (99.78 MiB), `1.0.6.6/` (99.78 MiB) and `1.0.7.0/` (99.79 MiB), and the tiny `artifacts/debug/1.0.6.3/` record. This is not a completed artifact cleanup.
+The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.9.0/`. Its matching `dotnet clean` and packaging-directory removal completed; `artifacts/work/` has no remaining build directories. Automatic approval review rejected the separate UI-test cleanup command before execution with `blocked by policy`. The `diagnostic`, `corrected` and `native-tabs` directories under `artifacts/ui-check-1.0.9/` remain at approximately 1,906 MiB each (5.58 GiB total), together with the small isolated profile and build script. Their matching clean was part of the rejected command and did not run. The block was not bypassed or retried.
 
-Static review covered viewport-bound page width, top-left anchoring, narrow-window header/account actions and paired fields, and native tab theme resources. Resource names were checked against the imported WinUI package's `generic.xaml`; no control template was replaced. No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation. The earlier Python and guided-setup checks were not repeated for this layout change.
+Earlier blocked cleanup also leaves `artifacts/recovered-20261015/` (135.22 MiB), superseded installers 1.0.6.4 through 1.0.8.0 (about 100 MiB each), and the small `artifacts/debug/1.0.6.3/` record. The unchanged offline inputs under `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB) were reused for this build. Cleanup is incomplete.
+
+## Account UI regression checks
+
+Version 1.0.8.0 passed build and installation but failed when opening Accounts. The owner reported the failure, and an isolated run reproduced it. A diagnostic build established that resolving the tab resource dictionary succeeded, but assigning that application-owned dictionary to `TabView.Resources` threw `ArgumentException` (`0x80070057`). This was a UI construction error, not a Python failure.
+
+The corrected source creates each native TabView and its local resources through a DataTemplate. Actual Windows UI interaction verified:
+
+- Empty state hides the account editor and Save/Cancel; Create explicitly opens the form, and Cancel restores the empty state.
+- All three tabs change content and display a visible selected background and border.
+- Gmail exposes password authentication only and fills its incoming server. Optional SMTP fields open while sending stays disabled; no credentials were entered or saved.
+- A narrow window (approximately 814 pixels wide in the capture) stacks paired fields and header actions. Maximizing keeps the content at the top left and limits its width.
+- Navigating away and back recreates the page. An intentionally incompatible synthetic profile produces a complete error page without partial form actions; explicit retry succeeds after correcting that test profile, and the editor opens again.
+
+After installation, the packaged 1.0.9.0 executable was launched with its bundled runtime and an isolated `AGENTINBOX_DATA_DIR`. Visual interaction verified startup, empty state, explicit Create, the Incoming tab and Cancel. No unexpected setup error was logged. Small diagnostic and result records are under ignored `artifacts/verification/ui-1.0.9/`.
+
+These checks did not save accounts or credentials, send mail, test live providers, exercise every keyboard path, or verify light/high-contrast themes. The earlier Python and guided-setup checks were not repeated because their implementation did not change.
 
 ## Guided Codex setup checks
 
@@ -59,8 +75,8 @@ The final run completed in 0.88 seconds after the last service change. It did no
 - Real IMAP/POP3 connections and non-marking/non-deleting behavior with providers.
 - Microsoft app registration, live consent, tenant policy and token refresh.
 - Real SMTP authentication, rejection/acceptance and recipient delivery.
-- WinUI account setup, keyboard access, error feedback and native approval.
-- CLI/MCP process startup, installed aliases, bundled runtime, shared profile and configuration after package updates.
+- Account saving/editing with native credentials, complete keyboard access, light/high-contrast themes and native send approval.
+- CLI/MCP process startup, installed aliases, default shared profile and configuration after package updates.
 - Debug MSIX creation, signing and installation on Windows ARM64.
 - Local Store Release packages, package validation and submission.
 - Linux/macOS execution and external MCP-client integration.
