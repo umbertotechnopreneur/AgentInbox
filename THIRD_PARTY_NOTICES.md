@@ -1,20 +1,34 @@
 # Third-party notices
 
-AgentInbox source is MIT-licensed. Dependencies retain their own licenses; AgentInbox's license does not replace them.
+AgentInbox source is MIT-licensed. Third-party components retain their own licenses; AgentInbox's license does not replace them.
 
-The exact restored CLI dependency inventory is in `docs/DEPENDENCIES.md` in source and `DEPENDENCIES.md` in portable packages. `scripts/export-notices.py` derives it from NuGet metadata and fails validation if it becomes stale.
+## Python engine
 
-Windows MSIX packages additionally include the Windows App SDK / WinUI runtime. Their combined desktop and CLI inventory is generated during packaging as `licenses/DEPENDENCIES.md`, with each restored dependency's metadata and supplied license/notice texts under `licenses/packages/`. The portable CLI inventory does not describe those Windows UI dependencies.
+The engine uses Python 3.11 or newer and its standard library, without third-party Python packages. Python and its bundled components have their own license and notices. A distribution containing a Python interpreter must include the license and notices supplied with that exact interpreter.
 
-Included upstream license texts under `docs/licenses/` (or `licenses/` in a portable package) cover:
+Source review uses tkinter where available. If Tcl/Tk is included in a distribution, preserve its supplied license and notices too.
 
-- .NET runtime and Microsoft packages: MIT, with upstream third-party notices.
-- Microsoft.Extensions.AI: MIT.
-- ModelContextProtocol: Apache-2.0.
-- Spectre.Console: MIT.
-- Serilog and its hosting, logging and console integrations: Apache-2.0.
-- SQLitePCLRaw: Apache-2.0; its bundled SQLite engine has separate public-domain provenance described by that upstream project.
+## Windows setup
 
-Portable packaging also copies each restored package's `.nuspec` and available license/notice files, preserving package-specific metadata and notices. Test dependencies are development-only and are not distributed with the executable. Review new dependency licenses and notices when updating packages.
+The WinUI 3 setup project has two direct package references, with versions declared centrally:
 
-OpenAI, Codex, Google, Gmail, Microsoft, Outlook and related names are trademarks of their respective owners. Their use identifies interoperability and does not imply endorsement.
+| Package | Referenced version | Role |
+| --- | --- | --- |
+| [Microsoft.WindowsAppSDK](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.4.0) | 2.4.0 | Windows UI and platform components |
+| [Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.26100.9169) | 10.0.26100.9169 | Build tools; `PrivateAssets="all"` |
+
+This is the direct source inventory, not a restored transitive dependency graph or a list of files certified for distribution. The packages' supplied terms and notices govern their contents; do not assume every included binary uses the repository's MIT license.
+
+The Windows app also uses .NET. Existing unmodified [.NET license](docs/licenses/dotnet-LICENSE.txt) and [.NET third-party notices](docs/licenses/dotnet-THIRD-PARTY-NOTICES.txt) are retained with their [source provenance](docs/licenses/SOURCES.md). The notices shipped in a new package must match the runtime actually included.
+
+## Packaging requirements
+
+For each approved MSIX build, collect the actual runtime and dependency inventory and preserve supplied licenses, notices and required attribution. Include Python, Tcl/Tk if bundled, .NET, Windows App SDK components and any transitive components that are distributed.
+
+Targeted Microsoft Windows Defender scans are required before importing or running new external packages and their extracted dependencies. See the [README policy](README.md#external-binary-security-policy).
+
+No new runtime has been downloaded for this documentation update. No package restore, scan, build or distribution-license completeness check is claimed.
+
+## Names and marks
+
+OpenAI, Codex, Google, Gmail, Apple, iCloud, Microsoft, Outlook, Python and related names belong to their respective owners. Their use identifies technologies or connection requirements and does not imply endorsement.

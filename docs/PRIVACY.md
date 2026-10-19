@@ -1,96 +1,67 @@
 # AgentInbox Privacy Policy
 
-Last updated: 2026-09-20
+Last updated: 2026-10-19.
 
-AgentInbox connects your email and calendars to an assistant you choose. This policy explains what the app reads, what stays on your device and what can leave it.
+AgentInbox connects your email to an assistant you choose. It uses IMAP to read mail and optional SMTP to send messages you approve locally. This policy describes the current source implementation, which remains unvalidated.
 
-[Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms of use](https://umbertogiacobbi.biz/agentinbox/terms/)
+[Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms](https://umbertogiacobbi.biz/agentinbox/terms/)
 
 ## Who is responsible
 
-I am Umberto Giacobbi, the developer of AgentInbox. For privacy questions or requests about information you send me, contact hello@umbertogiacobbi.biz.
+I am Umberto Giacobbi. For privacy questions about AgentInbox or information you send me, contact hello@umbertogiacobbi.biz.
 
-This policy covers the AgentInbox desktop app, command-line app and local MCP connection. AgentInbox does not upload your connected mailbox or calendar to a server I operate. Browsing this website is a separate activity, covered by the website privacy notice.
+This policy covers the Windows app, Python engine and local MCP connection. AgentInbox does not upload your mailbox to a server I operate. Website browsing is covered by the separate [website privacy notice](https://umbertogiacobbi.biz/privacy/).
 
-- [Website privacy notice](https://umbertogiacobbi.biz/privacy/)
+## Account settings and passwords
 
-## What AgentInbox reads and why
+You supply an email address, server names, ports, TLS settings, usernames and passwords or app passwords. AgentInbox uses them to connect directly to the email servers you select.
 
-When you connect Google, AgentInbox reads your account identifier, display name and email address to identify the account. It receives OAuth access and refresh tokens so it can make the reads you authorize without asking you to sign in for every request. Sign-in happens through the provider; AgentInbox does not collect your Google or Microsoft password.
+Connection settings and account permissions are stored locally. Passwords use operating-system protection: DPAPI on Windows, Keychain on macOS or an available Secret Service on Linux. Missing secure storage fails instead of saving a plain-text password.
 
-With mail access enabled, AgentInbox searches messages and reads selected messages. Results can contain subjects, senders, recipients, timestamps, snippets, message text, read status and whether attachments are present. Gmail message reads retrieve the message payload, including MIME metadata; the app does not offer a separate attachment-download tool.
+These facilities do not encrypt every local metadata file or protect a compromised signed-in operating-system account. Server connections require validated TLS.
 
-With calendar access enabled, AgentInbox lists calendars and searches and reads appointments. Data can include calendar names, identifiers and time zones, event titles, dates and times, cancellation status, locations, descriptions, attendees and meeting links.
+## Reading mail
 
-Search text, filters and the requested item identifiers are sent to Google or Microsoft to fulfil your request. The purpose is to help you find and read your own mail and appointments through your connected assistant. AgentInbox cannot send mail, change or delete provider messages or events, or send invitations.
+Requested results can contain subjects, senders, recipients, timestamps, message text, read status and attachment metadata. Search filters and requested message identifiers go to your configured IMAP server.
 
-## Google permissions
+IMAP reads use read-only mailbox selection and non-marking retrieval. Result references and search state are kept in process memory, with ten-minute message references. The engine does not create a full mailbox archive.
 
-AgentInbox requests openid, email and profile to identify your connected Google account. If you select mail, it also requests https://www.googleapis.com/auth/gmail.readonly. If you select calendars, it requests https://www.googleapis.com/auth/calendar.calendarlist.readonly and https://www.googleapis.com/auth/calendar.events.readonly.
+The connected assistant receives requested results. It may send them to an AI service, retain conversations or process data outside your country. AgentInbox does not call an AI model itself, but local MCP does not make the whole workflow offline. Check your client's privacy, retention and training settings.
 
-Gmail read access is needed to search your mailbox and read message text; metadata-only access would not provide that feature. The two calendar permissions allow calendar discovery and event reads without requesting calendar write access. You can connect mail, calendars, or both.
+Passwords are not returned as MCP tool results.
 
-Provider authorization and sharing with an assistant are separate controls. Review the account, mail and calendar sharing settings before connecting an assistant. OAuth permission can cover more data than you choose to share through AgentInbox.
+## Preparing and sending mail
 
-## Your assistant and other recipients
+SMTP is disabled until you enable it for an account. Your assistant can then prepare a message, including recipients, subject, body and selected local attachment files.
 
-AgentInbox returns requested results to the local MCP client connected to it. These results can include account names and email addresses, message text, appointment details, attendees and meeting links. Tokens and provider secrets are not returned as tool results.
+Preparation stores protected message content locally for review. It does not send it. Local review shows all recipients and the exact content. Your approval authorizes that message once. The assistant cannot approve through MCP.
 
-A client such as Claude, Codex or Visual Studio Code may forward results to its configured AI service and retain them in a conversation, logs or other storage. That processing may happen outside your country. AgentInbox does not call an AI model itself, but a local connection does not make the whole workflow offline.
+Approved content goes to the configured SMTP server and may subsequently reach recipients and their providers. Server acceptance does not establish final delivery.
 
-Check the client and provider terms, retention and training settings before sharing Google data. Use only a configuration compatible with the Google data-use limits below. AgentInbox cannot enforce an external service’s retention settings or delete copies it has already received.
+Pending requests expire after ten minutes. Expired content is cleaned when the store is next accessed; closing the app does not guarantee immediate deletion of expired disk state. Local request metadata can remain for status reporting until cleaned or removed.
 
-Google and Microsoft receive the API and sign-in requests needed to provide their services. I do not receive app telemetry or automatically uploaded diagnostic logs. If you send me a support request, I receive the contact details and material you choose to include. Do not send passwords, tokens or complete mailboxes.
+## Local data and diagnostics
 
-## What stays on your device
+The engine uses its local AgentInbox profile or the directory selected by `AGENTINBOX_DATA_DIR`. Settings, account metadata, pending-request state and protected content can persist there or in the system credential store.
 
-AgentInbox stores account identifiers, names, email addresses and permission flags in accounts.db. Provider settings, search preferences, sharing choices and selected calendar identifiers are stored separately. These metadata and settings files are not encrypted by AgentInbox.
+Diagnostics exclude passwords, mail bodies, attachment contents and authentication exchanges. I do not receive automatic application telemetry or diagnostic uploads. If you contact me, I receive the contact details and material you choose to send. Do not send passwords or complete mailboxes.
 
-OAuth tokens and configured provider secrets use operating-system-protected storage. On Windows this uses DPAPI for the current user. This protection does not encrypt the whole data folder. Provider API requests use HTTPS.
+Your operating system, backups and assistant may retain their own copies. Protected storage is not secure erasure of those copies.
 
-The data folder is under your operating system’s Local Application Data location in an AgentInbox folder, normally %LOCALAPPDATA%\AgentInbox on Windows. A packaged installation or the AGENTINBOX_DATA_DIR override can change the resolved location.
+## Stop access and remove data
 
-AgentInbox does not keep an on-disk archive of message bodies or appointment details. Search state, result references and limited detail caches are kept in process memory. Your operating system, backups and connected assistant may retain their own copies.
+Disable assistant reads or SMTP in local account settings to stop those operations. Remove an account to remove its local access and saved credentials. Your original mailbox remains with the provider.
 
-Local diagnostic logs record operation names, timing, counts, failure categories and account correlation keys. The logging configuration excludes provider payloads, message bodies, meeting details and credential values. Local read-limit files also retain usage counters, timestamps and hashed scope keys to coordinate processes; they are not a mailbox archive.
+Revoke any dedicated app password using the provider's controls when you no longer need it. Removing local settings does not revoke that password at the provider.
 
-## How long data is kept
+For full local cleanup, remove configured accounts, stop AgentInbox processes and remove the relevant local profile and pending data. Remove its MCP registration from your assistants. Uninstalling alone should not be relied on to erase every copy.
 
-Account records and protected tokens remain until you remove the account or clear the local profile. Settings, sharing records and diagnostic state can remain after an account is removed.
+Separately delete conversations, exports and backups using the systems that hold them. I cannot remotely delete data stored only on your device or with another provider.
 
-Result references and paging state expire after 30 minutes. Cached message and event details stop being reusable after two minutes. Expired entries are cleared during subsequent cache operations; stopping every AgentInbox process releases its in-memory state.
+## Your requests and changes
 
-Logs roll daily and when a file reaches 10 MiB, with up to 14 files retained during log rotation. This is a file-count limit, not a promise that every log is deleted after 14 days. You can delete local logs yourself.
+For information you send me directly, you can request access, correction or deletion and, where applicable, restriction, objection or portability. You may also contact the competent data-protection authority.
 
-If you contact me, I use what you send to answer your request. I keep that correspondence while needed for the request and any resulting agreement or applicable record-keeping obligation. You can ask me to delete it; I will explain if a legal obligation requires keeping part of it.
+I keep support correspondence while needed for the request and any resulting agreement or applicable record-keeping obligation. If an obligation requires retaining information you ask me to delete, I will explain.
 
-## Stop access and delete data
-
-Turn off sharing for an account, mail or calendars in AgentInbox to stop subsequent assistant reads through that connection. Remove the account to delete its active local account record and stored account tokens. A disabled sharing record containing the account identifier remains so reconnecting does not silently restore earlier assistant access.
-
-Also revoke AgentInbox in your Google Account connections or Microsoft account permissions. Removing an account locally does not revoke the provider-side grant and does not delete the original messages or appointments.
-
-For a full local cleanup on Windows, remove connected accounts, close the desktop app and stop every AgentInbox process started by your assistants. Then delete the AgentInbox data folder for that installation, including settings, sharing records, logs and read-limit state. Remove its MCP connection from each assistant if you no longer use it. Uninstalling alone should not be relied on to remove every copy.
-
-Local deletion is not secure erasure of disk remnants or backups. Separately delete conversations, exports or other copies retained by assistants and external services using their controls. I cannot remotely delete data stored only on your device or in an account with another provider.
-
-- [Google Account connections](https://myaccount.google.com/connections)
-- [Microsoft personal account permissions](https://account.live.com/consent/Manage)
-- [Microsoft work or school account applications](https://myapplications.microsoft.com/)
-
-## Google data and Limited Use
-
-I commit to using and transferring information obtained through Google APIs only in accordance with the Google API Services User Data Policy and Google Workspace user data and developer policy, including their Limited Use requirements.
-
-I use Google data only to provide the email and calendar features described here. I do not sell it, use it for advertising, credit decisions or surveillance, or use it to train or improve general-purpose AI models. The same restrictions apply to data derived from it.
-
-The app shares results with your chosen assistant to fulfil the features you authorize. This is not permission for that recipient to use Google data for unrelated purposes or general model training. I do not routinely read your Google data or receive it on an AgentInbox backend. If support requires a specific sample, share only what is needed and expressly authorize its review; necessary security investigations or legal obligations may also require limited handling.
-
-- [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy)
-- [Google Workspace user data and developer policy](https://developers.google.com/workspace/workspace-api-user-data-developer-policy)
-
-## Your requests and policy changes
-
-For information you send me directly, you can request access, correction or deletion and, where applicable, restriction, objection or portability. You can also contact the competent data-protection authority. Email hello@umbertogiacobbi.biz and identify AgentInbox and the information concerned.
-
-This notice describes the current app. I will update it when data handling changes. If a change introduces a new use of Google data, I will explain that use and obtain any required consent before it starts. The date at the top identifies this version.
+I will update this notice when data handling changes. The date above identifies this version.

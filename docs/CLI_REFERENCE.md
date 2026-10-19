@@ -1,53 +1,33 @@
-# CLI reference
+# Python command reference
 
-Use the command-line app to set up services, connect accounts and start AgentInbox for your assistant. In a terminal, it shows readable results and suggests what to do next. If your terminal can't show Unicode symbols, it uses plain text.
+The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files.
 
-| Command | What it does |
+| Command | Purpose |
 | --- | --- |
-| `agentinbox` / `agentinbox --help` | Help and command examples |
-| `agentinbox --version` | Version string only |
-| `agentinbox status` | Shows which features are implemented; doesn't check Google or Microsoft setup |
-| `agentinbox accounts list` | Lists connected accounts and read permissions, or explains how to add your first account |
-| `agentinbox accounts connect <google\|microsoft>` | Browser sign-in for read-only mail and calendars |
-| `agentinbox accounts connect <provider> --mail-only` | Connect with mail read access only |
-| `agentinbox accounts connect <provider> --calendar-only` | Connect with calendar read access only |
-| `agentinbox accounts remove <account-id>` | Removes the local account record and saved sign-in tokens |
-| `agentinbox setup status` | Shows whether Google and Microsoft are configured and what to do next |
-| `agentinbox setup google <client-json>` | Import a Google Desktop app client file into protected storage |
-| `agentinbox setup microsoft <client-id>` | Save a Microsoft desktop app client ID |
-| `agentinbox --stdio` | MCP server; stdout contains protocol messages only |
+| `python -B python/run.py mcp` | Run MCP over stdio |
+| `python -B python/run.py manage` | Read local management JSON on stdin |
+| `python -B python/run.py review <request-id>` | Open local review of a pending message |
 
-## Output and options
+Use absolute paths when another app starts these commands. Keep passwords and message content out of command-line arguments.
 
-Commands show readable text in a terminal. Redirect a data command's output or add `--json` to get JSON with `snake_case` field names. Help stays text, and the version command returns only the version. JSON and MCP output have no banners or animations.
+## Local management
 
-| Option | What it does |
-| --- | --- |
-| `--json` | Force JSON for status, accounts and setup commands |
-| `--no-color` | Disable colors and ANSI escape sequences; also respects a nonempty `NO_COLOR` or `TERM=dumb` |
-| `--no-animation` | Disable the activity spinner while keeping readable output |
-| `--log-level <level>` | Override `AGENTINBOX_LOG_LEVEL`; default `warning` |
-| `--` | Treat the following tokens as literal values, including paths starting with a hyphen |
+Operations are `list_accounts`, `presets`, `save_account`, `remove_account`, `check_read`, `check_smtp`, `list_folders`, `list_pending`, `prepare_email` and `get_send_status`.
 
-Options can go before or after the command. Use `--mail-only` or `--calendar-only` with `accounts connect`, but not both together. Leaving both out requests access to mail and calendars. Scripted commands don't add interactive prompts.
+`list_pending` returns the latest 100 outgoing records, including completed or uncertain outcomes, so local setup can show recent status as well as messages awaiting review. Its name does not mean every returned record is awaiting approval.
 
-```powershell
-agentinbox setup status
-agentinbox accounts list --json
-agentinbox --no-color --no-animation status
-agentinbox accounts list --log-level debug > accounts.json
+Requests and responses are JSON. A request contains exactly `operation` and `arguments`, for example:
+
+```json
+{"operation":"list_accounts","arguments":{}}
 ```
 
-Logs and errors go to stderr, separate from command results. Choose from `verbose`, `debug`, `information`, `warning`, `error` or `fatal`. Logs include operation names, timing, error types and counts of accounts that couldn't be read. They leave out message content and account addresses; diagnostic account keys are described in [logging](LOGGING.md).
+Write one JSON line to stdin, at most 1 MiB. A successful response has `ok: true` and `result`; failures have `ok: false` and `error`. Keep credentials on stdin and out of shell history. Use Windows setup for interactive configuration. The backend contract defines operation-specific fields; do not infer them from UI labels.
 
-Exit codes are `0` for success, `1` for an operation or startup failure, `2` for an invalid command or option, and `130` for a cancelled command. Press Ctrl+C to cancel sign-in or other pending work. A normal MCP shutdown returns success.
+## Data and failures
 
-## Local setup
+`AGENTINBOX_DATA_DIR` selects an isolated profile. Use a task-specific directory under ignored `artifacts/` for development.
 
-Set `AGENTINBOX_DATA_DIR` to a full path if you want to choose the data folder. Otherwise, AgentInbox uses an `AgentInbox` folder under .NET's per-user `LocalApplicationData` directory, regardless of where you run the command. Listing features or an empty account list doesn't create a database. Log files go under `logs\agentinbox-YYYYMMDD.log` in that data folder; see [logging](LOGGING.md) for size and retention limits.
+Unknown formats, invalid fields, unavailable secure storage and unsupported connections fail explicitly. There are no data importers or legacy command aliases.
 
-Set up Google or Microsoft first, then use `accounts connect` to sign in. Use `accounts list` to find the ID needed by `accounts remove`. Removing an account locally leaves its app permission in place at Google or Microsoft.
-
-The Google configuration file isn't deleted after import. Keep it private and remove it when you no longer need it.
-
-CLI and recovery changes have passed local Windows checks. Revoking access and reconnecting real accounts, plus installation on a clean machine, still need testing. See [account recovery](RECOVERY.md) and the [test record](VALIDATION.md).
+Stdout contains protocol or management JSON. Diagnostics go to stderr. Local source review needs tkinter and a graphical session; unavailable review facilities must leave the message unsent. The current command surface remains unvalidated.

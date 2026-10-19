@@ -1,49 +1,33 @@
-# Accounts and sign-in
+# Accounts and passwords
 
-You sign in to each Google or Microsoft account in your browser. AgentInbox doesn't need your account password. It saves sign-in tokens so it can read the accounts you've connected without asking you to sign in every time.
+An account has an incoming IMAP connection and optional outgoing SMTP connection. Authentication uses the password or app password accepted by that server.
 
-Setup and sign-in with several real accounts have passed Windows checks. Tests with made-up accounts also cover failed reconnections and multiple processes using the same credentials. Revoking access and reconnecting real accounts still need deliberate testing.
+## Connection settings
 
-## What's saved on your computer
+Enter a hostname, port, encrypted connection mode and username for each connection. Supply passwords through local setup or management JSON on stdin. Keep them out of command-line arguments, issue reports and logs.
 
-| Item | What it's for | Where it's kept |
-| --- | --- | --- |
-| Client ID | Tells Google or Microsoft which app is asking | Local app settings; this ID isn't secret |
-| Access token | Gives the app temporary access | Memory or the sign-in library's protected cache |
-| Refresh token | Renews access without another browser sign-in | Operating-system protected storage |
-| Microsoft token cache | Saves sign-in information through Microsoft's MSAL library | Operating-system protected storage |
-| Account names and addresses | Shows which accounts you've connected | Local SQLite database |
+Use TLS from the start or require STARTTLS before authentication. Certificate and hostname validation must succeed. There is no unencrypted fallback.
 
-Keep tokens out of prompts, logs, GitHub and the account database. Microsoft desktop sign-in doesn't need a client secret. A secret bundled inside a desktop app can be extracted, so it can't be treated as private.
+Gmail needs an eligible account with an app password. iCloud Mail needs an app-specific password. Custom providers must allow password-based IMAP and optional SMTP. Outlook.com and Microsoft 365 presets are rejected because this implementation cannot satisfy their required sign-in method.
 
-## Set up the app, then connect accounts
+## Protected storage
 
-- `agentinbox setup google <client-json>` imports your Google **Desktop app** configuration file. It saves the client ID in local settings and protects the client secret with the operating system. The original downloaded file stays where it is; remove it yourself when you no longer need it.
-- `agentinbox setup microsoft <client-id>` saves the public Application (client) ID. A Microsoft desktop app does not need a client secret.
-- `agentinbox setup status` shows whether Google and Microsoft are set up, without revealing secrets.
+Configuration holds non-secret connection settings and permissions. Passwords use system protection:
 
-Once the app is set up, connect an account:
+| Platform | Required protection |
+| --- | --- |
+| Windows | Current-user DPAPI |
+| macOS | Keychain through native APIs |
+| Linux | An unlocked Secret Service through the native `libsecret` library |
 
-- `agentinbox accounts connect google`
-- `agentinbox accounts connect microsoft`
-- add `--mail-only` or `--calendar-only` if you only want email or calendars
+An unavailable or locked store is an error. There is no plain-text fallback or previous-profile import.
 
-Run the command again to add another account. Each time, your browser opens and lets you choose an account. Google stores tokens separately for each account. Microsoft's sign-in library uses one protected cache while keeping account identities separate.
+This protection does not encrypt every metadata file or protect a compromised signed-in operating-system account. See [privacy](PRIVACY.md).
 
-To reconnect, choose the same account again. If the new sign-in fails its checks, AgentInbox keeps the saved credentials. It also coordinates token refresh and removal when several local processes are running. See [account recovery](RECOVERY.md).
+## Account permissions
 
-`agentinbox accounts remove <account-id>` removes the local account record and saved sign-in tokens. To revoke access too, use your Google or Microsoft account settings.
+Enable assistant reads separately from saving a connection. SMTP remains disabled until you enable it, and every message still needs local approval.
 
-Before replacing a Google or Microsoft app registration, remove its connected accounts from AgentInbox. That lets AgentInbox clean up their old sign-in tokens first.
+Removing an account removes local access and its saved credentials, not the mailbox. Revoke a dedicated app password in your provider settings when no longer needed.
 
-## Read-only access
-
-Ask for only the permissions you need. Reading calendars needs its own permission; email access doesn't cover it. Declining calendar access must leave an existing mail connection working.
-
-## Secure storage and sharing the app
-
-Token storage uses Windows user protection, macOS Keychain or Linux Secret Service. If secure storage isn't available, AgentInbox must stop instead of saving tokens as plain text. The macOS and Linux paths still need testing; those platforms aren't supported in this preview.
-
-Distributing the app publicly still requires the right Google and Microsoft registrations and any review they require. A copy of the program doesn't include the creator's account tokens.
-
-Developer references: [Google OAuth](https://developers.google.com/identity/protocols/oauth2/native-app), [Calendar permissions](https://developers.google.com/workspace/calendar/api/auth), [MSAL cache](https://learn.microsoft.com/en-us/entra/msal/dotnet/how-to/token-cache-serialization).
+Each platform's credential path remains unvalidated.

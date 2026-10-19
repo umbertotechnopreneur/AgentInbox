@@ -1,46 +1,23 @@
-# Releases
+# Release requirements
 
-GitHub distributes source and executable archives. There is no hosted deployment or marketplace.
+The Python engine and WinUI 3 changes have no validated release package.
 
-## Packages
+Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Linux and macOS are source-only; do not publish compiled binaries or installers for them.
 
-Each release contains complete Windows x64 and ARM64 portable ZIPs. Both include the native setup app, a separate CLI/MCP executable and their runtimes. The workflow creates portable ZIPs only; Store packages are prepared and submitted manually. See [portable setup](WINDOWS_PORTABLE.md). The workflow does not publish Linux or macOS archives.
+Obtain explicit authorization for the requested build and channel. Generic builds default to local Debug and do not authorize Store work, publication or tags.
 
-Only Windows x64 is tested for the current MVP. Windows ARM64 is build-only.
+Scan new external packages and their extracted dependencies before use. Record source, version or hash, command and result. Include notices for components actually shipped.
 
-Each package includes the application, .NET runtime, license notices, version information and a SHA-256 checksum; ZIPs also record the source commit.
+A Windows package must contain the Python runtime and engine needed by its entry points; it must not depend on an arbitrary system interpreter. Keep source and package versions consistent.
 
-A native smoke test runs when the runner matches the target CPU. Other packages explicitly record that native execution was not tested.
+The `Manual Windows MSIX` workflow is manually dispatched from `main`. Its inputs identify the Debug or Store channel, x64 or ARM64 architecture, package version, official Python embeddable version and SHA-256, and a JSON inventory of the complete NuGet dependency closure with official URLs and hashes. Downloaded archives and extracted files must pass the targeted Defender scans before the offline packaging step uses them.
 
-## Rehearse
+The workflow source produces an unsigned MSIX, checksum and small packaging record. It does not create a tag or GitHub Release, publish a package or submit to the Microsoft Store. An unsigned build artifact is not an installed or approved release.
 
-Run **Actions > Windows release > Run workflow** on `main`. It builds the portable ZIPs without creating a release or an MSIX package.
+When authorized, validate packaged entry points, architecture, native review and installation separately. Release MSIX files are created through GitHub Actions. Local Debug MSIX work may use the existing current-user certificate when explicitly requested.
 
-Local Windows example, from a clean committed checkout:
+No historical test result validates this engine. SMTP acceptance is not recipient delivery.
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-portable -Runtime win-x64
-```
+Retain only requested current packages, checksums and small verification records. Preserve pending uploads and requested rollback material until no longer needed. Follow cleanup rules for other output.
 
-Output is under `artifacts/`. Packaging clears that directory before building, including previous packages and logs. Copy anything you want to retain elsewhere first; build one target at a time in each checkout.
-
-Complete Windows ZIPs use committed dependency graphs under `eng/locks/windows-portable/`. Refresh them with `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command update-locks` after adding modules or changing dependencies.
-
-## Publish later
-
-1. Update version, changelog and validation evidence.
-2. Merge passing code into `main`.
-3. Only when authorized, push the matching `v<Version>` tag.
-4. Review the generated draft release and manually publish it.
-
-Dispatch never publishes a release. A matching tag creates a pre-release draft for review, or updates the ZIP assets of an existing draft while preserving its notes. Published releases are never overwritten. Publish manually after reviewing the assets. A tag must match the project version and point to code reachable from `main`.
-
-## Current limits
-
-The current pre-alpha reads real accounts after local provider setup and sign-in. ZIP checksums detect changes but are not publisher signatures. Store publication is a manual owner action.
-
-No provider credentials belong in builds or release artifacts.
-
-Release builds intentionally contain no Google or Microsoft app credentials. Each user imports their own Google Desktop client file and Microsoft client ID after extraction. Do not inject OAuth client secrets through GitHub environment variables or repository secrets: a value embedded in a desktop executable can be extracted.
-
-Prepare any Store package manually outside the release workflow. Keep signing credentials out of the repository and release assets.
+See [validation](VALIDATION.md) and [working agreement](../AGENTS.md).

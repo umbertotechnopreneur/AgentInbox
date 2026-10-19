@@ -1,45 +1,27 @@
 # Development
 
-To work on AgentInbox, you'll need the .NET SDK listed in `global.json`, PowerShell 7 and Python 3.10+. People using a packaged build don't need these development tools.
+Use Python 3.11+ for the standard-library mail engine. Windows setup also requires WinUI 3 and the .NET SDK declared in `global.json`. Scripts use PowerShell 7.
 
-After cloning, install the Git hook once:
+Read [architecture](ARCHITECTURE.md). Python owns account settings, credentials, mail protocols and approval enforcement. Keep desktop and MCP adapters thin.
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command install-hooks
+## Entry points
+
+```text
+python -B python/run.py mcp
+python -B python/run.py manage
+python -B python/run.py review <request-id>
 ```
 
-Before each commit, the hook runs `dotnet format` on staged C# files and stages the formatting changes. If you've staged only part of a C# file, it stops so it doesn't accidentally include your other edits.
+Management reads JSON from stdin. Isolate experiments using `AGENTINBOX_DATA_DIR` under ignored `artifacts/`. Use synthetic `example.test` accounts, never the owner's mailbox in automated checks.
 
-When you're ready to run the full checks:
+Reject unknown schemas and unsupported connections. Do not add compatibility shims, old command aliases or previous-data import.
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command validate
-```
+## Dependencies and checks
 
-This restores the dependencies pinned in the lock files, formats code, builds with warnings treated as errors, runs tests and checks the actual CLI/MCP process. It also checks dependency notices and local documentation links. It uses no real account credentials. To check formatting without changing files, run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command format -Check`; CI uses the matching validation option.
+Before using a new external library or binary, follow the [Defender scan requirement](../README.md#external-binary-security-policy). Scan package and extracted dependencies, and record factual results. A clean scan is not authorization to execute, install, build, test or publish.
 
-Agents working in this repository run checks only when the owner explicitly asks, as described in [AGENTS.md](../AGENTS.md).
+Run builds, tests, formatters, linters, smoke checks and CI only when the owner explicitly requests them. Useful checks are listed in [validation](VALIDATION.md).
 
-Validation and portable packaging clear `artifacts/` before building. Before a manual `dotnet build` or `dotnet publish`, run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command clean-artifacts` once. Keep any packages or logs you want to retain outside `artifacts/`; do not run builds concurrently in the same checkout.
+Put all generated output in task-specific ignored `artifacts/` directories. After authorized checks, follow mandatory cleanup, retaining requested deliverables and essential failure evidence. Preserve unrelated work and shared caches.
 
-To run an app you've already built:
-
-```sh
-dotnet run --project src/MailMeUp.Cli -c Release --no-build -- status
-```
-
-## Dependency updates
-
-Package versions are in `Directory.Packages.props`. After changing a version:
-
-```powershell
-dotnet restore MailMeUp.slnx --force-evaluate
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command export-notices
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command update-locks
-```
-
-Review both the standard lock files and `eng/locks/<runtime>/`. Portable builds have their own dependency lists because they also include platform runtimes and packaging tools.
-
-Point `AGENTINBOX_DATA_DIR` at a separate folder when experimenting. Keep code and docs in English. Google and Microsoft access stays read-only; local settings and account storage can still save files.
-
-See [contribution guidance](../CONTRIBUTING.md) and [release steps](RELEASING.md).
+See [release requirements](RELEASING.md) and [contributing](../CONTRIBUTING.md).
