@@ -17,17 +17,11 @@
 # VBWR E
 
 
-name: Manual Windows MSIX
+name: Manual Debug MSIX artifact
 
 on:
   workflow_dispatch:
     inputs:
-      channel:
-        description: 'Package channel (unsigned Debug needs signing before installation)'
-        type: choice
-        options: [Debug, Store]
-        default: Debug
-        required: true
       architecture:
         description: 'Windows package architecture'
         type: choice
@@ -54,23 +48,24 @@ permissions:
   contents: read
 
 concurrency:
-  group: msix-${{ github.ref }}-${{ inputs.channel }}-${{ inputs.architecture }}
+  group: msix-${{ github.ref }}-Debug-${{ inputs.architecture }}
   cancel-in-progress: false
 
 # This workflow stages owner-selected inputs, scans them and creates an unsigned
-# MSIX artifact. It does not tag, publish a GitHub release or upload to the Store.
+# Debug MSIX artifact. Store submission packages are built locally, following
+# the PromptMeUp workflow. This workflow does not tag or publish anything.
 # Missing runtimes, an incomplete offline dependency closure, unavailable scans
 # or missing SDKs fail the run instead of falling back to a network restore.
 jobs:
   source-tests:
     uses: ./.github/workflows/ci.yml
   package:
-    name: Package MSIX (${{ inputs.architecture }}, ${{ inputs.channel }})
+    name: Package Debug MSIX artifact (${{ inputs.architecture }})
     needs: source-tests
     runs-on: windows-latest
     timeout-minutes: 60
     env:
-      PACKAGE_CHANNEL: ${{ inputs.channel }}
+      PACKAGE_CHANNEL: Debug
       PACKAGE_ARCHITECTURE: ${{ inputs.architecture }}
       PACKAGE_VERSION: ${{ inputs.package_version }}
       PYTHON_VERSION: ${{ inputs.python_version }}
@@ -166,7 +161,7 @@ jobs:
           # The packaging script scans NuGet archives and extracted contents before
           # using its offline feed, then scans restored dependencies before publish.
           pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix `
-            -Channel $env:PACKAGE_CHANNEL -Architecture $env:PACKAGE_ARCHITECTURE -PackageVersion $env:PACKAGE_VERSION `
+            -Channel Debug -Architecture $env:PACKAGE_ARCHITECTURE -Version $env:PACKAGE_VERSION `
             -PythonArchive (Join-Path $stage 'python-runtime.zip') -PythonDirectory (Join-Path $stage 'python-runtime') `
             -PythonSource $env:PACKAGE_PYTHON_SOURCE -PythonVersion $env:PYTHON_VERSION -PythonSha256 $env:PYTHON_SHA256 `
             -DependencyManifest (Join-Path $stage 'dependencies.json') -Unsigned
@@ -174,7 +169,7 @@ jobs:
       - name: Retain the MSIX, checksum and minimal packaging record
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: agentinbox-${{ inputs.channel }}-${{ inputs.architecture }}-${{ inputs.package_version }}
+          name: agentinbox-Debug-${{ inputs.architecture }}-${{ inputs.package_version }}
           path: |
             artifacts/msix/**/*.msix
             artifacts/msix/**/*.sha256

@@ -10,11 +10,17 @@ Scan new external packages and their extracted dependencies before use. Record s
 
 A Windows package must contain the Python runtime and engine needed by its entry points; it must not depend on an arbitrary system interpreter. Keep source and package versions consistent.
 
-The `Manual Windows MSIX` workflow is manually dispatched from `main`. Its inputs identify the Debug or Store channel, x64 or ARM64 architecture, package version, official Python embeddable version and SHA-256, and a JSON inventory of the complete NuGet dependency closure with official URLs and hashes. Downloaded archives and extracted files must pass the targeted Defender scans before the offline packaging step uses them.
+For an authorized Store build, follow the local PromptMeUp recipe:
 
-The workflow source produces an unsigned MSIX, checksum and small packaging record. It does not create a tag or GitHub Release, publish a package or submit to the Microsoft Store. An unsigned build artifact is not an installed or approved release.
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <runtime-manifest.json> -DependencyManifest <dependency-manifest.json>
+```
 
-When authorized, validate packaged entry points, architecture, native review and installation separately. Release MSIX files are created through GitHub Actions. Local Debug MSIX work may use the existing current-user certificate when explicitly requested.
+It builds unsigned Release MSIX packages for both x64 and ARM64 under `artifacts/store/X.Y.Z.0/<architecture>/`. Supply official runtime archives and matching extracted directories for both architectures, plus the full offline NuGet closure. Both runtime entries and destinations are checked before the first build. Archives and extracted inputs must pass targeted Defender scans before use. See [packaging](../packaging/windows/README.md#local-store-build).
+
+The `Manual Windows MSIX` workflow is for Debug artifacts only. Store packages are built locally, not through GitHub Actions. The local scripts retain packages, checksums and small packaging records; they do not install Store packages, upload, publish or create tags. An unsigned artifact is not an installed or approved release.
+
+When authorized, validate packaged entry points, architecture, native review and installation separately. Local `install-debug-msix -Version <four-part-version>` uses an existing current-user certificate, installs immediately and checks the installed package. It does not authorize UI or live-mail checks.
 
 No historical test result validates this engine. SMTP acceptance is not recipient delivery.
 

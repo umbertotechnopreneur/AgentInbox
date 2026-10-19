@@ -9,6 +9,9 @@ The current milestone replaces the mail engine with Python, IMAP/POP3 reads and 
 - [x] Replace repository documentation and local website source copy with the mail-only contract.
 - [x] Add explicit Microsoft sign-in with public-client registration settings; keep Google OAuth out of scope.
 - [x] Author synthetic test sources without executing them.
+- [x] Add stable packaged CLI/MCP alias, shared profile reporting and same-process management sessions.
+- [x] Add reference-only cleanup retry with separate UI feedback after committed operations.
+- [x] Align local Store and Debug installation commands with the PromptMeUp MSIX recipe; keep generated packages and validation pending.
 - [ ] Run relevant synthetic, UI, package and separately authorized provider checks only when requested. See [validation](../../docs/VALIDATION.md).
 
 No build, test, live account check, installation or publication has validated this replacement. macOS Keychain and Linux Secret Service source paths remain untested; contributor fixes and validation through pull requests are welcome.

@@ -46,7 +46,9 @@ Pending requests expire after ten minutes. Expired content is cleaned when the s
 
 ## Local data and diagnostics
 
-The engine uses its local AgentInbox profile or the directory selected by `AGENTINBOX_DATA_DIR`. Settings, account metadata, pending-request state and protected content can persist there or in the system credential store.
+The engine uses its local AgentInbox profile or the absolute directory selected by `AGENTINBOX_DATA_DIR`. On Windows, source use defaults to `%LOCALAPPDATA%\AgentInbox`; an MSIX app and its Python alias use `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`. Settings, account metadata, pending-request state and protected content can persist there or in the system credential store. The local `profile_info` command returns paths and storage descriptions without returning secrets.
+
+A persistent local cleanup queue contains references to old credentials, consumed sign-in state and completed or cancelled outgoing content, not their plaintext contents. If deletion fails, the completed operation remains recorded and cleanup stays pending. The app shows a separate warning; **Retry cleanup** retries deletion. Pending protected data can remain until secure storage is available and cleanup succeeds.
 
 Diagnostics exclude passwords, mail bodies, attachment contents and authentication exchanges. I do not receive automatic application telemetry or diagnostic uploads. If you contact me, I receive the contact details and material you choose to send. Do not send passwords or complete mailboxes.
 
@@ -54,11 +56,11 @@ Your operating system, backups and assistant may retain their own copies. Protec
 
 ## Stop access and remove data
 
-Disable assistant reads or SMTP in local account settings to stop those operations. Remove an account to remove its local access and saved credentials. Your original mailbox remains with the provider.
+Disable assistant reads or SMTP in local account settings to stop those operations. Removing an account removes its local access and queues deletion of its saved credentials. Check and retry any pending-cleanup warning before treating credential deletion as complete. Your original mailbox remains with the provider.
 
 Revoke any dedicated app password or Microsoft consent using the provider's controls when you no longer need it. Removing local settings does not revoke a password, token or consent at the provider.
 
-For full local cleanup, remove configured accounts, stop AgentInbox processes and remove the relevant local profile and pending data. Remove its MCP registration from your assistants. Uninstalling alone should not be relied on to erase every copy.
+For full local cleanup, remove configured accounts and complete any pending credential or protected-content cleanup before stopping AgentInbox processes and removing the relevant local profile. Deleting the profile first can remove the references needed to retry credential cleanup. Remove its MCP registration from your assistants. Uninstalling alone should not be relied on to erase every copy.
 
 Separately delete conversations, exports and backups using the systems that hold them. I cannot remotely delete data stored only on your device or with another provider.
 

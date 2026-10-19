@@ -14,21 +14,25 @@ The authored cases cover disabled SMTP, complete local previews, mismatched revi
 
 The CI source is configured to run these Python tests on Windows after a targeted Defender scan of its Python installation. That configuration is not a successful CI run. It does not establish WinUI behavior, provider access, MSIX installation or Linux/macOS compatibility.
 
-The manual Windows MSIX workflow source prepares unsigned Debug or Store artifacts from explicitly supplied runtime and dependency inputs. It has not run for this replacement and does not publish a release, create a tag or submit to the Store.
+The manual Windows MSIX workflow source prepares unsigned Debug artifacts from explicitly supplied runtime and dependency inputs. Store packages use the separate local `build-store-msix -Version X.Y.Z` recipe for Release x64 and ARM64. Neither path has run for this replacement or publishes a release, creates a tag or submits to the Store.
+
+Source review also led to a stable packaged execution alias, a persistent management-session mode, explicit profile reporting and a shared cleanup-retry queue. These source changes have not been exercised. No installed alias, package update, native review launch or cleanup-retry result is certified here.
 
 ## Checks required when authorized
 
 - Python syntax and synthetic behavior with isolated data and `example.test` accounts.
 - Strict schema rejection and no previous-data import.
 - Protected credential storage, including unavailable and locked stores, on each platform.
-- IMAP authentication, bounded searches and reads that do not mark messages read.
+- Cleanup failures after committed saves, removals, sign-in and send outcomes; reference-only queue persistence, retries and separate UI feedback.
+- CLI one-shot and session behavior, same-process search/read references, cancellation and secret-free profile reporting.
+- IMAP authentication, bounded transport responses and searches, and reads that do not mark messages read.
 - POP3 INBOX-only reads, absent unread flags, header/date filtering and no deletion.
 - Explicit Microsoft device sign-in, registration and tenant-policy failures, token storage and refresh, cancellation, and absence of automatic authentication fallback.
 - Windows Credential Manager secrets and DPAPI temporary blobs; native macOS Keychain and Linux Secret Service paths remain untested.
 - SMTP disabled by default, complete local review, single-use approval, cancellation, changed content and concurrent approval.
-- SMTP rejection, partial acceptance and uncertain outcomes without automatic duplicate sends.
+- SMTP response bounds, rejection, partial acceptance and missing or invalid final replies without automatic duplicate sends.
 - WinUI layout, keyboard access, error feedback and native confirmation.
-- MSIX entry points, runtime bundling and installation on Windows x64 and ARM64.
+- MSIX alias and runtime bundling, shared packaged profile, native review, and installation on Windows x64 and ARM64; saved MCP configuration after a package update.
 - Linux/macOS source execution and local MCP-client integration.
 - Separately authorized real-provider checks.
 

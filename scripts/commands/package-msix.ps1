@@ -19,10 +19,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'MSIX packaging requires Windows and Microsoft Defender.' }
-if ($Channel -eq 'Store' -and $env:GITHUB_ACTIONS -cne 'true') { throw 'Store MSIX packages may be created only in GitHub Actions.' }
+if ($Channel -eq 'Store' -and $env:GITHUB_ACTIONS -ceq 'true') { throw 'Distributed Store MSIX packages must be built locally, following the PromptMeUp workflow.' }
 if ([version]$PythonVersion -lt [version]'3.11.0') { throw 'Python 3.11 or later is required.' }
 if ($Unsigned -and $CertificateThumbprint) { throw 'Choose either an unsigned package or a signing certificate.' }
 if (-not $Unsigned -and -not $CertificateThumbprint) { throw 'Provide an existing signing certificate or explicitly request -Unsigned.' }
+if ($Channel -eq 'Store' -and -not $Unsigned) { throw 'Store MSIX files are unsigned submission artifacts. Use build-store-msix for the local x64 and ARM64 build.' }
 
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $artifacts = Join-Path $repository 'artifacts'
@@ -167,7 +168,10 @@ function Write-Logo([string]$Source, [string]$Destination, [int]$Size) {
 if (-not $Version) { $Version = $properties.SelectSingleNode('/Project/PropertyGroup/Version').InnerText + '.0' }
 if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$' -or [version]$Version -eq [version]'0.0.0.0') { throw 'Choose a nonzero four-part MSIX version.' }
 foreach ($part in $Version.Split('.')) { if ([int]$part -gt 65535) { throw 'MSIX version components must not exceed 65535.' } }
-$destination = Join-Path $artifacts "msix/$($Channel.ToLowerInvariant())/$Architecture/$Version"
+if ($Channel -eq 'Store' -and ([int]$Version.Split('.')[0] -eq 0 -or [int]$Version.Split('.')[3] -ne 0)) {
+    throw 'Store versions require a nonzero first component and a final component of zero.'
+}
+$destination = if ($Channel -eq 'Store') { Join-Path $artifacts "store/$Version/$Architecture" } else { Join-Path $artifacts "msix/debug/$Architecture/$Version" }
 if (Test-Path -LiteralPath $destination) { throw 'This package destination already exists. Preserve it and choose a new version.' }
 foreach ($parentPath in @($artifacts, (Join-Path $artifacts 'work'), (Split-Path -Parent $destination))) {
     Assert-OutputAncestors $parentPath
@@ -256,9 +260,11 @@ try {
         Set-Content -LiteralPath $nugetConfig -Encoding utf8NoBOM
     $platformName = if ($Architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
     $buildProperties = @("-p:BaseIntermediateOutputPath=$obj", "-p:MSBuildProjectExtensionsPath=$obj", "-p:BaseOutputPath=$bin", "-p:Platform=$platformName",
+        "-p:Version=$($Version.Split('.')[0..2] -join '.')", "-p:FileVersion=$Version", "-p:AssemblyVersion=$Version",
         '-p:RestorePackagesWithLockFile=false', '-p:RestoreLockedMode=false', '-p:NuGetAudit=false', '-p:RestoreFallbackFolders=',
         '-p:RestoreAdditionalProjectSources=', '-p:WindowsPackageType=None', '-p:WindowsAppSDKSelfContained=true',
         '-p:PublishSingleFile=false', '-p:PublishTrimmed=false')
+    if ($Channel -eq 'Store') { $buildProperties += @('-p:DebugType=None', '-p:DebugSymbols=false') }
     & $dotnet restore $project --runtime $runtime --configfile $nugetConfig --packages $packages @buildProperties *> $buildLog
     if ($LASTEXITCODE -ne 0) { throw 'Offline restore failed. Supply the missing pinned dependencies; no network fallback is allowed.' }
     Invoke-TargetedScan $packages

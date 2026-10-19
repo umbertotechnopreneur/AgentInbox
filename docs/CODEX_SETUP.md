@@ -2,6 +2,18 @@
 
 AgentInbox supplies a Python MCP server. Client setup for this implementation has not been validated.
 
+## Installed Windows app
+
+Open **Connect assistant** in AgentInbox and copy its local MCP configuration. The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, with these separate arguments:
+
+```text
+-B -m agentinbox mcp
+```
+
+The configuration sets `AGENTINBOX_DATA_DIR` to the app's physical profile. It does not save a versioned package path or `AGENTINBOX_REVIEW_APP`. The engine locates the current installed review app when it needs native approval. Keep the execution alias enabled in Windows app execution aliases settings.
+
+## Source checkout
+
 Choose a Python 3.11+ interpreter and the checkout's `python/run.py`. Configure your client's local stdio MCP registration to start:
 
 ```text
@@ -10,7 +22,9 @@ Choose a Python 3.11+ interpreter and the checkout's `python/run.py`. Configure 
 
 Pass `-B`, the script path and `mcp` as separate arguments. Do not depend on the client's working directory. Keep the checkout and interpreter at those paths.
 
-Configure accounts locally first. The MCP process must use the same profile; an explicit `AGENTINBOX_DATA_DIR` must point to the intended profile.
+## Use the same profile
+
+Configure accounts locally first. The MCP process must use the same profile; an explicit `AGENTINBOX_DATA_DIR` must point to the intended profile. The local management `profile_info` operation reports its paths without returning secrets; see [CLI reference](CLI_REFERENCE.md).
 
 Start a new client session after changing its configuration. List accounts, search one account in a short date range, then read a selected message. Process startup does not prove client integration or mailbox access works.
 

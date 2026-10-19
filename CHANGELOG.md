@@ -15,6 +15,10 @@
 - Keep Windows commercial distribution MSIX-only; Linux and macOS remain source-only.
 - Replace plugin templates and add a Python source exporter using explicit local interpreter and profile paths.
 - Replace packaging commands and workflows with offline, scanned MSIX inputs and Windows synthetic-test sources.
+- Follow the local PromptMeUp Store recipe: three-part `-Version`, unsigned Release x64 and ARM64 MSIX packages, and separate signed Debug installation; no automatic publication.
+- Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
+- Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
+- Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
 - Author synthetic tests for protocol, account, approval and authentication boundaries; execution is pending.
 
 The implementation remains unvalidated. No package or runtime validation is claimed.

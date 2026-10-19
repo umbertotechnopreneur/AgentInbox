@@ -26,6 +26,14 @@ Test messages follow the same flow. Closing or cancelling review does not author
 
 The app and engine share schema 3 settings. Passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. Unknown formats fail; previous account data is not imported.
 
-An MSIX installation chooses a physical folder under its Windows application local-data directory. A source launch uses the current user's local application data. The copied MCP configuration includes the exact profile path so the app and assistant use the same settings. An explicit `AGENTINBOX_DATA_DIR` overrides the default and must be an absolute path.
+An MSIX installation uses `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`; a source launch uses `%LOCALAPPDATA%\AgentInbox`. The packaged Python alias and native app select the same physical profile. The copied MCP configuration includes that exact path. An explicit `AGENTINBOX_DATA_DIR` overrides either default and must be absolute. The local `profile_info` operation reports the selected paths without secrets.
+
+**Connect assistant** exports the stable `AgentInbox.exe` alias with `-B -m agentinbox mcp`. It avoids saved version-specific package paths, and outgoing review locates the current installed app. See [client setup](CODEX_SETUP.md).
+
+A save, account removal, completed sign-in or outgoing result can succeed while protected-data deletion remains pending. The app shows a separate **Local cleanup is pending** notice. **Retry cleanup** retries queued local deletion without repeating the completed operation or sending another email. Keep the warning until the engine reports that the shared queue is clear.
 
 Removing an account does not delete server messages. See [privacy](PRIVACY.md), [account settings](AUTHENTICATION.md) and [validation](VALIDATION.md).
+
+## Developer installation
+
+For an authorized local installation, use `install-debug-msix -Version <four-part-version>` with the supplied runtime and dependency inputs and an existing current-user certificate. It builds Debug, attempts installation immediately, then checks installed version and package status. Explicit Store work uses the local `build-store-msix -Version X.Y.Z` recipe for unsigned Release x64 and ARM64 packages. Neither recipe uploads or publishes. See the focused [packaging instructions](../packaging/windows/README.md#build-or-install); no package or installation has been validated for this implementation.

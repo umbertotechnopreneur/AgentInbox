@@ -10,6 +10,7 @@ pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command help
 | --- | --- |
 | `help` | Describe the current command surface |
 | `package-msix` | Build a Windows MSIX from explicitly supplied, scanned runtime and dependency files |
+| `build-store-msix` | Build unsigned local Release MSIX packages for x64 and ARM64 together |
 | `install-debug-msix` | Build, sign and immediately install a local Debug MSIX |
 | `clean-artifacts` | Remove one exact task-owned directory under `artifacts/work/` |
 
@@ -17,7 +18,7 @@ A command's availability does not authorize a build, installation or Store task.
 
 ## Packaging inputs
 
-Both packaging commands require:
+Single-architecture packaging and Debug installation require:
 
 - `-PythonArchive`: the official Python embeddable ZIP already staged locally.
 - `-PythonDirectory`: its matching extracted directory, with no extra or changed files.
@@ -26,9 +27,19 @@ Both packaging commands require:
 - `-PythonSha256`: the archive's expected SHA-256.
 - `-DependencyManifest`: JSON naming every required local NuGet archive, including transitive dependencies, its official download URL and expected SHA-256.
 
-Debug and x64 are the defaults. Use `-Architecture arm64` for ARM64. Use an explicit four-part `-PackageVersion` for installation. Supply `-CertificateThumbprint` for signing or `-Unsigned` for an intentionally unsigned package. Local Debug installation requires a signed package; its command can select a single existing trusted current-user signing certificate when the thumbprint is omitted.
+Debug and x64 are the defaults. Use `-Architecture arm64` for ARM64. Use an explicit four-part `-Version` for installation. Supply `-CertificateThumbprint` for signing or `-Unsigned` for an intentionally unsigned package. Local Debug installation requires a signed package; its command can select a single existing trusted current-user signing certificate when the thumbprint is omitted.
 
-Store packages require explicit authorization and run only in GitHub Actions. The scripts do not publish anything.
+## Local Store recipe
+
+Follow the shared PromptMeUp command shape after explicit authorization:
+
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <runtime-manifest.json> -DependencyManifest <dependency-manifest.json>
+```
+
+This builds Release x64 and ARM64 unsigned MSIX packages locally, with package version `X.Y.Z.0`, under `artifacts/store/X.Y.Z.0/<architecture>/`. The runtime manifest supplies both architectures; the shared dependency manifest must contain the complete closure for both. The wrapper checks both runtime entries, archive hashes and destination directories before either package build starts. The existing packaging engine performs the required scans and offline builds.
+
+Store builds are rejected inside GitHub Actions. They do not install, upload, publish or create tags. `-MakeAppxPath` can select an existing SDK tool; signing options and single-architecture switches do not apply to `build-store-msix`. See the [runtime manifest](../packaging/windows/README.md#local-store-build) and the separate signed Debug installation recipe.
 
 The restore uses the supplied offline NuGet closure. Missing packages fail instead of triggering a network fallback. There is no implicit dependency download or installation. See [Windows packaging](../packaging/windows/README.md) for the manifest shape, output and signing requirements.
 
