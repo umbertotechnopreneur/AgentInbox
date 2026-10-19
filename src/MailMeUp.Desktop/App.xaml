@@ -41,38 +41,6 @@ VBWR E -->
                     <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#D9071525" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
-            <!-- Each page gets its own native control and resources; dictionaries cannot be reparented. -->
-            <DataTemplate x:Key="AccountTabsTemplate">
-                <TabView IsAddTabButtonVisible="False" CanDragTabs="False" CanReorderTabs="False"
-                         TabWidthMode="SizeToContent" HorizontalAlignment="Stretch" VerticalAlignment="Top"
-                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top">
-                    <TabView.Resources>
-                        <ResourceDictionary>
-                            <ResourceDictionary.ThemeDictionaries>
-                                <ResourceDictionary x:Key="Default">
-                                    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#405850" />
-                                    <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="White" />
-                                    <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="#71DEB7" />
-                                </ResourceDictionary>
-                                <ResourceDictionary x:Key="Light">
-                                    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#DCEFE9" />
-                                    <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#14342F" />
-                                    <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="#115C63" />
-                                </ResourceDictionary>
-                                <ResourceDictionary x:Key="HighContrast">
-                                    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="{ThemeResource SystemColorWindowColor}" />
-                                    <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="{ThemeResource SystemColorHighlightColor}" />
-                                    <SolidColorBrush x:Key="TabViewSelectedItemBorderBrush" Color="{ThemeResource SystemColorHighlightColor}" />
-                                </ResourceDictionary>
-                            </ResourceDictionary.ThemeDictionaries>
-                            <x:Double x:Key="TabViewItemMinHeight">44</x:Double>
-                            <x:Double x:Key="TabViewItemHeaderFontSize">15</x:Double>
-                            <Thickness x:Key="TabViewItemHeaderPaddingWithoutCloseButton">16,10,16,10</Thickness>
-                            <Thickness x:Key="TabViewSelectedItemBorderThickness">1,1,1,0</Thickness>
-                        </ResourceDictionary>
-                    </TabView.Resources>
-                </TabView>
-            </DataTemplate>
             <Style x:Key="BodyText" TargetType="TextBlock">
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="FontSize" Value="14" />

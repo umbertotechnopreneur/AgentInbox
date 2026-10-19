@@ -26,8 +26,8 @@
 - Restore guided Codex detection and explicit connection setup through its installed CLI, with atomic configuration updates, replacement confirmation, concurrent-change checks and manual setup in Advanced.
 - Remove decorative cards throughout WinUI and use standard Account, Incoming and Outgoing tabs. Show an explicit empty state and open the account form only after Create; add Cancel, a named edit selector and button tooltips.
 - Size the initial window in logical pixels using the monitor's DPI, with a larger 1280 × 960 target limited to its work area.
-- Anchor pages at the top left, bind their width to the visible scroll viewport and stack header/account actions and paired fields in narrow windows. Increase the native tab header size and selected-tab contrast without replacing its template.
-- Fix the account-page startup failure caused by assigning an application-owned resource dictionary to TabView. Create independent native tabs and local theme resources for each page. Replace incomplete pages with an explicit retry state and report unexpected setup errors without incorrectly blaming Python.
+- Anchor pages at the top left, bind their width to the visible scroll viewport and stack header/account actions and paired fields in narrow windows.
+- Fix the account-page startup failure caused by assigning an application-owned resource dictionary to TabView. Use the stock WinUI TabView theme and sizing with native leading tab icons. Replace incomplete pages with an explicit retry state and report unexpected setup errors without incorrectly blaming Python.
 - Hide Microsoft sign-in for Gmail, iCloud and unsupported server combinations. Require a fresh authentication choice if a server edit invalidates the selected method; keep the engine's Microsoft-only endpoint validation.
 - Keep connection tests out of new-account setup and disable them for unsaved changes. Reflect committed saves and removals directly from their results instead of depending on a second account-list request.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.

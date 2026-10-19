@@ -155,8 +155,12 @@ public sealed partial class MainWindow : Window
             tooltip: "Open the setup form for your first email account.");
         _accountEmptyState = Stack(Text("There are no accounts yet", 22), _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
-        var tabsTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["AccountTabsTemplate"];
-        _accountTabs = (TabView)tabsTemplate.LoadContent();
+        _accountTabs = new TabView
+        {
+            IsAddTabButtonVisible = false, CanDragTabs = false, CanReorderTabs = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top
+        };
         AutomationProperties.SetName(_accountTabs, "Account settings");
         _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", HorizontalAlignment = HorizontalAlignment.Stretch };
         _accountPicker.SelectionChanged += (_, _) =>
@@ -270,9 +274,9 @@ public sealed partial class MainWindow : Window
         var outgoingContent = Stack(_configureSmtp,
             Hint("Outgoing mail is optional. Configure SMTP only if you want to send messages."), _smtpFields);
         foreach (var tab in new[] {
-            AccountTab("Account", "\uE77B", 0x16856A, accountContent),
-            AccountTab("Incoming", "\uE715", 0x2477C8, incomingContent),
-            AccountTab("Outgoing", "\uE724", 0xC77616, outgoingContent) })
+            AccountTab("Account", "\uE77B", accountContent),
+            AccountTab("Incoming", "\uE715", incomingContent),
+            AccountTab("Outgoing", "\uE724", outgoingContent) })
             _accountTabs.TabItems.Add(tab);
         _accountTabs.SelectedIndex = 0;
         _newAccountHeading = Text("New account", 22);
@@ -1191,16 +1195,16 @@ public sealed partial class MainWindow : Window
         return item;
     }
 
-    private static TabViewItem AccountTab(string name, string glyph, uint color, FrameworkElement content)
+    private static TabViewItem AccountTab(string name, string glyph, FrameworkElement content)
     {
         content.Margin = new Thickness(0, 20, 0, 0);
         return new TabViewItem
         {
-            Header = name, IsClosable = false, Content = content, MinWidth = 144,
+            Header = name, IsClosable = false, Content = content,
             HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top,
             IconSource = new FontIconSource
             {
-                Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = IconBrush(color)
+                Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons")
             }
         };
     }
