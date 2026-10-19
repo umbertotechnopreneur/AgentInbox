@@ -17,6 +17,9 @@
 - Replace packaging commands and workflows with offline, scanned MSIX inputs and Windows synthetic-test sources.
 - Follow the local PromptMeUp Store recipe: three-part `-Version`, unsigned Release x64 and ARM64 MSIX packages, and separate signed Debug installation; no automatic publication.
 - Check packaging output ancestors as filesystem directories without relying on PowerShell-only properties.
+- Fix the WinUI paired-control layout types and exclude stale `bin`/`obj` files from source discovery.
+- Keep isolated builds free of compiler-server file locks and automatic HTTPS certificate setup; retain packaging diagnostics on failure.
+- Declare multiple-instance support required by the console execution alias.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.

@@ -310,7 +310,11 @@ try {
 } catch {
     $failure = $_.Exception.Message
     if (Test-Path -LiteralPath $packagePath) { Remove-Item -LiteralPath $packagePath -Force }
-    [ordered]@{ failure = $failure; diagnostics = @($(if (Test-Path -LiteralPath $buildLog) { Get-Content -LiteralPath $buildLog -Tail 30 })) } |
+    [ordered]@{
+        failure = $failure
+        diagnostics = @($(if (Test-Path -LiteralPath $buildLog) { Get-Content -LiteralPath $buildLog -Tail 30 }))
+        packaging_diagnostics = @($(if (Test-Path -LiteralPath (Join-Path $taskRoot 'package.log')) { Get-Content -LiteralPath (Join-Path $taskRoot 'package.log') -Tail 30 }))
+    } |
         ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $destination 'failure.json') -Encoding utf8NoBOM
     throw
 } finally {
