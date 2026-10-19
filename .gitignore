@@ -18,6 +18,11 @@
 
 **/bin/
 **/obj/
+__pycache__/
+*.py[cod]
+.venv/
+accounts.json
+protected/
 .vs/
 .idea/
 .DS_Store
