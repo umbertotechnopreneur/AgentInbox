@@ -27,25 +27,25 @@ Tests exercise real application/storage behavior with synthetic `example.test` a
 
 These results do not prove network interoperability, native credential protection, GUI behavior or packaged startup.
 
-## Local Debug MSIX 1.0.6.6
+## Local Debug MSIX 1.0.7.0
 
-On 2026-10-19, Debug MSIX **1.0.6.6 x64** was built locally from commit `8c4bfe3`, signed with the existing current-user certificate and installed over 1.0.6.5. Windows reports version `1.0.6.6`, architecture `X64` and package status `Ok`.
+On 2026-10-19, Debug MSIX **1.0.7.0 x64** was built locally from commit `2563b38`, signed with the existing current-user certificate and installed over 1.0.6.6. Windows reports version `1.0.7.0`, architecture `X64` and package status `Ok`.
 
 The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
 
-The retained installer is 104,631,592 bytes. The packaging checksum record reports this SHA-256:
+The retained installer is 104,632,407 bytes. The packaging checksum record reports this SHA-256:
 
 ```text
-e3b38f4d1e959d3e870dbd724df33f01fa34c8cc675f0bac260c489e264ea397
+c86a2485dd3c1ed459aca242f92896e826818188177614f803614fd4b9e44d61
 ```
 
 Earlier build failures were corrected as recorded in the changelog. Matching `dotnet clean` and task-directory cleanup completed for this successful build.
 
-The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Evidence for the 22 unchanged imported archives and their extracted files is retained separately under ignored `artifacts/imports/first-import-scans-20261019.json`. The local 1.0.6.5 and 1.0.6.6 builds follow the new rule; remote workflows remain unexecuted.
+The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner replaced that policy: scan new external imports once, reuse their evidence and never start antivirus scans from builds/tests or scan installed SDK/system trees. Evidence for the 22 unchanged imported archives and their extracted files is retained separately under ignored `artifacts/imports/first-import-scans-20261019.json`. Subsequent local builds follow the new rule; remote workflows remain unexecuted.
 
-The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.6.6/`. The task-owned build directory was removed and `artifacts/work/` has no remaining build directories. Earlier automatic approval review rejected obsolete-artifact deletion with `blocked by policy`; that restriction was not bypassed or retried. Remaining obsolete paths are `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded installers under `artifacts/msix/debug/x64/1.0.6.4/` (99.76 MiB) and `1.0.6.5/` (99.78 MiB), and the tiny `artifacts/debug/1.0.6.3/` record. This is not a completed artifact cleanup.
+The requested MSIX, checksum, package record and installation record remain under ignored `artifacts/msix/debug/x64/1.0.7.0/`. The task-owned build directory was removed and `artifacts/work/` has no remaining build directories. Earlier automatic approval review rejected obsolete-artifact deletion with `blocked by policy`; that restriction was not bypassed or retried. Remaining obsolete paths are `artifacts/inputs/msix-1.0.6.4-9d8c3e21/` (526.78 MiB), `artifacts/recovered-20261015/` (135.22 MiB), the superseded installers under `artifacts/msix/debug/x64/1.0.6.4/` (99.76 MiB), `1.0.6.5/` (99.78 MiB) and `1.0.6.6/` (99.78 MiB), and the tiny `artifacts/debug/1.0.6.3/` record. This is not a completed artifact cleanup.
 
-Static review covered the revised empty/create/cancel/edit flow, native selector, removed card style, tooltips and saved-settings test availability. No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation. The Python and guided-setup checks below were not repeated for this layout change.
+Static review covered the larger DPI-scaled initial window, standard WinUI tabs, provider-specific authentication choices and invalidated-choice handling. The engine's Microsoft-only endpoint validation was inspected and remains unchanged. No GUI, bundled CLI/MCP startup or live mailbox test was run as part of this installation. The earlier Python and guided-setup checks were not repeated for this UI change.
 
 ## Guided Codex setup checks
 

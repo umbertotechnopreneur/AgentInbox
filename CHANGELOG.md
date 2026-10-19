@@ -33,4 +33,4 @@
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
 - Add synthetic tests for protocol, account, approval and authentication boundaries; all 77 pass locally on Windows.
 
-Debug MSIX 1.0.6.6 built, signed and installed locally on Windows x64 with package status `Ok`, without build-time antivirus scans. Nine isolated Codex setup checks passed before the latest layout change. WinUI behavior, live providers, native credential stores and packaged entry points remain unvalidated. See [validation](docs/VALIDATION.md) for evidence and limits.
+Debug MSIX 1.0.7.0 built, signed and installed locally on Windows x64 with package status `Ok`, without build-time antivirus scans. Nine isolated Codex setup checks passed before the latest layout change. WinUI behavior, live providers, native credential stores and packaged entry points remain unvalidated. See [validation](docs/VALIDATION.md) for evidence and limits.
