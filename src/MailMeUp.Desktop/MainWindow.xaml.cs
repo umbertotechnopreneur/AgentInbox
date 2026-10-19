@@ -112,15 +112,34 @@ public sealed partial class MainWindow : Window
     private async void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (!_loaded || args.SelectedItem is not NavigationViewItem item) return;
+        if (item.Tag is string page) await OpenPageAsync(page);
+    }
+
+    private async Task OpenPageAsync(string page)
+    {
         await RunAsync(async () =>
         {
             Page.Children.Clear();
             PageScroll.ChangeView(0, 0, null, disableAnimation: true);
-            switch (item.Tag as string)
+            try
             {
-                case "accounts": BuildAccountsPage(); await LoadAccountsAsync(); break;
-                case "outgoing": await BuildOutgoingPageAsync(); break;
-                case "assistant": await BuildAssistantPageAsync(); break;
+                switch (page)
+                {
+                    case "accounts": BuildAccountsPage(); await LoadAccountsAsync(); break;
+                    case "outgoing": await BuildOutgoingPageAsync(); break;
+                    case "assistant": await BuildAssistantPageAsync(); break;
+                    default: throw new InvalidOperationException("Unknown setup page.");
+                }
+            }
+            catch
+            {
+                // Never leave a partially constructed form with actionable Save or Cancel buttons.
+                Page.Children.Clear();
+                Page.Children.Add(Text("This page could not be opened", 22));
+                Page.Children.Add(Hint("Check the error below. You can try again or choose another page."));
+                Page.Children.Add(Action("Try again", () => _ = OpenPageAsync(page),
+                    tooltip: "Reload this page without repeating a mail operation."));
+                throw;
             }
         });
     }
@@ -136,14 +155,8 @@ public sealed partial class MainWindow : Window
             tooltip: "Open the setup form for your first email account.");
         _accountEmptyState = Stack(Text("There are no accounts yet", 22), _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
-        _accountTabs = new TabView
-        {
-            IsAddTabButtonVisible = false, CanDragTabs = false, CanReorderTabs = false,
-            TabWidthMode = TabViewWidthMode.SizeToContent, HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Top, HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            VerticalContentAlignment = VerticalAlignment.Top,
-            Resources = (ResourceDictionary)Microsoft.UI.Xaml.Application.Current.Resources["AccountTabResources"]
-        };
+        var tabsTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["AccountTabsTemplate"];
+        _accountTabs = (TabView)tabsTemplate.LoadContent();
         AutomationProperties.SetName(_accountTabs, "Account settings");
         _accountPicker = new ComboBox { Header = "Edit account", PlaceholderText = "Choose an account", HorizontalAlignment = HorizontalAlignment.Stretch };
         _accountPicker.SelectionChanged += (_, _) =>
@@ -956,9 +969,15 @@ public sealed partial class MainWindow : Window
             ShowNotice("The operation timed out", "Check the saved settings and server connection. If this happened during a send, check its status before preparing another email." + ReviewFailureHint(), InfoBarSeverity.Warning);
         }
         catch (OperationCanceledException) { }
-        catch (Exception)
+        catch (Exception exception)
         {
-            ShowNotice("Could not complete this action", "The local engine could not complete the request. Check your Python runtime and saved account settings. No automatic retry was made." + ReviewFailureHint(), InfoBarSeverity.Error);
+            // Report code locations only; exception messages can contain account or provider data.
+            var locations = new System.Diagnostics.StackTrace(exception, false).GetFrames()
+                .Select(frame => frame.GetMethod())
+                .Where(method => method?.DeclaringType?.Namespace?.StartsWith("MailMeUp.Desktop", StringComparison.Ordinal) == true)
+                .Take(8).Select(method => $"{method!.DeclaringType!.Name}.{method.Name}");
+            Console.Error.WriteLine($"Setup error: {exception.GetType().Name} (0x{exception.HResult:X8}); {string.Join("; ", locations)}");
+            ShowNotice("Could not complete this action", $"AgentInbox encountered an unexpected error ({exception.GetType().Name}, 0x{exception.HResult:X8}). No automatic retry was made." + ReviewFailureHint(), InfoBarSeverity.Error);
         }
         finally
         {
