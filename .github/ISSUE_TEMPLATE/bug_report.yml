@@ -21,7 +21,7 @@ description: Report a reproducible problem using synthetic data.
 body:
   - type: markdown
     attributes:
-      value: Do not include credentials, mailbox contents or token caches. Use SECURITY.md for vulnerability reporting.
+      value: Do not include passwords, mailbox contents or protected profile files. Use SECURITY.md for vulnerability reporting.
   - type: input
     id: version
     attributes:

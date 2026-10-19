@@ -1,6 +1,0 @@
-{
-  "agentinbox": {
-    "command": "agentinbox.exe",
-    "args": ["--stdio"]
-  }
-}
