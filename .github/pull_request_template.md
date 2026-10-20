@@ -8,4 +8,4 @@ List relevant checks and results, including untested provider or platform paths.
 
 ## Data and permissions
 
-Describe any changes to account scope, OAuth permissions, storage or MCP output. Use synthetic examples only.
+Describe changes to account sharing, SMTP enablement, local send approval, protected storage or MCP output. Use synthetic examples only.

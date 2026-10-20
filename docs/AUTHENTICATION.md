@@ -1,49 +1,71 @@
-# Accounts and sign-in
+# Accounts and authentication
 
-You sign in to each Google or Microsoft account in your browser. AgentInbox doesn't need your account password. It saves sign-in tokens so it can read the accounts you've connected without asking you to sign in every time.
+Choose IMAP or POP3 for incoming mail and optional SMTP for outgoing mail. Choose how to sign in separately: password or app password by default, or **Web authorization** for a Microsoft account.
 
-Setup and sign-in with several real accounts have passed Windows checks. Tests with made-up accounts also cover failed reconnections and multiple processes using the same credentials. Revoking access and reconnecting real accounts still need deliberate testing.
+Synthetic authentication tests pass with mocked transports and protected stores. Live sign-in and native credential storage remain unvalidated. Changing an authentication setting does not prove the account can connect.
 
-## What's saved on your computer
+## Passwords and app passwords
 
-| Item | What it's for | Where it's kept |
-| --- | --- | --- |
-| Client ID | Tells Google or Microsoft which app is asking | Local app settings; this ID isn't secret |
-| Access token | Gives the app temporary access | Memory or the sign-in library's protected cache |
-| Refresh token | Renews access without another browser sign-in | Operating-system protected storage |
-| Microsoft token cache | Saves sign-in information through Microsoft's MSAL library | Operating-system protected storage |
-| Account names and addresses | Shows which accounts you've connected | Local SQLite database |
+Enter the host, port, TLS mode and username for each connection. Use TLS from the start or require STARTTLS before authentication. Certificate validation must succeed; there is no unencrypted fallback.
 
-Keep tokens out of prompts, logs, GitHub and the account database. Microsoft desktop sign-in doesn't need a client secret. A secret bundled inside a desktop app can be extracted, so it can't be treated as private.
+Supply passwords through local setup, never in an assistant conversation, command-line argument, issue report or log. Gmail can require an eligible app password; iCloud Mail requires an app-specific password. Provider and organization policies still apply.
 
-## Set up the app, then connect accounts
+Web authorization is not available for Google accounts. AgentInbox does not try a different sign-in method after a rejected password.
 
-- `agentinbox setup google <client-json>` imports your Google **Desktop app** configuration file. It saves the client ID in local settings and protects the client secret with the operating system. The original downloaded file stays where it is; remove it yourself when you no longer need it.
-- `agentinbox setup microsoft <client-id>` saves the public Application (client) ID. A Microsoft desktop app does not need a client secret.
-- `agentinbox setup status` shows whether Google and Microsoft are set up, without revealing secrets.
+Outlook.com requires Web authorization with Microsoft. Exchange Online no longer accepts ordinary passwords for IMAP and POP. Selecting password mode or supplying an app password cannot bypass those restrictions. Choose **Web authorization** for these services. [Outlook.com authentication requirements](https://support.microsoft.com/en-us/support/known-issues/modern-authentication-methods-now-needed-to-continue-syncing-outlook-email-in-non-microsoft-email-ap), [Exchange Online password sign-in removal](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online).
 
-Once the app is set up, connect an account:
+## Optional Microsoft web authorization
 
-- `agentinbox accounts connect google`
-- `agentinbox accounts connect microsoft`
-- add `--mail-only` or `--calendar-only` if you only want email or calendars
+For Outlook.com or Microsoft 365, choose **Web authorization with Microsoft** explicitly. AgentInbox shows a short code; you use it to sign in on Microsoft's page and decide whether to grant mail access. Microsoft documents this option for IMAP, POP and SMTP for both account types. AgentInbox then connects through the standard mail protocols, not Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
 
-Run the command again to add another account. Each time, your browser opens and lets you choose an account. Google stores tokens separately for each account. Microsoft's sign-in library uses one protected cache while keeping account identities separate.
+The connection requires a Microsoft Entra app registration configured as a public client. In that registration:
 
-To reconnect, choose the same account again. If the new sign-in fails its checks, AgentInbox keeps the saved credentials. It also coordinates token refresh and removal when several local processes are running. See [account recovery](RECOVERY.md).
+1. Choose supported account types that include the account you intend to connect.
+2. Enable **Allow public client flows** for device-code authentication.
+3. Record the Application (client) ID. Enter it in AgentInbox with the tenant: `common`, `organizations`, `consumers` or an explicit tenant GUID.
+4. Use the delegated mail permissions for the selected incoming protocol, plus SMTP only when sending is enabled. No application client secret is used.
 
-`agentinbox accounts remove <account-id>` removes the local account record and saved sign-in tokens. To revoke access too, use your Google or Microsoft account settings.
+Registration creates the application identity; AgentInbox does not create or verify it for you. [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app), [public-client configuration](https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-applications).
 
-Before replacing a Google or Microsoft app registration, remove its connected accounts from AgentInbox. That lets AgentInbox clean up their old sign-in tokens first.
+After saving the account, start web authorization locally. AgentInbox displays a short code and a Microsoft sign-in address. You choose to open that address, sign in and review the requested permissions. The engine checks for your decision at Microsoft's required interval and stops on cancellation, expiry or rejection. It does not open a browser automatically. [How the Microsoft sign-in code works](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code).
 
-## Read-only access
+The requested scopes are:
 
-Ask for only the permissions you need. Reading calendars needs its own permission; email access doesn't cover it. Declining calendar access must leave an existing mail connection working.
+| Account choice | Delegated scope |
+| --- | --- |
+| IMAP | `https://outlook.office.com/IMAP.AccessAsUser.All` |
+| POP3 | `https://outlook.office.com/POP.AccessAsUser.All` |
+| SMTP enabled | `https://outlook.office.com/SMTP.Send` |
+| Refresh after an access token expires | `offline_access` |
 
-## Secure storage and sharing the app
+Only the selected incoming protocol is requested. Changing the connection, identity or authentication settings, or enabling SMTP, can require signing in again. Sign-in completion is separate from a successful mail connection. SMTP AUTH can still be disabled by tenant or mailbox policy. [Microsoft SMTP AUTH settings](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission).
 
-Token storage uses Windows user protection, macOS Keychain or Linux Secret Service. If secure storage isn't available, AgentInbox must stop instead of saving tokens as plain text. The macOS and Linux paths still need testing; those platforms aren't supported in this preview.
+### Registration and publisher verification are different
 
-Distributing the app publicly still requires the right Google and Microsoft registrations and any review they require. A copy of the program doesn't include the creator's account tokens.
+Publisher verification identifies the organization behind a Microsoft application. It is separate from app registration, delegated consent and mailbox access. A verified-publisher badge does not certify app quality or prove AgentInbox works.
 
-Developer references: [Google OAuth](https://developers.google.com/identity/protocols/oauth2/native-app), [Calendar permissions](https://developers.google.com/workspace/calendar/api/auth), [MSAL cache](https://learn.microsoft.com/en-us/entra/msal/dotnet/how-to/token-cache-serialization).
+Organization policies can block consent to an unverified multitenant application or require administrator consent. A client ID alone does not bypass those rules. AgentInbox makes no claim that a supplied registration or this project is publisher-verified. [Microsoft publisher verification](https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview).
+
+## Protected local storage
+
+Account JSON stores non-secret settings and permission choices, not password or token values.
+
+| Platform | Password and refresh-token storage |
+| --- | --- |
+| Windows | Windows Credential Manager, through native WinCred APIs |
+| macOS | Keychain through native APIs |
+| Linux | Native `libsecret` APIs with an unlocked Secret Service keyring |
+
+The macOS and Linux implementations are source-only and untested. I welcome contributor pull requests that improve them and document the platform, credential path and checks actually performed.
+
+Windows credentials are limited to 2,560 UTF-8 bytes; oversized values fail instead of switching to a file. Microsoft access tokens stay only in process memory. Refresh tokens remain in protected storage and are replaced after successful refresh without changing account settings.
+
+Temporary device-code state is protected and bound to the account revision and expiry. On Windows, larger temporary sign-in state and pending message content use DPAPI-protected files separately from the credential entries. An expired device flow is rejected and its state removed when that flow is accessed; cancellation removes its local state. There is no background expiry timer.
+
+Unavailable secure storage is an error, with no plain-text fallback. Protection does not encrypt every metadata file or protect a compromised signed-in operating-system account. See [privacy](PRIVACY.md).
+
+## Account permissions and removal
+
+Assistant read access is separate from saving or authenticating a connection. SMTP starts disabled. Microsoft consent to an SMTP scope does not authorize sending: every message still requires direct local approval of its exact content.
+
+Removing an account removes local access and stored account credentials, not the mailbox. Revoke a dedicated app password or Microsoft application consent with the provider when no longer needed. Previous profiles are not imported or converted.

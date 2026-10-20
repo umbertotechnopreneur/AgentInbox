@@ -1,64 +1,58 @@
 # Architecture
 
-A local .NET 10 executable connects an MCP client to shared application logic.
+AgentInbox uses a Python 3.11+ engine for local MCP, account configuration, IMAP/POP3 reads and optional SMTP sends. The Windows app is a WinUI 3 client of that engine. The engine has no .NET backend and uses only the Python standard library.
+
+The synthetic Python suite passes locally on Windows, and Debug MSIX 1.0.9.0 built and installed on Windows x64. Guided Codex configuration passed nine isolated checks. Account-form navigation, resizing, error recovery and packaged desktop startup were exercised with an isolated profile. Live providers, native credentials and packaged CLI/MCP entry points remain unvalidated. There is no compatibility layer or previous-profile importer. Unsupported configuration versions fail explicitly.
 
 ```mermaid
 flowchart LR
-    CLI[CLI] --> APP[Application]
-    DESKTOP[WinUI 3 setup] --> APP
-    CLIENT[Codex / MCP client] <-->|stdio| MCP[MCP tools]
-    MCP --> APP
-    APP --> DB[SQLite metadata]
-    APP --> SETTINGS[Public provider settings]
-    APP --> VAULT[OS-protected credentials]
-    APP --> GOOGLE[Google mail / calendars]
-    APP --> MS[Microsoft mail / calendars]
+    CLIENT[MCP client] <-->|stdio| PY[Python MailApplication]
+    UI[WinUI 3 setup and confirmation] <-->|local process JSON| PY
+    CLI[Local management CLI] --> PY
+    PY --> CONFIG[Versioned account settings]
+    PY --> VAULT[OS-protected credentials]
+    PY --> MAIL[IMAP or POP3 over TLS]
+    PY --> AUTH[Optional Microsoft web authorization]
+    PY --> PENDING[Protected pending messages]
+    PENDING --> REVIEW[Local user approval]
+    REVIEW --> SMTP[SMTP over TLS]
 ```
-
-## Modules
-
-| Module | Responsibility |
-| --- | --- |
-| Core | Account models and contracts |
-| Application | Shared operations, account lifecycle, bounded read checks and capability status |
-| Diagnostics | Bounded HTTP failure capture, pseudonymous account correlation and log scopes |
-| Storage | SQLite metadata and local paths |
-| Security | Operating-system protected credential storage |
-| Providers.Google / Providers.Microsoft | Provider app setup, sign-in and read-only mail/calendar adapters |
-| Mcp | Tool descriptions and compact results |
-| Cli | Commands, Spectre.Console presentation, Serilog configuration, dependency injection and process lifetime |
-| Desktop | Centered Windows account, sharing and local Codex plugin setup |
-| Hosting | Dependency injection shared by CLI/MCP and the desktop adapter |
-
-Calendar reads share account selection and coverage reporting through the application facade.
-
-The Windows MSIX contains a WinUI setup executable and a separate console MCP executable. The `agentinbox.exe` Windows app execution alias targets the console process, preserving stdio and a stable command across package upgrades. The UI never hosts the MCP server.
-
-The complete Windows portable ZIP contains the same two processes without an MSIX installation. A `agentinbox-portable.txt` marker makes desktop setup use the adjacent `cli/agentinbox.exe` through an absolute path, even when an installed alias exists. Installed packages retain the Windows-managed alias. Moving a portable folder requires updating its Codex connection. Both editions keep account data in the configured local profile and use OS-protected credentials.
-
-Local sharing choices are separate from provider consent. New accounts connected through the UI are stored with sharing disabled; existing CLI accounts retain their previous behavior until configured. Account/category/calendar restrictions are applied by the application facade and reloaded for reads, including cached result references and continuations. Setup-only calendar discovery is not exposed as an MCP tool.
-
-Global mail search preferences are local non-secret settings shared by the UI, CLI and MCP application facade. Undated searches use a configurable 14-day default; explicit dates override it. A continuation retains its original date window and rejects a changed default. Search results report the applied window so callers can describe their scope accurately.
-
-The mail-search contracts include an Inbox-only scope. MCP unread search enables it by default; general and date-range searches expose it as an opt-in. Gmail filters by `INBOX` before message hydration, and Microsoft uses the Inbox message collection without traversing child folders. All Inbox categories and senders remain eligible. The application binds continuations to this scope and reports it in results. The current synthetic suite and installed CLI/MCP smoke passed; live provider behavior remains untested.
 
 ## Boundaries
 
-The new source [read guardrails](READ_GUARDRAILS.md) put provider attempts and cooldowns behind Core contracts with a Storage file-lease/ledger implementation shared by CLI, MCP and desktop. Application code admits content reads and caches bounded details; MCP accounts for serialized output immediately before delivery. Mail refills load small account pages adaptively, and local budget pauses preserve a resumable mail cursor. This increment is not yet validated or installed.
+- MCP and management adapters delegate to Python's `MailApplication`.
+- MCP exposes account discovery, bounded message searches and reads, send preparation and send status. It cannot save credentials, enable sending or approve a message.
+- WinUI 3 collects settings, runs requested connection checks and presents local review. It does not implement a second mail backend.
+- Local `check_account` validates a current-form snapshot and discovers selectable folders without saving the draft or sending email. An explicit `read_message` choice tests one bounded message read and returns only its outcome, distinguishing an empty folder from a sample read. Opt-in management progress reports actual completed stages; the owned Mica window presents these records and returns explicit folder choices. Saving remains a separate commit, with its outcome preserved if later UI refresh fails. A test-email action opens the existing recipient, preview and approval flow after a confirmed save.
+- Schema 3 JSON stores non-secret account settings, including incoming protocol and authentication choice. Passwords and tokens are protected separately; there are no older-schema aliases or import paths.
+- Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary outgoing-message and sign-in blobs. macOS uses Keychain through native calls, and Linux requires an available Secret Service through native `libsecret` calls. These non-Windows paths remain untested. Missing or locked secure storage fails; no plain-text credentials file is allowed.
+- IMAP uses read-only mailbox selection and non-marking retrieval. Mail content is untrusted data.
+- POP3 sends no delete commands and presents one INBOX, without server folders or unread flags. Provider retention policies still apply. Search uses headers and the message Date header rather than server-received time.
+- Password sign-in is the default. Optional Microsoft web authorization is selected explicitly and requires public-client registration settings. Local management handles sign-in with a short code; MCP cannot start it or receive its tokens. Web authorization is not available for Google accounts, and the method never changes automatically after failure.
+- SMTP starts disabled and requires approval of each exact pending message.
+- Connections require implicit TLS or required STARTTLS with certificate and hostname validation. There is no plaintext mode or custom-CA control. Unsupported settings and invalid schemas fail without a weaker fallback.
+- Stdout contains protocol or management JSON. Diagnostics go to stderr and exclude credentials and message content.
 
-Guardrail management also crosses the application facade: local UI saves use an expected-settings comparison and atomic file replacement; local usage snapshots read existing state without creating files or consuming budgets. Each process retains its startup limits until restart. MCP exposes only aggregate usage and pending-restart status, with no settings-write capability. The demo provides a separate in-memory management implementation.
+## Local management and storage
 
-- Current provider scope is read-only. No write tools are registered or planned for this milestone.
-- Mail searches exclude Spam/Junk and Trash/Deleted Items by default; provider adapters enforce the exclusion before returning results.
-- MCP stdout contains protocol messages only; diagnostics go to stderr.
-- CLI output uses a compact banner and section dividers in terminals, with JSON for pipes or `--json`. An application decorator records bounded operation diagnostics through `ILogger<T>` for both adapters; the CLI and Windows executable configure Serilog with the shared local rolling file sink. See [logging](LOGGING.md).
-- SQLite stores metadata, never credentials. An empty account list does not create a database. The storage adapter calls SQLitePCL directly so packaged startup does not activate unrelated Windows application-data APIs.
-- Public provider IDs use a small local settings file. Google uses a protected token slot per account; Microsoft uses a protected MSAL multi-account cache. Protection uses DPAPI, macOS Keychain or Linux Secret Service, with no plain-text fallback.
-- Credential refresh, reconnect persistence and removal hold a cross-process session lease. Microsoft cache mutations are persisted after a successful operation; a failed reconnect does not delete existing credentials.
-- Each provider read has a 30-second cancellation budget; all mail refills in one search share a 30-second provider-work budget. Timeouts return partial account coverage; caller cancellation still cancels the whole request. Failed sources require a new search, except local budget pauses with a returned resumable mail cursor.
-- Provider readiness must reflect real implementation status.
-- Mail and event content is untrusted data, never instructions.
+`manage` handles one JSON request. `manage --session` retains one `MailApplication` until stdin ends, so a search reference or continuation can be used by later requests in the same process. These references are not transferable to another CLI process. `profile_info` reports the selected paths, schema and secure-storage facilities without returning secrets.
 
-SQLite schema version 2 records non-secret account identity and granted read categories. Short message, calendar, event and continuation references live only in memory and expire. Sharing restrictions, safe MCP error notifications and packaged startup with an existing synthetic registry have regression coverage; installed-alias and About UI checks passed. The earlier CLI build passed four-account reads. Live UI sign-in, Codex plugin setup and deliberate real credential recovery scenarios remain untested.
+Windows source processes default to `%LOCALAPPDATA%\AgentInbox`. Packaged Python resolves its native package family and uses `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`, matching the WinUI app. An absolute `AGENTINBOX_DATA_DIR` overrides both. Settings, the outgoing ledger and temporary protected files share that explicit profile; Credential Manager remains separate.
 
-Developer details: [tool contract](MCP_CONTRACT.md), [credentials](AUTHENTICATION.md), [build](DEVELOPMENT.md).
+A persistent cleanup queue holds references to retired credentials, consumed sign-in state and terminal outgoing content. It does not hold their plaintext contents. A cleanup failure preserves the committed account, sign-in or send outcome and reports `cleanup_pending`, its count and a safe error. The UI shows cleanup separately and `retry_cleanup` retries the shared queue; it never repeats an email submission.
+
+## Sending
+
+Preparation freezes and protects the MIME message, including all recipients and attachment bytes. Local review displays that content. Approval is single-use; changing the content requires a new request.
+
+Pending requests expire after ten minutes. Expired content is cleaned on subsequent access, not by a background timer. Local management lists the latest 100 outgoing records, including terminal states, so the UI can show accepted and uncertain outcomes. Source review can use a local tkinter window; Windows also has its native UI review path. Missing confirmation facilities must leave a request unsent.
+
+The transport distinguishes acceptance, rejection and an uncertain outcome. It never automatically retries a message whose acceptance is unknown. Server acceptance is not evidence of recipient delivery.
+
+## Source and packaging
+
+Run `python -B python/run.py mcp` from source. Management uses `python -B python/run.py manage` with JSON on stdin, or `manage --session` for search followed by read. Local review uses the `review` command; see [CLI reference](CLI_REFERENCE.md).
+
+The MSIX registers `AgentInbox.exe` as a stable alias to its bundled Python runtime. Installed commands use `AgentInbox.exe -B -m agentinbox <command>`. Exported MCP configuration uses the absolute alias path and explicit profile, without versioned package paths. Native review discovers the current installed desktop executable; requesting review does not approve the message.
+
+Windows commercial distribution is MSIX only. Linux and macOS are source-only and unverified. See [tool contract](MCP_CONTRACT.md), [account settings](AUTHENTICATION.md), [dependencies](DEPENDENCIES.md) and [validation](VALIDATION.md).

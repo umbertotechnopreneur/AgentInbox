@@ -1,21 +1,13 @@
-# Connect your inboxes to your AI assistant
+# Read and send email with your AI assistant
 
-AgentInbox connects several Google and Microsoft accounts to your AI assistant through MCP. Search email and check appointments across your work, personal, and client accounts in one conversation.
+I built AgentInbox so you can search your mailboxes from one conversation. It uses IMAP or POP3 to read messages and optional SMTP to send them.
 
-Choose the accounts to include, ask for a message or upcoming meeting, and open the matching result. You don't need to remember which inbox received it.
+Enter server settings and a password or app password, as in a regular mail client. Presets help fill parameters; custom IMAP/POP3/SMTP servers can be entered manually. For a Microsoft account, you can explicitly choose **Web authorization** with your own app registration. It never starts automatically after a password failure. Provider and organization rules still apply.
 
-## You're in control
+POP3 exposes INBOX only, without unread flags or server folders; its searches use headers and email Date values. TLS or required STARTTLS always validates certificates and hostnames. There is no plaintext mode or custom-CA setting.
 
-AgentInbox only reads and searches. It can't send email, change or delete messages, edit appointments or send invitations. Adding those actions would need a separate decision.
+Choose the accounts your assistant can read. Sending starts disabled. When enabled, the assistant prepares a message, and you approve its exact recipients, text and attachments locally.
 
-It runs on your computer, where it saves local settings and protects your sign-in tokens. Information you ask for can still reach your assistant's AI service. See [privacy](PRIVACY.md).
+The engine is Python. Windows setup uses WinUI 3. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64; Linux and macOS are source-only and unverified. Contributor pull requests improving the native Keychain and Secret Service paths are welcome.
 
-## Accounts you can connect
-
-- Gmail and Google Workspace
-- Outlook.com and Microsoft 365
-- Google Calendar and Microsoft calendars
-
-AgentInbox is an early preview, with testing focused on Windows x64 and Codex. You still need to [register an app with Google or Microsoft](APP_REGISTRATION.md) before signing in. Earlier versions have been tried with real accounts; see the [test record](VALIDATION.md) for details and remaining checks.
-
-Start with [getting started](GETTING_STARTED.md).
+This implementation is in development with no current build, runtime or provider validation. See [getting started](GETTING_STARTED.md), [privacy](PRIVACY.md) and [validation](VALIDATION.md).

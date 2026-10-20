@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agentinbox",
+  "version": "2.0.0",
+  "description": "Read shared IMAP or POP3 mail and prepare optional SMTP messages for individual local approval.",
+  "author": { "name": "Umberto Giacobbi", "url": "https://umbertogiacobbi.biz" },
+  "homepage": "https://github.com/umbertotechnopreneur/AgentInbox",
+  "repository": "https://github.com/umbertotechnopreneur/AgentInbox",
+  "license": "MIT",
+  "keywords": ["email", "imap", "pop3", "smtp", "local", "python"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "AgentInbox",
+        "shortDescription": "IMAP or POP3 mail, with individually approved SMTP sends.",
+        "longDescription": "Choose mail servers and account permissions in local setup. Password is the default; optional Microsoft sign-in requires explicit selection and your app registration. Search shared IMAP or POP3 mail, then review each optional outgoing message before SMTP submission. POP3 has no unread flags or server folders. Requested mail content can reach your assistant's AI service. This source implementation remains unvalidated.",
+        "developerName": "Umberto Giacobbi",
+        "category": "Productivity",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/umbertotechnopreneur/AgentInbox",
+        "privacyPolicyURL": "https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/PRIVACY.md",
+        "defaultPrompt": [
+          "Use AgentInbox to list my shared accounts and find messages from today within each account's supported capabilities.",
+          "Use AgentInbox to prepare an email for my local review. Do not send it without my approval."
+        ],
+        "brandColor": "#177F74"
+      }
+    }
+  }
+}

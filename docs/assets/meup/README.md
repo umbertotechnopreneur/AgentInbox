@@ -16,18 +16,18 @@ Use an ink navy background (`#101526`), warm ivory objects, fine connecting line
 
 | Product | Accent | Subject |
 | --- | --- | --- |
-| AgentInbox | Mint `#71DEB7` | Inboxes and calendars connected to one conversation |
+| AgentInbox | Mint `#71DEB7` | Email connected to one conversation, with local approval before sending |
 | PromptMeUp | Amber `#F6C453` | A request, a command, and the choice to run it |
 | WorkTrail | Lilac `#AF9BFF` | Past activity, search, and time |
 
 This repository uses Mint `#71DEB7`. These colors describe documentation artwork, not a change to the app's interface theme.
 
-## Asset and provenance
+## Historical asset provenance
 
 - File: `agentinbox-family-v1.png`.
 - Created: September 20, 2026, with the built-in image generation tool.
 - Format: PNG, 2172 × 724 pixels, 3:1 landscape.
-- Purpose: conceptual product illustration in the README's MeUp family section. It is not a screenshot, logo, or replacement app icon.
+- Purpose: an earlier conceptual product illustration. It is not a current feature description, screenshot, logo or replacement app icon.
 - Inputs: the text prompt below; no photos, screenshots, third-party logos, or reference images were supplied to generation.
 - Review: visually inspected for subject, color, spacing, and consistency with the other two images. Copied into this repository without pixel edits. Earlier artwork remains unchanged.
 - Rights: offered under the repository's [MIT license](../../../LICENSE) to the extent rights apply. No third-party endorsement is implied.
@@ -38,12 +38,12 @@ This repository uses Mint `#71DEB7`. These colors describe documentation artwork
 Use case: stylized-concept. Create one landscape 3:1 editorial product illustration for a coordinated MeUp software family. Dark ink navy background #101526, warm ivory matte paper-cut objects with subtle dimensional depth, fine precise curved paths, soft studio light, generous negative space, restrained composition. No words, no letters, no logos, no interface mockup, no screenshot, no decorative frame. This is conceptual branding artwork, not a depiction of the app. Consistent visual system: three or four objects connected by a single fine flowing line, centered horizontally, spacious margins. Mint accent #71DEB7. Subject: three distinct ivory envelopes and one small calendar sheet converging gently into a single abstract conversation bubble; no outgoing arrows, suggest reading connected inboxes, not sending mail.
 ```
 
-## Footer mark
+## Historical footer mark
 
 - File: `agentinbox-mark-v1.png`.
 - Created: September 21, 2026, with the built-in image generation tool.
 - Format: transparent PNG, 1254 × 1254 pixels.
-- Purpose: compact README footer branding. It is not a replacement app icon, product logo, or screenshot.
+- Purpose: earlier compact footer branding. It is not a current feature description, replacement app icon, product logo or screenshot.
 - Inputs and review: generated from the prompt below without reference images; visually reviewed for transparent edges, legibility at small size, and the read-only mail-and-calendar motif.
 - Rights: offered under the repository's [MIT license](../../../LICENSE) to the extent rights apply. No third-party endorsement is implied.
 

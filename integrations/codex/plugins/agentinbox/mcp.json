@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "agentinbox": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["-B", "${PLUGIN_ROOT}/python/run.py", "mcp"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

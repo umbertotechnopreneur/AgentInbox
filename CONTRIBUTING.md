@@ -1,14 +1,15 @@
 # Contributing
 
-Help improve AgentInbox with a bug fix, clearer instructions, or a report of what worked or failed. For a new email service or a change to account security, open an issue first so I can review the approach with you.
+Help improve AgentInbox with a fix, clearer instructions or a report of what worked or failed. For changes to account security or sending, open an issue so I can review the approach with you.
 
-1. Fork the repository and create a branch for your change.
-2. Use .NET 10 from `global.json`, Python 3.10+ and PowerShell 7 for the validation scripts.
-3. Write code, comments and docs in English. Use made-up accounts and mail, never real mailbox data.
-4. Run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command install-hooks` once per clone. The pre-commit hook formats staged C# files automatically.
-5. Run `pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command validate`; local validation also applies style fixes before building.
-6. Open a pull request explaining what changed, how you checked it and anything that still needs work.
+Use Python 3.11+ for the engine. Windows setup also needs the SDK in `global.json` and WinUI 3. See [development](docs/DEVELOPMENT.md).
 
-Keep credentials, messages, saved sign-in tokens, other users' local paths and private app settings out of issues and pull requests. If you change sign-in code, add tests for separate accounts, simultaneous token refreshes, revoked access and unavailable secure storage.
+Write code, comments and docs in English. Use synthetic `example.test` accounts. Keep credentials, private mail and machine-specific settings out of issues and pull requests.
 
-Contributions use the repository's MIT license. If you add generated artwork, include the prompt and how it was made. Keep it clear that the project isn't endorsed by the companies whose services it connects to.
+Keep mail behavior in Python. Reject unsupported settings, use protected credential storage and preserve local approval for each send. Do not add compatibility shims or previous-data import.
+
+macOS Keychain and Linux Secret Service paths are implemented through native interfaces but have not been tested. Pull requests that improve these paths or document reproducible platform validation are welcome. Keep IMAP/POP3/SMTP behavior, password defaults and explicit Microsoft sign-in boundaries consistent across platforms.
+
+Follow the [Defender scan requirement](README.md#external-binary-security-policy) before adding dependencies. Follow authorization and cleanup rules in [AGENTS.md](AGENTS.md) for checks.
+
+Describe changes, evidence and untested paths in your pull request. Contributions use MIT. Include generated-artwork provenance and preserve third-party attribution.

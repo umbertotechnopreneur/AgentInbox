@@ -1,78 +1,27 @@
-# Wizard implementation
+# Windows UI implementation
 
-The earlier `0.1.1.10` package passed its Release build, 113 shared .NET tests, installed CLI/MCP smoke and a synthetic native-window startup check. Subsequent package records and current limits are in [validation](VALIDATION.md).
+WinUI 3 configures the Python engine through a local process boundary. Keep mail behavior in Python; the UI collects settings, shows results and obtains direct user confirmation.
 
-The September 12 UI increment adds CLI screen selection, an isolated UI preview and further layout refinements. Windows x64 desktop/CLI publication, 291 synthetic .NET tests and published CLI/MCP smoke passed on September 12, 2026. Native rendering and interaction remain untested. These changes are included in the locally installed Windows x64 MSIX `0.1.1.20`; its signature is valid and Windows reports package status `Ok`.
+This source change has not been built or visually validated.
 
-The September 13 read-budget controls and usage view are included in the locally installed AgentInbox Debug x64 package `0.0.1.1`. The current synthetic suite and desktop startup check passed on September 22, 2026; native rendering and interaction remain untested.
+## Account editor
 
-## Open screens from the CLI
+Keep incoming and outgoing settings together. Offer presets and a custom option, an IMAP/POP3 selector before incoming fields, and the required host, port, TLS and username fields.
 
-```powershell
-agentinbox ui --list-steps
-agentinbox ui --list-steps --json
-agentinbox ui --step welcome --demo
-agentinbox ui --step accounts --demo
-agentinbox ui --step sharing --demo
-agentinbox ui --step codex --demo
-```
+Password or app password is the default. Explicit Microsoft **Web authorization** shows a public client ID and tenant field, a short-code dialog and a browser button that you must press. Never switch methods or open a browser automatically. Microsoft presets are editable settings, not proof of account compatibility. Web authorization is not available for Google accounts.
 
-The step list returns screen names, descriptions and commands without starting the desktop app or application services. `agentinbox ui` opens Welcome in a new window or activates the current page in an existing window. An explicit `--step` requests that page; unsaved sharing choices or search-period changes must be saved or discarded before navigation. Opening a page does not start sign-in, provider reads or Codex installation. CLI success reports a launch request, not a rendered-window check.
+POP3 fixes the folder to INBOX and explains that server folders and unread flags are unavailable. Its search uses headers and email Date values. SMTP is optional and initially disabled. TLS and hostname/certificate checks are required, without plaintext or custom-CA controls.
 
-`--demo` uses a separate desktop instance with synthetic `example.test` accounts and in-memory sharing, calendars and search preferences. A persistent preview banner identifies this mode. Sign-in, provider setup, provider reads and real Codex actions are disabled. Demo values survive screen changes and reset when the demo window exits; production accounts, credentials and settings are not loaded. Diagnostic logs use a separate temporary directory.
+Separate read checks, SMTP connection checks and test-message preparation. A connection check is not delivery.
 
-The launcher finds the desktop executable in the installed package or next to the CLI. For a source build, select it explicitly:
+## Approval
 
-```powershell
-agentinbox ui --step sharing --demo --desktop-path 'C:\Build\AgentInbox.Desktop.exe'
-```
+Show the complete pending message, including every recipient, body and attachment. Approval applies once to those exact contents. Cancel and close leave it unsent.
 
-Listing screens works without the Windows desktop runtime. Opening a screen requires Windows and a built desktop executable. `--list-steps` may be combined with `--json`, but not with launch options.
+MCP cannot approve a message. A UI label or assistant-controlled boolean must never replace the engine's approval enforcement.
 
-## Native shell and content
+## Presentation
 
-MainWindow uses Window.SystemBackdrop with DesktopAcrylicBackdrop and extends native content into the title bar. Transparent page surfaces let the material remain visibly blurred, rather than relying on the subtler dark Mica tint. Light and dark resources share a restrained teal/mint accent; high contrast keeps system colors and hides decorative artwork.
+Use native controls, clear labels and a compact layout. Keep errors close to the failed field or action. Preserve keyboard access and scrolling at small window sizes. Hover must not move controls.
 
-Navigation uses names, connected icons, completion state and an active selection without step numbers. Completion follows visited stages, connected accounts, reviewed sharing and observed local plugin configuration; it does not claim that Codex has loaded the tools.
-
-The footer stays outside page scrolling. The connected-accounts and sharing lists show every account; the calendar picker uses search and pagination when needed. Narrow layouts collapse navigation labels and show the sharing list or editor separately. Scrolling remains available for small windows, long content and accessibility text sizes rather than clipping controls.
-
-Current source refinements shorten Welcome copy, make connected-account counts visible, group sharing controls in an account card and keep detailed Codex checks expandable beneath a clear next action. Provider buttons, account actions and sharing summaries adapt to narrow layouts. These changes retain the native Acrylic shell and existing artwork.
-
-## Progressive disclosure
-
-One selected account owns the sharing draft. Categories appear after sharing is enabled; calendar scope appears only with granted calendar access. Save persists through IMailMeUpApplication. Switching account or leaving sharing protects unsaved choices; users can save or discard explicitly.
-
-The Accounts heading includes **Check read access**. It checks every locally connected account, rather than only accounts shared with Codex. Each provider renews its protected OAuth/MSAL access token silently when possible, then makes minimal Mail and Calendar requests without reading the response body. Mail and Calendar are reported independently, so a connected account can show one capability as available and the other as needing attention. Failure guidance is derived from a safe category; provider response content and credential details never reach the UI.
-
-Each connected-account row also exposes **Reconnect** and **Remove** actions. Reconnect starts provider sign-in for the same account and preserves its saved sharing choices; the result warns if a different provider identity was selected. Remove requires confirmation and deletes only the local account metadata and protected credential cache. It does not delete provider data or revoke provider consent, so the account can be connected again later.
-
-Calendar discovery occurs only after choosing individual calendars. The picker filters and pages names in memory, retains saved IDs absent from discovery, and only returns a draft selection. An empty discovery cannot silently replace saved choices. Saving the account applies that draft; OAuth grants and provider data remain unchanged.
-
-Privacy/terms, sharing explanations, provider registration and manual Codex commands open dedicated dialogs. Essential AI-service disclosure remains on Welcome. The Codex page exposes individual command, CLI, marketplace, plugin and direct MCP findings inside expandable connection details. It distinguishes an added marketplace, installed configuration and tools loaded by a running session. Blocked installation offers state-specific guidance. Each attempt clears stale results; safe results can be copied without raw command output, credentials or account identities. Manual commands remain a fallback; no CLI prompt is executed. Plugin preparation and installation require explicit UI actions and are disabled in demo mode. Native visual validation remains pending.
-
-## Read limits and usage
-
-Sharing includes an expandable budget editor and aggregate local usage for provider attempts, content/detail admissions and serialized assistant output. A manual refresh reads only local counters and displays a snapshot time. Progress reflects the active process's limits; cooldown and charge-expiry times are not presented as a guaranteed full reset. Output uses KiB, with an explicit distinction from model tokens.
-
-Save persists validated settings through `IMailMeUpApplication`; Discard restores the saved values, and defaults only populate a draft. Drafts survive refresh failures and are protected during navigation and closing. A concurrent settings edit rejects a stale save. Saved changes require restarting AgentInbox and reconnecting the assistant; the UI distinguishes saved values from active limits and does not reset counters or stop processes. Demo settings and illustrative usage remain in memory. See [guardrail details](READ_GUARDRAILS.md).
-
-## Desktop instance lifetime
-
-Program registers a stable Windows App SDK AppInstance key before constructing the WinUI application or application services. A second launch grants foreground activation to the registered process, redirects activation on a worker while pumping the STA, and exits. Redirection has a bounded wait and does not create a fallback second window on failure.
-
-The first application handles activation on its dispatcher, restores a minimized window and brings it forward. The key is released when the application message loop exits. Only AgentInbox.Desktop participates; CLI and MCP executables retain independent process lifetimes.
-
-Startup and redirected launches validate navigation arguments before applying them. Requests received while the window is starting, busy or displaying a dialog wait until navigation can safely proceed; unsaved drafts remain protected. Direct page selection does not mark skipped stages complete. Normal setup and demo preview use different instance keys.
-
-## Bundled artwork
-
-- [Hero](../resources/wizard/hero.png) and [navigation illustration](../resources/wizard/rail.png), created with built-in image_gen; [prompts](../resources/wizard/GENERATION.md).
-- [Google](../resources/providers/google.svg) and [Microsoft](../resources/providers/microsoft.svg) vectors; [CDN provenance](../resources/providers/README.md).
-
-The package consumes local assets through explicit Content entries. Runtime logo downloads are unnecessary.
-
-## References
-
-- [Microsoft: system backdrops](https://learn.microsoft.com/en-us/windows/apps/develop/ui/system-backdrops)
-- [Microsoft: single-instance WinUI applications](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/applifecycle/applifecycle-single-instance)
+Keep decorative assets separate from controls. Asset provenance is in the [brand guide](BRAND.md); old screenshots do not validate this UI.

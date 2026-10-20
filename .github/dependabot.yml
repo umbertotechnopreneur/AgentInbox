@@ -24,8 +24,8 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      dotnet-extensions:
-        patterns: ['Microsoft.Extensions.*', 'Microsoft.Data.Sqlite']
+      windows-ui:
+        patterns: ['Microsoft.WindowsAppSDK', 'Microsoft.Windows.SDK.BuildTools']
   - package-ecosystem: github-actions
     directory: /
     schedule:

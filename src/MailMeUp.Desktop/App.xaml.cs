@@ -1,54 +1,24 @@
 // SPDX-License-Identifier: MIT
 
-/* VBWR B
- *
- * Project: AgentInbox
- * Repository: https://github.com/umbertotechnopreneur/AgentInbox
- * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
- *
- * VibeWare: Human intent, AI execution, and plenty of tokens
- * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
- *
- * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
- * Human guidance: Umberto Giacobbi; requested VibeWare branding.
- *
- * Copyright (c) 2026 Umberto Giacobbi
- * License: MIT - see LICENSE
- * SPDX-License-Identifier: MIT
- *
- * VBWR E */
-
 using System.Runtime.InteropServices;
-using MailMeUp.Application;
 using MailMeUp.Desktop.Services;
-using MailMeUp.Hosting;
-using MailMeUp.Storage;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Serilog;
-using Serilog.Core;
 
 namespace MailMeUp.Desktop;
 
-/// <summary>Hosts the local Windows setup adapter without starting an MCP process.</summary>
+/// <summary>Creates the Windows configuration and human approval interface.</summary>
 public partial class App : Microsoft.UI.Xaml.Application
 {
-    private IHost? _host;
-    private Window? _window;
-    private Logger? _diagnostics;
     private readonly DispatcherQueue _dispatcher = DispatcherQueue.GetForCurrentThread();
-    private ILogger<App>? _logger;
-    private int _setupStarted;
     private readonly SetupLaunchOptions _launchOptions;
+    private MainWindow? _window;
+    private int _started;
 
-    /// <summary>Initializes WinUI resources.</summary>
+    /// <summary>Initializes application resources.</summary>
     public App() : this(new SetupLaunchOptions()) { }
 
-    /// <summary>Creates the desktop application with parsed activation options.</summary>
     internal App(SetupLaunchOptions launchOptions)
     {
         _launchOptions = launchOptions;
@@ -58,71 +28,15 @@ public partial class App : Microsoft.UI.Xaml.Application
     /// <inheritdoc />
     protected override void OnLaunched(LaunchActivatedEventArgs args) => StartSetupWindow();
 
-    /// <summary>Creates the setup window once the WinUI dispatcher and the primary app instance are ready.</summary>
     internal void StartSetupWindow()
     {
-        if (Interlocked.Exchange(ref _setupStarted, 1) != 0) return;
-        Logger? diagnostics = null;
-        try
-        {
-            var dataDirectory = _launchOptions.IsDemo
-                ? Path.Combine(Path.GetTempPath(), "AgentInbox-ui-demo", Guid.NewGuid().ToString("N"))
-                : DataDirectory.ResolveFromEnvironment();
-            diagnostics = DesktopLogging.Create(dataDirectory);
-            var startupLogger = diagnostics.ForContext("SourceContext", "AgentInbox.Desktop");
-            startupLogger.Information("Starting desktop setup");
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = [], DisableDefaults = true });
-            builder.Logging.ClearProviders();
-            builder.Services.AddSerilog(diagnostics, dispose: false);
-            if (_launchOptions.IsDemo)
-                builder.Services.AddSingleton<IMailMeUpApplication, DemoMailMeUpApplication>();
-            else
-                builder.Services.AddMailMeUp(dataDirectory);
-            builder.Services.AddSingleton<CodexSetupService>();
-            builder.Services.AddTransient<MainWindow>();
-            _host = builder.Build();
-            _diagnostics = diagnostics;
-            diagnostics = null;
-            _logger = _host.Services.GetRequiredService<ILogger<App>>();
-            var setupWindow = _host.Services.GetRequiredService<MainWindow>();
-            setupWindow.RequestStep(_launchOptions.Step);
-            _window = setupWindow;
-        }
-        catch (Exception exception)
-        {
-            var startupLogger = diagnostics?.ForContext("SourceContext", "AgentInbox.Desktop") ??
-                _diagnostics?.ForContext("SourceContext", "AgentInbox.Desktop");
-            startupLogger?.Error("Desktop setup startup failed ({ErrorType}, HResult {HResult})", exception.GetType().Name, exception.HResult);
-            diagnostics?.Dispose();
-            _diagnostics?.Dispose();
-            _diagnostics = null;
-            if (Environment.GetEnvironmentVariable("AGENTINBOX_STARTUP_DIAGNOSTICS") == "1")
-                Console.Error.WriteLine($"AgentInbox startup failure: {exception.GetType().Name} (0x{exception.HResult:X8})");
-            _window = new Window
-            {
-                Title = "AgentInbox",
-                Content = new Microsoft.UI.Xaml.Controls.TextBlock
-                {
-                    Text = "AgentInbox could not open setup. Close the app and try again. If it persists, check the local installation and data directory.",
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(32)
-                }
-            };
-        }
-
-        _window.Closed += (_, _) =>
-        {
-            _window = null;
-            _host?.Dispose();
-            _host = null;
-            _diagnostics?.Information("Desktop setup stopped");
-            _diagnostics?.Dispose();
-            _diagnostics = null;
-        };
+        if (Interlocked.Exchange(ref _started, 1) != 0) return;
+        _window = new MainWindow(new PythonEngine());
+        _window.Closed += (_, _) => _window = null;
+        _window.RequestReview(_launchOptions.ReviewRequestId);
         _window.Activate();
     }
 
-    /// <summary>Marshals a new activation request to the existing setup window's UI thread.</summary>
     internal void ActivateExistingWindow(SetupLaunchOptions options) => _dispatcher.TryEnqueue(() =>
     {
         var window = _window;
@@ -131,19 +45,17 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             if (window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
                 presenter.Restore();
-            if (window is MainWindow setupWindow)
-                setupWindow.RequestStep(options.Step);
+            window.RequestReview(options.ReviewRequestId);
             window.Activate();
             SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(window));
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            _logger?.LogWarning("Setup activation failed ({ErrorType})", exception.GetType().Name);
+            Console.Error.WriteLine("AgentInbox could not activate its existing window.");
         }
     });
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    /// <summary>Brings the supplied native window handle to the foreground when Windows permits it.</summary>
     private static extern bool SetForegroundWindow(IntPtr window);
 }

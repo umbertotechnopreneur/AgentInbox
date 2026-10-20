@@ -23,6 +23,5 @@ VBWR E -->
   </Configurations>
   <Folder Name="/src/">
     <Project Path="src/MailMeUp.Desktop/MailMeUp.Desktop.csproj" />
-    <Project Path="src/MailMeUp.Cli/MailMeUp.Cli.csproj" />
   </Folder>
 </Solution>

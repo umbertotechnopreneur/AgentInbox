@@ -1,37 +1,128 @@
-# Windows desktop MSIX
+# Windows MSIX packaging
 
-Source for the WinUI 3 setup app and the existing CLI in one MSIX. On 2026-09-06 Windows x64 preview `0.1.1.3` was built, signed with the owner's earlier local certificate (`CN=umber`) and installed. CLI/MCP smoke checks passed through both the published executable and installed alias; the About UI and banner were inspected. That earlier package family cannot update the current Store identity. See [validation](../../docs/VALIDATION.md) for the remaining limits. The main `MailMeUp.slnx` remains independent of Windows UI tooling; `MailMeUp.Windows.slnx` includes the desktop app.
+The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-After the owner authorizes a build, use Windows with the .NET 10 SDK and Windows SDK tools:
+Debug MSIX 1.0.11.0 was built and signed locally from current source and installed on Windows x64 with package status `Ok`. It includes the account-check and Mica UI; visual checks for that flow remain pending. Earlier packaged desktop startup and basic account-form navigation were exercised with an isolated profile on 1.0.9.0. Store, ARM64 and packaged CLI/MCP startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64
+## Prerequisites and inputs
+
+After explicit owner authorization, use Windows with PowerShell 7, the required .NET SDK and Windows SDK tools. The scripts do not install these tools or start antivirus scans.
+
+Stage runtime archives, extracted runtimes and NuGet inputs under a task-specific `artifacts/` directory. For single-architecture packaging or Debug installation, supply these inputs through `scripts/AgentInbox.ps1`:
+
+| Parameter | Required value |
+| --- | --- |
+| `-PythonArchive` | Local official Python embeddable ZIP |
+| `-PythonDirectory` | Matching extracted directory without added or modified files |
+| `-PythonSource` | Official HTTPS `python.org` URL for that archive |
+| `-PythonVersion` | Matching version, at least 3.11 |
+| `-PythonSha256` | Expected 64-character SHA-256 |
+| `-DependencyManifest` | Local JSON describing the complete offline NuGet closure |
+
+The Python URL must identify `/ftp/python/<version>/python-<version>-embed-amd64.zip` for x64 or the corresponding `arm64.zip`. The script checks the archive hash, compares the extracted files with the archive and checks the executable architecture before packaging.
+
+The dependency manifest has this shape; replace every placeholder:
+
+```json
+{
+  "packages": [
+    {
+      "archive": "<absolute-path-to-package.nupkg>",
+      "source": "https://api.nuget.org/v3-flatcontainer/<id>/<version>/<id>.<version>.nupkg",
+      "sha256": "<expected-64-character-SHA-256>"
+    }
+  ]
+}
 ```
 
-The script defaults to the local `Debug` channel and Windows x64. It publishes self-contained .NET and Windows App SDK payloads, creates package logos from the existing artwork, copies dependency notices and calls MakeAppx. It does not run tests or launch AgentInbox. Restore creates or updates dedicated graphs under `eng/locks/msix/win-<architecture>/`, preserving the normal cross-platform and portable package lock files. Review the MSIX graph changes before committing. Pass `-Architecture arm64` for an ARM64 package. ARM64 runtime support remains untested. Use `-Channel Store` only for an explicitly authorized Store package; it uses the `Release` configuration but does not upload or publish anything.
+List every package required for the chosen architecture, including transitive and runtime dependencies. The two direct WinUI references alone are not a complete closure. Self-contained restore can require the selected SDK's `Microsoft.NETCore.App.Runtime`, `Microsoft.WindowsDesktop.App.Runtime` and `Microsoft.AspNetCore.App.Runtime` packages. Official NuGet URLs must use an accepted NuGet host. Restore uses only the staged local feed and isolated task caches; missing dependencies fail without network fallback.
 
-Output goes into `artifacts/debug/<version>/<architecture>/` or `artifacts/store/<version>/<architecture>/`. Before building, the script clears the entire repository `artifacts/` directory, including previous packages and logs. Copy anything you want to retain elsewhere first, and do not run builds concurrently in the same checkout. Signed packaging requires an explicit matching certificate and timestamp server; use `-Unsigned` only when an unsigned staging package is intentional. The script does not create certificates, change trust stores, install packages, contact accounts, register plugins, or publish releases.
+## Scan new imports once
 
-To sign during an explicitly authorized package build, supply an existing code-signing certificate in `CurrentUser\My` and an RFC 3161 timestamp service. The script requires its exact subject to match the source manifest publisher:
+Before first introducing a new external runtime or dependency, scan only its archive and extracted files/dependencies with Microsoft Windows Defender. Keep source, version or SHA-256, scan command and clean result with the import evidence. A new version or changed content needs a new import scan; unchanged inputs reuse their existing evidence.
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Store -PackageVersion 1.0.0.0 -CertificateThumbprint '<40 hexadecimal characters>' -TimestampServer 'https://your-timestamp-service.example'
+Builds do not run Defender, scan installed SDK/runtime trees, restored copies or generated payloads. They still check official source URLs, archive hashes and extracted Python contents. A missing or unsuccessful first-import scan blocks the new import, not a later build of unchanged inputs. Never bypass detections or certify unscanned dependencies. See the [repository policy](../../README.md#external-binary-security-policy).
+
+## Build or install
+
+Use the dispatcher with the required inputs above. Its command defaults to `help`.
+
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix <required-inputs> -Unsigned
 ```
 
-Replace all example values. Successful signing also exports the public certificate to a `.cer` file beside the MSIX; it contains no private key and does not install trust. A signed package still needs a chain trusted by the target Windows device. Keep using the manifest signing identity for subsequent updates. Signing, installation, clean-device launch, provider login and upgrades require separate validation. `-MakeAppxPath` and `-SignToolPath` accept explicit Windows SDK tool paths when they cannot be discovered.
+`package-msix` defaults to `-Channel Debug -Architecture x64`. It publishes the desktop payload, includes Python source and runtime, preserves supplied notices and creates the MSIX. It does not run tests, launch the app, install the package or publish it.
 
-## Stable Codex command
+Supply `-CertificateThumbprint <thumbprint>` instead of `-Unsigned` to sign with an existing valid current-user certificate whose subject matches the manifest publisher. The script does not create certificates or change certificate trust. Optional `-MakeAppxPath` and `-SignToolPath` select existing SDK tools.
 
-Windows manages the versioned installation directory. The manifest registers the console execution alias `agentinbox.exe`; Codex must use that alias, never a path inside `C:\Program Files\WindowsApps`.
+For an explicitly requested local Debug installation:
 
-The setup app uses the absolute alias path under the current user's local application directory, normally `%LOCALAPPDATA%\Microsoft\WindowsApps\agentinbox.exe`, with `--stdio` as its argument. The `.exe` name, package identity and application IDs remain stable across upgrades. Windows resolves the alias to the currently installed version, so a normal update should not require another Codex configuration change. Disabling the alias, removing the app, changing the package identity, or a competing registration can make the command unavailable.
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command install-debug-msix <required-inputs> -Version <four-part-version> -CertificateThumbprint <thumbprint>
+```
 
-The hidden `Cli` application uses the console subsystem and allows multiple instances, so each MCP client starts its own stdio process. No UI process proxies MCP traffic. Redirected stdin/stdout, concurrent MCP clients and alias behavior after an upgrade remain required executable checks.
+This command builds and signs the package, immediately calls installation, then checks the installed version, architecture and package status. It does not perform UI or live-mail checks. If no thumbprint is supplied, it requires exactly one suitable existing trusted current-user code-signing certificate.
 
-## Identity and local data
+## Local Store build
 
-The source identity is `UmbertoGiacobbiDotBiz.AgentInbox` with publisher `CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510`, display name `UmbertoGiacobbiDotBiz` and Store ID `9N392ZMBJ4D1`. The package script preserves that identity and only varies the four-part version and target architecture. The default version derives from `Directory.Build.props` plus a final `.0`; increase it for every update. Store links become available only after the product is live.
+Follow the local PromptMeUp recipe after explicit Store authorization:
 
-File system write virtualization is disabled using `unvirtualizedResources`, so Codex can read the prepared plugin and the UI and CLI share the real `LocalAppData\AgentInbox` folder. An explicit `AGENTINBOX_DATA_DIR` remains supported. Local data and the prepared plugin therefore survive MSIX removal; removing an account in AgentInbox remains a separate action. Registry virtualization is unchanged. No Microsoft Store acceptance is claimed for these restricted capabilities.
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <runtime-manifest.json> -DependencyManifest <dependency-manifest.json>
+```
 
-References: [execution aliases](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-appexecutionalias), [package identity](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/package-identity-overview), [self-contained deployment](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained-deploy/deploy-self-contained-apps), [AppData virtualization](https://learn.microsoft.com/en-us/windows/msix/desktop/flexible-virtualization), [MakeAppx](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool).
+The wrapper builds both x64 and ARM64 with Release configuration, using unsigned MSIX packages and package version `X.Y.Z.0`. It does not sign, install, upload, publish or create tags. Store builds run locally and are rejected inside GitHub Actions. The optional `-MakeAppxPath` selects an existing SDK tool.
+
+The runtime manifest contains exactly these fields; replace every placeholder:
+
+```json
+{
+  "runtimes": {
+    "x64": {
+      "archive": "<absolute-x64-archive.zip>",
+      "directory": "<absolute-extracted-x64-directory>",
+      "source": "https://www.python.org/ftp/python/<version>/python-<version>-embed-amd64.zip",
+      "version": "<three-part-python-version>",
+      "sha256": "<expected-64-character-SHA-256>"
+    },
+    "arm64": {
+      "archive": "<absolute-arm64-archive.zip>",
+      "directory": "<absolute-extracted-arm64-directory>",
+      "source": "https://www.python.org/ftp/python/<version>/python-<version>-embed-arm64.zip",
+      "version": "<three-part-python-version>",
+      "sha256": "<expected-64-character-SHA-256>"
+    }
+  }
+}
+```
+
+Both runtime entries, paths, Python versions, hashes and new destination directories are checked before either architecture starts. The shared dependency manifest must contain the full offline closure for both architectures. First-import scan evidence is a separate prerequisite; neither build starts antivirus scans. Package paths are returned only after both builds succeed; if the second build fails, the first completed package is preserved and reported. An unsigned MSIX is a build artifact, not an installed or approved release.
+
+The Store recipe accepts a three-part `-Version` with a nonzero first component and appends `.0`. Every package-version component must be from 0 to 65535. The single-architecture engine also rejects Store versions whose first component is zero or fourth component is nonzero.
+
+Installed MCP configuration uses `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, not an executable path inside a versioned package directory. The alias and native app share `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox` unless `AGENTINBOX_DATA_DIR` explicitly selects another absolute directory. Native outgoing review resolves the current installed desktop executable. These entry points and update behavior still require authorized package validation.
+
+## Output and cleanup
+
+Deliverables go under:
+
+```text
+artifacts/msix/debug/<x64-or-arm64>/<four-part-version>/
+artifacts/store/<four-part-version>/<x64-or-arm64>/
+```
+
+The directory contains the MSIX, matching SHA-256 and `package-record.json`. A successful Debug installation adds `installation.json`. On failure, a small `failure.json` preserves essential diagnostics. Existing version directories are not overwritten.
+
+Transient output uses a unique `artifacts/work/msix-<task-id>/` directory with a matching `.agentinbox-task` marker. Packaging cleans its own build intermediates and task directory after use. Cleanup errors must be reported rather than treated as success.
+
+Manual cleanup requires that exact generated directory:
+
+```text
+pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command clean-artifacts -TaskDirectory <absolute-task-directory>
+```
+
+The cleaner rejects paths outside the exact task naming and ownership rules, plus links and reparse points. Omitting the directory preserves output. It never performs a general wipe of `artifacts/` or removes pending packages.
+
+Preserve requested installers, pending uploads, rollback packages and essential failure evidence. Remove superseded task-owned output only when its retention reason has ended, following the [repository working agreement](../../AGENTS.md).
+
+See [validation](../../docs/VALIDATION.md), [dependencies](../../docs/DEPENDENCIES.md) and [client setup](../../docs/CODEX_SETUP.md). The separate [source-plugin exporter](../../scripts/README.md#export-a-source-plugin) is not a Windows binary distribution.

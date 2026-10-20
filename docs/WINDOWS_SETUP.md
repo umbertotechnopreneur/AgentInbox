@@ -1,65 +1,49 @@
-# Windows setup preview
+# Windows setup
 
-The Windows app walks you through connecting accounts, choosing what to share and adding AgentInbox to Codex. It's a native Windows app, packaged as an MSIX installer.
+The WinUI 3 app configures a bundled Python mail engine. See [validation](VALIDATION.md) for package, test and live-provider evidence.
 
-**The latest recorded local installation is AgentInbox Debug x64 `0.0.1.1`, from September 22.** It was built, signed with the approved Store publisher, and installed successfully after a fresh `0.0.1.0` package. The current source passed 495 automated tests, published and installed CLI/MCP smoke, and published and installed desktop startup checks with synthetic isolated data.
+Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.9.0 built and installed locally on x64. Account-form navigation, native tabs, resizing and error recovery were exercised with an isolated profile. Saving native credentials and live mail access remain unvalidated.
 
-Native layout and interaction, installation on a clean machine, sign-in through the Windows app and the guided Codex setup still need checks. See the [test record](VALIDATION.md) for exact results and limits.
+## Configure an account
 
-The current app redesigns all four screens with fixed headings and a smaller sidebar. **Add account** and account sharing open centered dialogs; the Sharing list summarizes each account's saved choices. **Search and read settings** has Search, Usage and Limits tabs, and Codex keeps diagnostics behind **Connection details**. Scrollbars hide outside the active window, with keyboard, touch and high-contrast support. The source is built and installed; these native interactions still need visual checks.
+If no accounts are saved, choose **Create your first account** to open the form. **Cancel** returns to the empty state. To edit an existing account, use **Edit account**, which shows its name and email address. The colored add icon opens a separate new-account form; Cancel returns to the previous account. Remove and refresh sit beside the selector. Buttons have tooltips.
 
-The final Codex step shows plugin/direct connection choices, instructions for the selected method and **Check again** after you make changes in Codex. Unresolved setup offers **Finish later**; confirmed local setup offers a copyable first-task prompt and **Finish setup**. Plugin maintenance, detailed checks and manual setup sit in an expandable section. Synthetic state tests passed; live Codex setup and native interaction remain untested.
+The editor uses native WinUI tabs: **Account**, **Incoming** and **Outgoing**, with vertically centered headers and the native separator below them. Content stays at the top left and fits the available width. **Create account** or **Save changes** sits at the top right on a wide window; actions and paired fields stack when space is limited. The initial window size follows Windows display scaling and the monitor's available work area.
 
-## Setup
+In **Account**, choose a provider preset or custom server and enter the account name, address and authentication choice. In **Incoming**, select IMAP or POP3, then enter the hostname, port, TLS mode, username and password. **Check connection and get folders** sits directly below the credentials and uses the current form, including unsaved changes.
 
-Open AgentInbox and follow the four screens. The app is designed to bring the existing setup window forward if you launch it again; that behavior still needs a desktop check.
+The account check opens an owned Mica window. It reports actual settings validation, verified TLS, sign-in, folder discovery and optional SMTP authentication. The first check does not read a message or send an email. Cancel stops a running check. Errors stay in the window with the stage that failed; they do not switch the authentication method or save an incomplete account.
 
-1. **Welcome:** read how AgentInbox accesses your accounts and what may reach your assistant's AI service. Sign-in tokens stay protected on your device.
-2. **Connect accounts:** choose **Add account**, then Google or Microsoft and sign in through your browser. Repeat for more accounts. For now, you'll need [your own app registration](APP_REGISTRATION.md): import Google's Desktop client JSON file or enter Microsoft's Application (client) ID.
-3. **Choose what to share:** select an account row to open its sharing dialog. Turn on sharing, then choose mail, calendars or both. You can share all calendars or load their names and pick individual ones. Save each account's choices. New accounts start with sharing off; reconnecting keeps your saved choices.
-4. **Connect to Codex:** choose the recommended local plugin or a direct connection and follow the inline instructions. Make any changes to existing connections in Codex, then select **Check again**. When local setup is ready, copy the first-task prompt to try in a new Codex task. **Finish later** leaves unresolved setup for another time. See [Codex setup](CODEX_SETUP.md).
+After a successful check, select between one and twenty server folders. The list contains exact mailbox names, including names containing commas, rather than raw IMAP descriptions. Current support requires ASCII server names. Existing selections are kept when available; new folders are never selected automatically. **Use selected folders** updates the form without saving it. With a new password-based account, **Create account** runs this same check, then **Add account** in the check window saves the explicit folder choices. The final result remains visible until you close it. A save already in progress cannot be cancelled or repeated automatically.
 
-On **Accounts**, use **Check access** (**Check read access** in earlier packages) to try sample searches and detail reads for mail and calendars. A **Try to reconnect** action appears when a read failure calls for it. A lack of sample messages or appointments isn't treated as a broken connection. Longer explanations go to the local [diagnostic log](LOGGING.md). The account menu also offers Reconnect and Remove from device.
+Choose **Also test reading one message** to run a bounded read from the first selected folder before applying choices or saving. The action label changes to include the read test. IMAP preserves its read status; POP3 sends no delete commands. The result distinguishes a successful sample from an empty folder, and no message content is returned or saved. After adding an account with sending enabled, **Send a test email…** opens recipient selection and the normal preview and approval flow. It does not send immediately. A server's SMTP acceptance is still separate from recipient delivery.
 
-Open **Sharing → Search and read settings → Search** to choose how far back undated searches should go: 1–365 days, starting at 14. Earlier packages show the period directly on Sharing. Longer periods take more time and may reach Google's or Microsoft's request limits. Dates in your request take priority. Save or discard edits before closing settings. The current dialog and its interactions still need visual checking.
+**Web authorization with Microsoft** appears only for supported Microsoft incoming and SMTP servers; Gmail and iCloud presets do not offer it. If a server change invalidates a selected method, choose how to sign in again before saving. For a Microsoft account, explicitly select **Web authorization with Microsoft**, enter your public-client app registration ID and tenant, save, then press **Start web authorization…**. The dialog shows a code and opens Microsoft's page only when you press its browser button. A password failure does not start this flow automatically. Registration and organization rules can still prevent access; see [account settings](AUTHENTICATION.md).
 
-Closing the setup window leaves Codex's AgentInbox connection running. Sharing changes apply to later reads, including requests to open earlier results. They can't take back information already returned in a conversation. If you didn't allow mail or calendar access when signing in, reconnect with that option selected before sharing it here.
+POP3 uses only INBOX and has no unread flags or server folders. Its search inspects headers and uses the email Date header. IMAP supports selected server folders. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
 
-The app is in English. The sidebar groups information under **Help & about**. **Privacy & terms** gives you links to the AgentInbox, Google and Microsoft policies. **About & Support** shows your installed version and links to the project, its creator and GitHub issues. You can copy a short version/platform summary for a support request. Opening that dialog doesn't launch a browser or send information.
+Enable assistant reads for the accounts you want to share. Saving folder choices does not enable reading by itself. The separate **Test IMAP reading** or **Test POP3 reading** action appears only for a saved account without pending edits; it tests a bounded message read. An empty mailbox is reported separately from a successful sample read.
 
-## Keep Codex connected after updates
+Sending is a separate opt-in in **Outgoing**. The current-form account check includes SMTP authentication when SMTP is configured. The separate saved-settings SMTP and test-message actions require sending to be enabled; they stay disabled while changes are pending. **Send a test email…** opens the normal review flow. Checking SMTP does not enable sending or send a message.
 
-Windows puts each package version in a different folder. AgentInbox provides a command shortcut, called an app execution alias, so Codex can keep using the same path:
+## Review every send
 
-```text
-%LOCALAPPDATA%\Microsoft\WindowsApps\agentinbox.exe --stdio
-```
+Review the sending account, all To, CC and BCC recipients, subject, body and attachments. Approval applies once to the exact message.
 
-The plugin fills in the full path for your user. Windows points it to the installed version, as long as updates keep the same package identity, publisher and alias. Reload Codex to start a new AgentInbox process after an update. If the command is disabled or another app uses it, select AgentInbox under Windows **App execution aliases**.
+Test messages follow the same flow. Closing or cancelling review does not authorize sending. Changed content needs a new approval. The engine enforces these rules independently of the UI.
 
-## Your data when updating or uninstalling
+## Local data
 
-The setup window and command-line app share the same data folder: `AGENTINBOX_DATA_DIR` if you set it, or the usual per-user `AgentInbox` folder. The package is configured so both apps and Codex can still access the local files they need. Registry handling is unchanged.
+The app and engine share schema 3 settings. Passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. Unknown formats fail; previous account data is not imported.
 
-Updates keep your local data. Uninstalling the Windows package leaves the data folder and any installed Codex plugin in place. If you want to remove local sign-in tokens too, remove your accounts and the Codex plugin before uninstalling. Revoke the app's access separately in Google or Microsoft account settings.
+An MSIX installation uses `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`; a source launch uses `%LOCALAPPDATA%\AgentInbox`. The packaged Python alias and native app select the same physical profile. The copied MCP configuration includes that exact path. An explicit `AGENTINBOX_DATA_DIR` overrides either default and must be absolute. The local `profile_info` operation reports the selected paths without secrets.
 
-## For developers: build the installer
+**Connect assistant** detects Codex and guides registration through its installed CLI. Replacement of an existing AgentInbox entry requires confirmation. Manual configuration is under **Advanced setup**. Both paths use the stable `AgentInbox.exe` alias with `-B -m agentinbox mcp`, without version-specific package paths; outgoing review locates the current installed app. See [client setup](CODEX_SETUP.md).
 
-The unified [AgentInbox CLI](../scripts/AgentInbox.ps1) builds the desktop and command-line apps with the .NET runtime included, creates installer logos and adds dependency notices. It can sign the package with an existing certificate. It doesn't run tests, install the result, change certificate trust or publish a release. Debug packages go under `artifacts/debug`; Store packages go under `artifacts/store`.
+A save, account removal, completed sign-in or outgoing result can succeed while protected-data deletion remains pending. The app shows a separate **Local cleanup is pending** notice. **Retry cleanup** retries queued local deletion without repeating the completed operation or sending another email. Keep the warning until the engine reports that the shared queue is clear.
 
-```powershell
-pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -Unsigned
-```
+Removing an account does not delete server messages. See [privacy](PRIVACY.md), [account settings](AUTHENTICATION.md) and [validation](VALIDATION.md).
 
-Without signing options, the file ends in `.unsigned.msix` and isn't ready for normal installation. See [packaging details](../packaging/windows/README.md) for signing and requirements. Use `MailMeUp.Windows.slnx` to build the UI; the original solution keeps the shared cross-platform code.
+## Developer installation
 
-Before distributing a package, the installed app and command alias need checks with made-up accounts and a separate data folder, followed by clean installation and update checks. A package that builds successfully can still have problems with sign-in, sharing, plugin loading or ARM64 execution. Run these checks only when the owner asks.
-
-The desktop startup check below creates a temporary version-2 account database with one `example.test` account. It launches the installed executable and fails if the process exits during startup:
-
-```powershell
-$desktop = Join-Path (Get-AppxPackage UmbertoGiacobbiDotBiz.AgentInbox).InstallLocation 'AgentInbox.Desktop.exe'
-python scripts/smoke-test-desktop.py $desktop
-```
-
-References: [Microsoft app execution aliases](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/desktop-to-uwp-extensions#start-your-application-by-using-an-alias), [OpenAI MCP configuration](https://developers.openai.com/codex/mcp/).
+For an authorized local installation, use `install-debug-msix -Version <four-part-version>` with the supplied runtime and dependency inputs and an existing current-user certificate. It builds Debug, attempts installation immediately, then checks installed version and package status. Explicit Store work uses the local `build-store-msix -Version X.Y.Z` recipe for unsigned Release x64 and ARM64 packages. Neither recipe uploads or publishes. See the focused [packaging instructions](../packaging/windows/README.md#build-or-install); no package or installation has been validated for this implementation.

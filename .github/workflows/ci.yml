@@ -32,24 +32,85 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# This job validates synthetic Python behavior on Windows only; it does not
+# claim provider, desktop, package, or other-platform validation.
+# Initial scans for newly introduced external dependencies are a separate import
+# prerequisite. Test runs do not scan installed runtimes or certify prior scans.
 jobs:
-  validate:
-    name: Validate (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-      DOTNET_CLI_UI_LANGUAGE: en
+  python-windows:
+    name: Python source tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-      - name: Validate solution and MCP protocol
+      - name: Prepare isolated output and locate the Python runtime
         shell: pwsh
-        run: pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command validate -SkipUnitTests -CheckFormatting
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $taskRoot = Join-Path $env:GITHUB_WORKSPACE 'artifacts/ci'
+          if (Test-Path -LiteralPath $taskRoot) { throw 'Expected a fresh task-owned artifacts/ci directory.' }
+          New-Item -ItemType Directory -Path $taskRoot | Out-Null
+          $candidates = @()
+          if ($env:pythonLocation) { $candidates += Join-Path $env:pythonLocation 'python.exe' }
+          $candidates += @(Get-Command python.exe -All -CommandType Application -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+          if ($env:RUNNER_TOOL_CACHE) {
+            $pythonCache = Join-Path $env:RUNNER_TOOL_CACHE 'Python'
+            if (Test-Path -LiteralPath $pythonCache) {
+              $candidates += @(Get-ChildItem -LiteralPath $pythonCache -Directory | Sort-Object Name -Descending |
+                ForEach-Object { Join-Path $_.FullName 'x64/python.exe' })
+            }
+          }
+          # WindowsApps exposes execution aliases that cannot be hashed as binaries.
+          $pythonExecutable = $candidates | Select-Object -Unique | Where-Object {
+            $_ -notmatch '[\\/]WindowsApps[\\/]' -and
+            (Test-Path -LiteralPath $_ -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $_) 'Lib/unittest/__init__.py'))
+          } | Select-Object -First 1
+          if (-not $pythonExecutable) { throw 'No complete preinstalled Python runtime was found; execution aliases and launchers are not accepted.' }
+          [ordered]@{
+            source = 'https://github.com/actions/runner-images'
+            runnerImage = $env:ImageVersion
+            executable = $pythonExecutable
+            executableSha256 = (Get-FileHash -LiteralPath $pythonExecutable -Algorithm SHA256).Hash
+          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $taskRoot 'runtime-inputs.json') -Encoding utf8
+          "AGENTINBOX_CI_PYTHON=$pythonExecutable" >> $env:GITHUB_ENV
+      - name: Run synthetic standard-library tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $taskRoot = Join-Path $env:GITHUB_WORKSPACE 'artifacts/ci'
+          $env:AGENTINBOX_DATA_DIR = Join-Path $taskRoot 'profile'
+          $env:AGENTINBOX_TEST_ROOT = Join-Path $taskRoot 'tests'
+          $env:TMP = $env:TEMP = Join-Path $taskRoot 'temporary'
+          $env:PYTHONPATH = Join-Path $env:GITHUB_WORKSPACE 'python'
+          $env:PYTHONDONTWRITEBYTECODE = '1'
+          $env:PYTHONNOUSERSITE = '1'
+          New-Item -ItemType Directory -Path $env:TEMP | Out-Null
+          if (-not (Get-ChildItem -LiteralPath python/tests -Filter 'test_*.py' -File)) { throw 'No source tests exist; refusing an empty passing job.' }
+          & $env:AGENTINBOX_CI_PYTHON -B -m unittest discover -s python/tests -t python -v 2>&1 |
+            Tee-Object -FilePath (Join-Path $taskRoot 'tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Python source tests failed.' }
+      - name: Keep runtime metadata and the test result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-windows-record
+          path: |
+            artifacts/ci/runtime-inputs.json
+            artifacts/ci/tests.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove task-owned profiles and transient output
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $artifactRoot = [IO.Path]::GetFullPath((Join-Path $env:GITHUB_WORKSPACE 'artifacts'))
+          $taskRoot = [IO.Path]::GetFullPath((Join-Path $artifactRoot 'ci'))
+          if (-not $taskRoot.StartsWith($artifactRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Cleanup target is outside artifacts.' }
+          if (Test-Path -LiteralPath $taskRoot) {
+            $entries = @((Get-Item -LiteralPath $taskRoot)) + @(Get-ChildItem -LiteralPath $taskRoot -Force -Recurse)
+            if ($entries | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) { throw 'Cleanup found a link; inspect the remaining artifacts/ci directory.' }
+            Remove-Item -LiteralPath $taskRoot -Recurse -Force
+            if (Test-Path -LiteralPath $taskRoot) { throw 'Task output cleanup was incomplete.' }
+          }

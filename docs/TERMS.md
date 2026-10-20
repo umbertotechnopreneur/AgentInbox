@@ -1,53 +1,47 @@
 # AgentInbox Terms of Use
 
-Last updated: 2026-09-20
+Last updated: 2026-10-19.
 
-I build AgentInbox to let you search and read your email and calendars from an assistant you choose. These terms explain the service boundaries and your responsibilities.
+I build AgentInbox to help you read email and prepare optional sends through your chosen assistant. These terms describe its boundaries and your responsibilities.
 
-[Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms of use](https://umbertogiacobbi.biz/agentinbox/terms/)
+[Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/)
 
-## Developer and scope
+## Developer and source
 
-AgentInbox is developed by Umberto Giacobbi, with help from contributors. Contact hello@umbertogiacobbi.biz for questions about these terms.
+I am Umberto Giacobbi, and I maintain AgentInbox with help from contributors. Contact hello@umbertogiacobbi.biz with questions.
 
-These terms cover AgentInbox and its local MCP integration. Google, Microsoft, GitHub, your assistant and any AI provider have their own terms. AgentInbox is an independent project; naming those services does not imply their endorsement or an approved OAuth verification.
+The public source is [MIT-licensed](https://github.com/umbertotechnopreneur/AgentInbox/blob/main/LICENSE). That license governs your rights to use, copy, modify and distribute it. These terms do not remove those rights. Third-party components retain their own licenses.
 
-## Source code and availability
+The current Python engine and WinUI 3 changes are in development and unvalidated. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64. Linux and macOS are source-only, without compiled distributions or commercial support. Source availability does not establish platform compatibility or Store availability.
 
-The public AgentInbox source is licensed under MIT. That license governs your rights to use, copy, modify and distribute the licensed code. These terms do not remove rights already granted by it. Third-party components retain their own licenses.
+## Authorized accounts and data
 
-The Microsoft Store edition is coming soon and is not offered for purchase on this page. The planned commercial package is MSIX for Windows 11 on x64 and ARM64. I do not supply commercial Linux or macOS binaries; source availability does not mean every component runs on those platforms.
+Connect only mailboxes you own or are authorized to use. Follow your organization's rules and provider policies. You choose which accounts your assistant may read and whether SMTP is enabled.
 
-- [AgentInbox MIT license](https://github.com/umbertotechnopreneur/AgentInbox/blob/main/LICENSE)
+Keep your device and credentials secure. Do not put passwords, private messages or local settings in public issues.
 
-## Use accounts and data you are allowed to access
+Your email provider, MCP client and AI service have their own terms and may charge separately. AgentInbox is independent; naming a provider or client does not imply endorsement.
 
-Connect only accounts you own or are authorized to use. Follow your organization’s rules and the applicable provider policies. You are responsible for choosing which accounts and calendars to share and which assistant receives the results.
+## Reading and sending
 
-Use Google data only for the authorized mail and calendar features and consistently with Google’s Limited Use requirements. Do not use AgentInbox to sell Google data, target advertising, conduct surveillance or train general-purpose AI models. An assistant’s ability to retain or process data does not authorize a prohibited use.
+IMAP and POP3 reads depend on connection permissions, server behavior, search scope and limits. POP3 exposes INBOX only, without unread flags or server folders; it searches headers and uses the email Date header. Results can be partial or fail. Check important information against the original message.
 
-Keep your device, operating-system account and assistant configuration secure. Do not publish credentials, tokens, private messages or local configuration in GitHub issues or public support discussions.
+Password sign-in is the default. Optional Microsoft **Web authorization** requires your explicit selection and your own suitable app registration. Provider and organization rules can prevent access; no preset guarantees compatibility. AgentInbox never switches sign-in methods automatically. Connections require validated TLS or STARTTLS, without plaintext or custom-CA controls.
 
-- [AgentInbox Privacy Policy](https://umbertogiacobbi.biz/agentinbox/privacy/)
+SMTP starts disabled. Every message, including a test email, needs your local approval of its exact recipients, content and attachments. Review those details before approving; sending can disclose information to recipients and their providers.
 
-## What the app can and cannot do
+SMTP acceptance is not proof of recipient delivery. An uncertain outcome may require checking your mailbox or provider before deciding whether to send again.
 
-AgentInbox reads provider data. It does not send mail, modify or delete provider messages or appointments, or send invitations. Removing a connected account removes local access; it does not delete the mailbox.
-
-Results depend on provider permissions, availability, rate limits and the scope of your search. Searches can be partial or fail, and cached results can be briefly out of date. Check important information against the original message or calendar.
-
-The assistant may send results to a cloud service, produce inaccurate summaries or take actions using its own tools. AgentInbox does not control those separate tools. Review the assistant’s settings and outputs before relying on them.
-
-Provider accounts, assistant subscriptions and AI usage may have separate charges. AgentInbox does not include those services or promise uninterrupted access to them.
+Your assistant may forward results to an AI service, retain them or produce inaccurate summaries. AgentInbox does not control separate tools or copies held by those services. See [privacy](PRIVACY.md).
 
 ## Warranty and support
 
-The MIT-licensed source is provided as is, with the warranty and liability terms in that license. Nothing here excludes rights or responsibilities that cannot legally be excluded, including applicable consumer rights for a future paid edition.
+The source is provided as is, with the warranty and liability terms in the MIT license. Nothing here excludes rights or responsibilities that cannot legally be excluded, including applicable consumer rights for a paid edition.
 
-I do not promise a particular response time or service level unless separately agreed in writing. You can report issues on GitHub or contact me, without including private mailbox content.
+I do not promise uninterrupted access, a particular support response time or a service level unless separately agreed in writing.
 
 ## Stopping use and changes
 
-You can stop using AgentInbox at any time. Remove connected accounts, revoke access with the provider and follow the privacy policy’s cleanup steps if you want to remove local data and assistant copies.
+Remove local accounts and MCP registrations when you stop using AgentInbox. Revoke dedicated app passwords or Microsoft consent with your provider and follow the privacy policy to remove local and assistant-held copies.
 
-I may update these terms as the app changes. Updates do not revoke existing MIT rights or retroactively remove rights attached to a purchase. Changes requiring notice or consent will be handled before they apply.
+I may update these terms as the app changes. Updates do not revoke MIT rights or retroactively remove rights attached to a purchase. Changes requiring notice or consent will be handled before they apply.

@@ -1,31 +1,17 @@
-# Fix an account connection
+# Fix a mailbox connection
 
-If an account stops returning results, start with the steps below. AgentInbox can still return results from other accounts, so check which ones were searched before treating an empty list as no mail or appointments.
+Identify the failed step: settings, protected storage, TLS, authentication, mailbox access or SMTP acceptance. A failed connection is not an empty inbox.
 
-## Try again after a temporary error
+Use current settings from your provider. Confirm protocol, hostname, port, TLS mode and username. TLS or required STARTTLS validates certificates and hostnames. There is no plaintext mode or custom-CA setting; do not bypass a certificate failure.
 
-Open **Accounts** in the Windows app and choose **Check read access** again, or repeat the search. If Google or Microsoft asks AgentInbox to wait because of request limits, let that pause pass before trying again.
+Gmail or iCloud can require an eligible app password. Organization rules can disable mail access. Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. For these services, explicitly choose **Web authorization** with your own Microsoft app registration. The registration, your consent and your organization's rules are separate requirements. A preset never guarantees access, and AgentInbox never switches sign-in methods automatically. See [account settings](AUTHENTICATION.md).
 
-## Sign in again
+Unlock the operating-system credential store before retrying. Do not put passwords in configuration JSON. Unknown settings formats fail; create a fresh profile instead of copying previous data.
 
-If access has expired or been revoked, choose **Reconnect** for that account. In the browser, pick the same account and finish sign-in. Your saved sharing choices stay in place.
+Run the selected IMAP/POP3 read check and SMTP connection check separately. SMTP checks do not send mail; test messages require local approval. POP3 has only INBOX and no unread flags; an unread filter or another folder is an error, not an empty result.
 
-From the command line, use `agentinbox accounts connect google` or `agentinbox accounts connect microsoft` and choose the same account.
+If a send has an uncertain outcome, inspect the mailbox or ask your provider before deciding whether to send again. AgentInbox does not retry it automatically.
 
-After reconnecting, start a new search. Asking for the next page of an old, failed search won't bring the recovered account back into it.
+Removing an account removes local access and stored credentials, not its original mailbox. Revoke a dedicated app password or Microsoft consent using the provider's controls when no longer needed.
 
-## Remove an account from this device
-
-Choose **Remove** for the account and confirm **Remove from device**. From the command line, use `agentinbox accounts list` to find its ID, then `agentinbox accounts remove <account-id>`.
-
-This removes the local account and its saved sign-in tokens. Your mail and calendars stay as they are. To revoke the app's access too, use your Google or Microsoft account settings.
-
-## If saved sign-in information can't be opened
-
-Check that your operating system's credential store is available. If you've set `AGENTINBOX_DATA_DIR`, make sure the command-line app and your assistant's AgentInbox process use the same folder.
-
-Restart older AgentInbox processes after an update. Updated versions coordinate token refresh and removal; older ones don't use the same locks. A read that's already running may finish after removal, but later reads need an available account and credentials.
-
-## What has been tested
-
-Recovery changes passed Windows tests with made-up accounts, including failed sign-in and several processes accessing credentials. Deliberately expiring or revoking access and reconnecting real accounts still need testing. Those checks are manual, need at least two connected accounts and run only when the owner asks. See the [test record](VALIDATION.md).
+Keep private mail and passwords out of support reports. See [privacy](PRIVACY.md).

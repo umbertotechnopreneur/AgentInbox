@@ -1,153 +1,92 @@
-# AgentInbox — Connect your inboxes to your AI assistant.
+# AgentInbox — Read and send email with your AI assistant.
 
-Search Google and Microsoft email and calendars from Codex, Claude, or another app with local MCP support, including Visual Studio Code.
+I kept switching between mailboxes to find the message I needed. I built AgentInbox to bring those inboxes into one conversation, using IMAP or POP3 to read mail and optional SMTP to send it, like a regular email client.
 
-Connect your work, personal, and client accounts, then ask for messages or appointments across them. You choose which accounts the assistant can read. AgentInbox runs on your computer and can't send mail or change your accounts.
+Connect a compatible mailbox, choose what your assistant can read, and ask for the messages you need. Sending is optional: you enable SMTP for an account, then approve each complete message locally before it leaves your computer.
 
-**[Get started](docs/GETTING_STARTED.md)** · [Windows portable setup](docs/WINDOWS_PORTABLE.md) · [Client compatibility](#ai-assistant-support) · [Privacy](docs/PRIVACY.md)
+**[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
 
-![AgentInbox cross-account search in an AI conversation, with email addresses hidden](docs/assets/branding/agentinbox-chat-search.png)
-
-*Example search with addresses hidden. Setup and testing focus on Codex on Windows x64. Other clients haven't been tested with AgentInbox.*
-
-## Get started
-
-1. Extract the [Windows portable ZIP](docs/WINDOWS_PORTABLE.md) and open `AgentInbox.Desktop.exe`.
-2. Follow [provider registration](docs/APP_REGISTRATION.md), sign in to each account, and choose what to share.
-3. Connect to Codex, then ask for unread mail or upcoming meetings. See [the setup guide](docs/GETTING_STARTED.md) for the full steps.
-
-[![CI](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
-![Project status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-F6C453)
+![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
-> [!WARNING]
-> **AgentInbox is still an early preview.** Try it while keeping an eye on the results. Commands, setup steps and local data formats may change before a stable release.
+> **In development.** All 90 synthetic Python tests passed locally on Windows. Debug 1.0.11.0 includes the new account-check and Mica UI and is installed on x64 with package status `Ok`; visual checks for this flow remain pending. Earlier isolated checks covered Codex setup, account-form navigation, resizing and error recovery. Real-provider access and native credential storage remain unvalidated. See [validation](docs/VALIDATION.md).
 
-> **Your assistant may send the information you request to its AI service.** AgentInbox runs locally, but that doesn't make the whole conversation offline. See [privacy](docs/PRIVACY.md).
+> **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 
-## Why AgentInbox?
+## Connect your mailbox
 
-Connect several independent mailboxes without switching accounts in your assistant. Sign in to each Google or Microsoft account separately and choose what to share. A mix of ten work and personal accounts is a useful example, but that account count hasn't been tested.
+Choose IMAP or POP3, then enter the server, port, encrypted connection type and username. Password or app password is the default. For Outlook.com or Microsoft 365, you can explicitly choose **Web authorization**: Microsoft gives you a short code to sign in. This choice requires your own Microsoft app registration.
 
-Ask for the latest message about a project, unread mail across your accounts, or next week's meetings. Start with a short list, then open the details you need.
+| Mail service | Connection requirement |
+| --- | --- |
+| Gmail | An eligible account with an app password and the chosen mail protocol allowed; Web authorization is not available for Google accounts |
+| iCloud Mail | An app-specific password |
+| Other providers | IMAP or POP3 over TLS with a password or app password |
+| Outlook.com / Microsoft 365 | Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. This choice requires your own app registration; organization rules can still restrict access |
 
-The preview already supports multiple accounts. Easier onboarding remains work in progress, and setup currently focuses on Codex; see [before you start](#before-you-start) and [AI assistant support](#ai-assistant-support).
+Your provider or organization can disable access even when the server settings are correct. AgentInbox reports the problem without automatically switching sign-in methods. Presets fill settings; no provider connection has been validated for this implementation.
 
-<details>
-<summary>How this compares with built-in connectors (research: September 19, 2026)</summary>
+IMAP exposes selected server folders and read status. POP3 exposes one mailbox as `INBOX`, has no unread flags or server folders, and searches message headers; its dates come from the email's `Date` header. AgentInbox sends no delete commands; provider retention settings can still affect your mailbox. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
 
-The official documentation reviewed did not establish a built-in setup for connecting ten independent Google/Microsoft accounts in Codex or Claude. That is a documentation finding, not proof that every plugin is limited to one mailbox:
+The Windows setup app uses WinUI 3. It keeps incoming mail and optional outgoing mail settings together, with separate connection checks. See [Windows setup](docs/WINDOWS_SETUP.md).
 
-- Claude's [Google Workspace guide](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors) describes access to the connected Google account, without documenting several simultaneous Gmail account connections.
-- Claude's [Microsoft 365 guide](https://support.claude.com/en/articles/12542951-set-up-the-microsoft-365-connector) explicitly supports delegated access to shared mailboxes. Those mailboxes are accessed through an authorized work account; this is distinct from signing in to several independent accounts across providers.
-- OpenAI documents [plugins](https://learn.chatgpt.com/docs/plugins) and [custom MCP connections](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) for Codex. Those extension points allow other integrations; these guides do not establish a universal one-mailbox limit for Gmail or Outlook plugins.
+## Keep control of sending
 
-AgentInbox's focus is a simple, local, read-only connection for the independent accounts you choose to share with your assistant.
+SMTP starts disabled. Enabling it lets your assistant prepare a message for review; it does not authorize delivery.
 
-</details>
+Before every send, AgentInbox shows the sending account, all recipients, subject, body and attachments. You approve that exact message locally. Changing its content requires a new approval. The assistant cannot approve a message through MCP.
 
-## Small and native
+A test email follows the same confirmation step. A successful SMTP response means the server accepted the message, not that the recipient received it. An uncertain send is not retried automatically.
 
-The AgentInbox command-line processes in the Task Manager snapshot below use **7.4–9.6 MB of RAM each** while waiting for requests. That's one snapshot, so memory use will vary with the work you're doing.
+## Use it with your assistant
 
-I build small, native apps. AgentInbox's Windows setup app lets you connect accounts and choose what to share. Other platforms still need testing.
+The Python engine runs as a local MCP process. It reads mail through IMAP or POP3 and prepares optional SMTP sends. It does not need a .NET backend.
 
-![Windows Task Manager showing the highlighted AgentInbox CLI process group using roughly 7 MB RAM per process; unrelated processes are blurred for privacy](docs/assets/branding/agentinbox-task-manager-lightweight.png)
+Source entry point:
 
-*AgentInbox is highlighted. Other processes are blurred for privacy.*
+```text
+python -B python/run.py mcp
+```
 
-## What you can try
+Use an absolute interpreter path and an absolute path to `python/run.py` in your MCP client. See [connection setup](docs/CODEX_SETUP.md) and the [tool contract](docs/MCP_CONTRACT.md).
 
-- Search across Gmail, Google Workspace, Outlook.com and Microsoft 365 inboxes.
-- List unread messages or messages in a received-time range, with optional sender, recipient and attachment filters.
-- Show appointments from Google Calendar and Microsoft calendars.
-- Choose which accounts and calendars to include.
-- Return short results first, then open the details you need.
-
-Each person connects their own accounts. You don't need a hosted AgentInbox service or a public marketplace.
-
-## Before you start
-
-**Windows x64 is the current test platform.** The preview includes browser sign-in, multiple accounts, mail search and a combined calendar agenda. Searches skip Spam/Junk and Trash/Deleted Items by default.
-
-> [!IMPORTANT]
-> **There's still some setup to do.** For now, you need to register your own app with Google or Microsoft before connecting an account. Google gives you a configuration file; Microsoft gives you an Application (client) ID. The [registration guide](docs/APP_REGISTRATION.md) walks you through it. Making this easier is part of the work ahead.
-
-> [!NOTE]
-> **MSIX installers are temporarily unavailable.** I'm working on the code-signing certificate needed to distribute them. Until then, use the Windows portable ZIP.
-
-The Windows app helps you connect accounts, choose what to share and set up Codex. Its **Check read access** button tries sample searches and reads for mail and calendars separately. It helps spot connection problems; it doesn't guarantee every future search will work.
-
-Prefer no installer? The [complete Windows portable ZIP](docs/WINDOWS_PORTABLE.md) includes the setup app and CLI/MCP tools. Extract the whole ZIP and open `AgentInbox.Desktop.exe`. Keep that folder in place after connecting Codex.
-
-Your sign-in tokens stay on your computer, protected by the operating system. Earlier builds have been tried with real Google and Microsoft accounts. Newer changes still need checks; the [validation record](docs/VALIDATION.md) lists what was tested in each version.
-
-
-## AI assistant support
-
-Codex is the main focus today. You can use the [Windows setup app](docs/WINDOWS_SETUP.md) to prepare its local plugin, or follow the [manual setup guide](docs/CODEX_SETUP.md).
-
-AgentInbox connects through a local MCP process. Claude, Visual Studio Code, and other MCP clients are intended connection options, but haven't been tested with AgentInbox. ChatGPT Desktop isn't supported as a direct local connection yet.
-
-If you'd like to help try another client and document the setup, see [how to contribute](CONTRIBUTING.md).
+Codex, Claude and other local MCP clients are intended connection options. Client integration has not been validated for this implementation.
 
 ## Where it runs
 
-- **Windows x64:** the preview has been built, signed and installed locally. Some command and UI checks passed on earlier versions; a clean-machine installation and the remaining setup and update checks are still needed.
-- **Windows ARM64:** the package builds, but hasn't been run on ARM64 hardware.
-- **macOS and Linux:** not tested or supported in this preview, including sign-in and secure token storage.
+- **Windows 11 x64 and ARM64:** native WinUI 3 setup; commercial distribution is MSIX only.
+- **Linux and macOS:** Python source only, for users who can configure and adapt it. Native Keychain and Secret Service paths remain untested. No compiled distributions or commercial support are provided. Contributor pull requests with fixes and clear validation evidence are welcome.
 
-## How it fits together
-
-Your accounts connect to your assistant through AgentInbox's local MCP process. Email and calendars use the same connection. Requested information may reach your assistant's AI service. See the [architecture guide](docs/ARCHITECTURE.md).
+The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).
 
 ## Explore the project
 
-- [Short product overview](docs/PRODUCT.md)
 - [Getting started](docs/GETTING_STARTED.md)
-- [Calendars and appointments](docs/CALENDARS.md)
-- [Accounts and credentials](docs/AUTHENTICATION.md)
-- [Register the app with Google and Microsoft](docs/APP_REGISTRATION.md)
-- [Privacy](docs/PRIVACY.md)
-- [Connect to Codex](docs/CODEX_SETUP.md)
+- [Accounts and passwords](docs/AUTHENTICATION.md)
+- [Connection troubleshooting](docs/RECOVERY.md)
+- [MCP tools](docs/MCP_CONTRACT.md)
+- [Architecture](docs/ARCHITECTURE.md)
 - [Build and contribute](docs/DEVELOPMENT.md)
+- [Privacy](docs/PRIVACY.md) and [terms](docs/TERMS.md)
 
-For developers: [how the code fits together](docs/ARCHITECTURE.md), [MCP tools](docs/MCP_CONTRACT.md), [release process](docs/RELEASING.md) and [test results](docs/VALIDATION.md).
-
-[MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no endorsement by OpenAI, Google or Microsoft.
-
-Artwork, source prompts and writing style: [brand guide](docs/BRAND.md).
+[MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no provider or assistant vendor endorsement is implied.
 
 ## More from MeUp
 
-<p align="center">
-  <img src="docs/assets/meup/agentinbox-mark-v1.png" alt="AgentInbox brand mark: an envelope, calendar, and connected access points" width="132" />
-</p>
+- [**AgentInbox**](https://github.com/umbertotechnopreneur/AgentInbox) · Read and send email with your AI assistant.
+- [**PromptMeUp**](https://github.com/umbertotechnopreneur/PromptMeUp) · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.
+- [**WorkTrail**](https://github.com/umbertotechnopreneur/WorkTrail) · Track your time. Find what you worked on.
 
-<p align="center">
-  <a href="https://github.com/umbertotechnopreneur/AgentInbox"><strong>AgentInbox</strong></a> · Connect your inboxes to your AI assistant.<br />
-  <a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>PromptMeUp</strong></a> · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.<br />
-  <a href="https://github.com/umbertotechnopreneur/WorkTrail"><strong>WorkTrail</strong></a> · Track your time. Find what you worked on.
-</p>
+I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contributors. Find me on [LinkedIn](https://www.linkedin.com/in/umbertogiacobbi/) or at [umbertogiacobbi.biz](https://umbertogiacobbi.biz/).
 
-<p align="center"><sub>Brand mark, not an app icon. <a href="docs/assets/meup/README.md">Visual style and image credits</a>.</sub></p>
+Artwork and writing style: [brand guide](docs/BRAND.md).
 
-<p align="center">I’m Umberto Giacobbi. I built and maintain AgentInbox with help from contributors.<br />Find me on <a href="https://www.linkedin.com/in/umbertogiacobbi/">LinkedIn</a> or at <a href="https://umbertogiacobbi.biz/">umbertogiacobbi.biz</a>.</p>
+## VibeWare
 
----
+I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and state what has actually been tested. You are welcome to explore and reuse the open-source materials under their licenses.
 
-<p align="right">
-  <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
-    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
-  </a><br>
-  <strong>VibeWare</strong><br>
-  <em>Human intent, AI execution, and plenty of tokens</em>
-</p>
+## External binary security policy
 
-### What is VibeWare?
+When first introducing an external library or prebuilt binary, scan its archive and extracted files/dependencies once with targeted Microsoft Windows Defender. Keep the import staged until the scan finishes. A new version or changed third-party content is a new import; reuse the evidence for unchanged files. Builds, tests, packaging and installation do not trigger scans, and installed SDK/system trees are outside this import check.
 
-I coined the term [VibeWare](https://umbertogiacobbi.biz) and started an open initiative for developers who build with AI and care about the craft. I challenge the assumption that vibe coding is synonymous with low-quality code, while openly acknowledging the weaknesses and risks of AI-generated software: experienced developers must guide the process, test carefully, check security and take responsibility for the result. With this footer, I acknowledge that I developed this software with AI and ask you to judge the quality of the work.
-
-[**Read the VibeWare manifesto**](https://umbertogiacobbi.biz/vibeware/manifesto)
-
-*You are welcome to explore, adapt and reuse the open-source VibeWare materials under the project license — my contribution to the developer community.*
+Proceed only after the scan completes without detections. Record the official source, version or SHA-256, scan command and result. A missing, failed, unfinished or unavailable scan blocks the new import. Never bypass detections with exclusions, allowlisting, restored quarantine items or disabled protection. This first-import requirement does not certify existing dependencies.

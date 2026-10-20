@@ -1,260 +1,74 @@
 #Requires -Version 7.0
-# VBWR B
-#
-# Project: AgentInbox
-# Repository: https://github.com/umbertotechnopreneur/AgentInbox
-# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
-#
-# VibeWare: Human intent, AI execution, and plenty of tokens
-# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
-#
-# Modified with AI: OpenAI Codex; added this header on 2026-10-10.
-# Human guidance: Umberto Giacobbi; requested VibeWare branding.
-#
-# Copyright (c) 2026 Umberto Giacobbi
-# License: MIT - see LICENSE
 # SPDX-License-Identifier: MIT
-#
-# VBWR E
-
 [CmdletBinding()]
 param(
-    [ValidateSet('menu', 'help', 'validate', 'package-portable', 'package-msix', 'install-debug-msix', 'clean-artifacts', 'format', 'format-staged', 'install-hooks', 'update-locks', 'repo-check', 'export-notices', 'smoke-test', 'desktop-smoke', 'provider-check', 'test-provider-check')]
-    [string]$Command = 'menu',
-    [ValidateSet('win-x64', 'win-arm64')]
-    [string]$Runtime = 'win-x64',
-    [ValidateSet('Debug', 'Store')]
-    [string]$Channel = 'Debug',
-    [ValidateSet('x64', 'arm64')]
-    [string]$Architecture = 'x64',
-    [string]$PackageVersion,
-    [ValidatePattern('^[A-Fa-f0-9]{40}$')]
+    [ValidateSet('help', 'package-msix', 'build-store-msix', 'install-debug-msix', 'clean-artifacts')][string]$Command = 'help',
+    [ValidateSet('Debug', 'Store')][string]$Channel = 'Debug',
+    [ValidateSet('x64', 'arm64')][string]$Architecture = 'x64',
+    [string]$Version,
+    [string]$PythonRuntimesManifest,
+    [string]$PythonArchive,
+    [string]$PythonDirectory,
+    [string]$PythonSource,
+    [string]$PythonVersion,
+    [string]$PythonSha256,
+    [string]$DependencyManifest,
     [string]$CertificateThumbprint,
     [string]$MakeAppxPath,
     [string]$SignToolPath,
-    [switch]$Unsigned,
-    [string]$Executable,
-    [string[]]$ToolArguments = @(),
-    [switch]$SkipUnitTests,
-    [switch]$CheckFormatting,
-    [switch]$Check,
-    [switch]$NoRestore,
-    [switch]$Force
+    [string]$TaskDirectory,
+    [switch]$Unsigned
 )
-
-$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$scriptRoot = $PSScriptRoot
-$repoRoot = Split-Path -Parent $scriptRoot
-$menuManifest = Join-Path $scriptRoot 'common/modules/MenuManager/MenuManager.psd1'
-if (Test-Path -LiteralPath $menuManifest -PathType Leaf) {
-    Import-Module -Name $menuManifest -Force -Prefix AgentInbox -Scope Local -ErrorAction Stop
-}
-
-function Invoke-AgentInboxScript {
-    param(
-        [Parameter(Mandatory)][string]$Path,
-        [string[]]$Arguments = @(),
-        [hashtable]$Parameters = @{}
-    )
-
-    $target = Join-Path $scriptRoot (Join-Path 'commands' $Path)
-    if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
-        throw "AgentInbox command implementation was not found: $Path"
-    }
-    $isPython = $target.EndsWith('.py', [StringComparison]::OrdinalIgnoreCase)
-    if ($isPython) {
-        & python $target @Arguments
-    } else {
-        & $target @Parameters
-    }
-    if ($isPython -and $LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Command failed: $Path (exit $LASTEXITCODE)" }
-}
-
-function Show-AgentInboxHelp {
+$ErrorActionPreference = 'Stop'
+if ($Command -eq 'help') {
     @'
-AgentInbox command line
+AgentInbox source commands
 
-USAGE
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command <command> [options]
+package-msix       Build Windows 11 x64 or ARM64 MSIX. Debug is the default.
+build-store-msix   Build unsigned local Release MSIX packages for x64 and ARM64 together.
+install-debug-msix Build, sign and immediately install a Debug MSIX using an existing current-user certificate.
+clean-artifacts    Remove only an explicitly named task directory under artifacts/work.
 
-COMMANDS
-  validate          Restore, format, build, optionally test, and run repository checks
-  package-portable  Build a Windows portable ZIP (win-x64 or win-arm64)
-  package-msix      Build a manual Debug or Store MSIX under artifacts/debug or artifacts/store
-  install-debug-msix Build, sign, install, and check a Debug MSIX for -PackageVersion
-  clean-artifacts   Remove generated files from artifacts/
-  format            Format the solution; use -Check to verify without edits
-  format-staged     Format staged C# files before commit
-  install-hooks     Install the repository Git hooks; -Force replaces an existing hook path
-  update-locks      Refresh portable dependency lock files for Windows runtimes
-  repo-check        Check repository links and accidental local data
-  export-notices    Generate docs/DEPENDENCIES.md; use -Check to verify it
-  smoke-test       Run the CLI/MCP protocol smoke check against a published executable
-  desktop-smoke     Launch a published desktop executable with synthetic local data
-  provider-check    Run opt-in local read checks against an executable and real accounts
-  test-provider-check  Run synthetic tests for the manual provider checker
+Packaging requires an existing Python 3.11+ embeddable archive and matching extracted directory:
+  -PythonArchive <zip> -PythonDirectory <directory>
+  -PythonSource <official python.org download URL> -PythonVersion <x.y.z>
+  -PythonSha256 <expected SHA256> -DependencyManifest <JSON manifest>
 
-OPTIONS
-  -Runtime win-x64|win-arm64  Windows ZIP architecture (default: win-x64)
-  -Channel Debug|Store        MSIX build destination (default: Debug)
-  -Architecture x64|arm64     MSIX architecture (default: x64)
-  -PackageVersion <version>   Optional four-part MSIX package version
-  -CertificateThumbprint     Signing certificate for a signed MSIX
-  -Unsigned                   Create an unsigned Debug MSIX
-  -SkipUnitTests              Skip unit tests during validate
-  -CheckFormatting            Verify formatting during validate
-  -Check                      Verify formatting without changing files
-  -NoRestore                  Skip restore for format
-  -Force                      Replace a previously configured Git hooks path
-  -Executable <path>          Published executable for smoke/provider commands
-  -ToolArguments <args>        Arguments passed to the selected Python tool
+The dependency manifest contains all required NuGet archives, including transitive dependencies:
+  {"packages":[{"archive":"ABSOLUTE_PATH.nupkg","source":"OFFICIAL_NUGET_URL","sha256":"EXPECTED_SHA256"}]}
 
-EXAMPLES
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command package-msix -Channel Debug -Architecture x64 -Unsigned
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command install-debug-msix -PackageVersion <higher-four-part-version>
-  pwsh -NoProfile -File .\scripts\AgentInbox.ps1 -Command package-msix -Channel Store -Architecture x64 -CertificateThumbprint <40-hex-digits>
-
-With no command, AgentInbox opens an interactive menu. Esc or 0 returns or closes it.
-'@ | Write-Host
+Scan new external imports once before staging; builds never launch Defender scans.
+Restore is offline and fails when a package is missing. Nothing is downloaded or installed implicitly.
+Supply -CertificateThumbprint for signing, or -Unsigned for an unsigned build.
+Store recipe: -Command build-store-msix -Version X.Y.Z -PythonRuntimesManifest <JSON> -DependencyManifest <JSON>.
+The runtime manifest supplies x64 and arm64 archive/directory/source/version/sha256 entries.
+Both architectures are required. Store builds run locally, without signing, installation or publication.
+Optional for single-architecture packaging: -Architecture x64|arm64 -Version <four-part version> -MakeAppxPath <exe> -SignToolPath <exe>.
+Cleanup: -Command clean-artifacts -TaskDirectory <exact artifacts/work/msix-ID directory>.
+Existing packages and unrelated output are preserved.
+'@ | Write-Output
+    return
 }
-
-function Invoke-AgentInboxCommand {
-    param([Parameter(Mandatory)][string]$Name)
-
-    switch ($Name) {
-        'help' { Show-AgentInboxHelp }
-        'validate' {
-            $scriptParameters = @{}
-            if ($SkipUnitTests) { $scriptParameters.SkipUnitTests = $true }
-            if ($CheckFormatting) { $scriptParameters.CheckFormatting = $true }
-            Invoke-AgentInboxScript 'validate.ps1' -Parameters $scriptParameters
-        }
-        'package-portable' { Invoke-AgentInboxScript 'package-windows-portable.ps1' -Parameters @{ Runtime = $Runtime } }
-        'package-msix' {
-            $packageParameters = @{ Channel = $Channel; Architecture = $Architecture }
-            if (-not [string]::IsNullOrWhiteSpace($PackageVersion)) { $packageParameters.Version = $PackageVersion }
-            if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) { $packageParameters.CertificateThumbprint = $CertificateThumbprint }
-            if (-not [string]::IsNullOrWhiteSpace($MakeAppxPath)) { $packageParameters.MakeAppxPath = $MakeAppxPath }
-            if (-not [string]::IsNullOrWhiteSpace($SignToolPath)) { $packageParameters.SignToolPath = $SignToolPath }
-            if ($Unsigned) { $packageParameters.Unsigned = $true }
-            Invoke-AgentInboxScript 'package-msix.ps1' -Parameters $packageParameters
-        }
-        'install-debug-msix' {
-            if ([string]::IsNullOrWhiteSpace($PackageVersion)) { throw '-PackageVersion is required for install-debug-msix.' }
-            if ($Channel -ne 'Debug' -or $Unsigned) { throw 'install-debug-msix requires a signed Debug package.' }
-            $installParameters = @{
-                Version = $PackageVersion
-                Architecture = $Architecture
-            }
-            if ($CertificateThumbprint) { $installParameters.CertificateThumbprint = $CertificateThumbprint }
-            if ($MakeAppxPath) { $installParameters.MakeAppxPath = $MakeAppxPath }
-            if ($SignToolPath) { $installParameters.SignToolPath = $SignToolPath }
-            Invoke-AgentInboxScript 'install-debug-msix.ps1' -Parameters $installParameters
-        }
-        'clean-artifacts' { Invoke-AgentInboxScript 'clean-artifacts.ps1' }
-        'format' {
-            $scriptParameters = @{}
-            if ($Check) { $scriptParameters.Check = $true }
-            if ($NoRestore) { $scriptParameters.NoRestore = $true }
-            Invoke-AgentInboxScript 'format.ps1' -Parameters $scriptParameters
-        }
-        'format-staged' { Invoke-AgentInboxScript 'format-staged.ps1' }
-        'install-hooks' {
-            $scriptParameters = @{}
-            if ($Force) { $scriptParameters.Force = $true }
-            Invoke-AgentInboxScript 'install-git-hooks.ps1' -Parameters $scriptParameters
-        }
-        'update-locks' {
-            Invoke-AgentInboxScript 'update-portable-locks.ps1' -Parameters @{ Runtime = @('win-x64', 'win-arm64') }
-        }
-        'repo-check' { Invoke-AgentInboxScript 'repo-check.py' }
-        'export-notices' {
-            $noticeArguments = @()
-            if ($Check) { $noticeArguments += '--check' }
-            $noticeArguments += $ToolArguments
-            Invoke-AgentInboxScript 'export-notices.py' $noticeArguments
-        }
-        'smoke-test' {
-            if ([string]::IsNullOrWhiteSpace($Executable)) { throw 'Supply the published executable path with -Executable.' }
-            Invoke-AgentInboxScript 'smoke-test.py' (@($Executable) + $ToolArguments)
-        }
-        'desktop-smoke' {
-            if ([string]::IsNullOrWhiteSpace($Executable)) { throw 'Supply the published desktop executable path with -Executable.' }
-            Invoke-AgentInboxScript 'smoke-test-desktop.py' (@($Executable) + $ToolArguments)
-        }
-        'provider-check' {
-            if ([string]::IsNullOrWhiteSpace($Executable)) { throw 'Supply the CLI executable path with -Executable.' }
-            Invoke-AgentInboxScript 'real-provider-check.py' (@($Executable) + $ToolArguments)
-        }
-        'test-provider-check' { Invoke-AgentInboxScript 'test-real-provider-check.py' }
-        default { throw "Unknown AgentInbox command: $Name" }
+if ($Command -eq 'clean-artifacts') {
+    & (Join-Path $PSScriptRoot 'commands/clean-artifacts.ps1') -TaskDirectory $TaskDirectory
+    return
+}
+if ($Command -eq 'build-store-msix') {
+    foreach ($name in @('Channel', 'Architecture', 'PythonArchive', 'PythonDirectory', 'PythonSource', 'PythonVersion',
+        'PythonSha256', 'CertificateThumbprint', 'SignToolPath', 'TaskDirectory', 'Unsigned')) {
+        if ($PSBoundParameters.ContainsKey($name)) { throw "$name is not supported by build-store-msix. Supply the two-runtime manifest instead." }
     }
+    & (Join-Path $PSScriptRoot 'commands/build-store-msix.ps1') -Version $Version -PythonRuntimesManifest $PythonRuntimesManifest `
+        -DependencyManifest $DependencyManifest -MakeAppxPath $MakeAppxPath
+    return
 }
-
-function Show-AgentInboxMenu {
-    $items = @(
-        @{ Command = 'validate'; Label = 'Validate solution'; Detail = 'Build, tests, formatting and repository checks' },
-        @{ Command = 'package-portable'; Label = 'Build portable ZIP'; Detail = "Windows $Runtime" },
-        @{ Command = 'package-msix'; Label = 'Build Debug MSIX'; Detail = 'Output: artifacts/debug' },
-        @{ Command = 'package-msix'; Label = 'Build Store MSIX'; Detail = 'Output: artifacts/store' },
-        @{ Command = 'format'; Label = 'Format solution'; Detail = 'Apply C# formatting' },
-        @{ Command = 'repo-check'; Label = 'Repository check'; Detail = 'Check links and accidental local data' },
-        @{ Command = 'export-notices'; Label = 'Dependency notices'; Detail = 'Regenerate third-party notices' },
-        @{ Command = 'test-provider-check'; Label = 'Test provider checker'; Detail = 'Run synthetic checker tests' },
-        @{ Command = 'clean-artifacts'; Label = 'Clean artifacts'; Detail = 'Remove generated package and build outputs' },
-        @{ Command = 'update-locks'; Label = 'Update Windows locks'; Detail = 'Restore x64 and ARM64 dependency graphs' },
-        @{ Command = 'install-hooks'; Label = 'Install Git hooks'; Detail = 'Format staged C# files before commits' },
-        @{ Command = 'help'; Label = 'Help'; Detail = 'Show CLI commands and options' }
-    )
-
-    while ($true) {
-        Clear-Host
-        Write-Host 'AgentInbox' -ForegroundColor Cyan
-        Write-Host 'Portable packages, development and repository commands' -ForegroundColor DarkGray
-        for ($index = 0; $index -lt $items.Count; $index++) {
-            Write-Host ('  [{0}] {1,-22} {2}' -f ($index + 1), $items[$index].Label, $items[$index].Detail)
-        }
-        Write-Host '  [0] Exit'
-        $selection = Read-AgentInboxIndexChoice -Min 1 -Max $items.Count
-        if ($null -eq $selection) { return }
-        if ($selection -eq '') { continue }
-        try {
-            if ($items[$selection - 1].Command -eq 'package-portable') {
-                $runtimeChoice = Read-Host "Runtime (win-x64/win-arm64) [$Runtime]"
-                if (-not [string]::IsNullOrWhiteSpace($runtimeChoice)) {
-                    if ($runtimeChoice -notin @('win-x64', 'win-arm64')) { throw 'Choose win-x64 or win-arm64.' }
-                    $script:Runtime = $runtimeChoice
-                }
-            }
-            if ($items[$selection - 1].Label -eq 'Build Store MSIX') { $script:Channel = 'Store' }
-            if ($items[$selection - 1].Label -eq 'Build Debug MSIX') { $script:Channel = 'Debug' }
-            if ($items[$selection - 1].Command -eq 'package-msix') {
-                $architectureChoice = Read-Host "Architecture (x64/arm64) [$Architecture]"
-                if (-not [string]::IsNullOrWhiteSpace($architectureChoice)) {
-                    if ($architectureChoice -notin @('x64', 'arm64')) { throw 'Choose x64 or arm64.' }
-                    $script:Architecture = $architectureChoice
-                }
-                if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
-                    $script:CertificateThumbprint = Read-Host 'Signing certificate thumbprint (40 hexadecimal characters)'
-                }
-            }
-            Invoke-AgentInboxCommand $items[$selection - 1].Command
-        } catch {
-            Write-Host $_ -ForegroundColor Red
-        }
-        if ($items[$selection - 1].Command -ne 'help') { [void](Read-Host 'Press Enter to return to the menu') }
-    }
+if ($PSBoundParameters.ContainsKey('PythonRuntimesManifest')) { throw 'PythonRuntimesManifest is only supported by build-store-msix.' }
+$parameters = @{
+    Channel = $Channel; Architecture = $Architecture; Version = $Version
+    PythonArchive = $PythonArchive; PythonDirectory = $PythonDirectory; PythonSource = $PythonSource
+    PythonVersion = $PythonVersion; PythonSha256 = $PythonSha256; DependencyManifest = $DependencyManifest
+    CertificateThumbprint = $CertificateThumbprint; MakeAppxPath = $MakeAppxPath; SignToolPath = $SignToolPath
+    Unsigned = $Unsigned.IsPresent
 }
-
-Push-Location $repoRoot
-try {
-    if ($Command -eq 'menu') {
-        Show-AgentInboxMenu
-    } else {
-        Invoke-AgentInboxCommand $Command
-    }
-} finally {
-    Pop-Location
-}
+& (Join-Path $PSScriptRoot "commands/$Command.ps1") @parameters
