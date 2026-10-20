@@ -50,9 +50,23 @@ jobs:
           $taskRoot = Join-Path $env:GITHUB_WORKSPACE 'artifacts/ci'
           if (Test-Path -LiteralPath $taskRoot) { throw 'Expected a fresh task-owned artifacts/ci directory.' }
           New-Item -ItemType Directory -Path $taskRoot | Out-Null
-          $pythonExecutable = (Get-Command python.exe -CommandType Application -ErrorAction Stop).Source
-          $pythonRoot = Split-Path -Parent $pythonExecutable
-          if (-not (Test-Path -LiteralPath (Join-Path $pythonRoot 'Lib/unittest/__init__.py'))) { throw 'Python must resolve to a complete preinstalled runtime, not a launcher or Store alias.' }
+          $candidates = @()
+          if ($env:pythonLocation) { $candidates += Join-Path $env:pythonLocation 'python.exe' }
+          $candidates += @(Get-Command python.exe -All -CommandType Application -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+          if ($env:RUNNER_TOOL_CACHE) {
+            $pythonCache = Join-Path $env:RUNNER_TOOL_CACHE 'Python'
+            if (Test-Path -LiteralPath $pythonCache) {
+              $candidates += @(Get-ChildItem -LiteralPath $pythonCache -Directory | Sort-Object Name -Descending |
+                ForEach-Object { Join-Path $_.FullName 'x64/python.exe' })
+            }
+          }
+          # WindowsApps exposes execution aliases that cannot be hashed as binaries.
+          $pythonExecutable = $candidates | Select-Object -Unique | Where-Object {
+            $_ -notmatch '[\\/]WindowsApps[\\/]' -and
+            (Test-Path -LiteralPath $_ -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $_) 'Lib/unittest/__init__.py'))
+          } | Select-Object -First 1
+          if (-not $pythonExecutable) { throw 'No complete preinstalled Python runtime was found; execution aliases and launchers are not accepted.' }
           [ordered]@{
             source = 'https://github.com/actions/runner-images'
             runnerImage = $env:ImageVersion

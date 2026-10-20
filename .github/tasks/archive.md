@@ -4,7 +4,8 @@ Keep short completed-work records here. Open work stays in [todo](todo.md), reus
 
 ## 2026-10-20
 
-- Validated the complete local Python refactoring with all 90 synthetic tests passing on Windows. Built unsigned Debug MSIX 1.0.12.0 x64 from source, checked its checksum and exercised CLI help and isolated account listing through the bundled runtime. Matching build cleanup completed; broader generated-output cleanup was rejected by automatic approval review and remains in todo. No installation, desktop control or real-provider test ran. See validation for the evidence and limits.
+- Validated the complete local Python refactoring with all 90 synthetic tests passing on Windows. Built unsigned Debug MSIX 1.0.12.0 x64 from source, checked its checksum and exercised CLI help and isolated account listing through the bundled runtime. Matching build cleanup completed. After automatic approval review rejected broader cleanup, the owner separately emptied `artifacts/`; small legacy source `bin`/`obj` directories remain in todo. No installation, desktop control or real-provider test ran. See validation for the evidence and limits.
+- Corrected CI runtime discovery to skip WindowsApps Python execution aliases and locate a complete preinstalled interpreter without downloading dependencies or starting scans.
 
 ## 2026-10-19
 

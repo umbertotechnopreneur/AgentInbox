@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Locate a complete preinstalled Python runtime in Windows CI instead of selecting a WindowsApps execution alias.
 - Validate the complete local Python refactoring with 90 synthetic Windows tests and a local Debug 1.0.12.0 x64 source build; check bundled-runtime CLI and management startup with an isolated profile. Keep provider, desktop and cleanup limits in validation.
 - Center account tab headers vertically while preserving the native separator and top-aligned settings form.
 - Add a visible current-form connection check, an owned Mica progress window and explicit server-folder selection. Report actual TLS and sign-in results, offer a bounded optional message-read test, and distinguish an empty folder from a successful read. New password-based accounts share this flow before saving; a saved account can open the separately approved test-email flow.
