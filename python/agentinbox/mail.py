@@ -183,17 +183,22 @@ def _ok(result: tuple, message: str) -> list:
 
 
 @contextlib.contextmanager
-def imap_connection(settings: dict, password: str, *, access_token: str | None = None):
+def imap_connection(settings: dict, password: str, *, access_token: str | None = None, progress=None):
     """Require verified TLS before transmitting credentials."""
     connection = None
     try:
         settings = _settings(settings, "imap")
+        if progress:
+            progress("connection", "started")
         context = ssl.create_default_context()
         if settings["tls"] == "tls":
             connection = _IMAP4SSL(settings["host"], settings["port"], ssl_context=context, timeout=TIMEOUT)
         else:
             connection = _IMAP4(settings["host"], settings["port"], timeout=TIMEOUT)
             _ok(_imap_request(connection, "starttls", ssl_context=context), "The IMAP server did not establish STARTTLS.")
+        if progress:
+            progress("connection", "passed")
+            progress("authentication", "started")
         try:
             if access_token is not None:
                 response = f"user={settings['username']}\x01auth=Bearer {access_token}\x01\x01".encode("utf-8")
@@ -203,6 +208,8 @@ def imap_connection(settings: dict, password: str, *, access_token: str | None =
                 _imap_request(connection, "login", settings["username"], password)
         except imaplib.IMAP4.error as error:
             raise MailError("authentication_failed", "IMAP sign-in failed. Check the selected authentication method, credentials and provider settings.") from error
+        if progress:
+            progress("authentication", "passed")
         yield connection
     except ssl.SSLError as error:
         raise MailError("tls_failed", "The server's TLS connection or certificate could not be verified.") from error
@@ -227,12 +234,49 @@ def select_folder(connection, folder: str, *, deadline=None) -> str:
     return validity[0].decode("ascii")
 
 
+def _folder_name(row) -> str | None:
+    """Extract an exact selectable ASCII mailbox from a bounded IMAP LIST row."""
+    literal = None
+    if isinstance(row, tuple) and len(row) == 2:
+        row, literal = row
+    if not isinstance(row, bytes) or (literal is not None and not isinstance(literal, bytes)):
+        raise MailError("invalid_server_response", "The server returned an invalid folder listing.")
+    match = re.fullmatch(rb'\(([^()]*)\) +(?:NIL|"(?:[^"\\\r\n]|\\["\\])*") +(.+)', row)
+    if match is None:
+        raise MailError("invalid_server_response", "The server returned an invalid folder listing.")
+    if b"\\noselect" in match[1].lower().split():
+        return None
+    mailbox = match[2]
+    if literal is not None:
+        marker = re.fullmatch(rb'\{(\d+)\}', mailbox)
+        if marker is None or int(marker[1]) != len(literal):
+            raise MailError("invalid_server_response", "The server returned an invalid folder name literal.")
+        mailbox = literal
+    elif mailbox.startswith(b'"'):
+        quoted = re.fullmatch(rb'"((?:[^"\\\x00-\x1f\x7f]|\\["\\])*)"', mailbox)
+        if quoted is None:
+            raise MailError("invalid_server_response", "The server returned an invalid quoted folder name.")
+        mailbox = re.sub(rb'\\(["\\])', rb'\1', quoted[1])
+    elif re.fullmatch(rb'[^\x00-\x20\x7f(){"\\*%]+', mailbox) is None:
+        raise MailError("invalid_server_response", "The server returned an invalid folder name.")
+    if not 1 <= len(mailbox) <= 255 or any(byte < 32 or byte > 126 for byte in mailbox) or mailbox != mailbox.strip():
+        raise MailError("unsupported_folder", "This preview requires exact ASCII folder names of at most 255 characters.")
+    return mailbox.decode("ascii")
+
+
 def folders(connection, *, deadline=None) -> list[str]:
-    """Return bounded raw folder descriptions for explicit user configuration."""
+    """Return bounded exact selectable folder names, without LIST flags or delimiters."""
     rows = _ok(_imap_request(connection, "list", literal=512, lines=256, deadline=deadline), "The server could not list folders.")
-    if len(rows) > 100:
-        raise MailError("folder_limit", "The folder listing exceeds the 100-folder limit.")
-    return [row.decode("utf-8", errors="replace")[:512] for row in rows[:100] if isinstance(row, bytes)]
+    names = []
+    for row in rows:
+        if row is None or row == b"":
+            continue
+        name = _folder_name(row)
+        if name is not None and name not in names:
+            names.append(name)
+            if len(names) > 100:
+                raise MailError("folder_limit", "The folder listing exceeds the 100-folder limit.")
+    return names
 
 
 def _fetch(connection, uid: str, parts: str, maximum: int, *, deadline=None) -> tuple[bytes, bytes]:
@@ -372,23 +416,28 @@ def check_read(settings: dict, password: str, folder: str, *, access_token: str 
     with imap_connection(settings, password, access_token=access_token) as connection:
         deadline = time.monotonic() + TIMEOUT
         available = folders(connection, deadline=deadline)
-        validity = select_folder(connection, folder, deadline=deadline)
-        counts = connection.response("EXISTS")[1]
-        if not counts or not counts[0] or not counts[0].isdigit():
-            raise MailError("invalid_server_response", "The server did not return a valid folder message count.")
-        if int(counts[0]) == 0:
-            return {"connection": "passed", "authentication": "passed", "folder": "passed",
-                    "message_read": "no_sample", "folders": available,
-                    "message": "Connected and authenticated. The folder is empty; no message read was tested."}
-        rows = _ok(_imap_request(connection, "fetch", counts[0].decode("ascii"), "(UID)", deadline=deadline), "The last message could not be inspected.")
-        identity_match = next((match for row in rows if isinstance(row, bytes)
-                               if (match := re.search(rb"UID (\d+)", row))), None)
-        if identity_match is None:
-            raise MailError("invalid_server_response", "The server returned an invalid message identifier.")
-        read(connection, folder, identity_match[1].decode("ascii"), validity, deadline=deadline)
+        return {**check_connection_read(connection, folder, deadline=deadline), "folders": available}
+
+
+def check_connection_read(connection, folder: str, *, deadline=None) -> dict:
+    """Check one bounded non-marking read on an already authenticated IMAP connection."""
+    deadline = time.monotonic() + TIMEOUT if deadline is None else deadline
+    validity = select_folder(connection, folder, deadline=deadline)
+    counts = connection.response("EXISTS")[1]
+    if not counts or not counts[0] or not counts[0].isdigit():
+        raise MailError("invalid_server_response", "The server did not return a valid folder message count.")
+    if int(counts[0]) == 0:
         return {"connection": "passed", "authentication": "passed", "folder": "passed",
-                "message_read": "passed", "folders": available,
-                "message": "Connected, authenticated and read one message without changing its read status."}
+                "message_read": "no_sample",
+                "message": "Connected and authenticated. The folder is empty; no message read was tested."}
+    rows = _ok(_imap_request(connection, "fetch", counts[0].decode("ascii"), "(UID)", deadline=deadline), "The last message could not be inspected.")
+    identity_match = next((match for row in rows if isinstance(row, bytes)
+                           if (match := re.search(rb"UID (\d+)", row))), None)
+    if identity_match is None:
+        raise MailError("invalid_server_response", "The server returned an invalid message identifier.")
+    read(connection, folder, identity_match[1].decode("ascii"), validity, deadline=deadline)
+    return {"connection": "passed", "authentication": "passed", "folder": "passed", "message_read": "passed",
+            "message": "Connected, authenticated and read one message without changing its read status."}
 
 
 @contextlib.contextmanager

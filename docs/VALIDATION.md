@@ -1,8 +1,40 @@
 # Validation
 
-Last updated: 2026-10-19.
+Last updated: 2026-10-20.
 
-## Local Python tests
+## Local refactoring validation (2026-10-20)
+
+The local refactoring, including the account-check files that had not yet been committed, passed all **90 synthetic Python tests** on Windows with Python 3.13.15 in 1.949 seconds. The command was `python -B -m unittest discover -s python/tests -t python -v`, with isolated data, test and temporary directories, no user-site imports and no bytecode. Network and credential boundaries were mocked; no real mailbox was used.
+
+Debug MSIX **1.0.12.0 x64** was built locally from that working-tree source with the unchanged, previously scanned official Python and NuGet inputs. Offline restore and WinUI publish succeeded. The unsigned package is 104,681,573 bytes; its SHA-256 was checked against the generated checksum. Matching Debug x64 `dotnet clean` and removal of the unique packaging work directory completed without a warning. No dependency download, import scan, signing, installation or desktop control ran.
+
+The extracted package's bundled Python runtime passed `-B -m agentinbox --help` and `-B -m agentinbox manage` with an isolated `list_accounts` request and an empty account list. This checks packaged CLI and management startup, not the installed execution alias, MCP startup, WinUI behavior, native credentials or live providers. Source hashes and results are retained in ignored `artifacts/verification/main-consolidation-20261020/result.json`; package and checksum are under `artifacts/msix/debug/x64/1.0.12.0/`.
+
+Automatic approval review rejected the checked cleanup command with `blocked by policy` before execution. No alternate removal method was attempted. Remaining output includes about 2,071 MiB of earlier input staging, about 200 MiB in the superseded 1.0.10.0 and 1.0.11.0 package directories, and about 247 MiB in the current verification directory, mostly the extracted smoke-test package. Legacy `src/*/bin` and `src/*/obj` also remain. Exact read-only inventory is in ignored `artifacts/verification/main-consolidation-20261020/remaining-output.json`. Cleanup remains open; this does not invalidate the successful source tests or build.
+
+The owner selected the new `Python source tests (Windows)` check as the required CI for this replacement, retaining pull requests and conversation resolution. Earlier .NET CI results do not validate the Python replacement. Linux and macOS remain source-only and unvalidated.
+
+## Local Debug MSIX 1.0.11.0 (installed)
+
+Debug MSIX **1.0.11.0 x64** was built from the current working-tree source, signed with the existing current-user certificate and installed over 1.0.9.0. Windows reports version `1.0.11.0`, architecture `X64` and package status `Ok`. This package includes the account-check flow and owned Mica window described below. No automated, UI or live-provider tests ran as part of this build and installation.
+
+The build reused the unchanged official Python 3.13.15 and NuGet inputs from the 1.0.10.0 build, including their existing first-import scan evidence. No new dependency import or antivirus scan was needed. The packaging script completed matching Debug x64 `dotnet clean` and removed its unique build-task directory without a cleanup warning.
+
+The retained installer is 104,700,379 bytes, with SHA-256 `ac3a2e6c81b30c9f3a65ae14d57865fe30611c06ad2c18451db2d5f01c67e0ed`. The MSIX, checksum, package record and successful installation record are under ignored `artifacts/msix/debug/x64/1.0.11.0/`.
+
+Automatic approval review rejected the checked removal of the superseded `artifacts/msix/debug/x64/1.0.10.0/` directory with `blocked by policy`. About 100 MiB remain there. No alternate deletion method was attempted. Earlier blocked input-staging and test-log cleanup recorded below also remains pending.
+
+## Current account-check source
+
+On 2026-10-19, all **90 synthetic Python tests passed** on Windows with Python 3.13.15 in 1.701 seconds. The full suite used `python -B -m unittest discover -s python/tests -t python -v`, disabled user-site imports and bytecode, and isolated profile and temporary paths under ignored `artifacts/verification/account-checks-20261019/`. Network and native credential boundaries were mocked. No real mailbox, message or credential was used.
+
+The thirteen new cases cover unsaved checks without persistence, changed-host credential isolation, stale revisions, opt-in progress records, exact quoted/literal folder names, POP3's single INBOX, optional sample reads versus empty folders, invalid input types, failed TLS, rejected IMAP sign-in and rejected SMTP sign-in. A sample-read result returns no message content. Existing transport, approval, storage and cleanup tests also passed.
+
+The WinUI source now includes vertically centered account tab headers, a visible current-form check, an owned Mica progress window, explicit server-folder selection, optional sample reading and a link to the separately approved test-email flow after a confirmed save. **This WinUI source is compiled, packaged and installed in Debug 1.0.11.0; it has not been exercised on the live desktop.** Earlier UI evidence below does not validate these changes. No antivirus scan or external import was needed for this test run.
+
+The suite removed its disposable profiles. Automatic approval review rejected removal of the remaining `tests.log` (16,294 bytes) and empty `profiles/` and `tmp/` directories with `blocked by policy`. The ignored task directory retains these and the small `result.json` record, including tested source hashes. No other deletion method was attempted; final transient cleanup remains pending.
+
+## Earlier local Python tests
 
 **77 tests passed, with no failures or errors**, on Windows using the existing Python 3.13.15 installation. The suite completed in 1.659 seconds on its first run; no test or implementation change was needed to obtain this result.
 

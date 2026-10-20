@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate the complete local Python refactoring with 90 synthetic Windows tests and a local Debug 1.0.12.0 x64 source build; check bundled-runtime CLI and management startup with an isolated profile. Keep provider, desktop and cleanup limits in validation.
+- Center account tab headers vertically while preserving the native separator and top-aligned settings form.
+- Add a visible current-form connection check, an owned Mica progress window and explicit server-folder selection. Report actual TLS and sign-in results, offer a bounded optional message-read test, and distinguish an empty folder from a successful read. New password-based accounts share this flow before saving; a saved account can open the separately approved test-email flow.
 - Replace the mail engine with Python 3.11+ and standard-library IMAP, POP3 and SMTP.
 - Keep WinUI 3 for Windows setup and local message confirmation.
 - Use passwords or app passwords by default, with an explicit Microsoft-only web authorization choice that requires a suitable app registration; never switch automatically.
@@ -30,10 +33,10 @@
 - Anchor pages at the top left, bind their width to the visible scroll viewport and stack header/account actions and paired fields in narrow windows.
 - Fix the account-page startup failure caused by assigning an application-owned resource dictionary to TabView. Use the stock WinUI TabView theme and sizing with native leading tab icons. Replace incomplete pages with an explicit retry state and report unexpected setup errors without incorrectly blaming Python.
 - Hide Microsoft web authorization for Gmail, iCloud and unsupported server combinations. Require a fresh connection choice if a server edit invalidates the selected method; keep the engine's Microsoft-only endpoint validation.
-- Keep connection tests out of new-account setup and disable them for unsaved changes. Reflect committed saves and removals directly from their results instead of depending on a second account-list request.
+- Keep saved-account message-reading and send tests disabled for pending edits; provide a separate current-form check before saving. Reflect committed saves and removals directly from their results instead of depending on a second account-list request.
 - Add a stable packaged Python execution alias, shared package profile resolution and native review discovery without saved versioned package paths.
 - Add persistent local management sessions for search/read references, profile reporting and pending-message cancellation.
 - Keep committed outcomes when local protected-data cleanup fails; queue references for explicit retry and show a separate UI warning.
-- Add synthetic tests for protocol, account, approval and authentication boundaries; all 77 pass locally on Windows.
+- Add synthetic tests for protocol, account, approval, authentication and current-form checks; all 90 pass locally on Windows. The latest WinUI source is compiled and installed in Debug 1.0.11.0; visual checks remain pending.
 
-Debug MSIX 1.0.10.0 was built and signed locally from current source on Windows x64, with no antivirus scan during the build. It was not installed; 1.0.9.0 remains installed with package status `Ok`. The 77 synthetic Python tests passed again after the wording changes. Earlier 1.0.9.0 UI checks and nine Codex setup checks remain separate evidence. Live providers, native credential stores and packaged CLI/MCP entry points remain unvalidated. See [validation](docs/VALIDATION.md).
+Debug MSIX 1.0.11.0 was built and signed from current source and installed locally on Windows x64 with status `Ok`. It includes the account-check and Mica UI changes. All 90 synthetic Python tests pass for the new engine source. Earlier 1.0.9.0 UI checks and nine Codex setup checks remain separate evidence. The new UI flow, live providers, native credential stores and packaged CLI/MCP entry points remain unvalidated. See [validation](docs/VALIDATION.md).

@@ -13,7 +13,9 @@ internal sealed class PythonEngine
     private const int MaximumResponseCharacters = 1_048_576;
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
 
-    internal async Task<JsonElement> ManageAsync(string operation, object arguments, CancellationToken cancellationToken)
+    /// <summary>Runs one local operation, optionally forwarding real account-check progress records.</summary>
+    internal async Task<JsonElement> ManageAsync(string operation, object arguments, CancellationToken cancellationToken,
+        Action<AccountCheckProgress>? progress = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(90));
@@ -21,9 +23,11 @@ internal sealed class PythonEngine
         using var cancellation = timeout.Token.Register(() => Stop(process));
         try
         {
-            await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { operation, arguments }).AsMemory(), timeout.Token);
+            var request = new Dictionary<string, object> { ["operation"] = operation, ["arguments"] = arguments };
+            if (progress is not null) request["progress"] = true;
+            await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(), timeout.Token);
             process.StandardInput.Close();
-            var result = await ReadResponseAsync(process, timeout.Token);
+            var result = await ReadResponseAsync(process, timeout.Token, progress);
             await process.WaitForExitAsync(timeout.Token);
             if (process.ExitCode != 0) throw new EngineException("The Python engine exited before completing the request.");
             return result;
@@ -190,7 +194,8 @@ internal sealed class PythonEngine
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern int GetCurrentPackageFullName(ref uint packageFullNameLength, IntPtr packageFullName);
 
-    private static async Task<JsonElement> ReadResponseAsync(Process process, CancellationToken cancellationToken)
+    /// <summary>Reads one bounded protocol line without retaining child diagnostics or unlimited output.</summary>
+    private static async Task<string> ReadRecordAsync(Process process, CancellationToken cancellationToken)
     {
         // Read a bounded line instead of allocating an unlimited response from a child process.
         var output = new StringBuilder();
@@ -204,16 +209,38 @@ internal sealed class PythonEngine
                 throw new EngineException("The Python engine returned a response larger than the permitted limit.");
             output.Append(character[0]);
         }
+        return output.ToString();
+    }
+
+    /// <summary>Accepts a bounded sequence of opt-in progress records before the final operation result.</summary>
+    private static async Task<JsonElement> ReadResponseAsync(Process process, CancellationToken cancellationToken,
+        Action<AccountCheckProgress>? progress = null)
+    {
         try
         {
-            using var document = JsonDocument.Parse(output.ToString());
-            var root = document.RootElement;
-            if (!root.GetProperty("ok").GetBoolean())
+            for (var count = 0; count <= 16; count++)
             {
-                var message = root.GetProperty("error").GetProperty("message").GetString();
-                throw new EngineException(message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.");
+                using var document = JsonDocument.Parse(await ReadRecordAsync(process, cancellationToken));
+                var root = document.RootElement;
+                if (root.TryGetProperty("progress", out var update))
+                {
+                    var stage = update.GetProperty("stage").GetString();
+                    var state = update.GetProperty("state").GetString();
+                    if (progress is null || root.EnumerateObject().Count() != 1
+                        || stage is not ("settings" or "connection" or "authentication" or "folders" or "smtp" or "reading")
+                        || (state is not ("started" or "passed") && !(stage == "reading" && state == "empty")))
+                        throw new EngineException("The Python engine returned an unexpected progress update.");
+                    progress(new AccountCheckProgress(stage, state));
+                    continue;
+                }
+                if (!root.GetProperty("ok").GetBoolean())
+                {
+                    var message = root.GetProperty("error").GetProperty("message").GetString();
+                    throw new EngineException(message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.");
+                }
+                return root.GetProperty("result").Clone();
             }
-            return root.GetProperty("result").Clone();
+            throw new EngineException("The Python engine returned too many progress records.");
         }
         catch (JsonException) { throw new EngineException("The Python engine returned an invalid response."); }
         catch (InvalidOperationException) { throw new EngineException("The Python engine returned an unexpected response."); }
@@ -264,6 +291,9 @@ internal sealed class PythonEngine
         }
     }
 }
+
+/// <summary>Describes a completed or active account-check stage without credentials or server content.</summary>
+internal readonly record struct AccountCheckProgress(string Stage, string State);
 
 /// <summary>A safe, actionable error returned by the local mail engine.</summary>
 internal sealed class EngineException(string message) : Exception(message);

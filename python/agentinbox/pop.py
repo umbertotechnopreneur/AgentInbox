@@ -150,7 +150,7 @@ def _xoauth2(connection, username, access_token):
 
 
 @contextlib.contextmanager
-def pop_connection(settings: dict, password: str | None = None, *, access_token: str | None = None):
+def pop_connection(settings: dict, password: str | None = None, *, access_token: str | None = None, progress=None):
     """Use the explicitly selected authentication after verified TLS or STLS."""
     connection = None
     try:
@@ -161,6 +161,8 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
             if not isinstance(credential, str) or not credential or any(ord(c) < 32 or ord(c) == 127 for c in credential):
                 raise MailError("invalid_credentials", "Enter valid POP3 credentials in local setup.")
         context = ssl.create_default_context()
+        if progress:
+            progress("connection", "started")
         if settings["tls"] == "tls":
             connection = _POP3SSL(settings["host"], settings["port"], timeout=TIMEOUT, context=context)
         else:
@@ -169,6 +171,9 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
                 _request(connection, "stls", context=context)
             except poplib.error_proto as error:
                 raise MailError("tls_required", "The POP3 server did not establish required STLS. Credentials were not sent.") from error
+        if progress:
+            progress("connection", "passed")
+            progress("authentication", "started")
         if access_token is not None:
             _xoauth2(connection, settings["username"], access_token)
         else:
@@ -177,6 +182,8 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
                 _request(connection, "pass_", password)
             except poplib.error_proto as error:
                 raise MailError("authentication_failed", "POP3 sign-in failed. Check its username, password or app password and provider settings.") from error
+        if progress:
+            progress("authentication", "passed")
         yield connection
     except ssl.SSLError as error:
         raise MailError("tls_failed", "The POP3 TLS connection or certificate could not be verified.") from error
@@ -357,14 +364,20 @@ def check_read(settings: dict, password: str | None = None, folder: str = "INBOX
     """Check real POP3 authentication and one bounded read without saving mail."""
     _folder(folder)
     with pop_connection(settings, password, access_token=access_token) as connection:
-        identities = _uidl(connection, time.monotonic() + TIMEOUT)
-        result = {"connection": "passed", "authentication": "passed", "folder": "passed",
-                  "folders": ["INBOX"], "protocol": "pop3", "date_basis": DATE_BASIS,
-                  "search_scope": SEARCH_SCOPE, "unread_supported": False}
-        if not identities:
-            return {**result, "message_read": "no_sample",
-                    "message": "Connected and authenticated. The mailbox is empty; no message read was tested."}
-        identity = max(identities, key=identities.get)
-        read(connection, "INBOX", identity, UID_VALIDITY)
-        return {**result, "message_read": "passed",
-                "message": "Connected, authenticated and read one message. POP3 does not expose read or unread status."}
+        return check_connection_read(connection, folder)
+
+
+def check_connection_read(connection, folder: str = "INBOX", *, deadline=None) -> dict:
+    """Check one bounded POP3 read without issuing delete commands."""
+    _folder(folder)
+    identities = _uidl(connection, time.monotonic() + TIMEOUT if deadline is None else deadline)
+    result = {"connection": "passed", "authentication": "passed", "folder": "passed",
+              "folders": ["INBOX"], "protocol": "pop3", "date_basis": DATE_BASIS,
+              "search_scope": SEARCH_SCOPE, "unread_supported": False}
+    if not identities:
+        return {**result, "message_read": "no_sample",
+                "message": "Connected and authenticated. The mailbox is empty; no message read was tested."}
+    identity = max(identities, key=identities.get)
+    read(connection, "INBOX", identity, UID_VALIDITY)
+    return {**result, "message_read": "passed",
+            "message": "Connected, authenticated and read one message. POP3 does not expose read or unread status."}

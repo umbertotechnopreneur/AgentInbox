@@ -28,9 +28,14 @@ def manage(application, session: bool) -> int:
             return 1
         try:
             request = json.loads(raw)
-            if not isinstance(request, dict) or set(request) != {"operation", "arguments"} or not isinstance(request["operation"], str):
+            if not isinstance(request, dict) or set(request) not in ({"operation", "arguments"}, {"operation", "arguments", "progress"}) or not isinstance(request["operation"], str):
                 raise MailError("invalid_request", "Supply operation and arguments in the local setup request.")
-            result = application.manage(request["operation"], request["arguments"])
+            report = None
+            if "progress" in request:
+                if request["progress"] is not True or request["operation"] != "check_account":
+                    raise MailError("invalid_request", "Progress is available only for an explicit account check.")
+                report = lambda stage, state: write({"progress": {"stage": stage, "state": state}})
+            result = application.manage(request["operation"], request["arguments"], progress=report)
             response = {"ok": True, "result": result}
         except MailError as error:
             failed = True

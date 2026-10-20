@@ -56,7 +56,8 @@ public sealed partial class MainWindow : Window
     private ComboBox _incomingTls = new();
     private TextBox _incomingUser = new();
     private PasswordBox _incomingPassword = new();
-    private TextBox _folders = new();
+    private ListView _folders = new();
+    private Button _checkConnection = new();
     private TextBlock _folderHint = new();
     private ToggleSwitch _readEnabled = new();
     private ToggleSwitch _configureSmtp = new();
@@ -239,11 +240,14 @@ public sealed partial class MainWindow : Window
         _incomingTls = TlsField();
         _incomingUser = Field("Username", "Usually your full email address");
         _incomingPassword = Password("Incoming password");
-        _folders = Field("Folders available to your assistant", "INBOX");
+        _folders = new ListView { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 220, MinHeight = 48 };
+        AutomationProperties.SetName(_folders, "Folders available to your assistant");
+        _checkConnection = Action("Check connection and get folders", () => _ = RunAsync(() => CheckAccountAsync(saveAccount: false)),
+            tooltip: "Check the settings and password currently in this form, then choose folders from the server. Nothing is saved or sent.");
         _folderHint = Hint("");
         _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
         var incomingSettings = Section("", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
-            Pair(_incomingUser, _incomingPassword), _folders, _folderHint,
+            Pair(_incomingUser, _incomingPassword), _checkConnection, Text("Folders available to your assistant"), _folders, _folderHint,
             Hint("Passwords and Microsoft web authorization credentials stay in Windows Credential Manager. Your assistant's settings contain neither."), _readEnabled);
         _testRead = Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync));
         _incomingChecks = Stack(_testRead, Hint("Save changes before testing. This check uses the saved incoming settings."));
@@ -322,14 +326,14 @@ public sealed partial class MainWindow : Window
         _save.Content = _creatingAccount ? "Create account" : "Save changes";
         AutomationProperties.SetName(_save, (string)_save.Content);
         ToolTipService.SetToolTip(_save, _creatingAccount
-            ? "Save this new account and store its credentials securely."
+            ? "Check this new account, choose folders and store its credentials securely. Microsoft web authorization requires saving first."
             : "Save changes to the selected account and its credentials.");
         UpdateAccountChecks();
     }
 
     private void TrackAccountChanges()
     {
-        foreach (var field in new[] { _label, _email, _clientId, _tenantId, _incomingHost, _incomingPort, _incomingUser, _folders, _smtpHost, _smtpPort, _smtpUser })
+        foreach (var field in new[] { _label, _email, _clientId, _tenantId, _incomingHost, _incomingPort, _incomingUser, _smtpHost, _smtpPort, _smtpUser })
             field.TextChanged += (_, _) => MarkAccountChanged();
         foreach (var field in new[] { _incomingPassword, _smtpPassword })
             field.PasswordChanged += (_, _) => MarkAccountChanged();
@@ -337,6 +341,7 @@ public sealed partial class MainWindow : Window
             field.SelectionChanged += (_, _) => MarkAccountChanged();
         foreach (var field in new[] { _readEnabled, _configureSmtp, _sendEnabled })
             field.Toggled += (_, _) => MarkAccountChanged();
+        _folders.SelectionChanged += (_, _) => MarkAccountChanged();
     }
 
     private void MarkAccountChanged()
@@ -405,7 +410,9 @@ public sealed partial class MainWindow : Window
         _incomingUser.Text = connection is { } incomingUser ? Value(incomingUser, "username") : "";
         _incomingPassword.Password = "";
         _incomingPassword.PlaceholderText = account is null ? "Required for a new account" : "Leave blank to keep the saved password";
-        _folders.Text = account is { } folders ? string.Join(", ", folders.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString())) : "INBOX";
+        string[] selectedFolders = account is { } folders
+            ? folders.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString()!).ToArray() : ["INBOX"];
+        SetFolderChoices(selectedFolders, selectedFolders);
         _readEnabled.IsOn = account is { } readable && readable.GetProperty("read_enabled").GetBoolean();
         var smtp = account?.GetProperty("smtp");
         var hasSmtp = smtp is { ValueKind: JsonValueKind.Object };
@@ -525,10 +532,10 @@ public sealed partial class MainWindow : Window
     {
         var pop = _incomingProtocol.SelectedIndex == 1;
         _folders.IsEnabled = !pop;
-        if (pop) _folders.Text = "INBOX";
+        if (pop) SetFolderChoices(["INBOX"], ["INBOX"]);
         _folderHint.Text = pop
             ? "POP3 exposes one mailbox as INBOX. It has no server folders or unread flags. AgentInbox leaves messages on the server."
-            : "Separate exact folder names with commas. Use ASCII folder names, such as INBOX. Reading does not mark messages as read.";
+            : "Check the connection to load server folders, then choose between one and twenty. Only selected folders are shared when you save. Current support requires ASCII server names.";
         _incomingHost.Header = pop ? "POP3 server" : "IMAP server";
         _incomingHost.PlaceholderText = pop ? "pop.example.com" : "imap.example.com";
         _incomingPassword.Header = pop ? "POP3 password" : "IMAP password";
@@ -560,58 +567,6 @@ public sealed partial class MainWindow : Window
             _incomingPassword.PlaceholderText = _accountId.Length == 0 ? "Required for a new account" : "Enter a password or keep the saved password";
             _smtpPassword.PlaceholderText = "Enter a password or keep the saved password";
         }
-    }
-
-    private async Task SaveAccountAsync()
-    {
-        if (_authentication.SelectedIndex < 0)
-            throw new EngineException("Choose how to connect to these mail servers.");
-        if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
-            throw new EngineException("Web authorization with Microsoft is available only for Outlook.com and Microsoft 365 mail servers.");
-        var pop = _incomingProtocol.SelectedIndex == 1;
-        var folders = pop ? new[] { "INBOX" } : _folders.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (folders.Length == 0 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
-            throw new EngineException("Enter at least one ASCII folder name, such as INBOX.");
-        var passwords = new Dictionary<string, string> { ["incoming"] = "", ["smtp"] = "" };
-        var authentication = new Dictionary<string, string> { ["method"] = "password" };
-        if (_authentication.SelectedIndex == 1)
-        {
-            if (!Guid.TryParse(_clientId.Text.Trim(), out var clientId))
-                throw new EngineException("Enter the Application (client) ID from your Microsoft app registration.");
-            var tenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
-            if (_tenant.SelectedIndex == 3 && !Guid.TryParse(tenant, out _))
-                throw new EngineException("Enter your Microsoft directory's tenant GUID.");
-            authentication = new() { ["method"] = "microsoft_oauth", ["client_id"] = clientId.ToString(), ["tenant"] = tenant };
-            passwords["incoming"] = "";
-            passwords["smtp"] = "";
-        }
-        else
-        {
-            if (_incomingPassword.Password.Length > 0) passwords["incoming"] = _incomingPassword.Password;
-            if (_configureSmtp.IsOn && _smtpPassword.Password.Length > 0) passwords["smtp"] = _smtpPassword.Password;
-        }
-        var account = new
-        {
-            id = _accountId,
-            label = _label.Text.Trim(),
-            email = _email.Text.Trim(),
-            authentication,
-            incoming = Connection(_incomingHost, _incomingPort, _incomingTls, _incomingUser, pop ? "pop3" : "imap"),
-            smtp = _configureSmtp.IsOn ? Connection(_smtpHost, _smtpPort, _smtpTls, _smtpUser) : null,
-            read_enabled = _readEnabled.IsOn,
-            send_enabled = _configureSmtp.IsOn && _sendEnabled.IsOn,
-            folders
-        };
-        var saved = await _engine.ManageAsync("save_account", new { account, passwords, expected_revision = _revision }, _lifetime.Token);
-        passwords.Clear();
-        // The save response contains the committed public account, including its new revision.
-        var savedId = Value(saved, "id");
-        _accounts.RemoveAll(item => Value(item, "id") == savedId);
-        _accounts.Add(saved.Clone());
-        _creatingAccount = false;
-        PopulateAccountPicker(savedId);
-        ShowNotice("Account saved", "Your assistant can use only the access you enabled.", InfoBarSeverity.Success);
-        ShowCleanup(saved);
     }
 
     private async Task RemoveAccountAsync()

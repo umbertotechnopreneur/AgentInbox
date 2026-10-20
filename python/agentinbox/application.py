@@ -17,7 +17,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from . import mail, pop
-from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, SCHEMA_VERSION, address, flag, text, windows_package_family
+from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, SCHEMA_VERSION, account_input, address, flag, text, windows_package_family
 from .errors import MailError
 from .storage import Outbox, Store
 from .microsoft import MicrosoftAuth
@@ -308,7 +308,74 @@ class MailApplication:
                 **{key: record[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error") if key in record},
                 "delivery_confirmed": False}
 
-    def manage(self, operation: str, arguments: dict):
+    def check_account(self, value: dict, passwords: dict, expected_revision: int | None, progress=None, *, read_message=False) -> dict:
+        """Check current settings, discover folders and optionally test one read without saving or sending."""
+        if progress:
+            progress("settings", "started")
+        account = account_input(value)
+        read_message = flag(read_message, "Reading a sample")
+        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(
+            not isinstance(secret, str) or len(secret) > 4096 or any(c in secret for c in "\0\r\n")
+            for secret in passwords.values()
+        ):
+            raise MailError("invalid_credentials", "Enter valid incoming and SMTP passwords in the local setup app.")
+        if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
+            raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
+        previous = self.store.account(account["id"]) if account["id"] else None
+        if (previous and previous["revision"] != expected_revision) or (previous is None and expected_revision is not None):
+            raise MailError("configuration_changed", "The account changed in another window. Reload it before checking.")
+        credentials = {}
+        if account["authentication"]["method"] == "microsoft_oauth":
+            if any(passwords.values()):
+                raise MailError("invalid_credentials", "Microsoft web authorization does not use account passwords.")
+            if previous is None or not previous["oauth_secret"] or any(
+                previous[key] != account[key] for key in ("authentication", "incoming", "smtp", "email")
+            ) or (account["send_enabled"] and not previous["send_enabled"]):
+                raise MailError("authorization_required", "Save these settings and complete Microsoft web authorization before checking this account.")
+            token = self.microsoft.access_token(previous)
+            credentials = {protocol: {"password": "", "access_token": token} for protocol in ("incoming", "smtp")}
+        else:
+            for protocol in ("incoming", "smtp"):
+                if account[protocol] is None:
+                    continue
+                secret = passwords[protocol]
+                if not secret and previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol]:
+                    secret = self.store.vault.get(previous[protocol + "_secret"])
+                if not secret:
+                    raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
+                credentials[protocol] = {"password": secret}
+        if progress:
+            progress("settings", "passed")
+        connect = pop.pop_connection if account["incoming"]["protocol"] == "pop3" else mail.imap_connection
+        with connect(account["incoming"], **credentials["incoming"], progress=progress) as connection:
+            deadline = time.monotonic() + mail.TIMEOUT
+            if progress:
+                progress("folders", "started")
+            available = ["INBOX"] if account["incoming"]["protocol"] == "pop3" else mail.folders(connection, deadline=deadline)
+            if not available:
+                raise MailError("no_folders", "The server returned no selectable folders. No account was saved.")
+            if progress:
+                progress("folders", "passed")
+            sample = "not_requested"
+            if read_message:
+                if progress:
+                    progress("reading", "started")
+                if any(folder not in available for folder in account["folders"]):
+                    raise MailError("unsupported_folder", "Choose available server folders before testing a message read.")
+                sample = self._incoming(account).check_connection_read(connection, account["folders"][0], deadline=deadline)["message_read"]
+                if progress:
+                    progress("reading", "passed" if sample == "passed" else "empty")
+        if account["smtp"] is not None:
+            if progress:
+                progress("smtp", "started")
+            with mail.smtp_connection(account["smtp"], **credentials["smtp"]):
+                if progress:
+                    progress("smtp", "passed")
+        return {"connection": "passed", "authentication": "passed", "folders": available,
+                "protocol": account["incoming"]["protocol"], "smtp": "passed" if account["smtp"] else "not_configured",
+                "saved": False, "message_read": sample, "sent": False}
+
+    def manage(self, operation: str, arguments: dict, *, progress=None):
         """Dispatch local setup operations through a closed allowlist."""
         if not isinstance(arguments, dict):
             raise MailError("invalid_arguments", "Arguments must be an object.")
@@ -329,6 +396,9 @@ class MailApplication:
             return [self.store.public(item) for item in self.store.accounts()]
         if operation == "save_account" and set(arguments) == {"account", "passwords", "expected_revision"}:
             return self.store.save(arguments["account"], arguments["passwords"], arguments["expected_revision"])
+        if operation == "check_account" and set(arguments) in ({"account", "passwords", "expected_revision"}, {"account", "passwords", "expected_revision", "read_message"}):
+            return self.check_account(arguments["account"], arguments["passwords"], arguments["expected_revision"], progress,
+                                      read_message=arguments.get("read_message", False))
         if operation == "list_pending" and not arguments:
             return self.outbox.pending()
         if operation == "prepare_email":

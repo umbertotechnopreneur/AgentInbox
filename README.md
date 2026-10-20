@@ -9,7 +9,7 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 ![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
-> **In development.** All 77 synthetic Python tests and nine isolated Codex setup checks passed locally on Windows. Debug MSIX 1.0.9.0 is installed on Windows x64; account-form navigation, resizing and error recovery were exercised with an isolated profile. Real-provider access and native credential storage remain unvalidated. See [validation](docs/VALIDATION.md).
+> **In development.** All 90 synthetic Python tests passed locally on Windows. Debug 1.0.11.0 includes the new account-check and Mica UI and is installed on x64 with package status `Ok`; visual checks for this flow remain pending. Earlier isolated checks covered Codex setup, account-form navigation, resizing and error recovery. Real-provider access and native credential storage remain unvalidated. See [validation](docs/VALIDATION.md).
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 
