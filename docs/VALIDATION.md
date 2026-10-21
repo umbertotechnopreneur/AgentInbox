@@ -4,9 +4,17 @@ Last updated: 2026-10-22.
 
 ## Current source: built and installed; runtime checks pending
 
-The configuration-only Windows redesign and direct MCP sending were built from source and installed as Debug 1.0.14.0 x64. Synthetic tests and visual checks have not run for these changes. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. Current-form SMTP, stage reporting and diagnostic regressions also remain unrun. Earlier approval-model test results do not validate this new sending path.
+The configuration-only Windows redesign, direct MCP sending, provider guidance and bundled Microsoft app identity were built from source and installed as Debug 1.0.15.0 x64. Synthetic tests and visual checks have not run for these changes. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. Current-form SMTP, stage reporting and diagnostic regressions also remain unrun. Earlier approval-model test results do not validate this new sending path.
 
 The source now removes local approval and pending-message storage. Historical tests of that former flow do not validate direct sending. Website Terms/Privacy source edits remain local and unpublished. Existing public product-policy URLs returned HTTP 200 with the correct page titles during this work; that check does not validate the edited policy content in production.
+
+## Debug MSIX 1.0.15.0 — 2026-10-22
+
+Built and signed locally from source checkpoint `a4cb4be`, then installed through `install-debug-msix`. Windows reports version `1.0.15.0`, architecture `X64` and status `Ok`. This package includes provider-specific guidance, automatic Microsoft OAuth selection and the public Microsoft client ID in desktop application settings. No application launch, UI automation, synthetic tests or provider operations ran; the recovered registration's device flow and mail permissions remain unvalidated.
+
+The retained installer is 104,649,885 bytes, SHA-256 `a9f696a532e7eec8b412a98b7c87559fbf3cfe86bdaa43091a1bb2063f9a059d`, under `artifacts/msix/debug/x64/1.0.15.0/`, with checksum, package/installation records and reused first-import evidence. Python 3.13.15 and the NuGet inputs were unchanged; no downloads or new scans were needed.
+
+Matching `dotnet clean` completed without a cleanup warning. The task-owned `artifacts/work/msix-fe2bdacbab854df58c61a63153f89cd7/` directory was removed and verified absent. Automatic approval review blocked the guarded removal of superseded `artifacts/msix/debug/x64/1.0.14.0/` with `blocked by policy`; about 99.8 MiB remain. No alternate deletion was attempted. Earlier cleanup blocks remain unresolved.
 
 ## Debug MSIX 1.0.14.0 — 2026-10-22
 

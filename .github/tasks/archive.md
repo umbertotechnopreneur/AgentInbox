@@ -4,6 +4,7 @@ Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [valid
 
 ## 2026-10-22 — source changes
 
+- Added provider-specific sign-in instructions and official links, Microsoft OAuth/account-type defaults and the recovered public client ID in application settings. Built source checkpoint `a4cb4be`, signed and installed Debug 1.0.15.0 x64 with status `Ok`. Runtime checks and live registration validation remain pending; see validation for the retained installer and blocked superseded-package cleanup.
 - Restricted Windows setup to accounts, permissions and connecting Codex. Removed native/Python message review, the preparation queue and desktop send actions; MCP now submits directly with durable status and duplicate prevention.
 - Added Acrylic, a connection list with visible renaming, form-level Save, shared IMAP/SMTP dialogs, colored tabs, clearer Codex setup and product-policy/footer links.
 - Removed Copilot instructions and consolidated repository records. Updated repository policies and local website policy sources. Debug 1.0.14.0 was subsequently built, signed and installed on x64 with status `Ok`. Tests and UI checks remain unrun; website changes remain unpublished. Added standing authorization for frequent local checkpoint commits. See validation for retained packages and blocked cleanup.
