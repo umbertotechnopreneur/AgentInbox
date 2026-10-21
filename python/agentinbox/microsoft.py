@@ -302,7 +302,7 @@ class MicrosoftAuth:
         return {"flow_id": flow_id, "user_code": user_code, "verification_uri": verification,
                 "expires_in": max(1, math.floor(state["expires"] - time.time())), "interval": interval}
 
-    def _token_response(self, response, account, require_refresh, *secrets):
+    def _token_response(self, response, account, require_refresh, *secrets, diagnostic=None):
         self._raise_error(response, account["email"], *secrets)
         if not isinstance(response.get("token_type"), str) or response["token_type"].lower() != "bearer":
             raise MailError("microsoft_response", "Microsoft did not finish sign-in. Please try again.")
@@ -311,6 +311,16 @@ class MicrosoftAuth:
         supplied = response.get("scope")
         if not isinstance(supplied, str) or len(supplied) > 2048:
             raise MailError("microsoft_response", "Microsoft did not confirm the granted mail permissions.")
+        sensitive = [account["email"], *secrets]
+        for field in ("access_token", "refresh_token", "id_token", "device_code", "user_code"):
+            if isinstance(response.get(field), str) and response[field]:
+                sensitive.append(response[field])
+        sensitive += [urllib.parse.quote_plus(value) for value in sensitive]
+        required = {scope[len(RESOURCE):] for scope in self._scopes(account).split() if scope.startswith(RESOURCE)}
+        required_text = " ".join(sorted(required))
+        _report(diagnostic, f"Required mail permissions: {required_text}")
+        _report(diagnostic, f"Returned permissions: {supplied or '(none)'}", *sensitive)
+        detail = server_response("Microsoft", f"Required: {required_text}; returned: {supplied or '(none)'}", *sensitive)
         granted = set()
         for scope in supplied.split():
             if scope in {"offline_access", "openid", "profile", "email"}:
@@ -320,10 +330,21 @@ class MicrosoftAuth:
             elif scope.startswith("https://outlook.office365.com/"):
                 granted.add(scope[len("https://outlook.office365.com/"):])
             else:
-                raise MailError("microsoft_response", "Microsoft returned permissions for an unexpected resource.")
-        required = {scope[len(RESOURCE):] for scope in self._scopes(account).split() if scope.startswith(RESOURCE)}
-        if not required.issubset(granted) or not granted.issubset({"IMAP.AccessAsUser.All", "POP.AccessAsUser.All", "SMTP.Send"}):
-            raise MailError("microsoft_permission", "Microsoft did not grant the required mail permissions.")
+                raise MailError("microsoft_response", "Microsoft returned permissions for a different service, so mail access could not be confirmed.",
+                                server_response=detail)
+        missing = required - granted
+        if missing:
+            actions = []
+            if missing & {"IMAP.AccessAsUser.All", "POP.AccessAsUser.All"}:
+                actions.append("reading mail")
+            if "SMTP.Send" in missing:
+                actions.append("sending mail")
+            raise MailError("microsoft_permission", "Microsoft signed you in, but did not allow " + " and ".join(actions) + ".",
+                            server_response=detail)
+        # Microsoft can return earlier grants for the same resource. They do not
+        # enable features or bypass the account's local read/send permissions.
+        if granted - required:
+            _report(diagnostic, "Other previously granted permissions are not used: " + " ".join(sorted(granted - required)), *sensitive)
         refresh = response.get("refresh_token")
         if refresh is not None:
             _bounded_string(refresh, 2560, "refresh token")
@@ -369,7 +390,7 @@ class MicrosoftAuth:
                     self._save_flow(flow_id, state)
                     return {"status": "pending", "interval": state["interval"]}
                 try:
-                    access, refresh, lifetime = self._token_response(response, account, True, state["device_code"])
+                    access, refresh, lifetime = self._token_response(response, account, True, state["device_code"], diagnostic=diagnostic)
                     _report(diagnostic, "Microsoft accepted sign-in and confirmed the requested mail permissions.")
                     if time.time() >= state["expires"]:
                         raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")

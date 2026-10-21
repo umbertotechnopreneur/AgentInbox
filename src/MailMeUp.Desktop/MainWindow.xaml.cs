@@ -232,16 +232,14 @@ public sealed partial class MainWindow : Window
         _microsoftSignIn = Action("Sign in with Microsoft", () => _ = RunAsync(SignInMicrosoftAsync),
             tooltip: "Save these account settings and get a code to sign in on Microsoft's page.");
         _microsoftLog = SignInLogBox();
-        _microsoftLog.Header = "Sign-in details";
         _microsoftFields = Stack(_tenant, _tenantId,
             _microsoftSignIn,
             Hint("Press Sign in with Microsoft. I'll save your account settings and give you a code to enter on Microsoft's page. The same sign-in is used to read and send mail."),
-            _microsoftLog,
-            Action("Copy sign-in details", () => _ = RunAsync(() =>
+            SignInDetails(_microsoftLog, Action("Copy sign-in details", () => _ = RunAsync(() =>
             {
                 CopyText(_microsoftLog.Text);
                 return Task.CompletedTask;
-            }), tooltip: "Copy these details without passwords or sign-in codes."));
+            }), tooltip: "Copy these details without passwords or sign-in codes.")));
         _authenticationHint = Hint("");
         _providerHelpLink = new HyperlinkButton
         {
@@ -864,7 +862,7 @@ public sealed partial class MainWindow : Window
         });
     }
 
-    /// <summary>Copies an explicitly requested prompt or secret-free connection description.</summary>
+    /// <summary>Copies only text the user explicitly chooses to put on the clipboard.</summary>
     private static void CopyText(string text)
     {
         try

@@ -283,6 +283,37 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.assertNotIn("signin-" + started["flow_id"], self.store.vault.values)
         self.assertIsNone(self.store.saved["oauth_secret"])
 
+    def test_prior_grants_do_not_reject_requested_mail_permission(self):
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
+            started = self.auth.start(self.store.saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response(scope=RESOURCE + "IMAP.AccessAsUser.All " + RESOURCE + "User.Read")
+            result = self.auth.poll(started["flow_id"], diagnostic=details.append)
+        self.assertEqual("connected", result["status"])
+        self.assertIsNotNone(self.store.saved["oauth_secret"])
+        self.assertIn("User.Read", "\n".join(details))
+        self.assertFalse(self.store.saved["send_enabled"])
+
+    def test_missing_mail_permission_reports_requested_and_received_without_secrets(self):
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
+            started = self.auth.start(self.store.saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response(scope=RESOURCE + "User.Read")
+            with self.assertRaises(MailError) as failure:
+                self.auth.poll(started["flow_id"], diagnostic=details.append)
+        self.assertIn("did not allow reading mail", str(failure.exception))
+        detail = failure.exception.server_response
+        self.assertIn("IMAP.AccessAsUser.All", detail)
+        self.assertIn("User.Read", detail)
+        self.assertNotIn("server_response", failure.exception.result())
+        trace = "\n".join(details) + detail
+        for secret in ("synthetic-device-code", "synthetic-access-token", "synthetic-refresh-token", self.store.saved["email"]):
+            self.assertNotIn(secret, trace)
+        self.assertIsNone(self.store.saved["oauth_secret"])
+        self.assertNotIn("signin-" + started["flow_id"], self.store.vault.values)
+
     def test_start_error_keeps_bounded_server_reason_only_for_local_setup(self):
         response = {
             "error": "invalid_client",

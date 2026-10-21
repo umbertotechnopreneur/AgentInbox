@@ -96,9 +96,33 @@ public sealed partial class MainWindow
         var status = Text("Waiting for you to sign in on Microsoft's page.");
         var userCode = new TextBox
         {
-            Header = "Enter this code", Text = Value(start, "user_code"),
-            IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas")
+            Text = Value(start, "user_code"), Width = 240,
+            IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas"),
+            TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center
         };
+        AutomationProperties.SetName(userCode, "Microsoft sign-in code");
+        var copyCode = Action("Copy code", () =>
+        {
+            try
+            {
+                CopyText(userCode.Text);
+                status.Text = "Code copied. Paste it on Microsoft's page.";
+            }
+            catch (EngineException exception) { status.Text = exception.Message; }
+        }, tooltip: "Copy this code to paste on Microsoft's sign-in page.");
+        copyCode.Content = new SymbolIcon(Symbol.Copy);
+        copyCode.HorizontalAlignment = HorizontalAlignment.Left;
+        copyCode.VerticalAlignment = VerticalAlignment.Center;
+        var codeRow = new Grid { ColumnSpacing = 8 };
+        codeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        codeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        codeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(userCode, 1);
+        Grid.SetColumn(copyCode, 2);
+        codeRow.Children.Add(userCode);
+        codeRow.Children.Add(copyCode);
+        var codeLabel = Text("Enter this code");
+        codeLabel.TextAlignment = TextAlignment.Center;
         var openBrowser = Action("Open Microsoft", async () =>
         {
             try
@@ -127,8 +151,8 @@ public sealed partial class MainWindow
             DefaultButton = ContentDialogButton.Close,
             Content = Stack(
                 Hint("Press Open Microsoft, enter this code on the page, then sign in with your Microsoft account."),
-                userCode, Text(verificationUri.AbsoluteUri), openBrowser, status,
-                Hint($"This code expires at {deadline.ToLocalTime():t}. You can check reading and sending after signing in."), details)
+                codeLabel, codeRow, Text(verificationUri.AbsoluteUri), openBrowser, status,
+                Hint($"This code expires at {deadline.ToLocalTime():t}. You can check reading and sending after signing in."), SignInDetails(details))
         };
         var connected = false;
         string? failure = null;
@@ -208,6 +232,14 @@ public sealed partial class MainWindow
         AutomationProperties.SetName(box, "Microsoft sign-in details, with private sign-in values hidden");
         return box;
     }
+
+    private static Expander SignInDetails(params UIElement[] content) => new()
+    {
+        Header = "Sign-in details", IsExpanded = false,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        Content = Stack(content)
+    };
 
     private void AppendMicrosoftLog(string message)
     {
