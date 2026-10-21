@@ -97,7 +97,7 @@ I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software
 
 <p align="right">
   <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
-    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
+    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="200">
   </a><br>
   <em>Human Intent, AI Execution, Plenty of Token</em>
 </p>
