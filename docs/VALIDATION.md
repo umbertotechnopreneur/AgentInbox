@@ -2,15 +2,23 @@
 
 Last updated: 2026-10-22.
 
-## Latest installed source; subsequent changes pending
+## Latest installed source
 
-Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo were added after Debug 1.0.15.0. The centered mailbox prompts, + action and redundant Codex-status removal also remain newer than that package. None of these subsequent changes has been built, installed or checked in the live UI.
+Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo are included in installed Debug 1.0.16.0. This also includes the centered mailbox prompts, + action and redundant Codex-status removal. The owner requested installation for hands-on use and explicitly excluded automated tests. No live UI or provider checks ran in this build/install task.
 
 The approved VibeWare source image was visually inspected and copied byte-for-byte. Source and repository copy have matching SHA-256 `84321fe9f77ccc083813e02c02ff3716ad50a45ed000b8663c5a2d416e2ba5af`; the original MIT notice is included. This verifies the asset copy, not the rendered WinUI footer. New synthetic cases for provider round trips, rejected metadata, retained secrets, Microsoft reply redaction and cleanup failures were written but not run. No Microsoft service request was made; the precise cause of the owner's sign-in refusal is still unknown.
 
 The configuration-only Windows redesign, direct MCP sending, provider guidance and bundled Microsoft app identity were built from source and installed as Debug 1.0.15.0 x64. Synthetic tests and visual checks have not run for these changes. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. Current-form SMTP, stage reporting and diagnostic regressions also remain unrun. Earlier approval-model test results do not validate this new sending path.
 
 The source now removes local approval and pending-message storage. Historical tests of that former flow do not validate direct sending. Website Terms/Privacy source edits remain local and unpublished. Existing public product-policy URLs returned HTTP 200 with the correct page titles during this work; that check does not validate the edited policy content in production.
+
+## Debug MSIX 1.0.16.0 — 2026-10-22
+
+Built and signed locally from source checkpoint `2f72826`, then installed through `install-debug-msix`. Windows reports version `1.0.16.0`, architecture `X64` and status `Ok`. No automated tests, application launch, UI control or provider operations ran.
+
+The retained installer is 105,449,345 bytes, SHA-256 `ec2df557aca2e5b2a3f5466daaea5cc17f5eb4a33bc33fc22956b80a28a7575f`, under `artifacts/msix/debug/x64/1.0.16.0/`, with checksum and package/installation records. The build reused unchanged Python 3.13.15 and previously scanned NuGet inputs. No downloads or new scans were needed.
+
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-d82447cdb9894b4183064b0465c3acca/`, was removed and verified absent. Automatic approval review rejected the guarded removal of superseded `artifacts/msix/debug/x64/1.0.15.0/` with `blocked by policy`; about 99.8 MiB remain. No alternate removal was attempted. Earlier cleanup blocks remain unresolved.
 
 ## Debug MSIX 1.0.15.0 — 2026-10-22
 
