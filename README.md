@@ -89,13 +89,15 @@ I keep a record of where each new import came from and the scan result. If a sca
 
 ---
 
+## VibeWare
+
+I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
+
+[Terms](https://umbertogiacobbi.biz/terms/) · [Privacy](https://umbertogiacobbi.biz/privacy/)
+
 <p align="right">
   <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
     <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
   </a><br>
   <em>Human Intent, AI Execution, Plenty of Token</em>
 </p>
-
-## VibeWare
-
-I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
