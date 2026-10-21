@@ -52,6 +52,8 @@ public sealed partial class MainWindow : Window
     private TextBox _tenantId = new();
     private StackPanel _microsoftFields = new();
     private Button _microsoftSignIn = new();
+    private TextBox _microsoftLog = new();
+    private readonly System.Diagnostics.Stopwatch _signInClock = new();
     private ComboBox _incomingProtocol = new();
     private TextBox _incomingHost = new();
     private TextBox _incomingPort = new();
@@ -228,10 +230,18 @@ public sealed partial class MainWindow : Window
         _tenantId = Field("Organization ID", "Ask your IT team for this ID");
         _tenant.SelectionChanged += (_, _) => _tenantId.Visibility = _tenant.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         _microsoftSignIn = Action("Sign in with Microsoft", () => _ = RunAsync(SignInMicrosoftAsync),
-            tooltip: "Get a code to enter on Microsoft's sign-in page.");
+            tooltip: "Save these account settings and get a code to sign in on Microsoft's page.");
+        _microsoftLog = SignInLogBox();
+        _microsoftLog.Header = "Sign-in details";
         _microsoftFields = Stack(_tenant, _tenantId,
             _microsoftSignIn,
-            Hint("Save changes, then sign in with Microsoft. You'll get a code to enter on Microsoft's page. The same sign-in is used to read and send mail."));
+            Hint("Press Sign in with Microsoft. I'll save your account settings and give you a code to enter on Microsoft's page. The same sign-in is used to read and send mail."),
+            _microsoftLog,
+            Action("Copy sign-in details", () => _ = RunAsync(() =>
+            {
+                CopyText(_microsoftLog.Text);
+                return Task.CompletedTask;
+            }), tooltip: "Copy these details without passwords or sign-in codes."));
         _authenticationHint = Hint("");
         _providerHelpLink = new HyperlinkButton
         {
@@ -400,6 +410,7 @@ public sealed partial class MainWindow : Window
     private void MarkAccountChanged()
     {
         if (_loadingForm) return;
+        if (_accountValidationShown) ValidateAccountFields(focus: false);
         _hasUnsavedChanges = true;
         UpdateAccountChecks();
     }
@@ -414,7 +425,6 @@ public sealed partial class MainWindow : Window
         _smtpChecks.Visibility = _configureSmtp.IsOn ? Visibility.Visible : Visibility.Collapsed;
         _testRead.IsEnabled = ready;
         _testSmtp.IsEnabled = _configureSmtp.IsOn;
-        _microsoftSignIn.IsEnabled = ready;
     }
 
     private async Task LoadAccountsAsync()
@@ -465,6 +475,8 @@ public sealed partial class MainWindow : Window
 
     private void FillAccount(JsonElement? account)
     {
+        ClearAccountValidation();
+        if (!_busy) _microsoftLog.Text = "";
         _loadingForm = true;
         if (account is not null) _creatingAccount = false;
         _accountId = account is { } value ? Value(value, "id") : "";
@@ -622,7 +634,7 @@ public sealed partial class MainWindow : Window
     private void UpdateProviderGuidance()
     {
         var microsoftHint = _authentication.SelectedIndex == 1
-            ? "Don't enter your email password here. Sign in with Microsoft is already selected below. Save changes, then press the sign-in button."
+            ? "Don't enter your email password here. Sign in with Microsoft is already selected below. Press the sign-in button to continue."
             : "Don't enter your email password here. Choose Sign in with Microsoft below, then save changes.";
         var (message, linkText, address) = _preset.SelectedIndex switch
         {
@@ -703,136 +715,6 @@ public sealed partial class MainWindow : Window
         PopulateAccountPicker("");
         ShowNotice("Account removed", "The local connection is no longer available to your assistant.", InfoBarSeverity.Success);
         ShowCleanup(removed);
-    }
-
-    private async Task SignInMicrosoftAsync()
-    {
-        RequireSavedAccount();
-        var saved = _accounts.First(account => Value(account, "id") == _accountId);
-        var savedAuthentication = saved.GetProperty("authentication");
-        if (Value(savedAuthentication, "method") != "microsoft_oauth")
-            throw new EngineException("Choose Sign in with Microsoft and save changes first.");
-        var selectedTenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
-        if (_authentication.SelectedIndex != 1 ||
-            !string.Equals(Value(savedAuthentication, "client_id"), _microsoftClientId, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(Value(savedAuthentication, "tenant"), selectedTenant, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(Value(saved, "email"), _email.Text.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new EngineException("Save changes before signing in with Microsoft.");
-        var start = await _engine.ManageAsync("start_microsoft_signin", new { account_id = _accountId }, _lifetime.Token);
-        var flowId = Value(start, "flow_id");
-        var verificationUri = MicrosoftVerificationUri(Value(start, "verification_uri"));
-        var expiresIn = start.GetProperty("expires_in").GetInt32();
-        var interval = start.GetProperty("interval").GetInt32();
-        if (flowId.Length == 0 || expiresIn is < 1 or > 3600 || interval is < 1 or > 300)
-            throw new EngineException("Microsoft could not start sign-in. Please try again.");
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
-        using var flowCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        var status = Text("Waiting for you to sign in on Microsoft's page.");
-        var userCode = new TextBox
-        {
-            Header = "Enter this code", Text = Value(start, "user_code"),
-            IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas")
-        };
-        var openBrowser = Action("Open Microsoft", async () =>
-        {
-            try
-            {
-                var opened = await Windows.System.Launcher.LaunchUriAsync(verificationUri);
-                status.Text = opened
-                    ? "Enter the code on Microsoft's page and sign in. I'll wait here."
-                    : "Windows could not open the browser. Open the displayed Microsoft address manually.";
-            }
-            catch (Exception)
-            {
-                status.Text = "Windows could not open the browser. Open the displayed Microsoft address manually.";
-            }
-        }, accent: true);
-        var dialog = new ContentDialog
-        {
-            XamlRoot = Root.XamlRoot, Title = "Sign in with Microsoft", CloseButtonText = "Cancel",
-            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft sign-in."),
-            DefaultButton = ContentDialogButton.Close,
-            Content = Stack(
-                Hint("Press Open Microsoft, enter this code on the page, then sign in with your Microsoft account."),
-                userCode, Text(verificationUri.AbsoluteUri), openBrowser, status,
-                Hint($"This code expires at {deadline.ToLocalTime():t}. You can check reading and sending after signing in."))
-        };
-        var connected = false;
-        string? failure = null;
-        JsonElement? cleanupResult = null;
-
-        async Task PollAsync()
-        {
-            try
-            {
-                while (!flowCancellation.IsCancellationRequested)
-                {
-                    var remaining = deadline - DateTimeOffset.UtcNow;
-                    if (remaining <= TimeSpan.Zero) throw new EngineException("This code has expired. Press Sign in with Microsoft to get a new one.");
-                    await Task.Delay(remaining < TimeSpan.FromSeconds(interval) ? remaining : TimeSpan.FromSeconds(interval), flowCancellation.Token);
-                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("This code has expired. Press Sign in with Microsoft to get a new one.");
-                    var result = await _engine.ManageAsync("poll_microsoft_signin", new { flow_id = flowId }, flowCancellation.Token);
-                    switch (Value(result, "status"))
-                    {
-                        case "connected":
-                            cleanupResult = result.Clone();
-                            connected = true;
-                            dialog.Hide();
-                            return;
-                        case "pending":
-                            interval = result.GetProperty("interval").GetInt32();
-                            if (interval is < 1 or > 300) throw new EngineException("Microsoft returned an invalid polling interval.");
-                            break;
-                        default:
-                            throw new EngineException("Microsoft sent a reply I couldn't read. Please try signing in again.");
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (flowCancellation.IsCancellationRequested) { }
-            catch (EngineException exception) { failure = exception.Message; dialog.Hide(); }
-            catch (Exception)
-            {
-                failure = "Microsoft sign-in could not finish. Please try again.";
-                dialog.Hide();
-            }
-        }
-
-        using var windowCancellation = _lifetime.Token.Register(() => DispatcherQueue.TryEnqueue(dialog.Hide));
-        var polling = PollAsync();
-        try { await dialog.ShowAsync(); }
-        finally
-        {
-            flowCancellation.Cancel();
-            await polling;
-            if (!connected && !_lifetime.IsCancellationRequested)
-            {
-                try { cleanupResult = await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
-                catch (EngineException exception)
-                {
-                    CleanupNotice.Message = "Temporary sign-in data may still be on this computer. " + exception.Message;
-                    CleanupNotice.IsOpen = true;
-                }
-            }
-        }
-        if (_lifetime.IsCancellationRequested) return;
-        if (cleanupResult is { } cleanup) ShowCleanup(cleanup);
-        if (failure is not null) throw new EngineException(failure);
-        if (connected)
-        {
-            await LoadAccountsAsync();
-            ShowNotice("Signed in with Microsoft", "You can now check reading and sending in the account settings.", InfoBarSeverity.Success);
-        }
-        else ShowNotice("Sign-in cancelled", "You can sign in with Microsoft again when you're ready.", InfoBarSeverity.Informational);
-    }
-
-    private static Uri MicrosoftVerificationUri(string value)
-    {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.Port != 443 ||
-            value.Contains('@') || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
-            (uri.Host != "microsoft.com" && uri.Host != "www.microsoft.com") ||
-            (uri.AbsolutePath != "/devicelogin" && uri.AbsolutePath != "/devicelogin/"))
-            throw new EngineException("Microsoft returned an unexpected web address. Sign-in was stopped.");
-        return uri;
     }
 
     private async Task TestReadAsync()

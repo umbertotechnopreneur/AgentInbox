@@ -19,7 +19,9 @@ In **Account**, choose your **Email provider** and enter your email address. Ins
 
 Your provider choice is saved with the account. Earlier saves did not record it: select the provider once and save changes. AgentInbox does not guess that choice from your email address or rewrite old settings when reading them.
 
-For Microsoft, save changes and press **Sign in with Microsoft**, then **Open Microsoft**. Enter the displayed code on Microsoft's page. You do not need to supply an app ID. Reading and sending use the same sign-in, and their password fields are hidden. When sending was not configured, reopening the account fills its provider's outgoing defaults without enabling sending. See [Microsoft setup](AUTHENTICATION.md) for technical requirements and validation limits.
+For Microsoft, press **Sign in with Microsoft**, then **Open Microsoft**. The button stays available before saving and saves your complete account settings first. Enter the displayed code on Microsoft's page. **Sign-in details** keeps a local trace of the steps and errors, with private sign-in values hidden. You do not need to supply an app ID. Reading and sending use the same sign-in, and their password fields are hidden. When sending was not configured, reopening the account fills its provider's outgoing defaults without enabling sending. See [Microsoft setup](AUTHENTICATION.md) for technical requirements and validation limits.
+
+When you save or check an account, missing or malformed fields get a red border and a short explanation underneath. The app selects the tab and focuses the first field to fix. These errors update as you edit. Controls keep their native WinUI templates and use the theme's critical-color brush; no validation library or custom control style is added. WinUI 3 has no complete built-in form-validation framework; this follows [Microsoft's form guidance](https://learn.microsoft.com/en-us/windows/apps/get-started/line-of-business/build-validated-form).
 
 In **Read mail**, choose IMAP or POP3 and enter the server settings from your provider. IMAP shares your selected folders; POP3 has only INBOX. Enable reading only for accounts you want to share.
 

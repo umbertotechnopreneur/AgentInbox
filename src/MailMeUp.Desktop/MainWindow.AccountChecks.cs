@@ -29,7 +29,7 @@ public sealed partial class MainWindow
     /// <summary>Captures one consistent form snapshot for both connection checks and saves.</summary>
     private (Dictionary<string, object?> Account, Dictionary<string, string> Passwords, int? Revision) ReadAccountForm(bool checking = false)
     {
-        FillSignInEmails();
+        ValidateAccountEntry();
         if (_authentication.SelectedIndex < 0)
             throw new EngineException("Choose how to connect to these mail servers.");
         if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
@@ -89,6 +89,7 @@ public sealed partial class MainWindow
     /// <summary>Uses the shared check window for SMTP progress, cancellation and the final server result.</summary>
     private async Task TestSmtpAsync()
     {
+        ValidateAccountEntry();
         using var window = new AccountCheckWindow(this, smtp: false, saveAccount: false, smtpOnly: true);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
         using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
@@ -121,6 +122,7 @@ public sealed partial class MainWindow
     /// <summary>Runs actual checks against the captured form, then lets the owner select folders and optionally save.</summary>
     private async Task CheckAccountAsync(bool saveAccount)
     {
+        ValidateAccountEntry();
         using var window = new AccountCheckWindow(this, _configureSmtp.IsOn, saveAccount);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
         using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));

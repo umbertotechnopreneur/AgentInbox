@@ -65,24 +65,28 @@ def _flow_key(flow_id):
 
 
 def _verification_uri(value):
-    _bounded_string(value, 256, "verification address")
+    """Accept the HTTPS sign-in address returned by Microsoft's verified endpoint."""
+    _bounded_string(value, 2048, "verification address")
     try:
         parsed = urllib.parse.urlsplit(value)
         allowed = (
             parsed.scheme == "https"
-            and parsed.hostname in {"microsoft.com", "www.microsoft.com"}
-            and parsed.port in {None, 443}
+            and bool(parsed.hostname)
+            and parsed.port != 0
             and parsed.username is None
             and parsed.password is None
-            and not parsed.query
-            and not parsed.fragment
-            and parsed.path in {"/devicelogin", "/devicelogin/"}
         )
     except ValueError:
         allowed = False
     if not allowed:
-        raise MailError("microsoft_response", "Microsoft returned an unexpected verification address.")
+        raise MailError("microsoft_response", "Microsoft did not return a valid secure sign-in address. Try again.")
     return value
+
+
+def _report(diagnostic, message, *secrets):
+    """Send bounded, redacted details only to an explicitly requested local trace."""
+    if diagnostic is not None:
+        diagnostic(server_response("Microsoft", message, *secrets))
 
 
 class MicrosoftAuth:
@@ -128,9 +132,10 @@ class MicrosoftAuth:
             raise MailError("microsoft_configuration", "This Microsoft sign-in step is not supported.")
         return f"{AUTHORITY}/{tenant}/oauth2/v2.0/{operation}"
 
-    def _post(self, account, operation, fields):
+    def _post(self, account, operation, fields, *, diagnostic=None):
         """POST bounded JSON requests over verified TLS, without redirects or retries."""
         endpoint = self._endpoint(account, operation)
+        _report(diagnostic, f"POST {endpoint}")
         request = urllib.request.Request(
             endpoint,
             data=urllib.parse.urlencode(fields).encode("ascii"),
@@ -150,6 +155,7 @@ class MicrosoftAuth:
                     raise MailError("microsoft_redirect", "Microsoft returned an unexpected address during sign-in.")
                 status = response.getcode()
                 content = response.read(MAX_RESPONSE + 1)
+            _report(diagnostic, f"HTTP {status}; received {len(content)} bytes. Response contents hidden.")
             if len(content) > MAX_RESPONSE:
                 raise MailError("microsoft_response", "Microsoft's response exceeded the size limit.")
             result = json.loads(content.decode("utf-8"))
@@ -160,8 +166,13 @@ class MicrosoftAuth:
             return result
         except MailError:
             raise
-        except (OSError, urllib.error.URLError, http.client.HTTPException, ValueError, UnicodeError):
-            raise MailError("microsoft_unavailable", "Microsoft sign-in could not complete over a verified connection. Try again later.") from None
+        except (OSError, urllib.error.URLError, http.client.HTTPException, ValueError, UnicodeError) as error:
+            sensitive = [account["email"], *fields.values()]
+            encoded = [urllib.parse.quote_plus(value) for value in sensitive]
+            detail = server_response("Microsoft", f"{type(error).__name__}: {error}", *sensitive, *encoded)
+            _report(diagnostic, "The secure request or response could not be completed.")
+            raise MailError("microsoft_unavailable", "Microsoft sign-in could not complete over a verified connection. Try again later.",
+                            server_response=detail) from None
 
     @staticmethod
     def _raise_error(response, *secrets):
@@ -262,19 +273,24 @@ class MicrosoftAuth:
     def _discard(self, flow_id):
         return self.store.retire_protected([_flow_key(flow_id)])
 
-    def start(self, account_id):
+    def start(self, account_id, *, diagnostic=None):
         """Start a user-requested Microsoft device flow without opening a browser."""
         account = self._account(account_id)
+        _report(diagnostic, f"App ID: {account['authentication']['client_id']}; account type: {account['authentication']['tenant']}.")
+        _report(diagnostic, f"Requested mail permissions: {self._scopes(account)}")
         started = time.time()
         response = self._post(account, "devicecode", {
             "client_id": account["authentication"]["client_id"], "scope": self._scopes(account)
-        })
+        }, diagnostic=diagnostic)
         self._raise_error(response, account["email"])
         device_code = _bounded_string(response.get("device_code"), 2048, "device code")
         user_code = _bounded_string(response.get("user_code"), 32, "user code")
         if not re.fullmatch(r"[A-Za-z0-9-]{4,32}", user_code):
             raise MailError("microsoft_response", "Microsoft returned an invalid user code.")
         verification = _verification_uri(response.get("verification_uri"))
+        address = urllib.parse.urlsplit(verification)
+        # The address can carry a sign-in code in its query, fragment or path.
+        _report(diagnostic, f"Sign-in address accepted: {address.scheme}://{address.netloc}. Path, query and fragment hidden.", device_code, user_code, account["email"])
         expires_in = _duration(response.get("expires_in"), 3600)
         interval = _duration(response.get("interval", 5), 300)
         flow_id = uuid.uuid4().hex
@@ -282,6 +298,7 @@ class MicrosoftAuth:
                  "expires": started + expires_in, "interval": interval,
                  "next_poll": time.time() + interval, "scope": self._scopes(account)}
         self._save_flow(flow_id, state)
+        _report(diagnostic, f"Temporary sign-in saved securely. Code valid for {expires_in} seconds; checking every {interval} seconds.")
         return {"flow_id": flow_id, "user_code": user_code, "verification_uri": verification,
                 "expires_in": max(1, math.floor(state["expires"] - time.time())), "interval": interval}
 
@@ -320,7 +337,7 @@ class MicrosoftAuth:
     def _cache_key(account):
         return account["id"], account["revision"], account.get("oauth_secret")
 
-    def poll(self, flow_id):
+    def poll(self, flow_id, *, diagnostic=None):
         """Poll once at the persisted interval and consume successful flows once."""
         _flow_key(flow_id)
         with self._lease("flow", flow_id):
@@ -342,8 +359,10 @@ class MicrosoftAuth:
                 response = self._post(account, "token", {
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                     "client_id": account["authentication"]["client_id"], "device_code": state["device_code"],
-                })
+                }, diagnostic=diagnostic)
                 if isinstance(response.get("error"), str) and response["error"] in {"authorization_pending", "slow_down"}:
+                    _report(diagnostic, "Microsoft is waiting for you to finish sign-in." if response["error"] == "authorization_pending"
+                            else "Microsoft asked the app to check less often.")
                     if response["error"] == "slow_down":
                         state["interval"] = min(300, state["interval"] + 5)
                     state["next_poll"] = time.time() + state["interval"]
@@ -351,6 +370,7 @@ class MicrosoftAuth:
                     return {"status": "pending", "interval": state["interval"]}
                 try:
                     access, refresh, lifetime = self._token_response(response, account, True, state["device_code"])
+                    _report(diagnostic, "Microsoft accepted sign-in and confirmed the requested mail permissions.")
                     if time.time() >= state["expires"]:
                         raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")
                     connected = self.store.connect_oauth(

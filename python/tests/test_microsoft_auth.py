@@ -150,7 +150,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.store.saved["incoming"]["protocol"] = "pop3"
         self.store.saved["incoming"]["port"] = 995
 
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             self.assertEqual("devicecode", operation)
             self.assertEqual(
@@ -182,7 +182,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
             self.assertEqual(2, post.call_count)
 
     def test_connected_flow_persists_only_refresh_and_reuses_access_in_memory(self):
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             return self.device_response() if operation == "devicecode" else self.token_response()
 
@@ -206,7 +206,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.store.saved["oauth_secret"] = original
         self.store.vault.put(original, "synthetic-original-refresh")
 
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             self.store.saved["revision"] += 1
             self.store.saved["oauth_secret"] = replacement
@@ -234,15 +234,15 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.assertEqual("refresh_token", post.call_args.args[2]["grant_type"])
         self.assertFalse(any(token in value for value in self.store.vault.values.values()))
 
-    def test_unexpected_browser_addresses_are_rejected_before_saving_flow(self):
+    def test_invalid_secure_browser_addresses_are_rejected_before_saving_flow(self):
         for uri in (
             "http://microsoft.com/devicelogin",
-            "https://microsoft.com.example.test/devicelogin",
+            "https:///missing-host",
             "https://microsoft.com@attacker.example.test/devicelogin",
             "https://@microsoft.com/devicelogin",
             "https://:@microsoft.com/devicelogin",
-            "https://microsoft.com/devicelogin?user_code=unexpected",
-            "https://login.microsoftonline.com/unverified/path",
+            "https://microsoft.com:invalid/devicelogin",
+            "https://microsoft.com:0/devicelogin",
         ):
             with self.subTest(uri=uri):
                 with mock.patch.object(self.auth, "_post", return_value=self.device_response(verification_uri=uri)):
@@ -250,6 +250,18 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
                         self.auth.start(self.store.saved["id"])
                 self.assertEqual("microsoft_response", failure.exception.code)
         self.assertEqual({}, self.store.vault.values)
+
+    def test_returned_https_address_is_preserved_without_codes_in_diagnostics(self):
+        uri = "https://signin.example.test/ABCD-EFGH?code=synthetic-device-code#ABCD-EFGH"
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response(verification_uri=uri)):
+            started = self.auth.start(self.store.saved["id"], diagnostic=details.append)
+        self.assertEqual(uri, started["verification_uri"])
+        trace = "\n".join(details)
+        self.assertIn("https://signin.example.test", trace)
+        self.assertNotIn("ABCD-EFGH", trace)
+        self.assertNotIn("synthetic-device-code", trace)
+        self.assertNotIn(self.store.saved["email"], trace)
 
     def test_declined_flow_discards_device_code_and_redacts_server_description(self):
         with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:

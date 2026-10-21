@@ -337,7 +337,7 @@ class MailApplication:
                 "protocol": account["incoming"]["protocol"], "smtp": "passed" if account["smtp"] else "not_configured",
                 "saved": False, "message_read": sample, "sent": False}
 
-    def manage(self, operation: str, arguments: dict, *, progress=None):
+    def manage(self, operation: str, arguments: dict, *, progress=None, diagnostic=None):
         """Dispatch local setup operations through a closed allowlist."""
         if not isinstance(arguments, dict):
             raise MailError("invalid_arguments", "Arguments must be an object.")
@@ -370,13 +370,13 @@ class MailApplication:
         if operation == "get_send_status" and set(arguments) == {"request_id"}:
             return self.get_send_status(**arguments)
         if operation == "poll_microsoft_signin" and set(arguments) == {"flow_id"}:
-            return self.microsoft.poll(arguments["flow_id"])
+            return self.microsoft.poll(arguments["flow_id"], diagnostic=diagnostic)
         if operation == "cancel_microsoft_signin" and set(arguments) == {"flow_id"}:
             return self.microsoft.cancel(arguments["flow_id"])
         if operation in {"start_microsoft_signin", "remove_account", "check_read", "list_folders"} and set(arguments) == {"account_id"}:
             account = self.store.account(arguments["account_id"])
             if operation == "start_microsoft_signin":
-                return self.microsoft.start(account["id"])
+                return self.microsoft.start(account["id"], diagnostic=diagnostic)
             if operation == "remove_account":
                 return self.store.remove(account["id"])
             if operation == "check_read":
