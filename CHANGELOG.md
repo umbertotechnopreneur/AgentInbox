@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Replace Username with explicit email labels in setup and validation. Fill blank reading/sending email fields from Account when checking or saving, without relying on a focus event. Simplify missing password, server, port, security and folder errors with matching field/tab names. These changes are newer than installed Debug 1.0.16.0.
 - Preserve the selected email provider in saved accounts. Keep Microsoft sign-in selected while outgoing settings are unfinished, restore unsaved provider defaults for sending, and hide Microsoft password fields. Include bounded, redacted Microsoft error details in local setup while keeping them out of MCP errors. New regression cases are written but unrun.
 - Use plain sign-in guidance across providers, rename the assistant page to **Connect Codex** / **Connect Your Codex Assistant**, and remove its tagline. Replace the generic footer floppy with the approved VibeWare artwork, original MIT notice and an accessible manifesto link. Align initiative wording and display rules with the VibeWare press kit. Built and installed in Debug 1.0.16.0 x64; hands-on validation remains pending.
 - Center mailbox guidance with an icon, heading and instructions when no account is selected or configured. Use a visible + action to add a connection and remove the redundant Codex update status above its button. Included in Debug 1.0.16.0; visual behavior remains unchecked.

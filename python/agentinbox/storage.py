@@ -273,7 +273,9 @@ class Store:
                     elif previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol] and previous[field]:
                         account[field] = previous[field]
                     else:
-                        raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
+                        purpose = "reading" if protocol == "incoming" else "sending"
+                        section = "Read mail" if protocol == "incoming" else "Send mail"
+                        raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
                     if previous and previous[field] and previous[field] != account[field]:
                         obsolete.append(previous[field])
                 account["oauth_secret"] = None

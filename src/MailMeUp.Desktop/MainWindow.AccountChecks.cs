@@ -29,6 +29,7 @@ public sealed partial class MainWindow
     /// <summary>Captures one consistent form snapshot for both connection checks and saves.</summary>
     private (Dictionary<string, object?> Account, Dictionary<string, string> Passwords, int? Revision) ReadAccountForm(bool checking = false)
     {
+        FillSignInEmails();
         if (_authentication.SelectedIndex < 0)
             throw new EngineException("Choose how to connect to these mail servers.");
         if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
@@ -36,8 +37,10 @@ public sealed partial class MainWindow
         var pop = _incomingProtocol.SelectedIndex == 1;
         string[] folders = pop ? ["INBOX"] : _folders.SelectedItems.Cast<string>().ToArray();
         if (checking && folders.Length == 0) folders = ["INBOX"];
-        if (folders.Length is < 1 or > 20 || folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
-            throw new EngineException("Choose between one and twenty ASCII server folders.");
+        if (folders.Length is < 1 or > 20)
+            throw new EngineException("Choose between one and twenty mail folders under Read mail.");
+        if (folders.Any(folder => folder.Any(character => character < 32 || character > 126)))
+            throw new EngineException("Folder names currently need basic English letters, numbers or punctuation, such as INBOX.");
         var authentication = new Dictionary<string, string> { ["method"] = "password" };
         if (_authentication.SelectedIndex == 1)
         {

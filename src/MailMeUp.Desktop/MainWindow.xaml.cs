@@ -215,11 +215,7 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(_label, "Connection name");
         ToolTipService.SetToolTip(_label, "Rename this connection, then choose Save changes.");
         _email = Field("Email address", "you@example.com");
-        _email.LostFocus += (_, _) =>
-        {
-            if (string.IsNullOrWhiteSpace(_incomingUser.Text)) _incomingUser.Text = _email.Text.Trim();
-            if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
-        };
+        _email.LostFocus += (_, _) => FillSignInEmails();
         _authentication = new ComboBox { Header = "How to connect", PlaceholderText = "Choose how to connect", HorizontalAlignment = HorizontalAlignment.Stretch };
         _authentication.Items.Add("Use a password");
         _authentication.SelectionChanged += (_, _) =>
@@ -252,7 +248,7 @@ public sealed partial class MainWindow : Window
         _incomingHost = Field("Incoming server", "imap.example.com");
         _incomingPort = Field("Port", "993");
         _incomingTls = TlsField();
-        _incomingUser = Field("Username", "Usually your full email address");
+        _incomingUser = Field("Email address for reading", "you@example.com");
         _incomingPassword = Password("Incoming password");
         _incomingSignInHint = Hint("Uses your Microsoft sign-in. No password is needed here.");
         _folders = new ListView { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 220, MinHeight = 48 };
@@ -272,7 +268,7 @@ public sealed partial class MainWindow : Window
         _smtpHost = Field("Sending server (SMTP)", "smtp.example.com");
         _smtpPort = Field("Port", "465");
         _smtpTls = TlsField();
-        _smtpUser = Field("Username", "Usually your full email address");
+        _smtpUser = Field("Email address for sending", "you@example.com");
         _smtpPassword = Password("Password for sending");
         _smtpSignInHint = Hint("Uses the same Microsoft sign-in as incoming mail. No extra password is needed.");
         _sendEnabled = new ToggleSwitch { Header = "Enable sending from this account", OnContent = "Enabled", OffContent = "Disabled" };
@@ -457,6 +453,14 @@ public sealed partial class MainWindow : Window
         var index = _accounts.FindIndex(account => Value(account, "id") == selected);
         _accountPicker.SelectedIndex = index;
         if (index < 0) FillAccount(null);
+    }
+
+    /// <summary>Uses the account email for blank sign-in fields without depending on focus changes.</summary>
+    private void FillSignInEmails()
+    {
+        var email = _email.Text.Trim();
+        if (string.IsNullOrWhiteSpace(_incomingUser.Text)) _incomingUser.Text = email;
+        if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = email;
     }
 
     private void FillAccount(JsonElement? account)

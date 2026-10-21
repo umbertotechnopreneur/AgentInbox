@@ -282,7 +282,9 @@ class MailApplication:
                 if not secret and previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol]:
                     secret = self.store.vault.get(previous[protocol + "_secret"])
                 if not secret:
-                    raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
+                    purpose = "reading" if protocol == "incoming" else "sending"
+                    section = "Read mail" if protocol == "incoming" else "Send mail"
+                    raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
                 credentials[protocol] = {"password": secret}
         return account, credentials
 

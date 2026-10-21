@@ -24,6 +24,8 @@ Say "connect your accounts" instead of "configure multi-account access," and "ch
 
 In setup, say **Sign in with Microsoft**, **Open Microsoft**, and **Enter this code**. Avoid OAuth, web authorization, authentication, tenant and credentials in everyday instructions. Explain a provider's special password before using its official name. Keep technical server replies below the plain-language error, with private sign-in values hidden.
 
+Use **Email address for reading** and **Email address for sending**, including in validation messages. Tell the reader which field or tab needs attention. Keep `username` as an internal protocol key; do not rename stored settings or change accepted sign-in values just to update the wording.
+
 Be clear about what works, what's still being tried and what hasn't been tested. Keep privacy information close to the action it affects. Put build history and implementation details in the developer references. Label concept artwork and keep its source prompts and creation notes.
 
 ## Visual vocabulary

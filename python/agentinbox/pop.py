@@ -159,7 +159,7 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
         credentials = (settings["username"], password) if access_token is None else (settings["username"],)
         for credential in credentials:
             if not isinstance(credential, str) or not credential or any(ord(c) < 32 or ord(c) == 127 for c in credential):
-                raise MailError("invalid_credentials", "Check the username and password under Read mail in AgentInbox.")
+                raise MailError("invalid_credentials", "Check the email address and password under Read mail in AgentInbox.")
         context = ssl.create_default_context()
         if progress:
             progress("connection", "started")

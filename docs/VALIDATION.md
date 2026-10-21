@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-22.
 
+## Pending source changes
+
+The email field labels, sign-in email defaults and account validation wording were revised after Debug 1.0.16.0. No build, installation, automated test or live UI check has run for those changes.
+
 ## Latest installed source
 
 Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo are included in installed Debug 1.0.16.0. This also includes the centered mailbox prompts, + action and redundant Codex-status removal. The owner requested installation for hands-on use and explicitly excluded automated tests. No live UI or provider checks ran in this build/install task.
