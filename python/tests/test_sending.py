@@ -119,8 +119,9 @@ class SendingTests(MailApplicationCase):
         self.assertIn("Do not resend", result["record_error"])
 
     def test_previous_ledger_schema_is_rejected_without_conversion(self):
-        with sqlite3.connect(self.app.sends.path) as database:
+        with contextlib.closing(sqlite3.connect(self.app.sends.path)) as database:
             database.execute("PRAGMA user_version=3")
+            database.commit()
         original = self.app.sends.path.read_bytes()
         with self.assertRaises(MailError) as failure:
             self.send()
