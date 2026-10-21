@@ -6,6 +6,7 @@ using MailMeUp.Desktop.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
@@ -30,8 +31,8 @@ public sealed partial class MainWindow : Window
     private StackPanel _accountToolbar = new();
     private Grid _accountWorkspace = new();
     private StackPanel _accountEditor = new();
-    private TextBlock _accountSelectionHint = new();
-    private StackPanel _accountEmptyState = new();
+    private Grid _accountSelectionState = new();
+    private Grid _accountEmptyState = new();
     private Button _createFirstAccount = new();
     private Button _removeAccount = new();
     private Button _cancelAccount = new();
@@ -92,6 +93,7 @@ public sealed partial class MainWindow : Window
             area.Y + (area.Height - height) / 2, width, height));
         SaveBar.SizeChanged += (_, args) =>
             PageActions.Orientation = args.NewSize.Width < 480 ? Orientation.Vertical : Orientation.Horizontal;
+        PageScroll.SizeChanged += (_, _) => UpdateAccountLayout();
         Closed += (_, _) => _lifetime.Cancel();
     }
 
@@ -157,7 +159,9 @@ public sealed partial class MainWindow : Window
         PageActions.Children.Add(_saveStatus);
         _createFirstAccount = Action("Create your first account", StartNewAccount, accent: true,
             tooltip: "Open the setup form for your first email account.");
-        _accountEmptyState = Stack(Text("There are no accounts yet", 22), _createFirstAccount);
+        _accountEmptyState = AccountPlaceholder("Add your first mailbox",
+            "Connect a mailbox to choose what your assistant can read and send. Start by adding your email account.",
+            _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
         _accountTabs = new TabView
         {
@@ -179,8 +183,8 @@ public sealed partial class MainWindow : Window
             if (selected.ValueKind != JsonValueKind.Undefined) FillAccount(selected);
         };
         var accountActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom };
-        accountActions.Children.Add(Action("Add connection", StartNewAccount,
-            tooltip: "Open the setup form for another email account."));
+        accountActions.Children.Add(IconAction("Add connection", "\uE710", 0x2BAF90, StartNewAccount,
+            "Add a mailbox and configure its connection settings."));
         _removeAccount = IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync),
             "Remove this account's local settings and credentials. Messages on the server stay in place.");
         accountActions.Children.Add(_removeAccount);
@@ -292,9 +296,10 @@ public sealed partial class MainWindow : Window
         UpdateAccountTabHeaders();
         _newAccountHeading = Text("New account", 22);
         _accountEditor = Stack(_newAccountHeading, _label, _accountTabs);
-        _accountSelectionHint = Hint("Select a connection to edit its name and settings, or add a new connection.");
+        _accountSelectionState = AccountPlaceholder("Select or add a mailbox",
+            "Select a mailbox from the list to edit its name and settings.\nUse the + button to add another mailbox.");
         _accountWorkspace.Children.Add(_accountEditor);
-        _accountWorkspace.Children.Add(_accountSelectionHint);
+        _accountWorkspace.Children.Add(_accountSelectionState);
         TrackAccountChanges();
         FillAccount(null);
     }
@@ -326,9 +331,10 @@ public sealed partial class MainWindow : Window
     {
         var editing = _accountsLoaded && (_creatingAccount || _accountId.Length > 0);
         _accountEmptyState.Visibility = _accountsLoaded && _accounts.Count == 0 && !_creatingAccount ? Visibility.Visible : Visibility.Collapsed;
+        _accountWorkspace.Visibility = _accountsLoaded && (_accounts.Count > 0 || _creatingAccount) ? Visibility.Visible : Visibility.Collapsed;
         _accountToolbar.Visibility = _accountsLoaded && _accounts.Count > 0 && !_creatingAccount ? Visibility.Visible : Visibility.Collapsed;
         _accountEditor.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
-        _accountSelectionHint.Visibility = _accountsLoaded && _accounts.Count > 0 && !editing ? Visibility.Visible : Visibility.Collapsed;
+        _accountSelectionState.Visibility = _accountsLoaded && _accounts.Count > 0 && !editing ? Visibility.Visible : Visibility.Collapsed;
         SaveBar.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
         _cancelAccount.Visibility = _creatingAccount ? Visibility.Visible : Visibility.Collapsed;
         _newAccountHeading.Visibility = _creatingAccount ? Visibility.Visible : Visibility.Collapsed;
@@ -345,18 +351,26 @@ public sealed partial class MainWindow : Window
     /// <summary>Keeps the saved connection list beside the editor, stacking it on smaller windows.</summary>
     private void UpdateAccountLayout()
     {
+        if (!Page.Children.Contains(_accountWorkspace)) return;
         var hasList = _accountToolbar.Visibility == Visibility.Visible;
         var sideBySide = hasList && _accountWorkspace.ActualWidth >= 960;
         _accountWorkspace.ColumnDefinitions[0].Width = sideBySide ? new GridLength(280) : new GridLength(0);
         _accountWorkspace.ColumnSpacing = sideBySide ? 24 : 0;
+        _accountWorkspace.RowSpacing = hasList && !sideBySide ? 20 : 0;
         Grid.SetColumnSpan(_accountToolbar, sideBySide ? 1 : 2);
         _accountPicker.MaxHeight = sideBySide ? 480 : 180;
-        foreach (var content in new FrameworkElement[] { _accountEditor, _accountSelectionHint })
+        foreach (var content in new FrameworkElement[] { _accountEditor, _accountSelectionState })
         {
             Grid.SetColumn(content, sideBySide ? 1 : 0);
             Grid.SetColumnSpan(content, sideBySide ? 1 : 2);
             Grid.SetRow(content, hasList && !sideBySide ? 1 : 0);
         }
+        // Use the remaining viewport for the prompt, while keeping the editor top-aligned.
+        var headingHeight = ((FrameworkElement)Page.Children[0]).ActualHeight;
+        var pagePadding = Page.Padding.Top + Page.Padding.Bottom;
+        var availableHeight = PageScroll.ViewportHeight - headingHeight - Page.Spacing - pagePadding;
+        _accountEmptyState.MinHeight = Math.Max(320, availableHeight);
+        _accountSelectionState.MinHeight = sideBySide ? Math.Max(320, availableHeight) : 320;
     }
 
     /// <summary>Emphasizes the selected tab without changing the native TabView appearance.</summary>
@@ -826,11 +840,11 @@ public sealed partial class MainWindow : Window
         var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         title.Children.Add(ColoredIcon("\uE71B", 0x8B62CF));
         title.Children.Add(Text(client.DisplayName, 20));
-        var state = client.RequiresReplacement ? "Update your connection"
-            : client.IsConfigured ? "Added to Codex"
+        var state = client.IsConfigured ? "Added to Codex"
             : !client.IsDetected ? "Codex not found"
             : client.CanConnect ? "Ready to add AgentInbox" : "A setup issue needs your attention";
         var status = Text(state);
+        status.Visibility = client.RequiresReplacement ? Visibility.Collapsed : Visibility.Visible;
         status.Foreground = IconBrush(client.IsConfigured ? 0x16856AU : client.CanConnect ? 0x2477C8U : 0xC77616U);
         var connect = Action(client.RequiresReplacement ? "Update connection" : "Connect to Codex",
             () => _ = RunAsync(() => ConnectAssistantAsync(service, configuration, client)), accent: true,
@@ -1094,6 +1108,39 @@ public sealed partial class MainWindow : Window
         ToolTipService.SetToolTip(button, tooltip ?? name);
         button.Click += (_, _) => handler();
         return button;
+    }
+
+    /// <summary>Centers a compact mailbox prompt in the available space without adding a card.</summary>
+    private static Grid AccountPlaceholder(string title, string description, Button? action = null)
+    {
+        var icon = new FontIcon
+        {
+            Glyph = "\uE715", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 48,
+            Foreground = IconBrush(0xB58ADA), HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        AutomationProperties.SetAccessibilityView(icon, AccessibilityView.Raw);
+        var heading = Text(title, 24);
+        heading.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        heading.TextAlignment = TextAlignment.Center;
+        var guidance = Hint(description);
+        guidance.FontSize = 14;
+        guidance.LineHeight = 22;
+        guidance.TextAlignment = TextAlignment.Center;
+        var content = Stack(icon, heading, guidance);
+        content.MaxWidth = 320;
+        content.Margin = new Thickness(20);
+        content.HorizontalAlignment = HorizontalAlignment.Center;
+        content.VerticalAlignment = VerticalAlignment.Center;
+        if (action is not null)
+        {
+            action.HorizontalAlignment = HorizontalAlignment.Center;
+            action.Margin = new Thickness(0, 8, 0, 0);
+            content.Children.Add(action);
+        }
+        var placeholder = new Grid { MinHeight = 320 };
+        placeholder.Children.Add(content);
+        return placeholder;
     }
 
     private static ComboBoxItem PresetItem(string name, string glyph, uint color)

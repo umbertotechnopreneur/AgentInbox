@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Center mailbox guidance with an icon, heading and instructions when no account is selected or configured. Use a visible + action to add a connection and remove the redundant Codex update status above its button. These UI refinements are not yet built or visually checked.
 - Explain Gmail, iCloud, Outlook.com and Microsoft 365 requirements beneath the provider preset, with official links. Microsoft presets select OAuth and the corresponding account type. Load the recovered public Microsoft app ID from desktop application settings instead of asking each user for it. Built and installed in Debug 1.0.15.0 x64; runtime checks and registration permissions remain unvalidated.
 - Make the Windows app configuration only. Send requested messages directly through Codex/MCP with `send_email`; remove local review, pending messages, the review subprocess and desktop test-send controls. Record metadata and reject duplicate request IDs without automatic retries. Send ledger schema 4 rejects older formats without conversion; account settings remain schema 3.
 - Replace the account dropdown with a responsive connection list and keep **Connection name** above the editor. Use Acrylic, native tabs with colored icons and a bold selected label, and a persistent form save bar.

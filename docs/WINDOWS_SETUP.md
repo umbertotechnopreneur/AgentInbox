@@ -6,6 +6,8 @@ The WinUI 3 app configures AgentInbox on Windows 11. Email operations run throug
 
 Choose **Add connection**, or select a saved connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. No account form appears until you create or select one.
 
+When no mailbox is selected, a centered mail icon, heading and short guide explain how to select one or add another with the **+** button. An empty account list uses the same layout with a button to create your first account.
+
 **Connection name** stays above the native **Account**, **Incoming** and **Outgoing** tabs. Edit it and press **Save changes** to rename the connection. Tab icons are colored; the selected label is bold. Save and Cancel stay below the form with the current save status. The window uses Acrylic and adapts to display scaling and available space.
 
 In **Account**, choose a preset or custom servers and enter your email address. Instructions and an official link appear directly below the preset:

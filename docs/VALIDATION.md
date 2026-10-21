@@ -2,7 +2,9 @@
 
 Last updated: 2026-10-22.
 
-## Current source: built and installed; runtime checks pending
+## Latest installed source; subsequent UI refinements pending
+
+The centered mailbox prompts, + action and removal of the redundant Codex update status were added after Debug 1.0.15.0. These UI refinements have not been built, installed or visually checked.
 
 The configuration-only Windows redesign, direct MCP sending, provider guidance and bundled Microsoft app identity were built from source and installed as Debug 1.0.15.0 x64. Synthetic tests and visual checks have not run for these changes. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. Current-form SMTP, stage reporting and diagnostic regressions also remain unrun. Earlier approval-model test results do not validate this new sending path.
 
