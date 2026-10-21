@@ -60,12 +60,12 @@ The macOS and Linux implementations are source-only and untested. I welcome cont
 
 Windows credentials are limited to 2,560 UTF-8 bytes; oversized values fail instead of switching to a file. Microsoft access tokens stay only in process memory. Refresh tokens remain in protected storage and are replaced after successful refresh without changing account settings.
 
-Temporary device-code state is protected and bound to the account revision and expiry. On Windows, larger temporary sign-in state and pending message content use DPAPI-protected files separately from the credential entries. An expired device flow is rejected and its state removed when that flow is accessed; cancellation removes its local state. There is no background expiry timer.
+Temporary device-code state is protected and bound to the account revision and expiry. On Windows, temporary sign-in state uses DPAPI-protected files separately from the credential entries. An expired device flow is rejected and its state removed when that flow is accessed; cancellation removes its local state. There is no background expiry timer.
 
 Unavailable secure storage is an error, with no plain-text fallback. Protection does not encrypt every metadata file or protect a compromised signed-in operating-system account. See [privacy](PRIVACY.md).
 
 ## Account permissions and removal
 
-Assistant read access is separate from saving or authenticating a connection. SMTP starts disabled. Microsoft consent to an SMTP scope does not authorize sending: every message still requires direct local approval of its exact content.
+Assistant read access is separate from saving or authenticating a connection. SMTP starts disabled. Microsoft consent to an SMTP scope does not enable sending by itself. Enable SMTP separately in Windows configuration; Codex can then submit the emails you request without another AgentInbox confirmation.
 
 Removing an account removes local access and stored account credentials, not the mailbox. Revoke a dedicated app password or Microsoft application consent with the provider when no longer needed. Previous profiles are not imported or converted.

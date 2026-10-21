@@ -1,27 +1,11 @@
 # Windows UI implementation
 
-WinUI 3 configures the Python engine through a local process boundary. Keep mail behavior in Python; the UI collects settings, shows results and obtains direct user confirmation.
+The Windows app is configuration only. Keep mail behavior in Python and delegate settings, sign-in and connection checks through the local JSON adapter. Sending belongs to the MCP interface used by Codex.
 
-This source change has not been built or visually validated.
+Use native WinUI controls, an Acrylic backdrop and top-left content that fits the viewport. Keep a visible connection list, the editable connection name above the stock TabView, colored leading icons and a bold selected label. Save and Cancel remain next to the form in a persistent bottom bar. Do not add decorative cards or controls that move on hover.
 
-## Account editor
+IMAP and SMTP checks share `AccountCheckWindow`, actual progress stages, cancellation and selectable server diagnostics. Only the incoming check offers folder selection and an optional sample read. No send button or approval flow belongs here.
 
-Keep incoming and outgoing settings together. Offer presets and a custom option, an IMAP/POP3 selector before incoming fields, and the required host, port, TLS and username fields.
+Use clear English, tooltips, accessible names and keyboard navigation. Keep advanced Codex configuration collapsed. The footer links to the product policies and shows VibeWare with its floppy symbol.
 
-Password or app password is the default. Explicit Microsoft **Web authorization** shows a public client ID and tenant field, a short-code dialog and a browser button that you must press. Never switch methods or open a browser automatically. Microsoft presets are editable settings, not proof of account compatibility. Web authorization is not available for Google accounts.
-
-POP3 fixes the folder to INBOX and explains that server folders and unread flags are unavailable. Its search uses headers and email Date values. SMTP is optional and initially disabled. TLS and hostname/certificate checks are required, without plaintext or custom-CA controls.
-
-Separate read checks, SMTP connection checks and test-message preparation. A connection check is not delivery.
-
-## Approval
-
-Show the complete pending message, including every recipient, body and attachment. Approval applies once to those exact contents. Cancel and close leave it unsent.
-
-MCP cannot approve a message. A UI label or assistant-controlled boolean must never replace the engine's approval enforcement.
-
-## Presentation
-
-Use native controls, clear labels and a compact layout. Keep errors close to the failed field or action. Preserve keyboard access and scrolling at small window sizes. Hover must not move controls.
-
-Keep decorative assets separate from controls. Asset provenance is in the [brand guide](BRAND.md); old screenshots do not validate this UI.
+[Windows setup](WINDOWS_SETUP.md) describes the user flow. [Validation](VALIDATION.md) records runtime evidence; source edits and old screenshots do not establish current visual correctness. Artwork provenance remains in [brand](BRAND.md).

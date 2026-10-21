@@ -78,18 +78,53 @@ public sealed partial class MainWindow
         finally { form.Passwords.Clear(); }
     }
 
-    /// <summary>Runs actual checks against the captured form, then lets the owner select folders and optionally save.</summary>
-    private async Task CheckAccountAsync(bool saveAccount)
+    /// <summary>Uses the shared check window for SMTP progress, cancellation and the final server result.</summary>
+    private async Task TestSmtpAsync()
     {
-        var form = ReadAccountForm(checking: true);
-        using var window = new AccountCheckWindow(this, form.Account["smtp"] is not null, saveAccount);
+        using var window = new AccountCheckWindow(this, smtp: false, saveAccount: false, smtpOnly: true);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
         using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
         window.Activate();
+        Dictionary<string, string>? passwords = null;
+        try
+        {
+            window.Report(new AccountCheckProgress("settings", "started"));
+            var form = ReadAccountForm(checking: true);
+            passwords = form.Passwords;
+            await _engine.ManageAsync("check_smtp", new
+            {
+                account = form.Account, passwords = form.Passwords, expected_revision = form.Revision
+            }, cancellation.Token, window.Report);
+            window.Complete(true, "The secure connection and sign-in passed. No email was sent and no settings were saved.");
+        }
+        catch (OperationCanceledException)
+        {
+            window.Complete(false, "The SMTP check was cancelled or timed out. No email was sent and no settings were saved.");
+        }
+        catch (Exception exception)
+        {
+            window.Complete(false, exception is EngineException ? exception.Message
+                : "The SMTP check could not finish. No success is assumed. No email was sent.");
+        }
+        finally { passwords?.Clear(); }
+        await window.ClosedTask;
+    }
+
+    /// <summary>Runs actual checks against the captured form, then lets the owner select folders and optionally save.</summary>
+    private async Task CheckAccountAsync(bool saveAccount)
+    {
+        using var window = new AccountCheckWindow(this, _configureSmtp.IsOn, saveAccount);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
+        using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
+        window.Activate();
+        Dictionary<string, string>? passwords = null;
         JsonElement? committed = null;
         var saveStarted = false;
         try
         {
+            window.Report(new AccountCheckProgress("settings", "started"));
+            var form = ReadAccountForm(checking: true);
+            passwords = form.Passwords;
             var result = await _engine.ManageAsync("check_account", new
             {
                 account = form.Account, passwords = form.Passwords, expected_revision = form.Revision
@@ -131,8 +166,7 @@ public sealed partial class MainWindow
             window.Complete(true, (saveAccount
                 ? "Your account was added with the selected folders. "
                 : "Connection and sign-in passed. Folder choices are in your form; save when you are ready. ")
-                + readingSummary + " You can close this window.",
-                offerTestEmail: saveAccount && form.Account["send_enabled"] is true);
+                + readingSummary + " You can close this window.");
         }
         catch (OperationCanceledException)
         {
@@ -148,14 +182,8 @@ public sealed partial class MainWindow
                 ? "Your account was saved, but the form could not refresh. Close this window and reload your accounts."
                 : failure);
         }
-        finally { form.Passwords.Clear(); }
+        finally { passwords?.Clear(); }
         await window.ClosedTask;
-        if (window.TestEmailRequested && committed is not null)
-        {
-            if (Value(committed.Value, "id") != _accountId)
-                throw new EngineException("The selected account changed. Open its outgoing settings before preparing a test email.");
-            await PrepareTestAsync();
-        }
     }
 
     /// <summary>Returns the committed save result separately from subsequent local rendering.</summary>

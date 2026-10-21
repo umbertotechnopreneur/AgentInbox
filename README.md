@@ -2,7 +2,7 @@
 
 I kept switching between mailboxes to find the message I needed. I built AgentInbox to bring those inboxes into one conversation, using IMAP or POP3 to read mail and optional SMTP to send it, like a regular email client.
 
-Connect a compatible mailbox, choose what your assistant can read, and ask for the messages you need. Sending is optional: you enable SMTP for an account, then approve each complete message locally before it leaves your computer.
+Connect a compatible mailbox, choose what your assistant can read, and ask for the messages you need. Sending is optional: enable SMTP for an account in Windows setup, then ask Codex to send a message.
 
 **[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
 
@@ -28,17 +28,15 @@ IMAP exposes selected server folders and read status. POP3 exposes one mailbox a
 
 The Windows setup app uses WinUI 3. It keeps incoming mail and optional outgoing mail settings together, with separate connection checks. See [Windows setup](docs/WINDOWS_SETUP.md).
 
-## Keep control of sending
+## Sending through Codex
 
-SMTP starts disabled. Enabling it lets your assistant prepare a message for review; it does not authorize delivery.
+SMTP starts disabled. When you enable it, Codex can send from that account through `send_email`. Give Codex the intended recipients and content; the tool submits immediately, without another confirmation in AgentInbox.
 
-Before every send, AgentInbox shows the sending account, all recipients, subject, body and attachments. You approve that exact message locally. Changing its content requires a new approval. The assistant cannot approve a message through MCP.
-
-A test email follows the same confirmation step. A successful SMTP response means the server accepted the message, not that the recipient received it. An uncertain send is not retried automatically.
+The Windows app only configures connections and permissions. Its SMTP test checks connection and sign-in without sending. A successful send result means the server accepted the message, not that the recipient received it. Unresolved sends are never retried automatically.
 
 ## Use it with your assistant
 
-The Python engine runs as a local MCP process. It reads mail through IMAP or POP3 and prepares optional SMTP sends. It does not need a .NET backend.
+The Python engine runs as a local MCP process. It reads mail through IMAP or POP3 and submits optional SMTP sends. It does not need a .NET backend.
 
 Source entry point:
 
@@ -55,7 +53,7 @@ Use it with Codex, Claude or another local MCP client.
 - **Windows 11 x64 and ARM64:** native WinUI 3 setup; commercial distribution is MSIX only.
 - **Linux and macOS:** Python source only, for users who can configure and adapt it. No compiled distributions or commercial support are provided. Contributor pull requests with fixes are welcome.
 
-The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).
+The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).
 
 ## Explore the project
 
@@ -93,7 +91,7 @@ I keep a record of where each new import came from and the scan result. If a sca
 
 I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
 
-[Terms](https://umbertogiacobbi.biz/terms/) · [Privacy](https://umbertogiacobbi.biz/privacy/)
+[Terms](https://umbertogiacobbi.biz/agentinbox/terms/) · [Privacy](https://umbertogiacobbi.biz/agentinbox/privacy/)
 
 <p align="right">
   <a href="https://umbertogiacobbi.biz/vibeware/manifesto">

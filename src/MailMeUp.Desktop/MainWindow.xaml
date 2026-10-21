@@ -4,7 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="AgentInbox">
-    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Loaded="Root_Loaded">
+    <Grid x:Name="Root" Background="{ThemeResource SetupSurfaceBrush}" Loaded="Root_Loaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -15,29 +15,37 @@
             <Image Source="Assets/Logo.png" Width="42" Height="42" AutomationProperties.AccessibilityView="Raw" />
             <StackPanel Grid.Column="1" Spacing="2">
                 <TextBlock Text="AgentInbox" FontSize="22" FontWeight="SemiBold" />
-                <TextBlock Text="Your email. Standard connections. Your say before every send." Style="{StaticResource SubtleText}" />
+                <TextBlock Text="Your email, connected to Codex." Style="{StaticResource SubtleText}" />
             </StackPanel>
         </Grid>
-        <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
+        <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Auto" IsBackButtonVisible="Collapsed"
                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                         OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged">
+            <NavigationView.Resources>
+                <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+                <Thickness x:Key="NavigationViewContentGridBorderThickness">0</Thickness>
+            </NavigationView.Resources>
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Accounts" Tag="accounts" ToolTipService.ToolTip="Create or edit your email accounts.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Mail" Foreground="#16856A" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Outgoing mail" Tag="outgoing" ToolTipService.ToolTip="Review outgoing requests and check their status.">
-                    <NavigationViewItem.Icon><SymbolIcon Symbol="Send" Foreground="#C77616" /></NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Connect assistant" Tag="assistant" ToolTipService.ToolTip="Set up the connection between your assistant and AgentInbox.">
+                <NavigationViewItem Content="Your assistant" Tag="assistant" ToolTipService.ToolTip="Connect AgentInbox to Codex or another desktop assistant.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Link" Foreground="#8B62CF" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-            <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           HorizontalScrollMode="Disabled" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
                 <StackPanel x:Name="Page" Padding="28,12,36,32" Spacing="20" MaxWidth="1040"
                             Width="{Binding ViewportWidth, ElementName=PageScroll, Mode=OneWay}"
                             HorizontalAlignment="Left" VerticalAlignment="Top" />
-            </ScrollViewer>
+                </ScrollViewer>
+                <Border x:Name="SaveBar" Grid.Row="1" Padding="28,14,28,14" Visibility="Collapsed"
+                        BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                    <StackPanel x:Name="PageActions" Orientation="Horizontal" Spacing="12" />
+                </Border>
+            </Grid>
         </NavigationView>
         <StackPanel Grid.Row="2" Padding="28,8,28,16" Spacing="8">
             <ProgressBar x:Name="Progress" IsIndeterminate="True" Visibility="Collapsed" />
@@ -48,7 +56,25 @@
                             ToolTipService.ToolTip="Retry removal of temporary protected files left by the previous operation." />
                 </InfoBar.ActionButton>
             </InfoBar>
-            <TextBlock Text="Built by Umberto Giacobbi · VibeWare · MIT" Style="{StaticResource SubtleText}" />
+            <Grid x:Name="BrandFooter" ColumnSpacing="20" RowSpacing="8" SizeChanged="BrandFooter_SizeChanged">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <StackPanel x:Name="FooterLinks" Orientation="Horizontal" Spacing="8">
+                    <HyperlinkButton Content="umbertogiacobbi.biz" NavigateUri="https://umbertogiacobbi.biz/" Padding="0,6"
+                                     AutomationProperties.Name="Umberto Giacobbi website" ToolTipService.ToolTip="Open Umberto Giacobbi's website." />
+                    <HyperlinkButton Content="Terms" NavigateUri="https://umbertogiacobbi.biz/agentinbox/terms/" Padding="6"
+                                     AutomationProperties.Name="AgentInbox terms of use" ToolTipService.ToolTip="Read the AgentInbox terms of use." />
+                    <HyperlinkButton Content="Privacy" NavigateUri="https://umbertogiacobbi.biz/agentinbox/privacy/" Padding="6"
+                                     AutomationProperties.Name="AgentInbox privacy policy" ToolTipService.ToolTip="Read how AgentInbox handles your data." />
+                </StackPanel>
+                <HyperlinkButton x:Name="VibeWareLink" Grid.Column="1" NavigateUri="https://umbertogiacobbi.biz/vibeware/manifesto" Padding="0,6"
+                                 HorizontalAlignment="Right" AutomationProperties.Name="VibeWare manifesto" ToolTipService.ToolTip="Read the VibeWare manifesto.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Save" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.AccessibilityView="Raw" />
+                        <TextBlock Text="VibeWare" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </HyperlinkButton>
+            </Grid>
         </StackPanel>
     </Grid>
 </Window>

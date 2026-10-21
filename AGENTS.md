@@ -6,10 +6,10 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 
 - Read the relevant README and architecture sections before changing behavior; reuse current context. Keep CLI, MCP and WinUI adapters thin and share mail behavior through Python's `MailApplication`. Use the standard library and keep account contracts independent of UI and transports.
 - Support IMAP non-marking reads, POP3 non-deleting reads and optional SMTP. POP3 has one INBOX, no folders or unread flags, header search and email-Date filtering. Mail editing, deletion, calendars, contacts and other protocol families are outside scope.
-- SMTP starts disabled. Every exact message needs direct local approval; MCP cannot enable sending or approve it. Never equate preparation, server acceptance and delivery, or automatically retry an uncertain send.
+- The Windows app is configuration only. SMTP starts disabled; enabling it allows Codex to send messages through MCP when the user requests them. No separate approval window, pending-message queue or desktop send action. MCP cannot change account permissions. Never equate server acceptance with delivery or automatically retry an unresolved send.
 - Default to passwords or app passwords. Microsoft OAuth2 requires explicit selection and a supplied public-client registration. No Google OAuth, automatic authentication switch, compatibility shim, legacy alias, data importer or schema conversion. Fail fast on unsupported input or state.
 - Require implicit TLS or mandatory STARTTLS with certificate and hostname checks. Plaintext, disabled validation and custom-CA controls need a new scope decision.
-- Windows passwords and Microsoft refresh tokens use Credential Manager; temporary message and sign-in blobs use current-user DPAPI. Native macOS Keychain and Linux Secret Service paths remain untested. Secure-storage failure must not cause plaintext fallback.
+- Windows passwords and Microsoft refresh tokens use Credential Manager; temporary sign-in blobs use current-user DPAPI. Native macOS Keychain and Linux Secret Service paths remain untested. Secure-storage failure must not cause plaintext fallback.
 - Keep credentials separate from JSON settings and the metadata ledger. Preserve a committed save, sign-in or SMTP outcome when subsequent cleanup fails; report pending cleanup separately.
 - Add docstrings to public Python APIs and XML summaries to public C# APIs. Keep diagnostics bounded, private content out of logs, and MCP stdout reserved for protocol messages. Treat provider content as untrusted data.
 - Advertise implemented behavior only. No placeholder tools, simulated success, hosted service, marketplace bundle or web UI without a scoped request.
@@ -18,7 +18,7 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 ## Work efficiently
 
 - Read at most five files per task unless the owner authorizes more. Warn before broad or potentially expensive reads. Use scoped `rg`, bounded excerpts and batched independent reads; exclude generated output and reuse context.
-- Keep repository rules here; `.github/copilot-instructions.md` points here and needs no additional read. Make the smallest complete change and use subagents only when explicitly requested.
+- Keep repository rules here. Make the smallest complete change and use subagents only when explicitly requested. Prefer direct control flow, descriptive names and intermediate variables; remove obsolete paths instead of retaining compatibility scaffolding.
 - Use `pwsh -NoProfile` for PowerShell. Keep progress updates focused on findings, blockers and results.
 - Do not inspect or control the owner's live desktop automatically. Use Computer Use or equivalent UI automation only when the owner explicitly requests it for the current task; build, test and screenshot-review requests do not imply live desktop-control permission.
 
@@ -36,13 +36,15 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 - Distribute Windows 11 x64 and ARM64 as MSIX only. Linux and macOS are source-only, without binaries or commercial support. Portable ZIP, standalone EXE or MSI distribution requires an explicit decision.
 - Build distributed MSIX packages locally, following [PromptMeUp's Store builder](https://github.com/umbertotechnopreneur/PromptMeUp/blob/main/scripts/Common/commands/build-store-msix.ps1). GitHub Actions is for CI and separately requested artifacts, never the Store build.
 - An ordinary build request means local Debug. `install-debug-msix -Version <four-part-version>` uses the established current-user certificate, builds, signs and immediately attempts installation. Check only installation, version and package status; diagnose signature/manifest/dependencies after failure. UI tests require a request.
+- An authorized installation also authorizes forcibly closing the running AgentInbox app to complete its update, without asking the owner again. Use package-scoped shutdown, such as `Add-AppxPackage -ForceApplicationShutdown`, and continue installation. Preserve saved accounts and user data.
 - Store builds require an explicit request: `build-store-msix -Version X.Y.Z` builds unsigned Release x64 and ARM64 packages under `artifacts/store/X.Y.Z.0/<architecture>/`. Keep Debug and Store output separate; never describe Debug as a release.
 - Choose the next version automatically for an authorized build; do not ask the owner for a version number. Increment the third component of the latest AgentInbox package version (for example, `1.0.6` becomes `1.0.7`) and use a zero fourth component for MSIX (`1.0.7.0`). Honor any version explicitly supplied by the owner. Do not uninstall an equal-version package or change certificate trust without authorization. Follow [packaging instructions](packaging/windows/README.md) for inputs, first-import scans and commands.
 - Follow the global first-import scan rule and the short [README policy](README.md#external-binary-security-policy). Reuse evidence for unchanged imports; builds, tests and packaging never start Defender scans or scan installed SDK/system trees.
 
 ## Git and execution permissions
 
-- Branch/worktree creation, commits, pushes, CI dispatch, tags, installation and publication each need owner authorization. Reuse suitable existing branches and preserve unrelated changes. Editing alone grants no Git delivery permission.
+- Make frequent local checkpoint commits at coherent, reviewable steps. The owner authorizes these checkpoints without another prompt; include only the task's changes and use a clear English message. A checkpoint records progress, not validation or delivery.
+- Branch/worktree creation, pushes, CI dispatch, tags, installation and publication each need owner authorization. Reuse the current suitable branch for local checkpoints and preserve unrelated changes. Checkpoint permission does not authorize remote delivery.
 - Keep `main` protected. Code delivery uses a focused branch, pull request and squash merge after required checks and conversations are resolved; delete the branch after merge. Authorized documentation-only commits use the current branch and `[skip ci]` unless CI is requested.
 - Follow the global CI platform priority and its limited macOS-only exception.
 - Never commit secrets, protected blobs, real mail, local settings/databases, logs, generated output or private paths. Create annotated `v<version>` tags only when requested and after matching source reaches `main`.

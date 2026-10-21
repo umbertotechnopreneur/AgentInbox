@@ -1,8 +1,8 @@
 # AgentInbox Terms of Use
 
-Last updated: 2026-10-19.
+Last updated: 2026-10-22.
 
-I build AgentInbox to help you read email and prepare optional sends through your chosen assistant. These terms describe its boundaries and your responsibilities.
+I build AgentInbox to help you read email and request optional sends through your chosen assistant. These terms describe its boundaries and your responsibilities.
 
 [Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/)
 
@@ -12,7 +12,7 @@ I am Umberto Giacobbi, and I maintain AgentInbox with help from contributors. Co
 
 The public source is [MIT-licensed](https://github.com/umbertotechnopreneur/AgentInbox/blob/main/LICENSE). That license governs your rights to use, copy, modify and distribute it. These terms do not remove those rights. Third-party components retain their own licenses.
 
-The current Python engine and WinUI 3 changes are in development and unvalidated. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64. Linux and macOS are source-only, without compiled distributions or commercial support. Source availability does not establish platform compatibility or Store availability.
+The Python engine and Windows configuration app are in development. See [validation](VALIDATION.md) for the checks performed on particular source snapshots. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64. Linux and macOS are source-only, without compiled distributions or commercial support. Source availability does not establish platform compatibility or Store availability.
 
 ## Authorized accounts and data
 
@@ -28,7 +28,7 @@ IMAP and POP3 reads depend on connection permissions, server behavior, search sc
 
 Password sign-in is the default. Optional Microsoft **Web authorization** requires your explicit selection and your own suitable app registration. Provider and organization rules can prevent access; no preset guarantees compatibility. AgentInbox never switches sign-in methods automatically. Connections require validated TLS or STARTTLS, without plaintext or custom-CA controls.
 
-SMTP starts disabled. Every message, including a test email, needs your local approval of its exact recipients, content and attachments. Review those details before approving; sending can disclose information to recipients and their providers.
+SMTP starts disabled. When you enable it, your connected assistant can submit email immediately through MCP. AgentInbox does not ask for a second confirmation. Specify the intended account, recipients, message and attachments before asking your assistant to send. A test email is also a real submission and can disclose information to recipients and their providers.
 
 SMTP acceptance is not proof of recipient delivery. An uncertain outcome may require checking your mailbox or provider before deciding whether to send again.
 

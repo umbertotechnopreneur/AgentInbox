@@ -3,7 +3,6 @@
 import contextlib
 import json
 import os
-import sqlite3
 import time
 import uuid
 from pathlib import Path
@@ -146,7 +145,7 @@ class Store:
                 raise ValueError()
             for reference in references:
                 self.vault._key(reference)
-                if reference.split("-", 1)[0] not in {"incoming", "smtp", "oauth", "outgoing", "signin"}:
+                if reference.split("-", 1)[0] not in {"incoming", "smtp", "oauth", "signin"}:
                     raise ValueError()
             if len(set(references)) != len(references):
                 raise ValueError()
@@ -163,40 +162,20 @@ class Store:
                 pending.append(reference)
                 changed = True
         if len(pending) > MAX_CLEANUP_REFERENCES:
-            raise MailError("cleanup_queue_full", "Retry protected-data cleanup before changing more accounts or outgoing requests.")
+            raise MailError("cleanup_queue_full", "Retry protected-data cleanup before changing more accounts.")
         if changed:
             self._atomic_json(self.cleanup_path, {"schema_version": 1, "references": pending}, MAX_SETTINGS_BYTES)
 
     def _live_references(self) -> set[str]:
-        live = {account[field] for account in self.accounts()
+        return {account[field] for account in self.accounts()
                 for field in ("incoming_secret", "smtp_secret", "oauth_secret") if account[field]}
-        outbox = Outbox(self)
-        if outbox.path.exists():
-            database = sqlite3.connect(outbox.path.as_uri() + "?mode=ro", uri=True, timeout=3)
-            try:
-                if database.execute("PRAGMA user_version").fetchone()[0] != 3:
-                    raise MailError("invalid_profile", "The outgoing ledger uses an unsupported schema.")
-                live.update("outgoing-" + row[0] for row in database.execute(
-                    "SELECT id FROM outgoing WHERE status IN ('pending_approval', 'submitting')"))
-            finally:
-                database.close()
-        return live
-
-    def _expire_outgoing_locked(self) -> None:
-        outbox = Outbox(self)
-        if outbox.path.exists():
-            with outbox.database() as database:
-                database.execute("UPDATE outgoing SET status='expired' WHERE status='pending_approval' AND expires<=?", (time.time(),))
-                database.commit()
 
     def _retry_cleanup_locked(self) -> dict:
         pending = []
         queued = []
         try:
             queued = self._cleanup_references()
-            self._expire_outgoing_locked()
             live = self._live_references()
-            retained = [reference for reference in queued if reference in live and reference.startswith("outgoing-")]
             obsolete = [reference for reference in queued if reference not in live]
             error_code = None
             deadline = time.monotonic() + 5
@@ -213,7 +192,7 @@ class Store:
                     error_code = self._cleanup_error(error)
                     break
             try:
-                self._atomic_json(self.cleanup_path, {"schema_version": 1, "references": retained + pending}, MAX_SETTINGS_BYTES)
+                self._atomic_json(self.cleanup_path, {"schema_version": 1, "references": pending}, MAX_SETTINGS_BYTES)
             except Exception as error:
                 # The previous queue remains durable, including already removed entries.
                 return self._cleanup_result(len(queued), self._cleanup_error(error))
@@ -349,155 +328,3 @@ class Store:
         """Return settings without credential references or values."""
         return {**{key: value for key, value in account.items() if not key.endswith("_secret")},
                 "microsoft_connected": bool(account.get("oauth_secret"))}
-
-
-class Outbox:
-    """Persist outgoing states, with message content kept in protected storage."""
-
-    def __init__(self, store: Store):
-        self.store = store
-        self.path = store.root / "outgoing.sqlite3"
-
-    @contextlib.contextmanager
-    def submission_lease(self, identity: str):
-        """Hold an OS lock across submission, released automatically if its process dies."""
-        self.store.vault._key("outgoing-" + identity)
-        directory = self.store.root / "submission-locks"
-        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with (directory / (identity + ".lock")).open("a+b") as stream:
-            stream.seek(0, os.SEEK_END)
-            if stream.tell() == 0:
-                stream.write(b"\0")
-                stream.flush()
-            stream.seek(0)
-            acquired = False
-            try:
-                if os.name == "nt":
-                    import msvcrt
-                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-                else:
-                    import fcntl
-                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                acquired = True
-            except OSError:
-                pass
-            try:
-                yield acquired
-            finally:
-                if acquired:
-                    stream.seek(0)
-                    if os.name == "nt":
-                        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
-                    else:
-                        fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
-
-    @contextlib.contextmanager
-    def database(self):
-        """Open the current ledger and reject unknown schemas."""
-        self.store.root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.path, timeout=3)
-        connection.row_factory = sqlite3.Row
-        try:
-            version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version == 0:
-                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1").fetchone():
-                    raise MailError("invalid_profile", "The outgoing ledger is not an empty current-format database. Use a new profile.")
-                connection.execute("CREATE TABLE IF NOT EXISTS outgoing (id TEXT PRIMARY KEY, account_id TEXT NOT NULL, revision INTEGER NOT NULL, digest TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL, status TEXT NOT NULL, error TEXT)")
-                connection.execute("PRAGMA user_version=3")
-                connection.commit()
-            elif version != 3:
-                raise MailError("invalid_profile", "The outgoing ledger uses an unsupported schema.")
-            yield connection
-        finally:
-            connection.close()
-
-    def add(self, identity: str, account: dict, digest: str, content: dict) -> dict:
-        """Create one protected request with a ten-minute review deadline."""
-        now = time.time()
-        with self.store.locked():
-            self.store._queue_cleanup_locked(["outgoing-" + identity])
-            try:
-                self.store.vault.put("outgoing-" + identity, json.dumps(content, ensure_ascii=False))
-                with self.database() as database:
-                    database.execute("BEGIN IMMEDIATE")
-                    count = database.execute("SELECT COUNT(*) FROM outgoing WHERE status='pending_approval' AND expires>?", (now,)).fetchone()[0]
-                    if count >= 20:
-                        raise MailError("pending_limit", "Review or cancel existing requests before preparing more. The limit is twenty pending messages.")
-                    database.execute("INSERT INTO outgoing VALUES (?, ?, ?, ?, ?, ?, 'pending_approval', NULL)",
-                                     (identity, account["id"], account["revision"], digest, now, now + 600))
-                    database.commit()
-            except Exception:
-                cleanup = self.store._retry_cleanup_locked()
-                if cleanup["cleanup_pending"]:
-                    raise MailError("prepare_failed_cleanup_pending", "The outgoing request was not saved. Protected-data cleanup remains pending; retry cleanup locally.") from None
-                raise
-        return self.get(identity)
-
-    def get(self, identity: str, *, cleanup: bool = True) -> dict:
-        """Read one state, expiring pending requests before returning them."""
-        self.store.vault._key("outgoing-" + identity)
-        if not self.path.exists():
-            raise MailError("request_not_found", "The outgoing request does not exist.")
-        with self.database() as database:
-            row = database.execute("SELECT * FROM outgoing WHERE id=?", (identity,)).fetchone()
-        if row is None:
-            raise MailError("request_not_found", "The outgoing request does not exist.")
-        result = dict(row)
-        if result["status"] == "pending_approval" and result["expires"] <= time.time():
-            with self.database() as database:
-                database.execute("UPDATE outgoing SET status='expired' WHERE id=? AND status='pending_approval' AND expires<=?", (identity, time.time()))
-                database.commit()
-                result = dict(database.execute("SELECT * FROM outgoing WHERE id=?", (identity,)).fetchone())
-        if result["status"] == "submitting":
-            with self.submission_lease(identity) as available:
-                if available:
-                    with self.database() as database:
-                        database.execute("UPDATE outgoing SET status='outcome_unknown', error='submission_interrupted' WHERE id=? AND status='submitting'", (identity,))
-                        database.commit()
-                        result = dict(database.execute("SELECT * FROM outgoing WHERE id=?", (identity,)).fetchone())
-        if cleanup and result["status"] in {"cancelled", "expired", "accepted_by_server", "rejected", "outcome_unknown"}:
-            result.update(self.store.cleanup_protected(["outgoing-" + identity]))
-        else:
-            result.update(self.store.cleanup_status())
-        return result
-
-    def pending(self) -> list[dict]:
-        """List the newest hundred states and attempt one bounded cleanup batch."""
-        if not self.path.exists():
-            return []
-        with self.database() as database:
-            identities = [row[0] for row in database.execute("SELECT id FROM outgoing ORDER BY created DESC LIMIT 100")]
-        records = [self.get(identity, cleanup=False) for identity in identities]
-        cleanup = self.store.retry_cleanup()
-        return [{**record, **cleanup} for record in records]
-
-    def claim(self, identity: str) -> None:
-        """Consume a pending request once, immediately before submission."""
-        with self.database() as database:
-            cursor = database.execute("UPDATE outgoing SET status='submitting' WHERE id=? AND status='pending_approval' AND expires>?", (identity, time.time()))
-            database.commit()
-            if cursor.rowcount != 1:
-                raise MailError("approval_unavailable", "This message expired or has already been handled. Prepare a new message.")
-
-    def finish(self, identity: str, status: str, error: str | None = None) -> dict:
-        """Record the observed outcome and remove protected pending content."""
-        # add() journals this reference before writing MIME; never let cleanup prevent
-        # recording a server outcome, even when the settings lock is temporarily busy.
-        with self.database() as database:
-            database.execute("UPDATE outgoing SET status=?, error=? WHERE id=? AND status='submitting'", (status, error, identity))
-            database.commit()
-            row = database.execute("SELECT * FROM outgoing WHERE id=?", (identity,)).fetchone()
-        if row is None:
-            raise MailError("request_not_found", "The outgoing request does not exist.")
-        result = dict(row)
-        result.update(self.store.cleanup_protected(["outgoing-" + identity]))
-        return result
-
-    def cancel(self, identity: str) -> dict:
-        """Cancel only an unclaimed request; an in-flight submission cannot be recalled."""
-        with self.database() as database:
-            cursor = database.execute("UPDATE outgoing SET status='cancelled' WHERE id=? AND status='pending_approval'", (identity,))
-            database.commit()
-            if cursor.rowcount != 1:
-                raise MailError("approval_unavailable", "This request is already being handled. Refresh its status; an in-flight submission cannot be cancelled.")
-        return self.get(identity)

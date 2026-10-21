@@ -67,6 +67,6 @@ Without `-TaskDirectory`, cleanup leaves output untouched. It does not wipe `art
 python -B scripts/export-plugin.py --data-dir <absolute-profile-directory>
 ```
 
-The default destination is a new `artifacts/codex-source` directory. `--output` chooses another new directory under `artifacts/`, `--python` selects an existing absolute interpreter, and `--review-app` optionally selects an existing Windows review executable. The export contains machine-specific paths, not account data or passwords. See [client setup](../docs/CODEX_SETUP.md).
+The default destination is a new `artifacts/codex-source` directory. `--output` chooses another new directory under `artifacts/`, `--python` selects an existing absolute interpreter. The export contains machine-specific paths, not account data or passwords. See [client setup](../docs/CODEX_SETUP.md).
 
 `commands/` holds dispatcher implementations. Existing `common/` utilities are retained shared helpers, not additional supported command entry points.

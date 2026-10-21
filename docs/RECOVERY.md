@@ -8,10 +8,10 @@ Gmail or iCloud can require an eligible app password. Organization rules can dis
 
 Unlock the operating-system credential store before retrying. Do not put passwords in configuration JSON. Unknown settings formats fail; create a fresh profile instead of copying previous data.
 
-Run the selected IMAP/POP3 read check and SMTP connection check separately. SMTP checks do not send mail; test messages require local approval. POP3 has only INBOX and no unread flags; an unread filter or another folder is an error, not an empty result.
+Run the selected IMAP/POP3 read check and SMTP connection check separately. SMTP checks do not send mail. A test message must be requested through Codex and is a real submission. POP3 has only INBOX and no unread flags; an unread filter or another folder is an error, not an empty result.
 
 If a send has an uncertain outcome, inspect the mailbox or ask your provider before deciding whether to send again. AgentInbox does not retry it automatically.
 
-Removing an account removes local access and stored credentials, not its original mailbox. Revoke a dedicated app password or Microsoft consent using the provider's controls when no longer needed.
+Removing an account removes local access and queues credential deletion. Complete any pending cleanup before treating deletion as finished; the original mailbox stays with the provider. Revoke a dedicated app password or Microsoft consent using the provider's controls when no longer needed.
 
 Keep private mail and passwords out of support reports. See [privacy](PRIVACY.md).

@@ -1,12 +1,12 @@
 # Lessons
 
-Keep reusable technical findings here. Repository rules belong in [AGENTS.md](../../AGENTS.md); completed work belongs in [archive](archive.md).
+Keep reusable findings here. Rules belong in [AGENTS.md](../../AGENTS.md), evidence in [validation](../../docs/VALIDATION.md).
 
-- Read the actual PromptMeUp packaging script when aligning MSIX builds. A stale instruction is not evidence of the current workflow. See [Windows packaging](../../packaging/windows/README.md).
-- Keep first-import security evidence separate from builds. Repeated scans of unchanged dependencies and installed SDK trees add delay without satisfying a new import requirement.
-- When build outputs move outside the project, exclude old `bin`/`obj` trees from source discovery. Disposable builds must not leave shared compiler processes holding their temporary files.
-- Bound protocol reads before allocating message data. A size check after parsing cannot prevent an oversized response from exhausting memory.
-- Preserve a committed account save, sign-in or SMTP outcome when protected-data cleanup fails. Report cleanup separately; an uncertain SMTP submission must not become an automatic resend.
-- Search references belong to the process that created them. Use a persistent management session when reading a search result. Packaged integrations need a stable execution alias rather than a versioned installation path.
-- Synthetic tests establish the tested application boundaries. They do not establish live-provider interoperability, native credential protection, GUI behavior or MSIX startup. Record those separately in [validation](../../docs/VALIDATION.md).
-- WinUI rejects reparenting an application-owned resource dictionary into a control. Create each TabView and its local resources together in a DataTemplate; keep the native control template. Verify actual selection contrast and page recreation at runtime, since a successful XAML build does not establish either.
+- A successful build does not establish UI behavior, native credentials, provider interoperability or delivery. Record each boundary separately.
+- Keep submission outcomes after later local failures. A missing final SMTP result is never permission to retry an email automatically.
+- Claim a caller-known request ID before SMTP. SQLite uniqueness is enough to reject duplicates; no message queue or background worker is needed.
+- Bound protocol reads before allocation. Checking size after parsing cannot prevent oversized responses from exhausting memory.
+- Search references belong to their process. Use a persistent management session for search followed by read.
+- Packaged integrations need stable execution aliases and an explicit shared profile, not versioned WindowsApps paths.
+- WinUI resource dictionaries cannot be reparented from application resources to a control. Prefer the stock TabView; build success does not establish selection contrast or page recreation.
+- Keep import scans separate from builds and reuse evidence for unchanged inputs. Exclude stale `bin`/`obj` source trees and prevent compiler servers from retaining disposable output.

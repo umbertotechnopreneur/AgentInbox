@@ -13,7 +13,6 @@ def main():
     parser.add_argument("--output", default="artifacts/codex-source")
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--data-dir", required=True)
-    parser.add_argument("--review-app", help="Optional absolute path to AgentInbox.Desktop.exe on Windows.")
     options = parser.parse_args()
     repository = Path(__file__).resolve().parents[1]
     destination = (repository / options.output).resolve()
@@ -26,11 +25,6 @@ def main():
     if not interpreter.is_absolute() or not interpreter.is_file() or not profile.is_absolute():
         parser.error("Use an existing absolute Python executable and an absolute data directory.")
     environment = {"AGENTINBOX_DATA_DIR": str(profile.resolve())}
-    if options.review_app:
-        review = Path(options.review_app)
-        if not review.is_absolute() or not review.is_file() or review.name.lower() != "agentinbox.desktop.exe":
-            parser.error("The review application must be an existing absolute AgentInbox.Desktop.exe path.")
-        environment["AGENTINBOX_REVIEW_APP"] = str(review.resolve())
     templates = repository / "integrations" / "codex"
     plugin = destination / "plugins" / "agentinbox"
     try:
@@ -53,19 +47,18 @@ def main():
         shutil.copyfile(repository / "LICENSE", plugin / "LICENSE")
         (plugin / "README.md").write_text(
             "# AgentInbox local Python plugin\n\n"
-            "IMAP or POP3 reads and optional SMTP messages with individual local approval. "
+            "IMAP or POP3 reads and SMTP sends requested through your assistant. "
             "Password is the default; Microsoft OAuth2 requires explicit selection and a suitable public-client app registration. "
             "Authentication never switches automatically, and Google OAuth is not included. "
             "Configure the chosen profile in the local setup app before use. "
-            "The interpreter and optional review-app paths are specific to this installation. "
+            "The interpreter and profile paths are specific to this installation. "
             "Keep passwords and tokens out of plugin configuration.\n\n"
             "POP3 exposes INBOX only, has no unread flags or server folders, and searches headers using email Date values. "
             "TLS or required STARTTLS always validates certificates and hostnames; there is no plaintext mode or custom-CA setting.\n\n"
             "Source preview: client, operating-system and live-provider validation are still required. "
-            "Windows credentials use Credential Manager; temporary message and sign-in blobs use DPAPI. "
+            "Windows credentials use Credential Manager; temporary Microsoft sign-in blobs use DPAPI. "
             "Native macOS Keychain and Linux Secret Service paths remain untested; contributor improvements through pull requests are welcome. "
-            "Without the Windows review app, review a pending request using "
-            "`python -B python/run.py review <request-id>` in a local graphical session with tkinter.\n\n"
+            "The Windows app only configures connections. Sending through MCP has no separate app confirmation.\n\n"
             "Before importing or running external libraries or binaries, scan their archives and "
             "extracted files with an explicit targeted Microsoft Defender scan. "
             "Record the official source, version or SHA-256, command and completed clean result. "

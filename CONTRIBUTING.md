@@ -6,7 +6,7 @@ Use Python 3.11+ for the engine. Windows setup also needs the SDK in `global.jso
 
 Write code, comments and docs in English. Use synthetic `example.test` accounts. Keep credentials, private mail and machine-specific settings out of issues and pull requests.
 
-Keep mail behavior in Python. Reject unsupported settings, use protected credential storage and preserve local approval for each send. Do not add compatibility shims or previous-data import.
+Keep mail behavior in Python. Reject unsupported settings, use protected credential storage and require enabled SMTP, retain send outcomes and prevent automatic retries. Do not add compatibility shims or previous-data import.
 
 macOS Keychain and Linux Secret Service paths are implemented through native interfaces but have not been tested. Pull requests that improve these paths or document reproducible platform validation are welcome. Keep IMAP/POP3/SMTP behavior, password defaults and explicit Microsoft sign-in boundaries consistent across platforms.
 

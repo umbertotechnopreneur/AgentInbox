@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -77,7 +78,6 @@ class MailApplicationCase(unittest.TestCase):
             "agentinbox.pop.pop_connection",
             side_effect=AssertionError("Unexpected POP3 connection."),
         )
-        self._patch("agentinbox.application.MailApplication._open_review")
         self.app = MailApplication(self.root)
         self.draft = {
             "id": "",
@@ -133,15 +133,16 @@ class MailApplicationCase(unittest.TestCase):
         self.draft = draft
         return self.account
 
-    def prepare(self, **changes):
+    def send(self, **changes):
         arguments = {
+            "request_id": uuid.uuid4().hex,
             "account_id": self.account["id"],
             "to": ["reader@example.test"],
             "subject": "Synthetic message",
             "body": "A message created only for this isolated test.",
         }
         arguments.update(changes)
-        return self.app.prepare_email(**arguments)
+        return self.app.send_email(**arguments)
 
 
 class ScriptedSmtp:

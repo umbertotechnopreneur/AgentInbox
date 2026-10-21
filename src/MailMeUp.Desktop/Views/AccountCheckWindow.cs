@@ -11,7 +11,7 @@ using Windows.Graphics;
 
 namespace MailMeUp.Desktop.Views;
 
-/// <summary>Presents actual connection progress and explicit folder choices in an owned Mica window.</summary>
+/// <summary>Presents actual connection progress and explicit folder choices in an owned Acrylic window.</summary>
 internal sealed class AccountCheckWindow : Window, IDisposable
 {
     private readonly CancellationTokenSource _stop = new();
@@ -20,26 +20,28 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     private readonly Dictionary<string, TextBlock> _stages = new(StringComparer.Ordinal);
     private readonly ProgressRing _ring = new() { IsActive = true, Width = 28, Height = 28 };
     private readonly TextBlock _heading = new() { Text = "Checking your account", FontSize = 24, TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _message = new() { Text = "Please wait while I check the connection and sign-in.", TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _message = new() { Text = "Please wait while I check the connection and sign-in.", TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private readonly TextBlock _folderHeading = new() { Text = "Choose folders for your assistant", Visibility = Visibility.Collapsed };
     private readonly ListView _folders = new() { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 180, Visibility = Visibility.Collapsed };
     private readonly CheckBox _readSample = new() { Content = "Also test reading one message", Visibility = Visibility.Collapsed };
     private readonly Button _primary = new() { Visibility = Visibility.Collapsed, MinWidth = 112 };
     private readonly Button _close = new() { Content = "Cancel", MinWidth = 100 };
     private readonly bool _saveAccount;
+    private readonly bool _smtpOnly;
     private bool _working = true;
     private bool _saving;
     private bool _closeWhenReady;
     private bool _isClosed;
-    private bool _completed;
     private string? _activeStage;
 
     /// <summary>Creates a modal, DPI-aware progress window without performing mail or storage work.</summary>
-    internal AccountCheckWindow(Window owner, bool smtp, bool saveAccount)
+    internal AccountCheckWindow(Window owner, bool smtp, bool saveAccount, bool smtpOnly = false)
     {
         _saveAccount = saveAccount;
+        _smtpOnly = smtpOnly;
+        if (smtpOnly) _heading.Text = "Checking SMTP connection";
         Title = "AgentInbox";
-        SystemBackdrop = new MicaBackdrop();
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         var root = new Grid { Padding = new Thickness(24), RowSpacing = 18 };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -52,14 +54,17 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         heading.Children.Add(_heading);
         root.Children.Add(heading);
         var body = new StackPanel { Spacing = 14 };
-        AddStage(body, "settings", "Account settings");
+        AddStage(body, "settings", smtpOnly ? "SMTP settings" : "Account settings");
         AddStage(body, "connection", "Secure connection");
         AddStage(body, "authentication", "Sign-in");
-        AddStage(body, "folders", "Server folders");
-        AddStage(body, "reading", "Read one message (optional)");
-        _stages["reading"].Text = "Not requested";
-        if (smtp) AddStage(body, "smtp", "SMTP connection and sign-in");
-        if (saveAccount) AddStage(body, "save", "Save account");
+        if (!smtpOnly)
+        {
+            AddStage(body, "folders", "Server folders");
+            AddStage(body, "reading", "Read one message (optional)");
+            _stages["reading"].Text = "Not requested";
+            if (smtp) AddStage(body, "smtp", "SMTP connection and sign-in");
+            if (saveAccount) AddStage(body, "save", "Save account");
+        }
         body.Children.Add(_folderHeading);
         body.Children.Add(_folders);
         body.Children.Add(_readSample);
@@ -69,7 +74,12 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         root.Children.Add(scroll);
         var footer = new StackPanel { Spacing = 14 };
         footer.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"] });
-        footer.Children.Add(_message);
+        footer.Children.Add(new ScrollViewer
+        {
+            Content = _message, MaxHeight = 220,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        });
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
         _primary.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         actions.Children.Add(_primary);
@@ -83,13 +93,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         root.Children.Add(footer);
         Content = root;
         AutomationProperties.SetName(_folders, "Folders available to your assistant");
-        SetButtonDescription(_close, "Cancel this check without saving an account.");
+        SetButtonDescription(_close, "Cancel this check without saving settings or sending an email.");
         _close.Click += (_, _) => CancelOrClose();
-        _primary.Click += (_, _) =>
-        {
-            if (_completed) { TestEmailRequested = true; Close(); }
-            else ChooseFolders();
-        };
+        _primary.Click += (_, _) => ChooseFolders();
         _readSample.Checked += (_, _) => UpdatePrimaryText();
         _readSample.Unchecked += (_, _) => UpdatePrimaryText();
         ToolTipService.SetToolTip(_readSample, "Read one bounded sample from the first selected folder. IMAP keeps its read status; POP3 sends no delete commands. No message content is saved or returned.");
@@ -121,7 +127,6 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     internal Task ClosedTask => _closed.Task;
     internal Task<string[]?> FolderSelection => _selection.Task;
     internal bool ReadMessageRequested => _readSample.IsChecked == true;
-    internal bool TestEmailRequested { get; private set; }
 
     /// <summary>Updates only a recognized stage from an actual engine or save result.</summary>
     internal void Report(AccountCheckProgress progress)
@@ -186,24 +191,22 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     }
 
     /// <summary>Shows the final verified outcome and keeps the window open until the owner closes it.</summary>
-    internal void Complete(bool succeeded, string message, bool offerTestEmail = false)
+    internal void Complete(bool succeeded, string message)
     {
         if (_isClosed) return;
         if (!succeeded && _activeStage is not null) _stages[_activeStage].Text = "Failed";
         _working = false;
         _saving = false;
-        _completed = true;
         _ring.IsActive = false;
-        _heading.Text = succeeded ? (_saveAccount ? "Account added" : "Account check complete") : "Account check stopped";
+        _heading.Text = _smtpOnly
+            ? succeeded ? "SMTP check complete" : "SMTP check stopped"
+            : succeeded ? (_saveAccount ? "Account added" : "Account check complete") : "Account check stopped";
         _message.Text = message;
-        _primary.Visibility = succeeded && offerTestEmail ? Visibility.Visible : Visibility.Collapsed;
-        _primary.Content = "Send a test email…";
-        _primary.IsEnabled = true;
-        SetButtonDescription(_primary, "Choose a recipient, then review and explicitly approve a test email. Nothing is sent by this button alone.");
+        _primary.Visibility = Visibility.Collapsed;
         _folders.IsEnabled = false;
         _close.Content = "Close";
         _close.IsEnabled = true;
-        SetButtonDescription(_close, "Close the account check window.");
+        SetButtonDescription(_close, "Close the connection check window.");
         _close.Focus(FocusState.Programmatic);
         if (_closeWhenReady) Close();
     }

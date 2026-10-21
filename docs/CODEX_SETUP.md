@@ -4,11 +4,11 @@ AgentInbox supplies a Python MCP server. Guided Codex configuration passed isola
 
 ## Installed Windows app
 
-Open **Connect assistant**. AgentInbox detects the native Codex CLI, including the copy supplied by the Codex Windows app, and shows the configuration it can update. Press **Connect Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. Other settings remain intact; a changed detection snapshot requires another check.
+Open **Your assistant**. AgentInbox detects the native Codex CLI, including the copy supplied by the Codex Windows app, and shows the configuration it can update. Press **Connect to Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. Other settings remain intact; a changed detection snapshot requires another check.
 
 The app prepares the change in a temporary Codex home and uses the installed CLI to edit its own TOML. It then replaces the configuration atomically. No mail server is started during setup. Python is included in the MSIX; you do not need to install it separately.
 
-Start a new Codex task after saving. A saved configuration is not proof that the assistant has connected or accessed a mailbox. If Codex cannot be detected, open or update Codex and refresh detection, or use **Advanced setup** for manual configuration and other MCP clients. See the [official Codex MCP commands](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+Start a new Codex task after saving. A saved configuration is not proof that the assistant has connected or accessed a mailbox. If Codex cannot be detected, open or update Codex and refresh detection, or use **Manual setup and troubleshooting** for manual configuration and other MCP clients. See the [official Codex MCP commands](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, with these separate arguments:
 
@@ -16,7 +16,7 @@ The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\
 -B -m agentinbox mcp
 ```
 
-The configuration sets `AGENTINBOX_DATA_DIR` to the app's physical profile. It does not save a versioned package path or `AGENTINBOX_REVIEW_APP`. The engine locates the current installed review app when it needs native approval. Keep the execution alias enabled in Windows app execution aliases settings.
+The configuration sets `AGENTINBOX_DATA_DIR` to the app's physical profile. Keep the execution alias enabled in Windows app execution aliases settings.
 
 ## Source checkout
 
@@ -34,7 +34,7 @@ Configure accounts locally first. The MCP process must use the same profile; an 
 
 Start a new client session after changing its configuration. List accounts, search one account in a short date range, then read a selected message. Process startup does not prove client integration or mailbox access works.
 
-Sending requires local SMTP enablement and separate local approval for every prepared message. The assistant cannot approve its own send.
+Sending requires SMTP to be enabled in Windows setup. Codex submits an explicitly requested message immediately through `send_email`; AgentInbox does not open another approval window. Keep the request ID to check unresolved outcomes, and never retry them automatically.
 
 See [MCP tools](MCP_CONTRACT.md) and [privacy](PRIVACY.md).
 
@@ -46,7 +46,7 @@ The files under `integrations/codex` are source templates. When source packaging
 python -B scripts/export-plugin.py --data-dir <absolute-profile-directory>
 ```
 
-Use `--python <absolute-interpreter>` if the client should use a different Python installation. On Windows, `--review-app <absolute-AgentInbox.Desktop.exe>` enables automatic opening of the local review window. Without it, open the app's Outgoing page manually, or use the local `review` command with tkinter.
+Use `--python <absolute-interpreter>` if the client should use a different Python installation. The engine has no GUI dependency; the Windows app is only for configuration.
 
 The exporter writes only to a new `artifacts/codex-source` directory. It copies project source, sets the interpreter and profile paths, and includes no passwords, account data or runtime binaries. Do not publish this machine-specific configuration. It does not install or validate the plugin.
 

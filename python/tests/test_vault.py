@@ -34,7 +34,7 @@ class WindowsVaultRoutingTests(MailApplicationCase):
         def fake_dpapi(value, *, protect):
             return b"synthetic-protected:" + value if protect else value.removeprefix(b"synthetic-protected:")
 
-        for prefix in ("outgoing", "signin"):
+        for prefix in ("signin",):
             with self.subTest(prefix=prefix):
                 key = prefix + "-" + "b" * 32
                 path = protected.root / (key + ".bin")

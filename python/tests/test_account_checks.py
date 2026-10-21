@@ -5,6 +5,7 @@ import copy
 import io
 import imaplib
 import json
+import smtplib
 import ssl
 import unittest
 from types import SimpleNamespace
@@ -57,6 +58,61 @@ class AccountCheckTests(MailApplicationCase):
         self.assertEqual("password_required", failure.exception.code)
         self.imap.assert_not_called()
 
+    def test_draft_smtp_check_needs_no_incoming_password_save_or_send_permission(self):
+        draft = copy.deepcopy(self.draft)
+        draft.update(id="", send_enabled=False)
+        settings = self.app.store.settings.read_bytes()
+        secrets = dict(self.vault.values)
+        self.smtp.side_effect = lambda *args, **kwargs: contextlib.nullcontext(object())
+        result = self.app.manage("check_smtp", {
+            "account": draft, "passwords": {"incoming": "", "smtp": "synthetic-draft-smtp"},
+            "expected_revision": None,
+        })
+        self.assertEqual({"connection": "passed", "authentication": "passed", "saved": False, "sent": False}, result)
+        self.assertEqual(settings, self.app.store.settings.read_bytes())
+        self.assertEqual(secrets, self.vault.values)
+        self.smtp.assert_called_once_with(draft["smtp"], password="synthetic-draft-smtp", progress=None)
+        self.imap.assert_not_called()
+        self.pop.assert_not_called()
+
+    def test_smtp_check_reuses_only_the_unchanged_saved_connection_password(self):
+        self.smtp.side_effect = lambda *args, **kwargs: contextlib.nullcontext(object())
+        arguments = {"account": copy.deepcopy(self.draft), "passwords": {"incoming": "", "smtp": ""},
+                     "expected_revision": self.account["revision"]}
+        self.app.manage("check_smtp", arguments)
+        self.smtp.assert_called_once_with(self.draft["smtp"], password="synthetic-smtp-password", progress=None)
+        self.smtp.reset_mock()
+        arguments["account"]["smtp"]["host"] = "other.example.test"
+        with self.assertRaises(MailError) as failure:
+            self.app.manage("check_smtp", arguments)
+        self.assertEqual("password_required", failure.exception.code)
+        self.smtp.assert_not_called()
+        self.imap.assert_not_called()
+
+    def test_stale_smtp_draft_cannot_connect(self):
+        with self.assertRaises(MailError) as failure:
+            self.app.manage("check_smtp", {
+                "account": self.draft, "passwords": {"incoming": "", "smtp": ""},
+                "expected_revision": self.account["revision"] + 1,
+            })
+        self.assertEqual("configuration_changed", failure.exception.code)
+        self.smtp.assert_not_called()
+
+    def test_local_management_error_includes_server_detail_without_changing_public_errors(self):
+        error = MailError("authentication_failed", "Sign-in failed.", server_response="SMTP: 535 Access disabled")
+        request = {"operation": "check_smtp", "arguments": {
+            "account": self.draft, "passwords": {"incoming": "", "smtp": ""},
+            "expected_revision": self.account["revision"],
+        }}
+        stream = io.BytesIO((json.dumps(request) + "\n").encode())
+        records = []
+        self.smtp.side_effect = error
+        with mock.patch.object(cli.sys, "stdin", SimpleNamespace(buffer=stream)), \
+             mock.patch.object(cli, "write", side_effect=records.append):
+            self.assertEqual(1, cli.manage(self.app, False))
+        self.assertEqual(error.server_response, records[0]["error"]["server_response"])
+        self.assertNotIn("server_response", error.result())
+
     def test_stale_revision_blocks_check_before_any_connection(self):
         with self.assertRaises(MailError) as failure:
             self.app.manage("check_account", {
@@ -64,6 +120,22 @@ class AccountCheckTests(MailApplicationCase):
                 "expected_revision": self.account["revision"] + 1,
             })
         self.assertEqual("configuration_changed", failure.exception.code)
+        self.imap.assert_not_called()
+
+    def test_smtp_management_progress_stops_at_invalid_settings_without_connecting(self):
+        request = {"operation": "check_smtp", "progress": True, "arguments": {
+            "account": self.draft, "passwords": {"incoming": "", "smtp": ""},
+            "expected_revision": self.account["revision"] + 1,
+        }}
+        stream = io.BytesIO((json.dumps(request) + "\n").encode())
+        records = []
+        with mock.patch.object(cli.sys, "stdin", SimpleNamespace(buffer=stream)), \
+             mock.patch.object(cli, "write", side_effect=records.append):
+            self.assertEqual(1, cli.manage(self.app, False))
+        self.assertEqual(2, len(records))
+        self.assertEqual({"progress": {"stage": "settings", "state": "started"}}, records[0])
+        self.assertEqual("configuration_changed", records[1]["error"]["code"])
+        self.smtp.assert_not_called()
         self.imap.assert_not_called()
 
     def test_management_progress_is_opt_in_and_contains_only_stage_metadata(self):
@@ -194,3 +266,43 @@ class ConnectionProgressTests(unittest.TestCase):
                     self.fail("Rejected credentials must prevent authenticated work.")
         self.assertEqual("authentication_failed", failure.exception.code)
         self.assertEqual([("connection", "started"), ("connection", "passed"), ("authentication", "started")], updates)
+
+    def test_smtp_progress_requires_verified_tls_and_accepted_authentication(self):
+        for tls in ("tls", "starttls"):
+            for failure_stage in (None, "connection", "authentication"):
+                with self.subTest(tls=tls, failure_stage=failure_stage):
+                    updates = []
+                    settings = {"host": "smtp.example.test", "port": 465 if tls == "tls" else 587,
+                                "tls": tls, "username": "reader@example.test"}
+                    connection = mock.Mock()
+                    tls_error = ssl.SSLError("Synthetic certificate failure.")
+                    if failure_stage == "connection" and tls == "starttls":
+                        connection.starttls.side_effect = tls_error
+                    if failure_stage == "authentication":
+                        connection.login.side_effect = smtplib.SMTPAuthenticationError(535, b"5.7.8 Access denied")
+                    factory = "_SMTPSSL" if tls == "tls" else "_SMTP"
+                    with mock.patch.object(mail, factory, return_value=connection,
+                                           side_effect=tls_error if failure_stage == "connection" and tls == "tls" else None):
+                        def check():
+                            with mail.smtp_connection(settings, "synthetic-password",
+                                                      progress=lambda stage, state: updates.append((stage, state))):
+                                self.assertEqual(("authentication", "passed"), updates[-1])
+                        if failure_stage:
+                            with self.assertRaises(MailError) as failure:
+                                check()
+                            self.assertEqual("tls_failed" if failure_stage == "connection" else "authentication_failed",
+                                             failure.exception.code)
+                        else:
+                            check()
+                    expected = [("connection", "started")]
+                    if failure_stage != "connection":
+                        expected += [("connection", "passed"), ("authentication", "started")]
+                        connection.login.assert_called_once_with(settings["username"], "synthetic-password")
+                    else:
+                        connection.login.assert_not_called()
+                    if failure_stage is None:
+                        expected.append(("authentication", "passed"))
+                    self.assertEqual(expected, updates)
+                    connection.sendmail.assert_not_called()
+                    if failure_stage != "connection" or tls == "starttls":
+                        connection.close.assert_called_once()

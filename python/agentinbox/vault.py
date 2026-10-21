@@ -13,20 +13,20 @@ from .errors import MailError
 
 
 class Vault:
-    """Protect credentials and pending messages using the current user's OS facilities."""
+    """Protect credentials and temporary sign-in data using the current user's OS facilities."""
 
     def __init__(self, root: Path):
         self.root = root / "protected"
 
     def _key(self, key: str) -> str:
-        if not re.fullmatch(r"[a-z]+-[a-f0-9]{32}", key):
+        if not re.fullmatch(r"(?:incoming|smtp|oauth|signin)-[a-f0-9]{32}", key):
             raise MailError("invalid_reference", "Invalid protected-storage reference.")
         return key
 
     def put(self, key: str, value: str) -> None:
         """Protect a value before making it available to an account or request."""
         key = self._key(key)
-        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+        if sys.platform == "win32" and not key.startswith("signin-"):
             self._wincred(key, value.encode("utf-8"))
         elif sys.platform == "win32":
             self.root.mkdir(parents=True, exist_ok=True)
@@ -49,7 +49,7 @@ class Vault:
     def get(self, key: str) -> str:
         """Read one protected value without exposing backend error details."""
         key = self._key(key)
-        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+        if sys.platform == "win32" and not key.startswith("signin-"):
             return self._wincred(key).decode("utf-8")
         if sys.platform == "win32":
             try:
@@ -63,7 +63,7 @@ class Vault:
     def delete(self, key: str) -> None:
         """Remove a protected value, failing if the secure store cannot be reached."""
         key = self._key(key)
-        if sys.platform == "win32" and not key.startswith(("outgoing-", "signin-")):
+        if sys.platform == "win32" and not key.startswith("signin-"):
             self._wincred(key, delete=True)
         elif sys.platform == "win32":
             (self.root / (key + ".bin")).unlink(missing_ok=True)

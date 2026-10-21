@@ -1,25 +1,20 @@
 """Shared application behavior for the MCP and local setup adapters."""
 
-import base64
 import datetime as dt
 import email.policy
 import email.utils
-import hashlib
-import json
 import mimetypes
-import os
 import secrets
-import subprocess
 import sys
 import time
-import uuid
 from email.message import EmailMessage
 from pathlib import Path
 
 from . import mail, pop
-from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, SCHEMA_VERSION, account_input, address, flag, text, windows_package_family
+from .config import MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_RECIPIENTS, PRESETS, SCHEMA_VERSION, account_input, address, flag, text
 from .errors import MailError
-from .storage import Outbox, Store
+from .storage import Store
+from .sending import SendLedger, request_identity
 from .microsoft import MicrosoftAuth
 
 
@@ -28,7 +23,7 @@ class MailApplication:
 
     def __init__(self, root: Path):
         self.store = Store(root)
-        self.outbox = Outbox(self.store)
+        self.sends = SendLedger(root)
         self.microsoft = MicrosoftAuth(self.store)
         self.references = {}
         self.continuations = {}
@@ -56,13 +51,13 @@ class MailApplication:
     def _send_account(self, identity: str, revision: int | None = None) -> dict:
         account = self.store.account(identity)
         if not account["send_enabled"] or account["smtp"] is None:
-            raise MailError("sending_disabled", "Enable SMTP for this account in local setup before preparing mail.")
+            raise MailError("sending_disabled", "Enable SMTP for this account in Windows setup before sending mail.")
         if revision is not None and account["revision"] != revision:
-            raise MailError("configuration_changed", "The account settings changed. Prepare a new message and review it again.")
+            raise MailError("configuration_changed", "The account settings changed before submission. Check the account before sending again.")
         return account
 
     def list_accounts(self) -> dict:
-        """List only accounts enabled for assistant reading or approved sending."""
+        """List only accounts enabled for assistant reading or sending."""
         return {"accounts": [{"id": item["id"], "label": item["label"], "email": item["email"],
                               "read_enabled": item["read_enabled"], "send_enabled": item["send_enabled"],
                               "incoming_protocol": item["incoming"]["protocol"],
@@ -172,13 +167,11 @@ class MailApplication:
         result.pop("uid", None)
         return {"account_id": account["id"], **result}
 
-    def prepare_email(self, account_id: str, to: list[str], subject: str, body: str,
-                      cc: list[str] | None = None, bcc: list[str] | None = None,
-                      attachments: list[str] | None = None) -> dict:
-        """Freeze a message locally; preparation never submits it to SMTP."""
-        account = self._send_account(account_id)
-        if sum(item["status"] == "pending_approval" for item in self.outbox.pending()) >= 20:
-            raise MailError("pending_limit", "Review or cancel existing outgoing requests before preparing more. The limit is twenty pending messages.")
+    @staticmethod
+    def _compose_message(account: dict, to: list[str], subject: str, body: str,
+                         cc: list[str] | None, bcc: list[str] | None,
+                         attachments: list[str] | None) -> tuple[list[str], bytes]:
+        """Validate recipients and snapshot bounded attachment bytes into an in-memory MIME message."""
         groups = []
         for group in (to, [] if cc is None else cc, [] if bcc is None else bcc):
             if not isinstance(group, list) or len(group) > MAX_RECIPIENTS:
@@ -202,7 +195,7 @@ class MailApplication:
         message["Date"] = email.utils.format_datetime(dt.datetime.now(dt.timezone.utc))
         message["Message-ID"] = email.utils.make_msgid(domain=account["email"].split("@", 1)[1])
         message.set_content(body, cte="quoted-printable")
-        included, total = [], 0
+        total = 0
         for supplied in paths:
             if not isinstance(supplied, str):
                 raise MailError("invalid_attachment", "Attachment paths must be strings.")
@@ -218,102 +211,49 @@ class MailApplication:
             content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
             major, minor = content_type.split("/", 1)
             message.add_attachment(content, maintype=major, subtype=minor, filename=name)
-            included.append({"name": name, "size": len(content), "sha256": hashlib.sha256(content).hexdigest()})
-        frozen = {"from": account["email"], "to": groups[0], "cc": groups[1], "bcc": groups[2],
-                  "subject": subject, "body": body, "attachments": included, "recipients": recipients,
-                  "mime": base64.b64encode(message.as_bytes()).decode("ascii")}
-        serialized = json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode("utf-8")
-        request_id = uuid.uuid4().hex
-        self.outbox.add(request_id, account, hashlib.sha256(serialized).hexdigest(), frozen)
-        review_error = None
-        try:
-            self._open_review(request_id)
-        except MailError as error:
-            review_error = error.code
-        return {"request_id": request_id, "status": "pending_approval", "expires_in_seconds": 600,
-                "review_error": review_error,
-                "message": "Open AgentInbox Outgoing to review and approve this exact message. Nothing has been sent."}
+        return recipients, message.as_bytes()
 
-    def _open_review(self, request_id: str) -> bool:
-        executable = os.environ.get("AGENTINBOX_REVIEW_APP")
-        if not executable and windows_package_family():
-            # Resolve the current package, never a versioned path saved by an older installation.
-            executable = str(Path(__file__).resolve().parents[2] / "AgentInbox.Desktop.exe")
-        if executable:
-            path = Path(executable)
-            if path.is_absolute() and path.is_file() and path.name.lower() == "agentinbox.desktop.exe":
-                try:
-                    subprocess.Popen([str(path), "--review", request_id], stdin=subprocess.DEVNULL,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-                    return True
-                except OSError:
-                    # The durable request remains visible for manual review in the app.
-                    pass
-        return False
-
-    def open_review(self, request_id: str) -> dict:
-        """Request native local review without approving or submitting the message."""
-        record = self.outbox.get(request_id)
-        if record["status"] != "pending_approval":
-            raise MailError("approval_unavailable", "This request is no longer awaiting approval.")
-        self._send_account(record["account_id"], record["revision"])
-        if not self._open_review(request_id):
-            raise MailError("review_unavailable", "The local review app could not be opened. Use AgentInbox Outgoing mail; nothing was sent.")
-        return {"request_id": request_id, "status": "pending_approval", "review_requested": True}
-
-    def review_snapshot(self, request_id: str) -> tuple[dict, dict]:
-        """Load the exact pending snapshot for a private local review session."""
-        record = self.outbox.get(request_id)
-        if record["status"] != "pending_approval":
-            raise MailError("approval_unavailable", "This request is no longer awaiting approval.")
-        self._send_account(record["account_id"], record["revision"])
-        frozen = json.loads(self.store.vault.get("outgoing-" + request_id))
-        actual = hashlib.sha256(json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
-        if not secrets.compare_digest(actual, record["digest"]):
-            raise MailError("message_changed", "The protected message does not match its request. Prepare a new message.")
-        return record, frozen
-
-    def send_reviewed(self, record: dict, frozen: dict, approved: bool) -> dict:
-        """Complete a private review interaction; this method is never an MCP tool."""
-        flag(approved, "Approval")
-        identity = record["id"]
-        if not approved:
-            return self.outbox.cancel(identity)
-        account = self._send_account(record["account_id"], record["revision"])
+    def send_email(self, request_id: str, account_id: str, to: list[str], subject: str, body: str,
+                   cc: list[str] | None = None, bcc: list[str] | None = None,
+                   attachments: list[str] | None = None) -> dict:
+        """Send the assistant's explicit request once, with no separate desktop confirmation."""
+        identity = request_identity(request_id)
+        account = self._send_account(account_id)
+        recipients, content = self._compose_message(account, to, subject, body, cc, bcc, attachments)
         credentials = self._credentials(account, "smtp")
-        # Freeze review content in memory; verify the current record before consuming it.
-        current, current_message = self.review_snapshot(identity)
-        if current["digest"] != record["digest"] or current_message != frozen:
-            raise MailError("message_changed", "The message changed. Review a new request.")
-        with self.outbox.submission_lease(identity) as acquired:
-            if not acquired:
-                raise MailError("approval_unavailable", "Another review is already submitting this message.")
-            self.outbox.claim(identity)
-            try:
-                outcome = mail.submit(account["smtp"], credentials["password"], frozen["from"], frozen["recipients"],
-                                      base64.b64decode(frozen["mime"], validate=True),
-                                      lambda: self._send_account(account["id"], account["revision"]),
-                                      **{key: value for key, value in credentials.items() if key != "password"})
-            except MailError as error:
-                return self.outbox.finish(identity, "rejected", error.code)
-            except Exception:
-                return self.outbox.finish(identity, "outcome_unknown", "submission_interrupted")
-            return self.outbox.finish(identity, outcome)
+        self.sends.begin(identity, account_id)
+        error_code = None
+        try:
+            access_token = credentials.get("access_token")
+            outcome = mail.submit(account["smtp"], credentials["password"], account["email"], recipients, content,
+                                  lambda: self._send_account(account_id, account["revision"]), access_token=access_token)
+        except MailError as error:
+            outcome, error_code = "rejected", error.code
+        except Exception:
+            outcome, error_code = "outcome_unknown", "submission_interrupted"
+        try:
+            record = self.sends.finish(identity, outcome, error_code)
+            return self._send_result(record)
+        except Exception:
+            # A local disk failure must not erase an already observed SMTP outcome.
+            return {"request_id": identity, "status": outcome, "error": error_code,
+                    "delivery_confirmed": False, "status_recorded": False,
+                    "record_error": "The send result could not be saved. Do not resend automatically."}
+
+    @staticmethod
+    def _send_result(record: dict) -> dict:
+        result = {"request_id": record["id"], "status": record["status"], "error": record["error"],
+                  "delivery_confirmed": False, "status_recorded": True}
+        if record["status"] == "submitting":
+            result["notice"] = "No final SMTP result has been recorded. The operation may still be running or may have stopped. Do not resend automatically."
+        return result
 
     def get_send_status(self, request_id: str) -> dict:
         """Report server acceptance separately from end-to-end delivery."""
-        record = self.outbox.get(request_id)
-        self._send_account(record["account_id"])
-        return {"request_id": record["id"], "status": record["status"], "error": record["error"],
-                **{key: record[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error") if key in record},
-                "delivery_confirmed": False}
+        return self._send_result(self.sends.get(request_id))
 
-    def check_account(self, value: dict, passwords: dict, expected_revision: int | None, progress=None, *, read_message=False) -> dict:
-        """Check current settings, discover folders and optionally test one read without saving or sending."""
-        if progress:
-            progress("settings", "started")
+    def _check_credentials(self, value, passwords, expected_revision, protocols):
         account = account_input(value)
-        read_message = flag(read_message, "Reading a sample")
         if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(
             not isinstance(secret, str) or len(secret) > 4096 or any(c in secret for c in "\0\r\n")
             for secret in passwords.values()
@@ -335,7 +275,7 @@ class MailApplication:
             token = self.microsoft.access_token(previous)
             credentials = {protocol: {"password": "", "access_token": token} for protocol in ("incoming", "smtp")}
         else:
-            for protocol in ("incoming", "smtp"):
+            for protocol in protocols:
                 if account[protocol] is None:
                     continue
                 secret = passwords[protocol]
@@ -344,6 +284,26 @@ class MailApplication:
                 if not secret:
                     raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
                 credentials[protocol] = {"password": secret}
+        return account, credentials
+
+    def check_smtp(self, value: dict, passwords: dict, expected_revision: int | None, progress=None) -> dict:
+        """Check only current-form SMTP authentication without saving, reading or enabling sending."""
+        if progress:
+            progress("settings", "started")
+        account, credentials = self._check_credentials(value, passwords, expected_revision, ("smtp",))
+        if account["smtp"] is None:
+            raise MailError("smtp_not_configured", "Configure an SMTP server before checking its connection.")
+        if progress:
+            progress("settings", "passed")
+        with mail.smtp_connection(account["smtp"], **credentials["smtp"], progress=progress):
+            return {"connection": "passed", "authentication": "passed", "saved": False, "sent": False}
+
+    def check_account(self, value: dict, passwords: dict, expected_revision: int | None, progress=None, *, read_message=False) -> dict:
+        """Check current settings, discover folders and optionally test one read without saving or sending."""
+        if progress:
+            progress("settings", "started")
+        read_message = flag(read_message, "Reading a sample")
+        account, credentials = self._check_credentials(value, passwords, expected_revision, ("incoming", "smtp"))
         if progress:
             progress("settings", "passed")
         connect = pop.pop_connection if account["incoming"]["protocol"] == "pop3" else mail.imap_connection
@@ -384,7 +344,7 @@ class MailApplication:
         if operation == "profile_info" and not arguments:
             protection = "Windows Credential Manager" if sys.platform == "win32" else "macOS Keychain" if sys.platform == "darwin" else "Linux Secret Service"
             return {"schema_version": SCHEMA_VERSION, "data_directory": str(self.store.root),
-                    "settings_file": str(self.store.settings), "outgoing_ledger": str(self.outbox.path),
+                    "settings_file": str(self.store.settings), "outgoing_ledger": str(self.sends.path),
                     "cleanup_queue_file": str(self.store.cleanup_path),
                     "temporary_protected_directory": str(self.store.root / "protected"),
                     "credential_store": protection,
@@ -399,23 +359,19 @@ class MailApplication:
         if operation == "check_account" and set(arguments) in ({"account", "passwords", "expected_revision"}, {"account", "passwords", "expected_revision", "read_message"}):
             return self.check_account(arguments["account"], arguments["passwords"], arguments["expected_revision"], progress,
                                       read_message=arguments.get("read_message", False))
-        if operation == "list_pending" and not arguments:
-            return self.outbox.pending()
-        if operation == "prepare_email":
-            return self.prepare_email(**arguments)
+        if operation == "check_smtp" and set(arguments) == {"account", "passwords", "expected_revision"}:
+            return self.check_smtp(arguments["account"], arguments["passwords"], arguments["expected_revision"], progress)
         if operation == "search_mail":
             return self.search_mail(**arguments)
         if operation == "read_mail" and set(arguments) == {"reference"}:
             return self.read_mail(**arguments)
-        if operation == "cancel_email" and set(arguments) == {"request_id"}:
-            return self.outbox.cancel(arguments["request_id"])
         if operation == "get_send_status" and set(arguments) == {"request_id"}:
             return self.get_send_status(**arguments)
         if operation == "poll_microsoft_signin" and set(arguments) == {"flow_id"}:
             return self.microsoft.poll(arguments["flow_id"])
         if operation == "cancel_microsoft_signin" and set(arguments) == {"flow_id"}:
             return self.microsoft.cancel(arguments["flow_id"])
-        if set(arguments) == {"account_id"}:
+        if operation in {"start_microsoft_signin", "remove_account", "check_read", "list_folders"} and set(arguments) == {"account_id"}:
             account = self.store.account(arguments["account_id"])
             if operation == "start_microsoft_signin":
                 return self.microsoft.start(account["id"])
@@ -428,9 +384,4 @@ class MailApplication:
                     return ["INBOX"]
                 with self._incoming_connection(account) as connection:
                     return mail.folders(connection)
-            if operation == "check_smtp":
-                self._send_account(account["id"])
-                with mail.smtp_connection(account["smtp"], **self._credentials(account, "smtp")):
-                    return {"connection": "passed", "authentication": "passed", "sent": False,
-                            "message": "SMTP authentication succeeded. No email was sent; delivery has not been tested."}
         raise MailError("invalid_operation", "Unsupported local operation or arguments.")
