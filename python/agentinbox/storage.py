@@ -68,7 +68,7 @@ class Store:
             if set(document) != {"schema_version", "accounts"} or document["schema_version"] != SCHEMA_VERSION:
                 raise ValueError()
             accounts = document["accounts"]
-            if not isinstance(accounts, list) or len(accounts) > 50:
+            if not isinstance(accounts, list):
                 raise ValueError()
             identities = set()
             for saved in accounts:
@@ -278,8 +278,6 @@ class Store:
                 raise MailError("configuration_changed", "The account changed in another window. Reload it before saving.")
             if not previous and expected_revision is not None:
                 raise MailError("configuration_changed", "A new account cannot have an existing revision.")
-            if not previous and len(accounts) >= 50:
-                raise MailError("account_limit", "This profile supports at most 50 configured accounts.")
             account["id"] = previous["id"] if previous else uuid.uuid4().hex
             account["revision"] = previous["revision"] + 1 if previous else 1
             obsolete = []
