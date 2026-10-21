@@ -3,6 +3,8 @@
 Keep reusable findings here. Rules belong in [AGENTS.md](../../AGENTS.md), evidence in [validation](../../docs/VALIDATION.md).
 
 - A successful build does not establish UI behavior, native credentials, provider interoperability or delivery. Record each boundary separately.
+- Save the user's provider choice as metadata. Server names alone cannot recover that choice; unfinished sending fields must not erase an explicit Microsoft sign-in selection.
+- A generic Microsoft registration failure does not identify its cause. Preserve the bounded provider reason locally, redact request and response secrets, and keep the public MCP error separate.
 - Keep submission outcomes after later local failures. A missing final SMTP result is never permission to retry an email automatically.
 - Claim a caller-known request ID before SMTP. SQLite uniqueness is enough to reject duplicates; no message queue or background worker is needed.
 - Bound protocol reads before allocation. Checking size after parsing cannot prevent oversized responses from exhausting memory.

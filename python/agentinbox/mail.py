@@ -234,7 +234,7 @@ def imap_connection(settings: dict, password: str, *, access_token: str | None =
             else:
                 _imap_request(connection, "login", settings["username"], password)
         except imaplib.IMAP4.error as error:
-            raise MailError("authentication_failed", "IMAP sign-in failed. Check the selected authentication method, credentials and provider settings.",
+            raise MailError("authentication_failed", "Your mail provider did not let this app sign in to read mail. Check the sign-in help under Email provider.",
                             server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
         if progress:
             progress("authentication", "passed")
@@ -504,13 +504,13 @@ def smtp_connection(settings: dict, password: str, *, access_token: str | None =
             progress("authentication", "passed")
         yield connection
     except smtplib.SMTPAuthenticationError as error:
-        raise MailError("authentication_failed", "SMTP sign-in failed. Check the selected authentication method, credentials and provider settings.",
+        raise MailError("authentication_failed", "Your mail provider did not let this app sign in to send mail. Check the sign-in help under Email provider.",
                         server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except ssl.SSLError as error:
         raise MailError("tls_failed", "The SMTP TLS connection or certificate could not be verified.",
                         server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except (OSError, smtplib.SMTPException) as error:
-        raise MailError("smtp_failed", "The SMTP server could not complete the operation.",
+        raise MailError("smtp_failed", "Your mail provider could not finish this sending request.",
                         server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     finally:
         if connection is not None:

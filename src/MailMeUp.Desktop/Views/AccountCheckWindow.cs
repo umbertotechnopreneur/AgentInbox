@@ -39,7 +39,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     {
         _saveAccount = saveAccount;
         _smtpOnly = smtpOnly;
-        if (smtpOnly) _heading.Text = "Checking SMTP connection";
+        if (smtpOnly) _heading.Text = "Checking sending connection";
         Title = "AgentInbox";
         SystemBackdrop = new DesktopAcrylicBackdrop();
         var root = new Grid { Padding = new Thickness(24), RowSpacing = 18 };
@@ -54,7 +54,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         heading.Children.Add(_heading);
         root.Children.Add(heading);
         var body = new StackPanel { Spacing = 14 };
-        AddStage(body, "settings", smtpOnly ? "SMTP settings" : "Account settings");
+        AddStage(body, "settings", smtpOnly ? "Sending settings" : "Account settings");
         AddStage(body, "connection", "Secure connection");
         AddStage(body, "authentication", "Sign-in");
         if (!smtpOnly)
@@ -62,7 +62,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
             AddStage(body, "folders", "Server folders");
             AddStage(body, "reading", "Read one message (optional)");
             _stages["reading"].Text = "Not requested";
-            if (smtp) AddStage(body, "smtp", "SMTP connection and sign-in");
+            if (smtp) AddStage(body, "smtp", "Sending connection and sign-in");
             if (saveAccount) AddStage(body, "save", "Save account");
         }
         body.Children.Add(_folderHeading);
@@ -98,7 +98,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         _primary.Click += (_, _) => ChooseFolders();
         _readSample.Checked += (_, _) => UpdatePrimaryText();
         _readSample.Unchecked += (_, _) => UpdatePrimaryText();
-        ToolTipService.SetToolTip(_readSample, "Read one bounded sample from the first selected folder. IMAP keeps its read status; POP3 sends no delete commands. No message content is saved or returned.");
+        ToolTipService.SetToolTip(_readSample, "Check reading with one message from the first selected folder. It won't be marked as read or deleted, and its text won't be saved or shown.");
         _folders.SelectionChanged += (_, _) => _primary.IsEnabled = _folders.SelectedItems.Count is >= 1 and <= 20;
         root.KeyDown += (_, args) =>
         {
@@ -199,7 +199,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         _saving = false;
         _ring.IsActive = false;
         _heading.Text = _smtpOnly
-            ? succeeded ? "SMTP check complete" : "SMTP check stopped"
+            ? succeeded ? "Sending check complete" : "Sending check stopped"
             : succeeded ? (_saveAccount ? "Account added" : "Account check complete") : "Account check stopped";
         _message.Text = message;
         _primary.Visibility = Visibility.Collapsed;

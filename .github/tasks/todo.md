@@ -2,8 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
-- [ ] When requested, check provider switching, help links, OAuth defaults and packaged application settings in installed Debug 1.0.15.0. Separately validate that the recovered Microsoft registration supports personal/work accounts, device-code public-client flow and the requested mail scopes.
-- [ ] When requested, run the synthetic suite for the current direct-send contract, duplicate IDs, unresolved outcomes, permission changes, current-form checks and private diagnostics. Earlier approval-model results do not validate these changes.
+- [ ] When requested, build/install the changes after 1.0.15.0 and check provider persistence, outgoing Microsoft sign-in, simple guidance, Connect Codex and the approved VibeWare footer. Check keyboard/scaling behavior. Separately validate the recovered Microsoft registration's device flow and mail scopes using the new local server diagnostics.
+- [ ] When requested, run the synthetic suite for the current direct-send contract, duplicate IDs, unresolved outcomes, permission changes, current-form checks, provider persistence and private Microsoft diagnostics. Earlier approval-model results do not validate these changes.
 - [ ] Check the connection list, renaming, save bar, Acrylic, colored tabs, narrow layout and common IMAP/SMTP dialog in installed Debug 1.0.15.0. Live UI interaction needs explicit authorization; building and installation passed, but visual behavior remains unchecked.
 - [ ] Validate actual Credential Manager/DPAPI access, keyboard navigation, light/high-contrast themes, the installed MCP alias and configuration after a package update when authorized.
 - [ ] Validate real-provider reading, explicit Microsoft sign-in and direct SMTP acceptance/delivery only when separately authorized. The completed unauthenticated SMTP handshake is not that evidence.

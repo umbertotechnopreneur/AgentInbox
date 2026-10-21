@@ -27,6 +27,10 @@ Targeted Microsoft Windows Defender scans are required before importing or runni
 
 No new runtime has been downloaded for this documentation update. No package restore, scan, build or distribution-license completeness check is claimed.
 
+## VibeWare artwork
+
+The approved `resources/vibeware/vibeware-logo.png` is copied unchanged from `Branding/vibeware-logo.png` in [VibeWare](https://github.com/umbertotechnopreneur/VibeWare). Copyright (c) 2026 Umberto Giacobbi, MIT License. The original notice is kept in [resources/vibeware/LICENSE](resources/vibeware/LICENSE) and copied to `Assets/VibeWare-LICENSE.txt` in desktop builds. See the [brand guide](docs/BRAND.md#vibeware-participation) for provenance and display rules. Participation in the initiative does not imply independent review or certification.
+
 ## Names and marks
 
 OpenAI, Codex, Google, Gmail, Apple, iCloud, Microsoft, Outlook, Python and related names belong to their respective owners. Their use identifies technologies or connection requirements and does not imply endorsement.

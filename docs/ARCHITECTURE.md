@@ -23,7 +23,7 @@ flowchart LR
 
 ## Configuration and checks
 
-Schema 3 JSON contains non-secret settings. Windows Credential Manager holds passwords and Microsoft refresh tokens; current-user DPAPI protects temporary sign-in state. Native macOS Keychain and Linux Secret Service paths are source-only and untested.
+Schema 3 JSON contains non-secret settings, including optional `preset` metadata (`custom`, `gmail`, `icloud`, `outlook` or `microsoft365`). The desktop writes the chosen provider on save; readers neither infer nor backfill missing metadata. An unsupported preset fails validation. Windows Credential Manager holds passwords and Microsoft refresh tokens; current-user DPAPI protects temporary sign-in state. Native macOS Keychain and Linux Secret Service paths are source-only and untested.
 
 Current-form `check_account` discovers folders and checks configured SMTP; optional `read_message` reads one bounded sample. `check_smtp` checks SMTP independently, without an incoming password, saved changes or sending permission. Both emit actual settings, TLS and authentication progress to the same owned Acrylic window. Local failures can include bounded, redacted server details; MCP errors omit them. Saving is a separate commit, preserved if later UI refresh fails.
 

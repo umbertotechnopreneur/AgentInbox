@@ -32,7 +32,7 @@ public sealed partial class MainWindow
         if (_authentication.SelectedIndex < 0)
             throw new EngineException("Choose how to connect to these mail servers.");
         if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
-            throw new EngineException("Web authorization with Microsoft is available only for Outlook.com and Microsoft 365 mail servers.");
+            throw new EngineException("Microsoft sign-in only works with Microsoft mail. Check the servers under Read mail and Send mail.");
         var pop = _incomingProtocol.SelectedIndex == 1;
         string[] folders = pop ? ["INBOX"] : _folders.SelectedItems.Cast<string>().ToArray();
         if (checking && folders.Length == 0) folders = ["INBOX"];
@@ -42,15 +42,20 @@ public sealed partial class MainWindow
         if (_authentication.SelectedIndex == 1)
         {
             if (!Guid.TryParse(_microsoftClientId, out var clientId))
-                throw new EngineException("The Microsoft app ID in the account configuration is invalid.");
+                throw new EngineException("This app's Microsoft settings need fixing. The saved app ID is invalid.");
             var tenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
             if (_tenant.SelectedIndex == 3 && !Guid.TryParse(tenant, out _))
-                throw new EngineException("Enter your Microsoft directory's tenant GUID.");
+                throw new EngineException("Enter the organization ID from your IT team, or choose Personal or Work or school.");
             authentication = new() { ["method"] = "microsoft_oauth", ["client_id"] = clientId.ToString(), ["tenant"] = tenant };
         }
         var account = new Dictionary<string, object?>
         {
             ["id"] = _accountId, ["label"] = _label.Text.Trim(), ["email"] = _email.Text.Trim(),
+            ["preset"] = _preset.SelectedIndex switch
+            {
+                0 => "custom", 1 => "gmail", 2 => "icloud", 3 => "outlook", 4 => "microsoft365",
+                _ => throw new EngineException("Choose your email provider.")
+            },
             ["authentication"] = authentication,
             ["incoming"] = Connection(_incomingHost, _incomingPort, _incomingTls, _incomingUser, pop ? "pop3" : "imap"),
             ["smtp"] = _configureSmtp.IsOn ? Connection(_smtpHost, _smtpPort, _smtpTls, _smtpUser) : null,
@@ -99,12 +104,12 @@ public sealed partial class MainWindow
         }
         catch (OperationCanceledException)
         {
-            window.Complete(false, "The SMTP check was cancelled or timed out. No email was sent and no settings were saved.");
+            window.Complete(false, "The sending check was cancelled or took too long. No email was sent and no settings were saved.");
         }
         catch (Exception exception)
         {
             window.Complete(false, exception is EngineException ? exception.Message
-                : "The SMTP check could not finish. No success is assumed. No email was sent.");
+                : "The sending check could not finish. No email was sent.");
         }
         finally { passwords?.Clear(); }
         await window.ClosedTask;

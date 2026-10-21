@@ -2,9 +2,11 @@
 
 Last updated: 2026-10-22.
 
-## Latest installed source; subsequent UI refinements pending
+## Latest installed source; subsequent changes pending
 
-The centered mailbox prompts, + action and removal of the redundant Codex update status were added after Debug 1.0.15.0. These UI refinements have not been built, installed or visually checked.
+Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo were added after Debug 1.0.15.0. The centered mailbox prompts, + action and redundant Codex-status removal also remain newer than that package. None of these subsequent changes has been built, installed or checked in the live UI.
+
+The approved VibeWare source image was visually inspected and copied byte-for-byte. Source and repository copy have matching SHA-256 `84321fe9f77ccc083813e02c02ff3716ad50a45ed000b8663c5a2d416e2ba5af`; the original MIT notice is included. This verifies the asset copy, not the rendered WinUI footer. New synthetic cases for provider round trips, rejected metadata, retained secrets, Microsoft reply redaction and cleanup failures were written but not run. No Microsoft service request was made; the precise cause of the owner's sign-in refusal is still unknown.
 
 The configuration-only Windows redesign, direct MCP sending, provider guidance and bundled Microsoft app identity were built from source and installed as Debug 1.0.15.0 x64. Synthetic tests and visual checks have not run for these changes. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. Current-form SMTP, stage reporting and diagnostic regressions also remain unrun. Earlier approval-model test results do not validate this new sending path.
 

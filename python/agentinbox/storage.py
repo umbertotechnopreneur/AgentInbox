@@ -246,10 +246,10 @@ class Store:
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
         if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
-            raise MailError("invalid_credentials", "Enter valid incoming and SMTP passwords in the local setup app.")
+            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
-            raise MailError("invalid_credentials", "Microsoft web authorization does not use account passwords.")
+            raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
         with self.locked():
             accounts = self.accounts()
             previous = next((item for item in accounts if item["id"] == account["id"]), None)
@@ -297,7 +297,7 @@ class Store:
             accounts = self.accounts()
             account = next((item for item in accounts if item["id"] == identity), None)
             if account is None or account["revision"] != expected_revision or account["authentication"]["method"] != "microsoft_oauth":
-                raise MailError("configuration_changed", "Account settings changed. Start Microsoft web authorization again.")
+                raise MailError("configuration_changed", "Account settings changed. Sign in with Microsoft again.")
             old_reference = account["oauth_secret"]
             reference = "oauth-" + uuid.uuid4().hex
             self._queue_cleanup_locked([reference, *([old_reference] if old_reference else []), *consumed_references])
@@ -309,7 +309,7 @@ class Store:
             except Exception:
                 cleanup = self._retry_cleanup_locked()
                 if cleanup["cleanup_pending"]:
-                    raise MailError("signin_failed_cleanup_pending", "Microsoft web authorization was not saved. Protected-data cleanup remains pending; retry cleanup locally.") from None
+                    raise MailError("signin_failed_cleanup_pending", "Microsoft sign-in was not saved. Temporary sign-in data still needs to be removed. Use Retry cleanup.") from None
                 raise
             cleanup = self._retry_cleanup_locked()
             return {**self.public(account), **cleanup}

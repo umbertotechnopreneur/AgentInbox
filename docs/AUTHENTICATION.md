@@ -1,8 +1,8 @@
-# Accounts and authentication
+# Accounts and signing in
 
-Choose IMAP or POP3 for incoming mail and optional SMTP for outgoing mail. In Windows setup, selecting Outlook.com or Microsoft 365 selects OAuth and the matching personal or work/school account type. Gmail and iCloud select password mode and explain their app-password requirements below the preset.
+Choose your email provider in Windows setup. Outlook.com and Microsoft 365 select **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
 
-Synthetic authentication tests pass with mocked transports and protected stores. Live sign-in and native credential storage remain unvalidated. Changing an authentication setting does not prove the account can connect.
+Earlier synthetic sign-in tests passed with mocked transports and protected stores. The latest provider-persistence and Microsoft-diagnostic cases have not run. Live sign-in and native credential storage remain unvalidated. See [validation](VALIDATION.md).
 
 ## Passwords and app passwords
 
@@ -10,13 +10,13 @@ Enter the host, port, TLS mode and username for each connection. Use TLS from th
 
 Supply passwords through local setup, never in an assistant conversation, command-line argument, issue report or log. Gmail requires an eligible app password for AgentInbox, with 2-Step Verification enabled. iCloud Mail requires an app-specific password and two-factor authentication. Use each preset's official link to create one; a normal account password will not work in these modes. Provider and organization policies still apply. [Google app passwords](https://support.google.com/accounts/answer/185833), [Apple app-specific passwords](https://support.apple.com/en-us/102654).
 
-Web authorization is not available for Google accounts. AgentInbox does not try a different sign-in method after a rejected password.
+AgentInbox uses an app password for Google accounts, rather than a browser sign-in button. A rejected password does not change the chosen sign-in method.
 
-Outlook.com requires Web authorization with Microsoft. Exchange Online no longer accepts ordinary passwords for IMAP and POP. Selecting password mode or supplying an app password cannot bypass those restrictions. Choose **Web authorization** for these services. [Outlook.com authentication requirements](https://support.microsoft.com/en-us/support/known-issues/modern-authentication-methods-now-needed-to-continue-syncing-outlook-email-in-non-microsoft-email-ap), [Exchange Online password sign-in removal](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online).
+For Outlook.com and Microsoft 365, choose **Sign in with Microsoft**. Your usual email password cannot be used for reading here; an app password does not bypass Microsoft's restrictions. [Outlook.com sign-in requirements](https://support.microsoft.com/en-us/support/known-issues/modern-authentication-methods-now-needed-to-continue-syncing-outlook-email-in-non-microsoft-email-ap), [Exchange Online password sign-in removal](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online).
 
-## Microsoft web authorization
+## Sign in with Microsoft
 
-The Outlook.com and Microsoft 365 presets select **Web authorization with Microsoft (OAuth)**. AgentInbox shows a short code; you use it to sign in on Microsoft's page and decide whether to grant mail access. Microsoft documents this option for IMAP, POP and SMTP for both account types. AgentInbox then connects through the standard mail protocols, not Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
+The Outlook.com and Microsoft 365 choices select **Sign in with Microsoft**. AgentInbox shows a short code; enter it on Microsoft's page and choose whether to allow mail access. Reading and sending use the same sign-in, with no separate password fields. The underlying OAuth connection uses standard IMAP, POP or SMTP, not Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
 
 Windows setup ships the owner's existing public Microsoft client ID in `src/MailMeUp.Desktop/appsettings.json`, copied beside the application when built and published. It is not a password or client secret and is not shown in the account form. Missing or invalid application settings fail at startup. Saved OAuth accounts retain the client ID associated with their tokens; selecting a Microsoft preset uses the shipped registration.
 
@@ -29,7 +29,9 @@ The recovered registration has not been verified against Microsoft's service for
 
 Registration creates the application identity; bundling its ID does not create or validate the registration. [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app), [public-client configuration](https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-applications).
 
-After saving the account, start web authorization locally. AgentInbox displays a short code and a Microsoft sign-in address. You choose to open that address, sign in and review the requested permissions. The engine checks for your decision at Microsoft's required interval and stops on cancellation, expiry or rejection. It does not open a browser automatically. [How the Microsoft sign-in code works](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code).
+Save changes, press **Sign in with Microsoft**, then **Open Microsoft**. Enter the displayed code on Microsoft's page and review what the app asks to access. AgentInbox waits for your decision and stops if you cancel, the code expires or Microsoft refuses. [How the Microsoft sign-in code works](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code).
+
+If Microsoft refuses, the Windows app shows a simple explanation followed by **Server reply** when available. That reply is bounded and hides known sign-in secrets and email addresses, including secrets echoed from a request. It stays out of ordinary MCP errors. The previous generic registration message did not establish the actual cause; the recovered registration still needs a real sign-in check when authorized.
 
 The requested scopes are:
 

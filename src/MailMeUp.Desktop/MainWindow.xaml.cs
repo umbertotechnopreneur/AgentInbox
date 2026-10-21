@@ -58,6 +58,7 @@ public sealed partial class MainWindow : Window
     private ComboBox _incomingTls = new();
     private TextBox _incomingUser = new();
     private PasswordBox _incomingPassword = new();
+    private TextBlock _incomingSignInHint = new();
     private ListView _folders = new();
     private Button _checkConnection = new();
     private TextBlock _folderHint = new();
@@ -69,6 +70,7 @@ public sealed partial class MainWindow : Window
     private ComboBox _smtpTls = new();
     private TextBox _smtpUser = new();
     private PasswordBox _smtpPassword = new();
+    private TextBlock _smtpSignInHint = new();
     private StackPanel _smtpFields = new();
     private Button _save = new();
     private TextBlock _saveStatus = new();
@@ -186,7 +188,7 @@ public sealed partial class MainWindow : Window
         accountActions.Children.Add(IconAction("Add connection", "\uE710", 0x2BAF90, StartNewAccount,
             "Add a mailbox and configure its connection settings."));
         _removeAccount = IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync),
-            "Remove this account's local settings and credentials. Messages on the server stay in place.");
+            "Remove this account from AgentInbox. Your emails stay with your mail provider.");
         accountActions.Children.Add(_removeAccount);
         accountActions.Children.Add(IconAction("Refresh accounts", "\uE72C", 0x2477C8, () => _ = RunAsync(LoadAccountsAsync),
             "Reload saved accounts and their settings."));
@@ -202,8 +204,8 @@ public sealed partial class MainWindow : Window
         _accountWorkspace.SizeChanged += (_, _) => UpdateAccountLayout();
         Page.Children.Add(_accountWorkspace);
 
-        _preset = new ComboBox { Header = "Server preset", HorizontalAlignment = HorizontalAlignment.Stretch };
-        _preset.Items.Add(PresetItem("Custom mail server", "\uE713", 0x667789));
+        _preset = new ComboBox { Header = "Email provider", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _preset.Items.Add(PresetItem("Other mail provider", "\uE713", 0x667789));
         _preset.Items.Add(PresetItem("Gmail", "\uE715", 0xD94235));
         _preset.Items.Add(PresetItem("iCloud", "\uE753", 0x3282CF));
         _preset.Items.Add(PresetItem("Outlook.com", "\uE715", 0x1274C4));
@@ -219,20 +221,21 @@ public sealed partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
         };
         _authentication = new ComboBox { Header = "How to connect", PlaceholderText = "Choose how to connect", HorizontalAlignment = HorizontalAlignment.Stretch };
-        _authentication.Items.Add("Password — account or app password");
+        _authentication.Items.Add("Use a password");
         _authentication.SelectionChanged += (_, _) =>
         {
             if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: true);
         };
         _tenant = new ComboBox { Header = "Microsoft account type", HorizontalAlignment = HorizontalAlignment.Stretch };
-        foreach (var name in new[] { "Personal and work accounts (common)", "Work or school accounts (organizations)", "Personal accounts (consumers)", "Specific tenant ID" })
+        foreach (var name in new[] { "Personal or work", "Work or school", "Personal", "A specific organization" })
             _tenant.Items.Add(name);
-        _tenantId = Field("Tenant ID", "Directory (tenant) GUID");
+        _tenantId = Field("Organization ID", "Ask your IT team for this ID");
         _tenant.SelectionChanged += (_, _) => _tenantId.Visibility = _tenant.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
-        _microsoftSignIn = Action("Start web authorization…", () => _ = RunAsync(SignInMicrosoftAsync));
+        _microsoftSignIn = Action("Sign in with Microsoft", () => _ = RunAsync(SignInMicrosoftAsync),
+            tooltip: "Get a code to enter on Microsoft's sign-in page.");
         _microsoftFields = Stack(_tenant, _tenantId,
             _microsoftSignIn,
-            Hint("Save your account, then start web authorization. Sign in on Microsoft's page using the code shown. This connects incoming mail and, if enabled, sending."));
+            Hint("Save changes, then sign in with Microsoft. You'll get a code to enter on Microsoft's page. The same sign-in is used to read and send mail."));
         _authenticationHint = Hint("");
         _providerHelpLink = new HyperlinkButton
         {
@@ -242,7 +245,7 @@ public sealed partial class MainWindow : Window
         var providerChoice = Stack(_preset, _authenticationHint, _providerHelpLink);
         var accountContent = Section("", providerChoice, _email, _authentication, _microsoftFields);
 
-        _incomingProtocol = new ComboBox { Header = "Incoming protocol", HorizontalAlignment = HorizontalAlignment.Stretch };
+        _incomingProtocol = new ComboBox { Header = "How to read mail", HorizontalAlignment = HorizontalAlignment.Stretch };
         _incomingProtocol.Items.Add("IMAP — mail and server folders");
         _incomingProtocol.Items.Add("POP3 — mailbox messages");
         _incomingProtocol.SelectionChanged += (_, _) => IncomingProtocolChanged();
@@ -251,30 +254,32 @@ public sealed partial class MainWindow : Window
         _incomingTls = TlsField();
         _incomingUser = Field("Username", "Usually your full email address");
         _incomingPassword = Password("Incoming password");
+        _incomingSignInHint = Hint("Uses your Microsoft sign-in. No password is needed here.");
         _folders = new ListView { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 220, MinHeight = 48 };
         AutomationProperties.SetName(_folders, "Folders available to your assistant");
         _checkConnection = Action("Check connection and get folders", () => _ = RunAsync(() => CheckAccountAsync(saveAccount: false)),
-            tooltip: "Check the settings and password currently in this form, then choose folders from the server. Nothing is saved or sent.");
+            tooltip: "Check this account, then choose the folders Codex can read. Nothing is saved or sent.");
         _folderHint = Hint("");
         _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
         var incomingSettings = Section("", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
-            Pair(_incomingUser, _incomingPassword), _checkConnection, Text("Folders available to your assistant"), _folders, _folderHint,
-            Hint("Passwords and Microsoft web authorization credentials stay in Windows Credential Manager. Your assistant's settings contain neither."), _readEnabled);
-        _testRead = Action("Test IMAP reading", () => _ = RunAsync(TestReadAsync));
+            Pair(_incomingUser, Stack(_incomingPassword, _incomingSignInHint)), _checkConnection, Text("Folders available to your assistant"), _folders, _folderHint,
+            Hint("Windows stores your sign-in details on this computer. They are not copied to Codex's settings."), _readEnabled);
+        _testRead = Action("Check reading", () => _ = RunAsync(TestReadAsync));
         _incomingChecks = Stack(_testRead, Hint("Save changes before testing. This check uses the saved incoming settings."));
         var incomingContent = Stack(incomingSettings, _incomingChecks);
 
-        _configureSmtp = new ToggleSwitch { Header = "Configure outgoing SMTP", OnContent = "Configured", OffContent = "Off" };
-        _smtpHost = Field("SMTP server", "smtp.example.com");
+        _configureSmtp = new ToggleSwitch { Header = "Set up sending", OnContent = "On", OffContent = "Off" };
+        _smtpHost = Field("Sending server (SMTP)", "smtp.example.com");
         _smtpPort = Field("Port", "465");
         _smtpTls = TlsField();
         _smtpUser = Field("Username", "Usually your full email address");
-        _smtpPassword = Password("SMTP password");
+        _smtpPassword = Password("Password for sending");
+        _smtpSignInHint = Hint("Uses the same Microsoft sign-in as incoming mail. No extra password is needed.");
         _sendEnabled = new ToggleSwitch { Header = "Enable sending from this account", OnContent = "Enabled", OffContent = "Disabled" };
-        _testSmtp = Action("Test SMTP connection", () => _ = RunAsync(TestSmtpAsync),
-            tooltip: "Check the SMTP settings and password currently in this form without saving or sending an email.");
+        _testSmtp = Action("Check sending connection", () => _ = RunAsync(TestSmtpAsync),
+            tooltip: "Check these sending settings without saving changes or sending an email.");
         _smtpChecks = Stack(_testSmtp, Hint("Check the connection and sign-in without saving settings or sending an email."));
-        _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, _smtpPassword), _sendEnabled,
+        _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, Stack(_smtpPassword, _smtpSignInHint)), _sendEnabled,
             Hint("When enabled, Codex can send email from this account when you ask it to."), _smtpChecks);
         _configureSmtp.Toggled += (_, _) =>
         {
@@ -285,11 +290,11 @@ public sealed partial class MainWindow : Window
         _incomingHost.TextChanged += (_, _) => { if (!_loadingForm) UpdateAuthenticationChoices(); };
         _smtpHost.TextChanged += (_, _) => { if (!_loadingForm) UpdateAuthenticationChoices(); };
         var outgoingContent = Stack(_configureSmtp,
-            Hint("Outgoing mail is optional. Configure SMTP only if you want to send messages."), _smtpFields);
+            Hint("Turn this on if you want Codex to send email when you ask."), _smtpFields);
         foreach (var tab in new[] {
             AccountTab("Account", "\uE77B", 0xB58ADA, accountContent),
-            AccountTab("Incoming", "\uE715", 0x409BE0, incomingContent),
-            AccountTab("Outgoing", "\uE724", 0x2BAF90, outgoingContent) })
+            AccountTab("Read mail", "\uE715", 0x409BE0, incomingContent),
+            AccountTab("Send mail", "\uE724", 0x2BAF90, outgoingContent) })
             _accountTabs.TabItems.Add(tab);
         _accountTabs.SelectionChanged += (_, _) => UpdateAccountTabHeaders();
         _accountTabs.SelectedIndex = 0;
@@ -342,8 +347,8 @@ public sealed partial class MainWindow : Window
         _save.Content = _creatingAccount ? "Create account" : "Save changes";
         AutomationProperties.SetName(_save, (string)_save.Content);
         ToolTipService.SetToolTip(_save, _creatingAccount
-            ? "Check this new account, choose folders and store its credentials securely. Microsoft web authorization requires saving first."
-            : "Save changes to the selected account and its credentials.");
+            ? "Check this account and choose folders. For Microsoft, save changes first, then sign in."
+            : "Save this account's settings and sign-in details.");
         UpdateAccountLayout();
         UpdateAccountChecks();
     }
@@ -460,7 +465,10 @@ public sealed partial class MainWindow : Window
         if (account is not null) _creatingAccount = false;
         _accountId = account is { } value ? Value(value, "id") : "";
         _revision = account is { } current ? current.GetProperty("revision").GetInt32() : null;
-        _preset.SelectedIndex = 0;
+        _preset.SelectedIndex = account is { } saved ? Value(saved, "preset") switch
+        {
+            "gmail" => 1, "icloud" => 2, "outlook" => 3, "microsoft365" => 4, _ => 0
+        } : 0;
         _label.Text = account is { } name ? Value(name, "label") : "";
         _email.Text = account is { } email ? Value(email, "email") : "";
         var authentication = account?.GetProperty("authentication");
@@ -488,8 +496,9 @@ public sealed partial class MainWindow : Window
         _smtpPort.Text = hasSmtp ? smtp!.Value.GetProperty("port").ToString() : "465";
         _smtpTls.SelectedIndex = hasSmtp && Value(smtp!.Value, "tls") == "starttls" ? 1 : 0;
         _smtpUser.Text = hasSmtp ? Value(smtp!.Value, "username") : "";
+        if (!hasSmtp) FillSmtpPreset();
         _smtpPassword.Password = "";
-        _smtpPassword.PlaceholderText = hasSmtp ? "Leave blank to keep the saved password" : "Enter the SMTP password";
+        _smtpPassword.PlaceholderText = hasSmtp ? "Leave blank to keep the saved password" : "Enter the password for sending";
         _configureSmtp.IsOn = hasSmtp;
         _smtpFields.Visibility = hasSmtp ? Visibility.Visible : Visibility.Collapsed;
         _sendEnabled.IsOn = account is { } sendable && sendable.GetProperty("send_enabled").GetBoolean();
@@ -515,7 +524,7 @@ public sealed partial class MainWindow : Window
         if (_preset.SelectedIndex == 2 && _incomingProtocol.SelectedIndex == 1)
         {
             _incomingProtocol.SelectedIndex = 0;
-            ShowNotice("iCloud uses IMAP", "The iCloud preset uses IMAP for incoming mail. POP3 is not available with this preset.", InfoBarSeverity.Informational);
+            ShowNotice("iCloud uses IMAP", "I've selected IMAP because iCloud doesn't support POP3.", InfoBarSeverity.Informational);
         }
         var pop = _incomingProtocol.SelectedIndex == 1;
         _incomingHost.Text = _preset.SelectedIndex switch
@@ -527,16 +536,7 @@ public sealed partial class MainWindow : Window
         };
         _incomingPort.Text = pop ? "995" : "993";
         _incomingTls.SelectedIndex = 0;
-        _smtpHost.Text = _preset.SelectedIndex switch
-        {
-            1 => "smtp.gmail.com",
-            2 => "smtp.mail.me.com",
-            3 => "smtp-mail.outlook.com",
-            4 => "smtp.office365.com",
-            _ => ""
-        };
-        _smtpPort.Text = _preset.SelectedIndex == 1 ? "465" : "587";
-        _smtpTls.SelectedIndex = _preset.SelectedIndex == 1 ? 0 : 1;
+        FillSmtpPreset();
         UpdateAuthenticationChoices();
         var microsoft = _preset.SelectedIndex is 3 or 4;
         _authentication.SelectedIndex = microsoft ? 1 : 0;
@@ -548,6 +548,24 @@ public sealed partial class MainWindow : Window
         _loadingForm = false;
         UpdateIncomingPresentation();
         UpdateAuthenticationPresentation(clearPasswords: true);
+    }
+
+    /// <summary>Restores outgoing defaults for the selected provider without enabling sending.</summary>
+    private void FillSmtpPreset()
+    {
+        var host = _preset.SelectedIndex switch
+        {
+            1 => "smtp.gmail.com",
+            2 => "smtp.mail.me.com",
+            3 => "smtp-mail.outlook.com",
+            4 => "smtp.office365.com",
+            _ => ""
+        };
+        if (host.Length == 0) return;
+        _smtpHost.Text = host;
+        _smtpPort.Text = _preset.SelectedIndex == 1 ? "465" : "587";
+        _smtpTls.SelectedIndex = _preset.SelectedIndex == 1 ? 0 : 1;
+        if (string.IsNullOrWhiteSpace(_smtpUser.Text)) _smtpUser.Text = _email.Text.Trim();
     }
 
     private void IncomingProtocolChanged()
@@ -563,24 +581,25 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private bool UsesMicrosoftMailServers()
+    private bool UsesMicrosoftMailServers(bool includeSmtp = true)
     {
         var incoming = _incomingHost.Text.Trim();
         var protocolHost = _incomingProtocol.SelectedIndex == 1 ? "pop-mail.outlook.com" : "imap-mail.outlook.com";
         var incomingMatches = incoming.Equals("outlook.office365.com", StringComparison.OrdinalIgnoreCase)
             || incoming.Equals(protocolHost, StringComparison.OrdinalIgnoreCase);
         var smtp = _smtpHost.Text.Trim();
-        return incomingMatches && (!_configureSmtp.IsOn
+        return incomingMatches && (!includeSmtp || !_configureSmtp.IsOn
             || smtp.Equals("smtp.office365.com", StringComparison.OrdinalIgnoreCase)
             || smtp.Equals("smtp-mail.outlook.com", StringComparison.OrdinalIgnoreCase));
     }
 
     private void UpdateAuthenticationChoices()
     {
-        var allowMicrosoft = _preset.SelectedIndex is not (1 or 2) && UsesMicrosoftMailServers();
+        // Unfinished outgoing settings must not remove the account's Microsoft sign-in.
+        var allowMicrosoft = _preset.SelectedIndex is not (1 or 2) && UsesMicrosoftMailServers(includeSmtp: false);
         var selectedMicrosoft = _authentication.SelectedIndex == 1;
         if (allowMicrosoft && _authentication.Items.Count == 1)
-            _authentication.Items.Add("Web authorization with Microsoft (OAuth)");
+            _authentication.Items.Add("Sign in with Microsoft");
         else if (!allowMicrosoft && _authentication.Items.Count == 2)
         {
             _authentication.Items.RemoveAt(1);
@@ -589,7 +608,7 @@ public sealed partial class MainWindow : Window
                 // Changing servers invalidates the choice; do not silently switch authentication.
                 _authentication.SelectedIndex = -1;
                 if (!_loadingForm)
-                    ShowNotice("Choose how to connect to this server", "Web authorization with Microsoft is only available for supported Microsoft mail servers. Choose a password or app password before saving.", InfoBarSeverity.Informational);
+                    ShowNotice("Choose how to connect", "Microsoft sign-in only works with Microsoft mail. For another provider, choose Use a password.", InfoBarSeverity.Informational);
             }
         }
         if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: false);
@@ -599,21 +618,21 @@ public sealed partial class MainWindow : Window
     private void UpdateProviderGuidance()
     {
         var microsoftHint = _authentication.SelectedIndex == 1
-            ? "Your email password cannot be used here. Microsoft sign-in (OAuth) is selected below."
-            : "Your email password cannot be used here. Select Microsoft sign-in (OAuth) below.";
+            ? "Don't enter your email password here. Sign in with Microsoft is already selected below. Save changes, then press the sign-in button."
+            : "Don't enter your email password here. Choose Sign in with Microsoft below, then save changes.";
         var (message, linkText, address) = _preset.SelectedIndex switch
         {
-            1 => ("Create a Google app password for AgentInbox; your normal Gmail password will not work. Turn on 2-Step Verification first, then use the app password for incoming and outgoing mail. Your Google account or administrator must allow app passwords.",
-                "Create a Google app password", "https://myaccount.google.com/apppasswords"),
-            2 => ("Create an app-specific password for AgentInbox; your Apple Account password will not work here. Two-factor authentication must be on. Use that app password for incoming and outgoing mail. iCloud Mail supports IMAP, not POP3.",
-                "Create an Apple app-specific password", "https://support.apple.com/en-us/102654"),
-            3 => ($"{microsoftHint} Enable IMAP or POP in Outlook.com settings before checking the connection.",
-                "Open Outlook.com connection instructions", "https://support.microsoft.com/en-us/outlook/pop-imap-and-smtp-settings-for-outlook-com"),
-            4 => ($"{microsoftHint} Your organization may require administrator approval and must allow IMAP or POP. Sending also requires SMTP AUTH to be enabled for your mailbox.",
-                "Microsoft 365 sending requirements", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
-            _ when UsesMicrosoftMailServers() => (microsoftHint, "Microsoft mail connection instructions",
+            1 => ("Your usual Gmail password won't work here. Google calls the special password you need an app password. Open the link below to create one, then use it for both reading and sending. Google may ask you to turn on 2-Step Verification first. If the option is missing, your account or work settings may not allow it.",
+                "Create a password for this app", "https://myaccount.google.com/apppasswords"),
+            2 => ("Your usual Apple password won't work here. Create a separate password for AgentInbox using the link below. Apple calls it an app-specific password. Use it for both reading and sending. Apple requires an extra sign-in check, such as a code on your phone. Keep IMAP selected for iCloud mail.",
+                "Create an Apple password for this app", "https://support.apple.com/en-us/102654"),
+            3 => ($"{microsoftHint} Outlook may also need you to allow mail apps in its settings. The guide below shows where.",
+                "Help connecting Outlook", "https://support.microsoft.com/en-us/outlook/pop-imap-and-smtp-settings-for-outlook-com"),
+            4 => ($"{microsoftHint} Your work or school may block mail apps or sending. If that happens, ask your IT team to allow AgentInbox.",
+                "Sending help for your IT team", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
+            _ when UsesMicrosoftMailServers(includeSmtp: false) => (microsoftHint, "Help connecting Microsoft mail",
                 "https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth"),
-            _ => ("Use the password or app password required by your mail provider. Choose a preset to fill in its server settings.", "", "")
+            _ => ("Choose your email provider to fill in its settings. Some providers need a separate password for mail apps. Check their help page if your usual password doesn't work.", "", "")
         };
         _authenticationHint.Text = message;
         _providerHelpLink.Content = linkText;
@@ -629,12 +648,12 @@ public sealed partial class MainWindow : Window
         _folders.IsEnabled = !pop;
         if (pop) SetFolderChoices(["INBOX"], ["INBOX"]);
         _folderHint.Text = pop
-            ? "POP3 exposes one mailbox as INBOX. It has no server folders or unread flags. AgentInbox leaves messages on the server."
-            : "Check the connection to load server folders, then choose between one and twenty. Only selected folders are shared when you save. Current support requires ASCII server names.";
-        _incomingHost.Header = pop ? "POP3 server" : "IMAP server";
+            ? "POP3 has one inbox, shown as INBOX. It has no other folders and can't tell which messages are unread. Your emails stay with your mail provider."
+            : "Check the connection, then choose up to twenty folders for Codex to read. Folder names currently need basic English letters, numbers or punctuation.";
+        _incomingHost.Header = pop ? "Reading server (POP3)" : "Reading server (IMAP)";
         _incomingHost.PlaceholderText = pop ? "pop.example.com" : "imap.example.com";
-        _incomingPassword.Header = pop ? "POP3 password" : "IMAP password";
-        _testRead.Content = pop ? "Test POP3 reading" : "Test IMAP reading";
+        _incomingPassword.Header = "Password for reading";
+        _testRead.Content = "Check reading";
         AutomationProperties.SetName(_testRead, (string)_testRead.Content);
         ToolTipService.SetToolTip(_testRead, pop
             ? "Check saved POP3 settings by reading mail without deleting messages."
@@ -648,6 +667,10 @@ public sealed partial class MainWindow : Window
         _microsoftFields.Visibility = microsoft ? Visibility.Visible : Visibility.Collapsed;
         _incomingPassword.IsEnabled = !microsoft;
         _smtpPassword.IsEnabled = !microsoft;
+        _incomingPassword.Visibility = microsoft ? Visibility.Collapsed : Visibility.Visible;
+        _smtpPassword.Visibility = microsoft ? Visibility.Collapsed : Visibility.Visible;
+        _incomingSignInHint.Visibility = microsoft ? Visibility.Visible : Visibility.Collapsed;
+        _smtpSignInHint.Visibility = microsoft ? Visibility.Visible : Visibility.Collapsed;
         if (microsoft && clearPasswords)
         {
             _incomingPassword.Password = "";
@@ -655,8 +678,8 @@ public sealed partial class MainWindow : Window
         }
         if (microsoft)
         {
-            _incomingPassword.PlaceholderText = "Uses Microsoft web authorization";
-            _smtpPassword.PlaceholderText = "Uses Microsoft web authorization";
+            _incomingPassword.PlaceholderText = "Uses your Microsoft sign-in";
+            _smtpPassword.PlaceholderText = "Uses your Microsoft sign-in";
         }
         else
         {
@@ -668,7 +691,7 @@ public sealed partial class MainWindow : Window
     private async Task RemoveAccountAsync()
     {
         RequireSavedAccount();
-        var dialog = Dialog("Remove this account?", Text("This removes local connection settings and saved credentials. Mail on the server stays in place."), "Remove account");
+        var dialog = Dialog("Remove this account?", Text("This removes its settings and saved sign-in details from AgentInbox. Your emails stay with your mail provider."), "Remove account");
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
         var removed = await _engine.ManageAsync("remove_account", new { account_id = _accountId }, _lifetime.Token);
         _accounts.RemoveAll(item => Value(item, "id") == _accountId);
@@ -684,35 +707,35 @@ public sealed partial class MainWindow : Window
         var saved = _accounts.First(account => Value(account, "id") == _accountId);
         var savedAuthentication = saved.GetProperty("authentication");
         if (Value(savedAuthentication, "method") != "microsoft_oauth")
-            throw new EngineException("Save your web authorization choice before starting it.");
+            throw new EngineException("Choose Sign in with Microsoft and save changes first.");
         var selectedTenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
         if (_authentication.SelectedIndex != 1 ||
             !string.Equals(Value(savedAuthentication, "client_id"), _microsoftClientId, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(savedAuthentication, "tenant"), selectedTenant, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(saved, "email"), _email.Text.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new EngineException("Save your account settings before starting web authorization.");
+            throw new EngineException("Save changes before signing in with Microsoft.");
         var start = await _engine.ManageAsync("start_microsoft_signin", new { account_id = _accountId }, _lifetime.Token);
         var flowId = Value(start, "flow_id");
         var verificationUri = MicrosoftVerificationUri(Value(start, "verification_uri"));
         var expiresIn = start.GetProperty("expires_in").GetInt32();
         var interval = start.GetProperty("interval").GetInt32();
         if (flowId.Length == 0 || expiresIn is < 1 or > 3600 || interval is < 1 or > 300)
-            throw new EngineException("Microsoft could not start web authorization. Try starting it again.");
+            throw new EngineException("Microsoft could not start sign-in. Please try again.");
         var deadline = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
         using var flowCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-        var status = Text("Waiting for you to finish web authorization with Microsoft.");
+        var status = Text("Waiting for you to sign in on Microsoft's page.");
         var userCode = new TextBox
         {
-            Header = "Enter this code on Microsoft's page", Text = Value(start, "user_code"),
+            Header = "Enter this code", Text = Value(start, "user_code"),
             IsReadOnly = true, FontSize = 24, FontFamily = new FontFamily("Consolas")
         };
-        var openBrowser = Action("Open Microsoft authorization page", async () =>
+        var openBrowser = Action("Open Microsoft", async () =>
         {
             try
             {
                 var opened = await Windows.System.Launcher.LaunchUriAsync(verificationUri);
                 status.Text = opened
-                    ? "Finish web authorization in your browser. This window will wait for Microsoft's response."
+                    ? "Enter the code on Microsoft's page and sign in. I'll wait here."
                     : "Windows could not open the browser. Open the displayed Microsoft address manually.";
             }
             catch (Exception)
@@ -722,13 +745,13 @@ public sealed partial class MainWindow : Window
         }, accent: true);
         var dialog = new ContentDialog
         {
-            XamlRoot = Root.XamlRoot, Title = "Web authorization with Microsoft", CloseButtonText = "Cancel",
-            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft web authorization."),
+            XamlRoot = Root.XamlRoot, Title = "Sign in with Microsoft", CloseButtonText = "Cancel",
+            CloseButtonStyle = DialogButtonStyle("Cancel Microsoft sign-in."),
             DefaultButton = ContentDialogButton.Close,
             Content = Stack(
-                Hint("You chose web authorization for this Microsoft account. The browser opens only when you press the button below."),
+                Hint("Press Open Microsoft, enter this code on the page, then sign in with your Microsoft account."),
                 userCode, Text(verificationUri.AbsoluteUri), openBrowser, status,
-                Hint($"This code expires at {deadline.ToLocalTime():t}. Web authorization does not test mail reading or sending."))
+                Hint($"This code expires at {deadline.ToLocalTime():t}. You can check reading and sending after signing in."))
         };
         var connected = false;
         string? failure = null;
@@ -741,9 +764,9 @@ public sealed partial class MainWindow : Window
                 while (!flowCancellation.IsCancellationRequested)
                 {
                     var remaining = deadline - DateTimeOffset.UtcNow;
-                    if (remaining <= TimeSpan.Zero) throw new EngineException("The Microsoft code expired. Start web authorization again.");
+                    if (remaining <= TimeSpan.Zero) throw new EngineException("This code has expired. Press Sign in with Microsoft to get a new one.");
                     await Task.Delay(remaining < TimeSpan.FromSeconds(interval) ? remaining : TimeSpan.FromSeconds(interval), flowCancellation.Token);
-                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("The Microsoft code expired. Start web authorization again.");
+                    if (DateTimeOffset.UtcNow >= deadline) throw new EngineException("This code has expired. Press Sign in with Microsoft to get a new one.");
                     var result = await _engine.ManageAsync("poll_microsoft_signin", new { flow_id = flowId }, flowCancellation.Token);
                     switch (Value(result, "status"))
                     {
@@ -757,7 +780,7 @@ public sealed partial class MainWindow : Window
                             if (interval is < 1 or > 300) throw new EngineException("Microsoft returned an invalid polling interval.");
                             break;
                         default:
-                            throw new EngineException("Microsoft returned an unexpected authorization status.");
+                            throw new EngineException("Microsoft sent a reply I couldn't read. Please try signing in again.");
                     }
                 }
             }
@@ -765,7 +788,7 @@ public sealed partial class MainWindow : Window
             catch (EngineException exception) { failure = exception.Message; dialog.Hide(); }
             catch (Exception)
             {
-                failure = "Microsoft web authorization could not finish. Check the account and app ID before trying again.";
+                failure = "Microsoft sign-in could not finish. Please try again.";
                 dialog.Hide();
             }
         }
@@ -782,7 +805,7 @@ public sealed partial class MainWindow : Window
                 try { cleanupResult = await _engine.ManageAsync("cancel_microsoft_signin", new { flow_id = flowId }, _lifetime.Token); }
                 catch (EngineException exception)
                 {
-                    CleanupNotice.Message = "Local web authorization cleanup could not be confirmed. " + exception.Message;
+                    CleanupNotice.Message = "Temporary sign-in data may still be on this computer. " + exception.Message;
                     CleanupNotice.IsOpen = true;
                 }
             }
@@ -793,9 +816,9 @@ public sealed partial class MainWindow : Window
         if (connected)
         {
             await LoadAccountsAsync();
-            ShowNotice("Microsoft web authorization completed", "Test incoming mail reading and the optional SMTP connection separately.", InfoBarSeverity.Success);
+            ShowNotice("Signed in with Microsoft", "You can now check reading and sending in the account settings.", InfoBarSeverity.Success);
         }
-        else ShowNotice("Microsoft web authorization closed", "The connection was not completed. Your choice was not changed to a password.", InfoBarSeverity.Informational);
+        else ShowNotice("Sign-in cancelled", "You can sign in with Microsoft again when you're ready.", InfoBarSeverity.Informational);
     }
 
     private static Uri MicrosoftVerificationUri(string value)
@@ -804,7 +827,7 @@ public sealed partial class MainWindow : Window
             value.Contains('@') || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
             (uri.Host != "microsoft.com" && uri.Host != "www.microsoft.com") ||
             (uri.AbsolutePath != "/devicelogin" && uri.AbsolutePath != "/devicelogin/"))
-            throw new EngineException("Microsoft returned an unexpected web address. Web authorization was stopped.");
+            throw new EngineException("Microsoft returned an unexpected web address. Sign-in was stopped.");
         return uri;
     }
 
@@ -822,7 +845,7 @@ public sealed partial class MainWindow : Window
     private async Task BuildAssistantPageAsync()
     {
         Page.Children.Clear();
-        Page.Children.Add(Heading("Your assistant", "Find the email you need, right in your conversation."));
+        Page.Children.Add(Heading("Connect Your Codex Assistant", ""));
         Page.Children.Add(Hint("Checking Codex on this computer…"));
         var configuration = _engine.CreateClientConfiguration();
         var service = new AssistantSetupService(configuration);
@@ -834,7 +857,7 @@ public sealed partial class MainWindow : Window
     private void RenderAssistantPage(AssistantSetupService service, string configuration, AssistantClientStatus client)
     {
         Page.Children.Clear();
-        Page.Children.Add(PageHeading("Your assistant", "Find the email you need, right in your conversation.",
+        Page.Children.Add(PageHeading("Connect Your Codex Assistant", "",
             IconAction("Check Codex again", "\uE72C", 0x2477C8, () => _ = RunAsync(BuildAssistantPageAsync),
                 "Look for Codex and check its saved AgentInbox connection.")));
         var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
@@ -1006,7 +1029,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Keeps legal links on the left and the VibeWare signature on the right at smaller widths.</summary>
     private void BrandFooter_SizeChanged(object sender, SizeChangedEventArgs args)
     {
-        var compact = args.NewSize.Width < 560;
+        var compact = args.NewSize.Width < 760;
         Grid.SetColumnSpan(FooterLinks, compact ? 2 : 1);
         FooterLinks.Orientation = args.NewSize.Width < 360 ? Orientation.Vertical : Orientation.Horizontal;
         Grid.SetRow(VibeWareLink, compact ? 1 : 0);
@@ -1057,8 +1080,12 @@ public sealed partial class MainWindow : Window
     private static TextBlock Hint(string value) => new()
     { Text = value, TextWrapping = TextWrapping.Wrap, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SubtleText"] };
 
-    private static StackPanel Heading(string title, string subtitle) => Stack(
-        new TextBlock { Text = title, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SectionTitle"] }, Hint(subtitle));
+    private static StackPanel Heading(string title, string subtitle)
+    {
+        var heading = Stack(new TextBlock { Text = title, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SectionTitle"] });
+        if (subtitle.Length > 0) heading.Children.Add(Hint(subtitle));
+        return heading;
+    }
 
     private static Grid PageHeading(string title, string subtitle, FrameworkElement action)
     {

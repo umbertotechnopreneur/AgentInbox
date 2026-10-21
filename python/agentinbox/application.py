@@ -258,7 +258,7 @@ class MailApplication:
             not isinstance(secret, str) or len(secret) > 4096 or any(c in secret for c in "\0\r\n")
             for secret in passwords.values()
         ):
-            raise MailError("invalid_credentials", "Enter valid incoming and SMTP passwords in the local setup app.")
+            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
         previous = self.store.account(account["id"]) if account["id"] else None
@@ -267,11 +267,11 @@ class MailApplication:
         credentials = {}
         if account["authentication"]["method"] == "microsoft_oauth":
             if any(passwords.values()):
-                raise MailError("invalid_credentials", "Microsoft web authorization does not use account passwords.")
+                raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
             if previous is None or not previous["oauth_secret"] or any(
                 previous[key] != account[key] for key in ("authentication", "incoming", "smtp", "email")
             ) or (account["send_enabled"] and not previous["send_enabled"]):
-                raise MailError("authorization_required", "Save these settings and complete Microsoft web authorization before checking this account.")
+                raise MailError("authorization_required", "Save changes, then press Sign in with Microsoft before checking this account.")
             token = self.microsoft.access_token(previous)
             credentials = {protocol: {"password": "", "access_token": token} for protocol in ("incoming", "smtp")}
         else:

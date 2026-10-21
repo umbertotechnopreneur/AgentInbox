@@ -13,16 +13,16 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 
 ## Connect your mailbox
 
-Choose a provider preset to see its sign-in instructions and fill in the server settings. Gmail and iCloud need an app password. Outlook.com and Microsoft 365 select **Web authorization with Microsoft (OAuth)**: save the account, then use the short code to sign in on Microsoft's page. Windows setup supplies AgentInbox's public app ID from its application settings.
+Choose your **Email provider** to see its instructions and fill in the settings. Gmail and iCloud need a separate password for this app; the setup page links to their instructions. Outlook.com and Microsoft 365 select **Sign in with Microsoft**: save changes, press that button, then enter the code on Microsoft's page. You do not need to enter an app ID or a second password for sending.
 
 | Mail service | Connection requirement |
 | --- | --- |
-| Gmail | An eligible account with an app password and the chosen mail protocol allowed; Web authorization is not available for Google accounts |
+| Gmail | A Google app password; your usual Gmail password will not work here |
 | iCloud Mail | An app-specific password |
 | Other providers | IMAP or POP3 over TLS with a password or app password |
-| Outlook.com / Microsoft 365 | Microsoft sign-in (OAuth); enable IMAP/POP access where required. Organization rules can restrict access, require administrator consent or disable SMTP AUTH |
+| Outlook.com / Microsoft 365 | Sign in with Microsoft. Outlook settings or your IT team may need to allow mail apps and sending |
 
-Your provider or organization can disable access even when the server settings are correct. Choosing a Microsoft preset selects OAuth; a rejected connection never triggers a fallback to another sign-in method. The bundled Microsoft registration still needs live sign-in validation; see [authentication](docs/AUTHENTICATION.md).
+Your provider or organization can block access even when the settings are correct. Choosing a Microsoft provider selects **Sign in with Microsoft**. A rejected connection does not change that choice. This app's Microsoft setup still needs a real sign-in check; see [signing in](docs/AUTHENTICATION.md).
 
 IMAP exposes selected server folders and read status. POP3 exposes one mailbox as `INBOX`, has no unread flags or server folders, and searches message headers; its dates come from the email's `Date` header. AgentInbox sends no delete commands; provider retention settings can still affect your mailbox. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
 
@@ -89,13 +89,13 @@ I keep a record of where each new import came from and the scan result. If a sca
 
 ## VibeWare
 
-I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
+AgentInbox participates in [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto), my open initiative for software built with AI under human direction. I define what the app should do, guide the work and take responsibility for checking the result. The mark describes this approach; the [validation record](docs/VALIDATION.md) shows what has actually been checked. You can explore and reuse the open-source materials under their licenses.
 
 [Terms](https://umbertogiacobbi.biz/agentinbox/terms/) · [Privacy](https://umbertogiacobbi.biz/agentinbox/privacy/)
 
 <p align="right">
   <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
-    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="200">
+    <img src="resources/vibeware/vibeware-logo.png" alt="AgentInbox participates in VibeWare. Read the manifesto." width="200">
   </a><br>
-  <em>Human Intent, AI Execution, Plenty of Token</em>
+  <em>Human intent, AI execution, and plenty of tokens</em>
 </p>

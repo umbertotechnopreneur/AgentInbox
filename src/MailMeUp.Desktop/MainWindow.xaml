@@ -29,7 +29,7 @@
                 <NavigationViewItem Content="Accounts" Tag="accounts" ToolTipService.ToolTip="Create or edit your email accounts.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Mail" Foreground="#16856A" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Your assistant" Tag="assistant" ToolTipService.ToolTip="Connect AgentInbox to Codex or another desktop assistant.">
+                <NavigationViewItem Content="Connect Codex" Tag="assistant" ToolTipService.ToolTip="Connect your email accounts to Codex.">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Link" Foreground="#8B62CF" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
@@ -59,7 +59,7 @@
             <Grid x:Name="BrandFooter" ColumnSpacing="20" RowSpacing="8" SizeChanged="BrandFooter_SizeChanged">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                <StackPanel x:Name="FooterLinks" Orientation="Horizontal" Spacing="8">
+                <StackPanel x:Name="FooterLinks" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <HyperlinkButton Content="umbertogiacobbi.biz" NavigateUri="https://umbertogiacobbi.biz/" Padding="0,6"
                                      AutomationProperties.Name="Umberto Giacobbi website" ToolTipService.ToolTip="Open Umberto Giacobbi's website." />
                     <HyperlinkButton Content="Terms" NavigateUri="https://umbertogiacobbi.biz/agentinbox/terms/" Padding="6"
@@ -68,10 +68,11 @@
                                      AutomationProperties.Name="AgentInbox privacy policy" ToolTipService.ToolTip="Read how AgentInbox handles your data." />
                 </StackPanel>
                 <HyperlinkButton x:Name="VibeWareLink" Grid.Column="1" NavigateUri="https://umbertogiacobbi.biz/vibeware/manifesto" Padding="0,6"
-                                 HorizontalAlignment="Right" AutomationProperties.Name="VibeWare manifesto" ToolTipService.ToolTip="Read the VibeWare manifesto.">
+                                 HorizontalAlignment="Right" AutomationProperties.Name="AgentInbox participates in VibeWare. Read the manifesto."
+                                 ToolTipService.ToolTip="Created with AI under Umberto Giacobbi's direction and responsibility. Read the VibeWare manifesto.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <SymbolIcon Symbol="Save" Foreground="{ThemeResource TextFillColorSecondaryBrush}" AutomationProperties.AccessibilityView="Raw" />
-                        <TextBlock Text="VibeWare" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Image Source="Assets/VibeWare.png" Width="80" Height="80" Stretch="Uniform" AutomationProperties.AccessibilityView="Raw" />
+                        <TextBlock Text="This is VibeWare · Manifesto" VerticalAlignment="Center" />
                     </StackPanel>
                 </HyperlinkButton>
             </Grid>

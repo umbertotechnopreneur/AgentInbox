@@ -214,7 +214,7 @@ internal sealed class PythonEngine
                     var message = error.GetProperty("message").GetString();
                     message = message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.";
                     if (error.TryGetProperty("server_response", out var response) && response.GetString() is { Length: > 0 and <= 2200 } detail)
-                        message += "\n\nServer / connection detail (credentials redacted):\n" + detail;
+                        message += "\n\nServer reply (sign-in details hidden):\n" + detail;
                     throw new EngineException(message);
                 }
                 return root.GetProperty("result").Clone();
