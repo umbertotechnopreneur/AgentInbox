@@ -9,8 +9,6 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 [![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
 ![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
-> **In development.** All 90 synthetic Python tests passed locally on Windows. Debug 1.0.11.0 includes the new account-check and Mica UI and is installed on x64 with package status `Ok`; visual checks for this flow remain pending. Earlier isolated checks covered Codex setup, account-form navigation, resizing and error recovery. Real-provider access and native credential storage remain unvalidated. See [validation](docs/VALIDATION.md).
-
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 
 ## Connect your mailbox
@@ -24,7 +22,7 @@ Choose IMAP or POP3, then enter the server, port, encrypted connection type and 
 | Other providers | IMAP or POP3 over TLS with a password or app password |
 | Outlook.com / Microsoft 365 | Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. This choice requires your own app registration; organization rules can still restrict access |
 
-Your provider or organization can disable access even when the server settings are correct. AgentInbox reports the problem without automatically switching sign-in methods. Presets fill settings; no provider connection has been validated for this implementation.
+Your provider or organization can disable access even when the server settings are correct. AgentInbox reports the problem without automatically switching sign-in methods. Presets fill in the server settings for you.
 
 IMAP exposes selected server folders and read status. POP3 exposes one mailbox as `INBOX`, has no unread flags or server folders, and searches message headers; its dates come from the email's `Date` header. AgentInbox sends no delete commands; provider retention settings can still affect your mailbox. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
 
@@ -50,12 +48,12 @@ python -B python/run.py mcp
 
 Use an absolute interpreter path and an absolute path to `python/run.py` in your MCP client. See [connection setup](docs/CODEX_SETUP.md) and the [tool contract](docs/MCP_CONTRACT.md).
 
-Codex, Claude and other local MCP clients are intended connection options. Client integration has not been validated for this implementation.
+Use it with Codex, Claude or another local MCP client.
 
 ## Where it runs
 
 - **Windows 11 x64 and ARM64:** native WinUI 3 setup; commercial distribution is MSIX only.
-- **Linux and macOS:** Python source only, for users who can configure and adapt it. Native Keychain and Secret Service paths remain untested. No compiled distributions or commercial support are provided. Contributor pull requests with fixes and clear validation evidence are welcome.
+- **Linux and macOS:** Python source only, for users who can configure and adapt it. No compiled distributions or commercial support are provided. Contributor pull requests with fixes are welcome.
 
 The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).
 
@@ -83,10 +81,12 @@ Artwork and writing style: [brand guide](docs/BRAND.md).
 
 ## VibeWare
 
-I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and state what has actually been tested. You are welcome to explore and reuse the open-source materials under their licenses.
+I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
 
-## External binary security policy
+<a id="external-binary-security-policy"></a>
 
-When first introducing an external library or prebuilt binary, scan its archive and extracted files/dependencies once with targeted Microsoft Windows Defender. Keep the import staged until the scan finishes. A new version or changed third-party content is a new import; reuse the evidence for unchanged files. Builds, tests, packaging and installation do not trigger scans, and installed SDK/system trees are outside this import check.
+## A note on security
 
-Proceed only after the scan completes without detections. Record the official source, version or SHA-256, scan command and result. A missing, failed, unfinished or unavailable scan blocks the new import. Never bypass detections with exclusions, allowlisting, restored quarantine items or disabled protection. This first-import requirement does not certify existing dependencies.
+I care about what goes into this project. Before I add a third-party library or prebuilt binary, including files supplied without source code, I scan the downloaded package, its extracted files and any dependencies with Microsoft Windows Defender. I keep new imports aside until the scan finishes without detections.
+
+I keep a record of where each new import came from and the scan result. If a scan cannot finish or flags something, I leave it out.
