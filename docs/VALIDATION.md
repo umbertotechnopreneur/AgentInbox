@@ -2,15 +2,19 @@
 
 Last updated: 2026-10-22.
 
-## Pending source changes
+## Debug MSIX 1.0.17.0 — 2026-10-22
 
-Microsoft sign-in now saves valid pending account settings, keeps its button available, and streams bounded local details into the page and sign-in dialog. Required form fields use native descriptions, theme error borders and first-error focus. The browser address no longer uses a domain/path allowlist; a valid HTTPS address returned by the verified Microsoft endpoint is accepted. The reported address failure came from the former local guard; the exact rejected address was not captured and no real sign-in has been verified. Source cases were updated for the new address contract and private diagnostics. No build, installation, tests or provider requests ran for these changes.
+Microsoft sign-in now saves valid pending account settings, keeps its button available, and streams bounded local details into the page and sign-in dialog. Required form fields use native descriptions, theme error borders and first-error focus. The browser address no longer uses a domain/path allowlist; a valid HTTPS address returned by the verified Microsoft endpoint is accepted. The reported address failure came from the former local guard; the exact rejected address was not captured and no real sign-in has been verified. Source cases were updated for the new address contract and private diagnostics.
 
-The email field labels, sign-in email defaults, account/connection errors and Connect Codex presentation were revised after Debug 1.0.16.0. The new Test connection action checks the saved launcher with MCP initialization and tools/list, without tools/call. It has a deadline, bounded replies, no retained child diagnostics and explicit process cleanup. No build, installation, automated test, launcher execution or live UI check has run for these source changes.
+The email field labels, sign-in email defaults, account/connection errors and Connect Codex presentation were also revised. The new Test connection action checks the saved launcher with MCP initialization and tools/list, without tools/call. It has a deadline, bounded replies, no retained child diagnostics and explicit process cleanup. No automated test, launcher execution, application launch, live UI check or provider operation ran during this build/install task.
+
+Built and signed locally from source checkpoint `f426a32`, then installed through `install-debug-msix`. Windows reports version `1.0.17.0`, architecture `X64` and status `Ok`. The retained installer is 105,462,895 bytes, SHA-256 `cae508836aa8cd9c2cab16e9d6c2ee728b2f3b2f1ebabf218bd7b2a0f1a692e9`, under `artifacts/msix/debug/x64/1.0.17.0/`, with checksum and package/installation records. The build reused unchanged Python 3.13.15 and previously scanned NuGet inputs. No downloads or new scans were needed.
+
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-dae273938e574e698adb50c3b5081cf4/`, was removed and verified absent. Automatic approval review rejected guarded removal of superseded `artifacts/msix/debug/x64/1.0.16.0/` with `blocked by policy`; about 100.6 MiB remain. No alternate removal was attempted. Earlier cleanup blocks remain unresolved.
 
 The owner's screenshot supplies a specific Microsoft refusal: `invalid_client`, `AADSTS70002`, with a requirement to mark the app as mobile. Microsoft's desktop configuration guide confirms the existing registration's public-client flow setting as the fix for that explanation. No registration was changed and no Microsoft service probe ran. See [Microsoft setup](AUTHENTICATION.md#sign-in-with-microsoft).
 
-## Latest installed source
+## Earlier implementation evidence
 
 Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo are included in installed Debug 1.0.16.0. This also includes the centered mailbox prompts, + action and redundant Codex-status removal. The owner requested installation for hands-on use and explicitly excluded automated tests. No live UI or provider checks ran in this build/install task.
 
