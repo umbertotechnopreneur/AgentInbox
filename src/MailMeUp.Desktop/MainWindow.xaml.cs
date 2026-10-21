@@ -867,7 +867,7 @@ public sealed partial class MainWindow : Window
         var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         title.Children.Add(ColoredIcon("\uE71B", 0x8B62CF));
         title.Children.Add(Text(client.DisplayName, 20));
-        var state = client.IsConfigured ? "Added to Codex"
+        var state = client.IsConfigured ? "Settings saved in Codex"
             : !client.IsDetected ? "Codex not found"
             : client.CanConnect ? "Ready to add AgentInbox" : "A setup issue needs your attention";
         var status = Text(state);
@@ -880,6 +880,47 @@ public sealed partial class MainWindow : Window
         connect.Visibility = client.IsConfigured ? Visibility.Collapsed : Visibility.Visible;
         AutomationProperties.SetName(connect, client.RequiresReplacement ? "Update AgentInbox connection in Codex" : "Connect AgentInbox to Codex");
         Page.Children.Add(Section("", title, status, Text(client.Message), connect));
+
+        var path = new TextBox
+        {
+            Header = "Codex settings file", Text = client.ConfigurationPath.Length > 0 ? client.ConfigurationPath : "Not available",
+            IsReadOnly = true, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        Page.Children.Add(Section("How this is connected",
+            Text("Direct connection to an app on this PC (MCP)"),
+            Hint("Codex starts AgentInbox on this computer when it needs your mail tools. This setup writes an entry in Codex's settings file; it does not install a marketplace plugin or browser add-in."), path));
+
+        var checkStatus = Hint(client.IsConfigured
+            ? "Local connection: not checked yet. Saved settings alone do not show that AgentInbox can reply."
+            : "Add or update the connection in Codex before testing it.");
+        var testConnection = Action("Test connection", () => _ = RunAsync(async () =>
+        {
+            checkStatus.Text = "Checking the saved settings and starting AgentInbox…";
+            checkStatus.Foreground = IconBrush(0x2477C8);
+            try
+            {
+                var toolCount = await service.TestConnectionAsync(client, _lifetime.Token);
+                checkStatus.Text = $"Local connection passed. AgentInbox started and returned {toolCount} mail tools. No email was read or sent.";
+                checkStatus.Foreground = IconBrush(0x16856A);
+                ShowNotice("Local connection passed", "Now try AgentInbox in a new Codex chat. This check did not open a mailbox.", InfoBarSeverity.Success);
+            }
+            catch (InvalidOperationException error)
+            {
+                checkStatus.Text = "Local connection failed. " + error.Message;
+                checkStatus.Foreground = IconBrush(0xD83B35);
+                throw new EngineException(error.Message);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                const string message = "Could not read Codex's settings file. Check the file shown above, then press Check Codex again.";
+                checkStatus.Text = "Local connection failed. " + message;
+                checkStatus.Foreground = IconBrush(0xD83B35);
+                throw new EngineException(message);
+            }
+        }), tooltip: "Check the saved Codex settings, start AgentInbox and ask for its tool list. No email is read or sent.");
+        testConnection.IsEnabled = client.IsConfigured;
+        Page.Children.Add(Section("Check the local connection", testConnection, checkStatus,
+            Hint("This checks the local app connection. To check that Codex can use it in a chat, try the request below. Mailbox sign-in is checked separately under Accounts.")));
         if (client.IsConfigured)
         {
             const string prompt = "Which email accounts can you access through AgentInbox?";
@@ -891,35 +932,53 @@ public sealed partial class MainWindow : Window
                     ShowNotice("Prompt copied", "Paste it into a new Codex chat to check the connection.", InfoBarSeverity.Informational);
                     return Task.CompletedTask;
                 }), tooltip: "Copy the first request to try in a new Codex chat."),
-                Hint("If AgentInbox is missing, restart Codex and try a new chat. The saved setup has not yet been tested with your assistant.")));
+                Hint("If AgentInbox is missing, restart Codex and try a new chat. The local connection test cannot check what happens inside your Codex chat.")));
         }
         else Page.Children.Add(Hint("After connecting, open a new chat in Codex to start using AgentInbox."));
         Page.Children.Add(Hint("You choose which accounts Codex can read and whether it can send from them."));
 
-        var path = new TextBox
+        using var description = JsonDocument.Parse(configuration);
+        var server = description.RootElement.GetProperty("mcpServers").GetProperty("agentinbox");
+        var app = new TextBox
         {
-            Header = "Codex settings file", Text = client.ConfigurationPath.Length > 0 ? client.ConfigurationPath : "Not available",
+            Header = client.IsConfigured ? "App saved in Codex" : "App this setup will add to Codex",
+            Text = server.GetProperty("command").GetString(),
+            IsReadOnly = true, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var arguments = new TextBox
+        {
+            Header = "Startup options", Text = server.GetProperty("args").ToString(),
+            IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
+            MinHeight = 80, MaxHeight = 140, HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var profile = new TextBox
+        {
+            Header = "AgentInbox settings folder", Text = server.GetProperty("env").GetProperty("AGENTINBOX_DATA_DIR").GetString(),
             IsReadOnly = true, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var box = new TextBox
         {
             Text = configuration, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
-            FontFamily = new FontFamily("Consolas"), FontSize = 12, MaxHeight = 160,
-            Header = "Connection settings (JSON)", HorizontalAlignment = HorizontalAlignment.Stretch
+            FontFamily = new FontFamily("Consolas"), FontSize = 12, Height = 220,
+            Header = "Full local settings (JSON)", HorizontalAlignment = HorizontalAlignment.Stretch
         };
         ScrollViewer.SetVerticalScrollBarVisibility(box, ScrollBarVisibility.Auto);
-        var copy = Action("Copy connection settings", () => _ = RunAsync(() =>
+        var copy = Action("Copy full settings", () => _ = RunAsync(() =>
         {
             CopyText(configuration);
-            ShowNotice("Connection settings copied", "Paste them into your assistant's MCP settings, then open a new chat.", InfoBarSeverity.Informational);
+            ShowNotice("Settings copied", "These JSON settings are for manual setup in another app that supports MCP. Codex saves its own entry in the settings file shown above.", InfoBarSeverity.Informational);
             return Task.CompletedTask;
         }), tooltip: "Copy the local connection settings for an assistant that supports MCP.");
         Page.Children.Add(new Expander
         {
-            Header = "Manual setup and troubleshooting", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch,
+            Header = "Connection details", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Content = Stack(Hint("For another desktop assistant, add AgentInbox as a local MCP server using these settings. They contain local paths, but no passwords."),
-                copy, box, path)
+            Content = Stack(Hint(client.IsConfigured
+                    ? "These launch settings match the enabled AgentInbox entry saved in Codex. The folder below contains the email accounts you configure in this app. Passwords are kept separately by Windows."
+                    : "These are the launch settings this app will add. They are not yet saved as a matching, enabled connection in Codex."),
+                app, arguments, profile,
+                Hint("This is a local app connection, not a website address or password. The full JSON below is useful for manual setup in another app that supports MCP; Codex stores its entry in its own settings format."),
+                box, copy)
         });
     }
 
@@ -951,7 +1010,7 @@ public sealed partial class MainWindow : Window
         try { result = await service.ConnectAsync(client, _lifetime.Token, replaceExisting); }
         catch (InvalidOperationException exception) { throw new EngineException(exception.Message); }
         RenderAssistantPage(service, configuration, result.Status);
-        ShowNotice(result.ConfigurationWritten ? "Added to Codex" : "Already added to Codex",
+        ShowNotice(result.ConfigurationWritten ? "Settings saved in Codex" : "Settings already saved in Codex",
             result.Message, result.CleanupPending ? InfoBarSeverity.Warning : InfoBarSeverity.Informational);
     }
 

@@ -1,14 +1,18 @@
 # Connect a local MCP client
 
-AgentInbox supplies a Python MCP server. Guided Codex configuration passed isolated local checks; a live client-to-mail connection remains unvalidated.
+AgentInbox connects to Codex through a local app connection called MCP. Codex starts AgentInbox on your PC when it needs its mail tools. The Windows setup adds a direct entry to Codex's settings file; this action does not install a marketplace plugin or browser add-in. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ## Installed Windows app
 
-Open **Your assistant**. AgentInbox detects the native Codex CLI, including the copy supplied by the Codex Windows app, and shows the configuration it can update. Press **Connect to Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. Other settings remain intact; a changed detection snapshot requires another check.
+Open **Connect Codex**. AgentInbox finds Codex on your computer and reads its saved connection settings. Press **Connect to Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. The page shows which Codex settings file it uses.
+
+**Settings saved in Codex** means that an enabled entry matches this installation. It does not mean that a Codex chat has used it. Press **Test connection** to check the saved entry, start its local AgentInbox command, complete the MCP greeting and ask for the five mail-tool definitions. The check makes no mail-tool calls: it does not list your accounts, sign in to a mail server, read email or send anything. It stops after 30 seconds and closes its child process. Changed settings, a missing launcher, a failed startup or an unexpected reply produce a failure rather than a success state.
+
+**Connection details** shows the app path, separate startup options, the AgentInbox settings folder and the full generated JSON. Matching saved entries and settings still to be added have different labels. The JSON has a multiline, scrollable preview; it is for manual setup in another MCP app. Codex keeps its own entry in TOML, in the file shown above. Neither format contains account passwords.
 
 The app prepares the change in a temporary Codex home and uses the installed CLI to edit its own TOML. It then replaces the configuration atomically. No mail server is started during setup. Python is included in the MSIX; you do not need to install it separately.
 
-Start a new Codex task after saving. A saved configuration is not proof that the assistant has connected or accessed a mailbox. If Codex cannot be detected, open or update Codex and refresh detection, or use **Manual setup and troubleshooting** for manual configuration and other MCP clients. See the [official Codex MCP commands](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+After the local test, open a new Codex chat and try the account-list request shown in the app. A successful local check does not prove that Codex loaded the connection or that a mailbox can be opened. If Codex cannot be found, open or update it and choose **Check Codex again**. Mailbox checks stay under **Accounts**.
 
 The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, with these separate arguments:
 

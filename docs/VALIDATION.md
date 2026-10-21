@@ -4,7 +4,9 @@ Last updated: 2026-10-22.
 
 ## Pending source changes
 
-The email field labels, sign-in email defaults and account validation wording were revised after Debug 1.0.16.0. No build, installation, automated test or live UI check has run for those changes.
+The email field labels, sign-in email defaults, account/connection errors and Connect Codex presentation were revised after Debug 1.0.16.0. The new Test connection action checks the saved launcher with MCP initialization and tools/list, without tools/call. It has a deadline, bounded replies, no retained child diagnostics and explicit process cleanup. No build, installation, automated test, launcher execution or live UI check has run for these source changes.
+
+The owner's screenshot supplies a specific Microsoft refusal: `invalid_client`, `AADSTS70002`, with a requirement to mark the app as mobile. Microsoft's desktop configuration guide confirms the existing registration's public-client flow setting as the fix for that explanation. No registration was changed and no Microsoft service probe ran. See [Microsoft setup](AUTHENTICATION.md#sign-in-with-microsoft).
 
 ## Latest installed source
 

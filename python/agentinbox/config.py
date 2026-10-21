@@ -167,13 +167,13 @@ def account_input(value: object) -> dict:
         if preset not in PRESETS:
             raise MailError("invalid_configuration", "Choose one of the listed email providers.")
         metadata["preset"] = preset
+    email_address = address(value["email"])
     incoming = value["incoming"]
     if not isinstance(incoming, dict) or set(incoming) != {"protocol", "host", "port", "tls", "username"} or incoming["protocol"] not in {"imap", "pop3"}:
         raise MailError("invalid_configuration", "Under Read mail, choose how to read mail and enter your provider's server settings.")
     protocol = incoming["protocol"]
     incoming = {"protocol": protocol, **endpoint({k: v for k, v in incoming.items() if k != "protocol"}, protocol)}
     auth = authentication(value["authentication"])
-    email_address = address(value["email"])
     identity = text(value["id"], "Account ID", 64, allow_empty=True)
     if identity and not re.fullmatch(r"[a-f0-9]{32}", identity):
         raise MailError("invalid_configuration", "Invalid account ID.")
@@ -197,6 +197,6 @@ def account_input(value: object) -> dict:
             raise MailError("invalid_configuration", "Microsoft sign-in only works with Microsoft mail servers.")
         if incoming["username"].casefold() != email_address.casefold() or (smtp and smtp["username"].casefold() != incoming["username"].casefold()):
             raise MailError("invalid_configuration", "For Microsoft, use the same email address under Account, Read mail and Send mail.")
-    return {**metadata, "id": identity, "label": text(value["label"], "Account name", 100), "email": email_address,
+    return {**metadata, "id": identity, "label": text(value["label"], "Connection name", 100), "email": email_address,
             "incoming": incoming, "smtp": smtp, "authentication": auth,
             "read_enabled": flag(value["read_enabled"], "Reading"), "send_enabled": send_enabled, "folders": normalized}

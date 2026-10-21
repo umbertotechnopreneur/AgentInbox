@@ -19,7 +19,7 @@ internal sealed record AssistantSetupResult(
     bool CleanupPending = false);
 
 /// <summary>Guides explicit Codex setup using its installed CLI and the Python engine's connection description.</summary>
-internal sealed class AssistantSetupService
+internal sealed partial class AssistantSetupService
 {
     private const int MaximumConfigurationBytes = 2 * 1024 * 1024;
     private const int MaximumOutputCharacters = 1024 * 1024;
@@ -76,7 +76,7 @@ internal sealed class AssistantSetupService
                     && enabledValue.ValueKind == JsonValueKind.True;
                 if (matches && enabled)
                     return [new("codex", "Codex", true, false, true, false, configurationPath,
-                        "Your AgentInbox settings are saved in Codex. Start a new chat to try the connection.", token)];
+                        "Codex has the matching AgentInbox settings, and this connection is enabled. Use Test connection to check that AgentInbox can start and reply.", token)];
                 return [new("codex", "Codex", true, true, false, true, configurationPath,
                     "Codex already has an AgentInbox connection. Update it to use the settings from this app.", token)];
             }
@@ -158,7 +158,7 @@ internal sealed class AssistantSetupService
             {
                 CanConnect = false, IsConfigured = true, RequiresReplacement = false,
                 SnapshotToken = SnapshotToken(executable, current.ConfigurationPath, prepared.Fingerprint),
-                Message = "Your AgentInbox settings are saved in Codex. Start a new chat to try the connection."
+                Message = "Your AgentInbox settings are saved in Codex. Use Test connection, then try a new Codex chat."
             };
             result = new(true, false, saved.Message, saved);
         }
@@ -194,7 +194,7 @@ internal sealed class AssistantSetupService
         return cleanupPending ? result with
         {
             CleanupPending = true,
-            Message = result.Message + " Some temporary setup files could not be removed. See the settings folder under Manual setup and troubleshooting. You do not need to connect again."
+            Message = result.Message + " Some temporary setup files could not be removed. See the Codex settings folder shown on this page. You do not need to connect again."
         } : result;
     }
 

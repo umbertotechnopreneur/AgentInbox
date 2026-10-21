@@ -193,6 +193,8 @@ class MicrosoftAuth:
         elif error in {"invalid_client", "unauthorized_client", "invalid_scope", "invalid_request"}:
             code = "microsoft_configuration"
             message = "Microsoft couldn't connect this app. Its Microsoft setup may need fixing."
+            if error == "invalid_client" and isinstance(description, str) and "must be marked as 'mobile'" in description:
+                message = "Microsoft sign-in has not been enabled for this app. The app owner needs to enable desktop sign-in in its Microsoft settings."
         elif error in {"invalid_grant", "interaction_required", "consent_required", "login_required"}:
             code = "microsoft_reauthentication"
             message = "Please sign in with Microsoft again. If your work account is blocked, ask your IT team for help."
