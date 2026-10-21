@@ -41,8 +41,8 @@ public sealed partial class MainWindow
         var authentication = new Dictionary<string, string> { ["method"] = "password" };
         if (_authentication.SelectedIndex == 1)
         {
-            if (!Guid.TryParse(_clientId.Text.Trim(), out var clientId))
-                throw new EngineException("Enter the Application (client) ID from your Microsoft app registration.");
+            if (!Guid.TryParse(_microsoftClientId, out var clientId))
+                throw new EngineException("The Microsoft app ID in the account configuration is invalid.");
             var tenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
             if (_tenant.SelectedIndex == 3 && !Guid.TryParse(tenant, out _))
                 throw new EngineException("Enter your Microsoft directory's tenant GUID.");

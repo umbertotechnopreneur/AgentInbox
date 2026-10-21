@@ -8,7 +8,14 @@ Choose **Add connection**, or select a saved connection by its name and email ad
 
 **Connection name** stays above the native **Account**, **Incoming** and **Outgoing** tabs. Edit it and press **Save changes** to rename the connection. Tab icons are colored; the selected label is bold. Save and Cancel stay below the form with the current save status. The window uses Acrylic and adapts to display scaling and available space.
 
-In **Account**, choose a preset or custom servers, email address and authentication method. Password or app password is the default. Supported Microsoft servers also offer explicit **Web authorization with Microsoft**, using your own public-client registration. Save before starting that sign-in flow. The browser opens only when you press its button. See [authentication](AUTHENTICATION.md).
+In **Account**, choose a preset or custom servers and enter your email address. Instructions and an official link appear directly below the preset:
+
+- **Gmail:** create an app password with 2-Step Verification enabled; your normal password does not work here. Account or administrator restrictions may prevent app passwords.
+- **iCloud:** create an app-specific password with two-factor authentication enabled. Incoming mail uses IMAP; POP3 is unavailable.
+- **Outlook.com:** OAuth and personal accounts are selected. Enable IMAP or POP access in Outlook.com settings.
+- **Microsoft 365:** OAuth and work/school accounts are selected. Your organization may require administrator consent and must permit mail protocol access; sending also requires SMTP AUTH.
+
+Windows setup loads the Microsoft app ID from its application settings; there is no app ID field to fill in. Save the account before starting web authorization. The browser opens only when you press its button. See [authentication](AUTHENTICATION.md) for registration requirements and validation limits.
 
 In **Incoming**, choose IMAP or POP3 and enter the server, port, TLS mode and credentials. IMAP shares your selected folders; POP3 has only INBOX. Enable reading only for accounts you want to share.
 

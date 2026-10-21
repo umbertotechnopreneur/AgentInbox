@@ -13,16 +13,16 @@ Connect a compatible mailbox, choose what your assistant can read, and ask for t
 
 ## Connect your mailbox
 
-Choose IMAP or POP3, then enter the server, port, encrypted connection type and username. Password or app password is the default. For Outlook.com or Microsoft 365, you can explicitly choose **Web authorization**: Microsoft gives you a short code to sign in. This choice requires your own Microsoft app registration.
+Choose a provider preset to see its sign-in instructions and fill in the server settings. Gmail and iCloud need an app password. Outlook.com and Microsoft 365 select **Web authorization with Microsoft (OAuth)**: save the account, then use the short code to sign in on Microsoft's page. Windows setup supplies AgentInbox's public app ID from its application settings.
 
 | Mail service | Connection requirement |
 | --- | --- |
 | Gmail | An eligible account with an app password and the chosen mail protocol allowed; Web authorization is not available for Google accounts |
 | iCloud Mail | An app-specific password |
 | Other providers | IMAP or POP3 over TLS with a password or app password |
-| Outlook.com / Microsoft 365 | Outlook.com requires Web authorization with Microsoft; Exchange Online no longer accepts ordinary passwords for IMAP and POP3. This choice requires your own app registration; organization rules can still restrict access |
+| Outlook.com / Microsoft 365 | Microsoft sign-in (OAuth); enable IMAP/POP access where required. Organization rules can restrict access, require administrator consent or disable SMTP AUTH |
 
-Your provider or organization can disable access even when the server settings are correct. AgentInbox reports the problem without automatically switching sign-in methods. Presets fill in the server settings for you.
+Your provider or organization can disable access even when the server settings are correct. Choosing a Microsoft preset selects OAuth; a rejected connection never triggers a fallback to another sign-in method. The bundled Microsoft registration still needs live sign-in validation; see [authentication](docs/AUTHENTICATION.md).
 
 IMAP exposes selected server folders and read status. POP3 exposes one mailbox as `INBOX`, has no unread flags or server folders, and searches message headers; its dates come from the email's `Date` header. AgentInbox sends no delete commands; provider retention settings can still affect your mailbox. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
 

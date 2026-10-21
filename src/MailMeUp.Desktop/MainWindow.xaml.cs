@@ -17,6 +17,7 @@ namespace MailMeUp.Desktop;
 public sealed partial class MainWindow : Window
 {
     private readonly PythonEngine _engine;
+    private readonly DesktopSettings _settings = DesktopSettings.Load();
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<JsonElement> _accounts = [];
     private bool _loaded;
@@ -44,7 +45,8 @@ public sealed partial class MainWindow : Window
     private TextBox _email = new();
     private ComboBox _authentication = new();
     private TextBlock _authenticationHint = new();
-    private TextBox _clientId = new();
+    private HyperlinkButton _providerHelpLink = new();
+    private string _microsoftClientId = "";
     private ComboBox _tenant = new();
     private TextBox _tenantId = new();
     private StackPanel _microsoftFields = new();
@@ -218,19 +220,23 @@ public sealed partial class MainWindow : Window
         {
             if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: true);
         };
-        _clientId = Field("Microsoft app ID", "Application (client) ID from Microsoft");
         _tenant = new ComboBox { Header = "Microsoft account type", HorizontalAlignment = HorizontalAlignment.Stretch };
         foreach (var name in new[] { "Personal and work accounts (common)", "Work or school accounts (organizations)", "Personal accounts (consumers)", "Specific tenant ID" })
             _tenant.Items.Add(name);
         _tenantId = Field("Tenant ID", "Directory (tenant) GUID");
         _tenant.SelectionChanged += (_, _) => _tenantId.Visibility = _tenant.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         _microsoftSignIn = Action("Start web authorization…", () => _ = RunAsync(SignInMicrosoftAsync));
-        _microsoftFields = Stack(_clientId, _tenant, _tenantId,
-            Hint("You need a Microsoft app ID that allows sign-in on this device and your account type. The ID is not a password. AgentInbox cannot create or check it for you."),
+        _microsoftFields = Stack(_tenant, _tenantId,
             _microsoftSignIn,
-            Hint("Save this choice before starting web authorization. It applies to incoming mail and, if enabled, sending. A wrong password never switches to web authorization automatically."));
+            Hint("Save your account, then start web authorization. Sign in on Microsoft's page using the code shown. This connects incoming mail and, if enabled, sending."));
         _authenticationHint = Hint("");
-        var accountContent = Section("", _preset, _email, _authentication, _microsoftFields, _authenticationHint);
+        _providerHelpLink = new HyperlinkButton
+        {
+            HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0),
+            Visibility = Visibility.Collapsed
+        };
+        var providerChoice = Stack(_preset, _authenticationHint, _providerHelpLink);
+        var accountContent = Section("", providerChoice, _email, _authentication, _microsoftFields);
 
         _incomingProtocol = new ComboBox { Header = "Incoming protocol", HorizontalAlignment = HorizontalAlignment.Stretch };
         _incomingProtocol.Items.Add("IMAP — mail and server folders");
@@ -365,7 +371,7 @@ public sealed partial class MainWindow : Window
 
     private void TrackAccountChanges()
     {
-        foreach (var field in new[] { _label, _email, _clientId, _tenantId, _incomingHost, _incomingPort, _incomingUser, _smtpHost, _smtpPort, _smtpUser })
+        foreach (var field in new[] { _label, _email, _tenantId, _incomingHost, _incomingPort, _incomingUser, _smtpHost, _smtpPort, _smtpUser })
             field.TextChanged += (_, _) => MarkAccountChanged();
         foreach (var field in new[] { _incomingPassword, _smtpPassword })
             field.PasswordChanged += (_, _) => MarkAccountChanged();
@@ -445,7 +451,8 @@ public sealed partial class MainWindow : Window
         _email.Text = account is { } email ? Value(email, "email") : "";
         var authentication = account?.GetProperty("authentication");
         var microsoft = authentication is { } method && Value(method, "method") == "microsoft_oauth";
-        _clientId.Text = microsoft ? Value(authentication!.Value, "client_id") : "";
+        // A saved refresh token belongs to its original app registration.
+        _microsoftClientId = microsoft ? Value(authentication!.Value, "client_id") : _settings.MicrosoftClientId;
         var tenant = microsoft ? Value(authentication!.Value, "tenant") : "common";
         _tenant.SelectedIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
         _tenantId.Text = _tenant.SelectedIndex == 3 ? tenant : "";
@@ -516,11 +523,17 @@ public sealed partial class MainWindow : Window
         };
         _smtpPort.Text = _preset.SelectedIndex == 1 ? "465" : "587";
         _smtpTls.SelectedIndex = _preset.SelectedIndex == 1 ? 0 : 1;
+        UpdateAuthenticationChoices();
+        var microsoft = _preset.SelectedIndex is 3 or 4;
+        _authentication.SelectedIndex = microsoft ? 1 : 0;
+        if (microsoft)
+        {
+            _microsoftClientId = _settings.MicrosoftClientId;
+            _tenant.SelectedIndex = _preset.SelectedIndex == 3 ? 2 : 1;
+        }
         _loadingForm = false;
         UpdateIncomingPresentation();
-        UpdateAuthenticationChoices();
-        if (_preset.SelectedIndex is 3 or 4)
-            ShowNotice("Use web authorization with Microsoft", "Outlook.com and Microsoft 365 may reject a regular password for mail access. Choose web authorization and enter your Microsoft app ID. Your work or school may still block this connection. AgentInbox never changes your choice automatically.", InfoBarSeverity.Warning);
+        UpdateAuthenticationPresentation(clearPasswords: true);
     }
 
     private void IncomingProtocolChanged()
@@ -553,7 +566,7 @@ public sealed partial class MainWindow : Window
         var allowMicrosoft = _preset.SelectedIndex is not (1 or 2) && UsesMicrosoftMailServers();
         var selectedMicrosoft = _authentication.SelectedIndex == 1;
         if (allowMicrosoft && _authentication.Items.Count == 1)
-            _authentication.Items.Add("Web authorization with Microsoft");
+            _authentication.Items.Add("Web authorization with Microsoft (OAuth)");
         else if (!allowMicrosoft && _authentication.Items.Count == 2)
         {
             _authentication.Items.RemoveAt(1);
@@ -565,14 +578,35 @@ public sealed partial class MainWindow : Window
                     ShowNotice("Choose how to connect to this server", "Web authorization with Microsoft is only available for supported Microsoft mail servers. Choose a password or app password before saving.", InfoBarSeverity.Informational);
             }
         }
-        _authenticationHint.Text = _preset.SelectedIndex switch
-        {
-            1 => "Use a Gmail app password. Availability depends on your Google account settings.",
-            2 => "Use an app-specific password for iCloud.",
-            _ when allowMicrosoft => "For Outlook.com or Microsoft 365, you can choose web authorization with Microsoft. You will need your Microsoft app ID.",
-            _ => "Use the password or app password required by your mail provider. A preset fills in the server settings."
-        };
         if (!_loadingForm) UpdateAuthenticationPresentation(clearPasswords: false);
+    }
+
+    /// <summary>Explains provider requirements beside the preset, before the user enters credentials.</summary>
+    private void UpdateProviderGuidance()
+    {
+        var microsoftHint = _authentication.SelectedIndex == 1
+            ? "Your email password cannot be used here. Microsoft sign-in (OAuth) is selected below."
+            : "Your email password cannot be used here. Select Microsoft sign-in (OAuth) below.";
+        var (message, linkText, address) = _preset.SelectedIndex switch
+        {
+            1 => ("Create a Google app password for AgentInbox; your normal Gmail password will not work. Turn on 2-Step Verification first, then use the app password for incoming and outgoing mail. Your Google account or administrator must allow app passwords.",
+                "Create a Google app password", "https://myaccount.google.com/apppasswords"),
+            2 => ("Create an app-specific password for AgentInbox; your Apple Account password will not work here. Two-factor authentication must be on. Use that app password for incoming and outgoing mail. iCloud Mail supports IMAP, not POP3.",
+                "Create an Apple app-specific password", "https://support.apple.com/en-us/102654"),
+            3 => ($"{microsoftHint} Enable IMAP or POP in Outlook.com settings before checking the connection.",
+                "Open Outlook.com connection instructions", "https://support.microsoft.com/en-us/outlook/pop-imap-and-smtp-settings-for-outlook-com"),
+            4 => ($"{microsoftHint} Your organization may require administrator approval and must allow IMAP or POP. Sending also requires SMTP AUTH to be enabled for your mailbox.",
+                "Microsoft 365 sending requirements", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
+            _ when UsesMicrosoftMailServers() => (microsoftHint, "Microsoft mail connection instructions",
+                "https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth"),
+            _ => ("Use the password or app password required by your mail provider. Choose a preset to fill in its server settings.", "", "")
+        };
+        _authenticationHint.Text = message;
+        _providerHelpLink.Content = linkText;
+        _providerHelpLink.NavigateUri = address.Length == 0 ? null : new Uri(address);
+        _providerHelpLink.Visibility = address.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        AutomationProperties.SetName(_providerHelpLink, linkText);
+        ToolTipService.SetToolTip(_providerHelpLink, linkText);
     }
 
     private void UpdateIncomingPresentation()
@@ -596,6 +630,7 @@ public sealed partial class MainWindow : Window
     private void UpdateAuthenticationPresentation(bool clearPasswords)
     {
         var microsoft = _authentication.SelectedIndex == 1;
+        UpdateProviderGuidance();
         _microsoftFields.Visibility = microsoft ? Visibility.Visible : Visibility.Collapsed;
         _incomingPassword.IsEnabled = !microsoft;
         _smtpPassword.IsEnabled = !microsoft;
@@ -638,10 +673,10 @@ public sealed partial class MainWindow : Window
             throw new EngineException("Save your web authorization choice before starting it.");
         var selectedTenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
         if (_authentication.SelectedIndex != 1 ||
-            !string.Equals(Value(savedAuthentication, "client_id"), _clientId.Text.Trim(), StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Value(savedAuthentication, "client_id"), _microsoftClientId, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(savedAuthentication, "tenant"), selectedTenant, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Value(saved, "email"), _email.Text.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new EngineException("Save your account and Microsoft app ID changes before starting web authorization.");
+            throw new EngineException("Save your account settings before starting web authorization.");
         var start = await _engine.ManageAsync("start_microsoft_signin", new { account_id = _accountId }, _lifetime.Token);
         var flowId = Value(start, "flow_id");
         var verificationUri = MicrosoftVerificationUri(Value(start, "verification_uri"));
