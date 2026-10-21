@@ -2,11 +2,15 @@
 
 Last updated: 2026-10-22.
 
-## Pending sign-in changes
+## Debug MSIX 1.0.18.0 — 2026-10-22
 
-Microsoft sign-in logs now use collapsed native expanders in the account page and dialog. The sign-in code is centered with a Copy icon beside it; copying the code is separate from copying the redacted diagnostics. No build, installation, automated tests, UI checks or provider requests ran for these changes. Debug 1.0.17.0 remains the installed version.
+Microsoft sign-in logs now use collapsed native expanders in the account page and dialog. The sign-in code is centered with a Copy icon beside it; copying the code is separate from copying the redacted diagnostics. Built and signed locally from source checkpoint `1aa7491`, then installed through `install-debug-msix`. Windows reports version `1.0.18.0`, architecture `X64` and status `Ok`. No automated tests, application launch, UI checks or mail-provider requests ran in this task.
 
 The owner's installed-app trace shows authorization pending, then HTTP 200 from the token endpoint, followed by the local permission rejection and temporary-data cleanup. It does not capture the returned scope values and does not establish which permission comparison failed. Source now accepts additional previously granted scopes for the same mail resource while requiring every requested mail permission; missing/wrong-resource cases include bounded, redacted required/returned details. Microsoft documents that earlier grants can be returned together. Synthetic cases cover extra grants, missing reading permission, no unintended sending, redaction and cleanup; they were not run. No live service request was made by this task.
+
+The retained installer is 105,437,582 bytes, SHA-256 `e99d706bacc6df5ba9bba75ac564f619cfd6ed09ef7489a911b6de459bb544a3`, under `artifacts/msix/debug/x64/1.0.18.0/`, with checksum, package/installation records and import-reuse evidence. Earlier installers and inputs were already absent before this task. Python 3.13.15 and twenty NuGet archives were recovered from their official URLs, and each SHA-256 matched the previous 1.0.17.0 import record. These are unchanged imports covered by the earlier targeted first-import scans; no new scan ran. The first download orchestration attempt failed before downloading because PowerShell's parallel pipeline does not support `-ErrorAction`; the corrected attempt verified every archive before building.
+
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-edc4977956e941e487ec524b0dc8b382/`, was removed and verified absent. Automatic approval review rejected guarded removal of `artifacts/inputs/debug-1.0.18.0-20261022/` with `blocked by policy`; 502,715,034 bytes (about 479.4 MiB) remain. No alternate removal was attempted. The retained package folder contains the minimal import-reuse record independently of these archives.
 
 ## Debug MSIX 1.0.17.0 — 2026-10-22
 
