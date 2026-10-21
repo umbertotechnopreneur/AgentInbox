@@ -16,11 +16,11 @@ from tests._support import MailApplicationCase
 class ClientEntrypointTests(MailApplicationCase):
     """Exercise client-visible failures without native APIs or live mail."""
 
-    def test_optional_outgoing_arrays_reject_falsey_values_without_preparation(self):
+    def test_optional_outgoing_arrays_reject_falsey_values_without_sending(self):
         for field, value in (("cc", False), ("bcc", 0), ("attachments", {})):
             with self.subTest(field=field), self.assertRaises(MailError):
-                self.prepare(**{field: value})
-        self.assertEqual([], self.app.outbox.pending())
+                self.send(**{field: value})
+        self.assertFalse(self.app.sends.path.exists())
         self.smtp.assert_not_called()
 
     def test_mcp_schema_rejects_bool_integer_and_optional_array_substitutes(self):
@@ -28,7 +28,7 @@ class ClientEntrypointTests(MailApplicationCase):
         cases = [
             ("search_mail", {"account_id": self.account["id"], "limit": True}),
             ("search_mail", {"account_id": self.account["id"], "unread": "false"}),
-            ("prepare_email", {"account_id": self.account["id"], "to": ["reader@example.test"],
+            ("send_email", {"request_id": "a" * 32, "account_id": self.account["id"], "to": ["reader@example.test"],
                                "subject": "Synthetic", "body": "Synthetic", "cc": False}),
         ]
         for operation, arguments in cases:
@@ -101,19 +101,3 @@ class ClientEntrypointTests(MailApplicationCase):
              mock.patch.object(config, "windows_package_family", return_value=None), \
              mock.patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}, clear=True):
             self.assertEqual(self.root / "AgentInbox", config.data_directory())
-
-    def test_native_review_request_does_not_submit_or_consume_approval(self):
-        request = self.prepare()
-        with mock.patch.object(self.app, "_open_review", return_value=True):
-            result = self.app.open_review(request["request_id"])
-        self.assertEqual("pending_approval", result["status"])
-        self.assertTrue(result["review_requested"])
-        self.assertEqual("pending_approval", self.app.outbox.get(request["request_id"])["status"])
-        self.smtp.assert_not_called()
-
-    def test_cancel_command_revokes_pending_request_without_smtp(self):
-        request = self.prepare()
-        result = self.app.manage("cancel_email", {"request_id": request["request_id"]})
-        self.assertEqual("cancelled", result["status"])
-        self.assertEqual("cancelled", self.app.outbox.get(request["request_id"])["status"])
-        self.smtp.assert_not_called()

@@ -54,7 +54,7 @@ internal sealed class AssistantSetupService
         }
         if (executable is null)
             return [Status(false, configurationPath,
-                "The native Codex command was not found. Open or update Codex, then refresh detection. Advanced configuration is available below.")];
+                "Open or update the Codex app, then choose Check Codex again. You can also use the manual connection settings below.")];
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -76,12 +76,12 @@ internal sealed class AssistantSetupService
                     && enabledValue.ValueKind == JsonValueKind.True;
                 if (matches && enabled)
                     return [new("codex", "Codex", true, false, true, false, configurationPath,
-                        "AgentInbox is configured in Codex. Start a new Codex task to load its tools; the live connection has not been verified.", token)];
+                        "Your AgentInbox settings are saved in Codex. Start a new chat to try the connection.", token)];
                 return [new("codex", "Codex", true, true, false, true, configurationPath,
-                    "An AgentInbox entry already exists with different settings or is disabled. Updating replaces only that entry after your confirmation.", token)];
+                    "Codex already has an AgentInbox connection. Update it to use the settings from this app.", token)];
             }
             return [new("codex", "Codex", true, true, false, false, configurationPath,
-                "Codex was detected. Connect to add AgentInbox to this local configuration.", token)];
+                "Codex is installed. Add AgentInbox so it can use the email accounts you choose to share.", token)];
         }
         catch (Exception error) when (IsExpectedFailure(error))
         {
@@ -158,7 +158,7 @@ internal sealed class AssistantSetupService
             {
                 CanConnect = false, IsConfigured = true, RequiresReplacement = false,
                 SnapshotToken = SnapshotToken(executable, current.ConfigurationPath, prepared.Fingerprint),
-                Message = "AgentInbox configuration was saved. Start a new Codex task to load its tools; the live connection has not been verified."
+                Message = "Your AgentInbox settings are saved in Codex. Start a new chat to try the connection."
             };
             result = new(true, false, saved.Message, saved);
         }
@@ -194,7 +194,7 @@ internal sealed class AssistantSetupService
         return cleanupPending ? result with
         {
             CleanupPending = true,
-            Message = result.Message + " Temporary setup files still need cleanup in the configuration folder under Advanced. The saved connection does not need to be installed again."
+            Message = result.Message + " Some temporary setup files could not be removed. See the settings folder under Manual setup and troubleshooting. You do not need to connect again."
         } : result;
     }
 
@@ -314,7 +314,7 @@ internal sealed class AssistantSetupService
         foreach (var variable in server.GetProperty("env").EnumerateObject())
         {
             var value = variable.Value.GetString();
-            if (variable.Name is not ("AGENTINBOX_DATA_DIR" or "AGENTINBOX_REVIEW_APP")
+            if (variable.Name != "AGENTINBOX_DATA_DIR"
                 || value is null || !Path.IsPathFullyQualified(value) || value.Any(char.IsControl)
                 || !environment.TryAdd(variable.Name, value))
                 throw new InvalidOperationException("The AgentInbox client configuration contains an unsupported environment value.");

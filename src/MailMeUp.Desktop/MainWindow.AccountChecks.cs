@@ -32,7 +32,7 @@ public sealed partial class MainWindow
         if (_authentication.SelectedIndex < 0)
             throw new EngineException("Choose how to connect to these mail servers.");
         if (_authentication.SelectedIndex == 1 && !UsesMicrosoftMailServers())
-            throw new EngineException("Web authorization with Microsoft is available only for Outlook.com and Microsoft 365 mail servers.");
+            throw new EngineException("Microsoft sign-in only works with Microsoft mail. Check the servers under Read mail and Send mail.");
         var pop = _incomingProtocol.SelectedIndex == 1;
         string[] folders = pop ? ["INBOX"] : _folders.SelectedItems.Cast<string>().ToArray();
         if (checking && folders.Length == 0) folders = ["INBOX"];
@@ -41,16 +41,21 @@ public sealed partial class MainWindow
         var authentication = new Dictionary<string, string> { ["method"] = "password" };
         if (_authentication.SelectedIndex == 1)
         {
-            if (!Guid.TryParse(_clientId.Text.Trim(), out var clientId))
-                throw new EngineException("Enter the Application (client) ID from your Microsoft app registration.");
+            if (!Guid.TryParse(_microsoftClientId, out var clientId))
+                throw new EngineException("This app's Microsoft settings need fixing. The saved app ID is invalid.");
             var tenant = _tenant.SelectedIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => _tenantId.Text.Trim() };
             if (_tenant.SelectedIndex == 3 && !Guid.TryParse(tenant, out _))
-                throw new EngineException("Enter your Microsoft directory's tenant GUID.");
+                throw new EngineException("Enter the organization ID from your IT team, or choose Personal or Work or school.");
             authentication = new() { ["method"] = "microsoft_oauth", ["client_id"] = clientId.ToString(), ["tenant"] = tenant };
         }
         var account = new Dictionary<string, object?>
         {
             ["id"] = _accountId, ["label"] = _label.Text.Trim(), ["email"] = _email.Text.Trim(),
+            ["preset"] = _preset.SelectedIndex switch
+            {
+                0 => "custom", 1 => "gmail", 2 => "icloud", 3 => "outlook", 4 => "microsoft365",
+                _ => throw new EngineException("Choose your email provider.")
+            },
             ["authentication"] = authentication,
             ["incoming"] = Connection(_incomingHost, _incomingPort, _incomingTls, _incomingUser, pop ? "pop3" : "imap"),
             ["smtp"] = _configureSmtp.IsOn ? Connection(_smtpHost, _smtpPort, _smtpTls, _smtpUser) : null,
@@ -78,18 +83,53 @@ public sealed partial class MainWindow
         finally { form.Passwords.Clear(); }
     }
 
-    /// <summary>Runs actual checks against the captured form, then lets the owner select folders and optionally save.</summary>
-    private async Task CheckAccountAsync(bool saveAccount)
+    /// <summary>Uses the shared check window for SMTP progress, cancellation and the final server result.</summary>
+    private async Task TestSmtpAsync()
     {
-        var form = ReadAccountForm(checking: true);
-        using var window = new AccountCheckWindow(this, form.Account["smtp"] is not null, saveAccount);
+        using var window = new AccountCheckWindow(this, smtp: false, saveAccount: false, smtpOnly: true);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
         using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
         window.Activate();
+        Dictionary<string, string>? passwords = null;
+        try
+        {
+            window.Report(new AccountCheckProgress("settings", "started"));
+            var form = ReadAccountForm(checking: true);
+            passwords = form.Passwords;
+            await _engine.ManageAsync("check_smtp", new
+            {
+                account = form.Account, passwords = form.Passwords, expected_revision = form.Revision
+            }, cancellation.Token, window.Report);
+            window.Complete(true, "The secure connection and sign-in passed. No email was sent and no settings were saved.");
+        }
+        catch (OperationCanceledException)
+        {
+            window.Complete(false, "The sending check was cancelled or took too long. No email was sent and no settings were saved.");
+        }
+        catch (Exception exception)
+        {
+            window.Complete(false, exception is EngineException ? exception.Message
+                : "The sending check could not finish. No email was sent.");
+        }
+        finally { passwords?.Clear(); }
+        await window.ClosedTask;
+    }
+
+    /// <summary>Runs actual checks against the captured form, then lets the owner select folders and optionally save.</summary>
+    private async Task CheckAccountAsync(bool saveAccount)
+    {
+        using var window = new AccountCheckWindow(this, _configureSmtp.IsOn, saveAccount);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, window.StopToken);
+        using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
+        window.Activate();
+        Dictionary<string, string>? passwords = null;
         JsonElement? committed = null;
         var saveStarted = false;
         try
         {
+            window.Report(new AccountCheckProgress("settings", "started"));
+            var form = ReadAccountForm(checking: true);
+            passwords = form.Passwords;
             var result = await _engine.ManageAsync("check_account", new
             {
                 account = form.Account, passwords = form.Passwords, expected_revision = form.Revision
@@ -131,8 +171,7 @@ public sealed partial class MainWindow
             window.Complete(true, (saveAccount
                 ? "Your account was added with the selected folders. "
                 : "Connection and sign-in passed. Folder choices are in your form; save when you are ready. ")
-                + readingSummary + " You can close this window.",
-                offerTestEmail: saveAccount && form.Account["send_enabled"] is true);
+                + readingSummary + " You can close this window.");
         }
         catch (OperationCanceledException)
         {
@@ -148,14 +187,8 @@ public sealed partial class MainWindow
                 ? "Your account was saved, but the form could not refresh. Close this window and reload your accounts."
                 : failure);
         }
-        finally { form.Passwords.Clear(); }
+        finally { passwords?.Clear(); }
         await window.ClosedTask;
-        if (window.TestEmailRequested && committed is not null)
-        {
-            if (Value(committed.Value, "id") != _accountId)
-                throw new EngineException("The selected account changed. Open its outgoing settings before preparing a test email.");
-            await PrepareTestAsync();
-        }
     }
 
     /// <summary>Returns the committed save result separately from subsequent local rendering.</summary>

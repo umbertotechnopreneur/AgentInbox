@@ -8,4 +8,4 @@ Rejected authentication is not proof of a mistyped password; policy can block ac
 
 Do not assume a persistent log file or inherited log-retention behavior exists. Keep private settings out of reports.
 
-These paths remain unvalidated. See [security](../SECURITY.md) and [validation](VALIDATION.md).
+Local IMAP/SMTP errors can carry bounded, credential-redacted server details for display. These details are not logged or included in MCP errors. See the evidence for each source snapshot. See [security](../SECURITY.md) and [validation](VALIDATION.md).

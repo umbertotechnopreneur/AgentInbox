@@ -1,5 +1,6 @@
 """Synthetic IMAP wire limits and SMTP outcomes; no socket or native API calls."""
 
+import base64
 import contextlib
 import datetime as dt
 import re
@@ -8,9 +9,76 @@ import unittest
 from unittest import mock
 
 from agentinbox import mail
-from agentinbox.errors import MailError
+from agentinbox.errors import MailError, server_response
 
 from tests._support import ScriptedSmtp
+
+
+class ServerDiagnosticTests(unittest.TestCase):
+    """Expose bounded local error replies while keeping secrets and MCP errors private."""
+
+    def test_imap_authentication_reply_is_preserved_and_credentials_are_redacted(self):
+        settings = {"host": "imap.example.test", "port": 993, "tls": "tls", "username": "reader@example.test"}
+        connection = mock.Mock()
+        connection.login.side_effect = mail.imaplib.IMAP4.error(
+            b"[AUTHENTICATIONFAILED] Account access disabled reader@example.test synthetic-password")
+        with mock.patch.object(mail, "_IMAP4SSL", return_value=connection):
+            with self.assertRaises(MailError) as failure:
+                with mail.imap_connection(settings, "synthetic-password"):
+                    self.fail("Rejected authentication must not yield a connection.")
+        error = failure.exception
+        self.assertIn("[AUTHENTICATIONFAILED] Account access disabled", error.server_response)
+        self.assertNotIn("synthetic-password", error.server_response)
+        self.assertNotIn("reader@example.test", error.server_response)
+        self.assertNotIn("server_response", error.result())
+        connection.shutdown.assert_called_once()
+
+    def test_smtp_reply_retains_numeric_and_enhanced_status_codes(self):
+        settings = {"host": "smtp.example.test", "port": 465, "tls": "tls", "username": "reader@example.test"}
+        for exception in (mail.smtplib.SMTPAuthenticationError(535, b"5.7.8 Authentication disabled"),
+                          mail.smtplib.SMTPConnectError(554, b"5.7.1 Connection rejected")):
+            connection = mock.Mock()
+            connection.login.side_effect = exception
+            with self.subTest(exception=type(exception).__name__), \
+                 mock.patch.object(mail, "_SMTPSSL", return_value=connection):
+                with self.assertRaises(MailError) as failure:
+                    with mail.smtp_connection(settings, "synthetic-password"):
+                        self.fail("A rejected connection must fail.")
+            self.assertIn(str(exception.smtp_code), failure.exception.server_response)
+            self.assertIn(exception.smtp_error.decode(), failure.exception.server_response)
+            connection.close.assert_called_once()
+
+    def test_imap_negative_operation_reply_is_redacted_before_local_exposure(self):
+        settings = {"host": "imap.example.test", "port": 993, "tls": "tls", "username": "reader@example.test"}
+        connection = mock.Mock()
+        connection.select.return_value = ("NO", [b"[UNAVAILABLE] Folder blocked synthetic-password"])
+        with mock.patch.object(mail, "_IMAP4SSL", return_value=connection):
+            with self.assertRaises(MailError) as failure:
+                with mail.imap_connection(settings, "synthetic-password") as authenticated:
+                    mail.select_folder(authenticated, "INBOX")
+        self.assertIn("NO [UNAVAILABLE] Folder blocked", failure.exception.server_response)
+        self.assertNotIn("synthetic-password", failure.exception.server_response)
+
+    def test_diagnostics_remove_encoded_credentials_controls_and_bound_the_result(self):
+        secret = "synthetic-password"
+        encoded = base64.b64encode(secret.encode()).decode()
+        reply = f"535 5.7.8\r\n{secret} {encoded} \x00\u202e" + "x" * 5000
+        detail = server_response("SMTP", reply, secret)
+        self.assertIn("535 5.7.8", detail)
+        self.assertNotIn(secret, detail)
+        self.assertNotIn(encoded, detail)
+        self.assertNotIn("\r", detail)
+        self.assertNotIn("\n", detail)
+        self.assertNotIn("\u202e", detail)
+        self.assertLessEqual(len(detail), 1031)
+        username, token = "reader@example.test", "synthetic-access-token"
+        oauth = f"user={username}\x01auth=Bearer {token}\x01\x01"
+        encoded_oauth = base64.b64encode(oauth.encode()).decode()
+        error = smtplib.SMTPAuthenticationError(535, f"5.7.8 Access denied {encoded_oauth} {token}".encode())
+        detail = mail._connection_detail("SMTP", error, {"username": username}, "", token)
+        self.assertIn("535 5.7.8 Access denied", detail)
+        self.assertNotIn(token, detail)
+        self.assertNotIn(encoded_oauth, detail)
 
 
 class MemorySocket:
@@ -152,6 +220,30 @@ class SmtpReplyTests(unittest.TestCase):
             with self.assertRaises(smtplib.SMTPServerDisconnected):
                 connection.getreply()
         self.assertLess(connection.sock.bytes_read, 2000)
+
+    def test_incomplete_and_invalid_replies_keep_the_specific_cause_and_redacted_wire_detail(self):
+        settings = {"username": "reader@example.test"}
+        for payload, code, received in (
+            (b"220 partial synthetic-password", "connection_failed", "220 partial"),
+            (b"* OK IMAP synthetic-password\r\n", "invalid_server_response", "* OK IMAP"),
+            (b"220 bare newline synthetic-password\n", "invalid_server_response", "220 bare newline"),
+        ):
+            with self.subTest(code=code, payload=payload), mock.patch.object(mail.time, "monotonic", return_value=0):
+                with self.assertRaises(smtplib.SMTPServerDisconnected) as failure:
+                    self.reader(payload).getreply()
+            self.assertIn(code, str(failure.exception))
+            self.assertNotIn("synthetic-password", str(failure.exception))
+            detail = mail._connection_detail("SMTP", failure.exception, settings, "synthetic-password", None)
+            self.assertIn(received, detail)
+            self.assertNotIn("synthetic-password", detail)
+
+    def test_reply_timeout_keeps_its_cause_without_changing_disconnection_semantics(self):
+        connection = self.reader(b"220 delayed\r\n")
+        with mock.patch.object(connection, "readline", side_effect=MailError("operation_timeout", "The bounded mail operation timed out.")):
+            with self.assertRaises(smtplib.SMTPServerDisconnected) as failure:
+                connection.getreply()
+        self.assertIn("operation_timeout", str(failure.exception))
+        self.assertIn("timed out", str(failure.exception))
 
     def test_malformed_final_reply_does_not_become_a_rejection(self):
         connection = self.reader(b"not a valid SMTP reply\r\n")

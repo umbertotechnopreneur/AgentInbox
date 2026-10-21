@@ -6,8 +6,8 @@ Enter server settings and a password or app password, as in a regular mail clien
 
 POP3 exposes INBOX only, without unread flags or server folders; its searches use headers and email Date values. TLS or required STARTTLS always validates certificates and hostnames. There is no plaintext mode or custom-CA setting.
 
-Choose the accounts your assistant can read. Sending starts disabled. When enabled, the assistant prepares a message, and you approve its exact recipients, text and attachments locally.
+Choose the accounts your assistant can read. Sending starts disabled. When enabled, Codex sends the messages you request through MCP, without a second confirmation window. The Windows app only configures accounts and checks connections.
 
 The engine is Python. Windows setup uses WinUI 3. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64; Linux and macOS are source-only and unverified. Contributor pull requests improving the native Keychain and Secret Service paths are welcome.
 
-This implementation is in development with no current build, runtime or provider validation. See [getting started](GETTING_STARTED.md), [privacy](PRIVACY.md) and [validation](VALIDATION.md).
+This implementation is in development. Validation evidence belongs to the source snapshot actually checked. See [getting started](GETTING_STARTED.md), [privacy](PRIVACY.md) and [validation](VALIDATION.md).

@@ -22,24 +22,24 @@ PRESETS = {
                   "pop3": {"host": "pop.gmail.com", "port": 995, "tls": "tls"}},
               "smtp": {"host": "smtp.gmail.com", "port": 465, "tls": "tls"},
               "authentication_methods": ["password"],
-              "notice": "Use an app password. Availability depends on your Google account settings."},
+              "notice": "Your usual Gmail password will not work. Create a Google app password for reading and sending."},
     "icloud": {"label": "iCloud", "incoming": {
                    "imap": {"host": "imap.mail.me.com", "port": 993, "tls": "tls"}},
                "smtp": {"host": "smtp.mail.me.com", "port": 587, "tls": "starttls"},
                "authentication_methods": ["password"],
-               "notice": "Use an app-specific password. SMTP uses your full email address."},
+               "notice": "Create an Apple app-specific password for reading and sending. Use your full email address for sending."},
     "outlook": {"label": "Outlook.com", "incoming": {
                     "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                     "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                 "smtp": {"host": "smtp-mail.outlook.com", "port": 587, "tls": "starttls"},
                 "authentication_methods": ["password", "microsoft_oauth"],
-                "notice": "Outlook.com requires Microsoft web authorization. Select it yourself when setting up this account; AgentInbox will not switch automatically."},
+                "notice": "Sign in with Microsoft. Windows setup selects this for you when you choose Outlook.com."},
     "microsoft365": {"label": "Microsoft 365", "incoming": {
                          "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                          "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                      "smtp": {"host": "smtp.office365.com", "port": 587, "tls": "starttls"},
                      "authentication_methods": ["password", "microsoft_oauth"],
-                     "notice": "Microsoft 365 no longer accepts IMAP or POP3 passwords. Select Microsoft web authorization yourself. Your organization may still block access or sending."},
+                     "notice": "Sign in with Microsoft. Windows setup selects this for you. Your work or school may need to allow mail apps and sending."},
 }
 
 
@@ -140,22 +140,28 @@ def authentication(value: object) -> dict:
     if value == {"method": "password"}:
         return dict(value)
     if not isinstance(value, dict) or set(value) != {"method", "client_id", "tenant"} or value["method"] != "microsoft_oauth":
-        raise MailError("invalid_configuration", "Choose a password or Microsoft web authorization.")
+        raise MailError("invalid_configuration", "Choose Use a password or Sign in with Microsoft.")
     try:
         client_id = str(uuid.UUID(value["client_id"]))
         tenant = value["tenant"]
         if tenant not in {"common", "organizations", "consumers"}:
             tenant = str(uuid.UUID(tenant))
     except (ValueError, TypeError, AttributeError) as error:
-        raise MailError("invalid_configuration", "Microsoft web authorization needs a public app ID and a valid Microsoft account type or directory ID.") from error
+        raise MailError("invalid_configuration", "Check the Microsoft account type. This app's Microsoft settings may also need fixing.") from error
     return {"method": "microsoft_oauth", "client_id": client_id, "tenant": tenant}
 
 
 def account_input(value: object) -> dict:
-    """Validate the new account schema without accepting compatibility fields."""
+    """Validate connection settings and optional provider-preset metadata."""
     keys = {"id", "label", "email", "incoming", "smtp", "authentication", "read_enabled", "send_enabled", "folders"}
-    if not isinstance(value, dict) or set(value) != keys:
+    if not isinstance(value, dict) or set(value) not in (keys, keys | {"preset"}):
         raise MailError("invalid_configuration", "The account does not match the current mail schema.")
+    metadata = {}
+    if "preset" in value:
+        preset = text(value["preset"], "Email provider", 32)
+        if preset not in PRESETS:
+            raise MailError("invalid_configuration", "Choose one of the listed email providers.")
+        metadata["preset"] = preset
     incoming = value["incoming"]
     if not isinstance(incoming, dict) or set(incoming) != {"protocol", "host", "port", "tls", "username"} or incoming["protocol"] not in {"imap", "pop3"}:
         raise MailError("invalid_configuration", "Choose IMAP or POP3 and supply its server settings.")
@@ -183,9 +189,9 @@ def account_input(value: object) -> dict:
     if auth["method"] == "microsoft_oauth":
         hosts = {"outlook.office365.com", "imap-mail.outlook.com" if protocol == "imap" else "pop-mail.outlook.com"}
         if incoming["host"] not in hosts or (smtp and smtp["host"] not in {"smtp.office365.com", "smtp-mail.outlook.com"}):
-            raise MailError("invalid_configuration", "Microsoft tokens can be used only with Microsoft mail servers.")
+            raise MailError("invalid_configuration", "Microsoft sign-in only works with Microsoft mail servers.")
         if incoming["username"].casefold() != email_address.casefold() or (smtp and smtp["username"].casefold() != incoming["username"].casefold()):
             raise MailError("invalid_configuration", "Microsoft mail usernames must match the account email address.")
-    return {"id": identity, "label": text(value["label"], "Account name", 100), "email": email_address,
+    return {**metadata, "id": identity, "label": text(value["label"], "Account name", 100), "email": email_address,
             "incoming": incoming, "smtp": smtp, "authentication": auth,
             "read_enabled": flag(value["read_enabled"], "Reading"), "send_enabled": send_enabled, "folders": normalized}

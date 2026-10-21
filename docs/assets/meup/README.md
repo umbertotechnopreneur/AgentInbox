@@ -16,7 +16,7 @@ Use an ink navy background (`#101526`), warm ivory objects, fine connecting line
 
 | Product | Accent | Subject |
 | --- | --- | --- |
-| AgentInbox | Mint `#71DEB7` | Email connected to one conversation, with local approval before sending |
+| AgentInbox | Mint `#71DEB7` | Email connected to one conversation, with optional sending through Codex |
 | PromptMeUp | Amber `#F6C453` | A request, a command, and the choice to run it |
 | WorkTrail | Lilac `#AF9BFF` | Past activity, search, and time |
 

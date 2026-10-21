@@ -43,7 +43,7 @@ $parameters = @{
 }
 $packagePath = & (Join-Path $PSScriptRoot 'package-msix.ps1') @parameters
 if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw 'The signed Debug package was not created.' }
-Add-AppxPackage -Path $packagePath -ErrorAction Stop
+Add-AppxPackage -Path $packagePath -ForceApplicationShutdown -ErrorAction Stop
 $installed = @(Get-AppxPackage -Name $identity)
 if ($installed.Count -ne 1 -or $installed[0].Version -ne [version]$Version -or
     $installed[0].Architecture.ToString() -ine $Architecture -or $installed[0].Status -ne 'Ok') {

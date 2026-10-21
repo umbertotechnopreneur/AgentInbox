@@ -2,7 +2,7 @@
 
 The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-Debug MSIX 1.0.11.0 was built and signed locally from current source and installed on Windows x64 with package status `Ok`. It includes the account-check and Mica UI; visual checks for that flow remain pending. Earlier packaged desktop startup and basic account-form navigation were exercised with an isolated profile on 1.0.9.0. Store, ARM64 and packaged CLI/MCP startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
+Debug MSIX 1.0.16.0 was built and signed locally from source checkpoint `2f72826` and installed on Windows x64 with package status `Ok`. It includes saved provider choices, shared Microsoft sign-in, local Microsoft error details, plain setup wording, Connect Codex and the approved VibeWare artwork. The owner requested hands-on use and excluded automated tests from this installation. Visual behavior and Microsoft registration remain unvalidated. Earlier packaged desktop startup and basic account-form navigation were exercised with an isolated profile on 1.0.9.0. Store, ARM64 and packaged CLI/MCP startup remain unvalidated. See [validation](../../docs/VALIDATION.md).
 
 ## Prerequisites and inputs
 
@@ -61,7 +61,7 @@ For an explicitly requested local Debug installation:
 pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command install-debug-msix <required-inputs> -Version <four-part-version> -CertificateThumbprint <thumbprint>
 ```
 
-This command builds and signs the package, immediately calls installation, then checks the installed version, architecture and package status. It does not perform UI or live-mail checks. If no thumbprint is supplied, it requires exactly one suitable existing trusted current-user code-signing certificate.
+This command builds and signs the package, immediately calls installation, then checks the installed version, architecture and package status. An authorized installation can force-close the running AgentInbox package without another confirmation; save any edits you need before requesting the update. Saved accounts and user data remain in place. The command does not perform UI or live-mail checks. If no thumbprint is supplied, it requires exactly one suitable existing trusted current-user code-signing certificate.
 
 ## Local Store build
 
@@ -100,7 +100,7 @@ Both runtime entries, paths, Python versions, hashes and new destination directo
 
 The Store recipe accepts a three-part `-Version` with a nonzero first component and appends `.0`. Every package-version component must be from 0 to 65535. The single-architecture engine also rejects Store versions whose first component is zero or fourth component is nonzero.
 
-Installed MCP configuration uses `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, not an executable path inside a versioned package directory. The alias and native app share `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox` unless `AGENTINBOX_DATA_DIR` explicitly selects another absolute directory. Native outgoing review resolves the current installed desktop executable. These entry points and update behavior still require authorized package validation.
+Installed MCP configuration uses `%LOCALAPPDATA%\Microsoft\WindowsApps\AgentInbox.exe`, not an executable path inside a versioned package directory. The alias and native app share `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox` unless `AGENTINBOX_DATA_DIR` explicitly selects another absolute directory. The native executable opens Windows configuration only. These entry points and update behavior still require authorized package validation.
 
 ## Output and cleanup
 

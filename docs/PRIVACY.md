@@ -1,8 +1,8 @@
 # AgentInbox Privacy Policy
 
-Last updated: 2026-10-19.
+Last updated: 2026-10-22.
 
-AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 to read mail and optional SMTP to send messages you approve locally. This policy describes the current source implementation, which remains unvalidated.
+AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 to read mail and optional SMTP to send messages you request through your assistant. This policy describes the current source implementation; see [validation](VALIDATION.md) for the checks performed.
 
 [Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms](https://umbertogiacobbi.biz/agentinbox/terms/)
 
@@ -18,7 +18,7 @@ You supply an email address, an incoming protocol, server names, ports, TLS sett
 
 For a Microsoft account, you can explicitly choose **Web authorization** and supply a public client ID and tenant setting from your app registration. AgentInbox then shows a short code for signing in with Microsoft; a browser opens only when you request it. Microsoft processes your sign-in and consent under its policies. AgentInbox receives access and refresh tokens for the requested mail access. Web authorization is not available for Google accounts, and AgentInbox does not change sign-in methods after a failure.
 
-Connection settings and account permissions are stored locally. Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary outgoing-message and sign-in blobs. The source uses native Keychain on macOS and an available Secret Service on Linux; those paths remain untested. Missing secure storage fails instead of writing plain-text credentials.
+Connection settings and account permissions are stored locally. Windows Credential Manager stores passwords and Microsoft refresh tokens. Current-user DPAPI protects temporary sign-in blobs. The source uses native Keychain on macOS and an available Secret Service on Linux; those paths remain untested. Missing secure storage fails instead of writing plain-text credentials.
 
 These facilities do not encrypt every local metadata file or protect a compromised signed-in operating-system account. Server connections require implicit TLS or required STARTTLS with certificate and hostname checks. There is no plaintext mode or custom-CA setting.
 
@@ -34,21 +34,19 @@ The connected assistant receives requested results. It may send them to an AI se
 
 Passwords, Microsoft tokens and device-sign-in codes are not returned as MCP tool results.
 
-## Preparing and sending mail
+## Sending mail
 
-SMTP is disabled until you enable it for an account. Your assistant can then prepare a message, including recipients, subject, body and selected local attachment files.
+SMTP starts disabled. Enabling it for an account allows Codex or another connected MCP client to submit messages directly through `send_email`. The Windows app only configures accounts and permissions. AgentInbox does not open a second confirmation window; give your assistant the intended account, recipients, content and attachments before asking it to send.
 
-Preparation stores protected message content locally for review. It does not send it. Local review shows all recipients and the exact content. Your approval authorizes that message once. The assistant cannot approve through MCP.
+The engine builds the message and reads selected local attachment files in memory for the submission. It does not save message bodies or attachment bytes to an outgoing queue. The configured SMTP server receives the message and recipients, and it and the recipients can retain copies. Server acceptance does not establish final delivery.
 
-Approved content goes to the configured SMTP server and may subsequently reach recipients and their providers. Server acceptance does not establish final delivery.
-
-Pending requests expire after ten minutes. Expired content is cleaned when the store is next accessed; closing the app does not guarantee immediate deletion of expired disk state. Local request metadata can remain for status reporting until cleaned or removed.
+A local metadata ledger retains request and account identifiers, timestamps, status and an optional safe error code. It contains no subjects, recipients, message bodies, attachments or passwords. It prevents the same request ID from sending twice and allows status lookup after a lost response. Unresolved outcomes are not retried automatically. Metadata remains until you remove the relevant local profile; no automatic retention period is promised.
 
 ## Local data and diagnostics
 
-The engine uses its local AgentInbox profile or the absolute directory selected by `AGENTINBOX_DATA_DIR`. On Windows, source use defaults to `%LOCALAPPDATA%\AgentInbox`; an MSIX app and its Python alias use `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`. Settings, account metadata, pending-request state and protected content can persist there or in the system credential store. The local `profile_info` command returns paths and storage descriptions without returning secrets.
+The engine uses its local AgentInbox profile or the absolute directory selected by `AGENTINBOX_DATA_DIR`. On Windows, source use defaults to `%LOCALAPPDATA%\AgentInbox`; an MSIX app and its Python alias use `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`. Settings, account metadata, send status and protected sign-in state can persist there or in the system credential store. The local `profile_info` command returns paths and storage descriptions without returning secrets.
 
-A persistent local cleanup queue contains references to old credentials, consumed sign-in state and completed or cancelled outgoing content, not their plaintext contents. If deletion fails, the completed operation remains recorded and cleanup stays pending. The app shows a separate warning; **Retry cleanup** retries deletion. Pending protected data can remain until secure storage is available and cleanup succeeds.
+A persistent local cleanup queue contains references to old credentials and consumed sign-in state, not their plaintext contents. If deletion fails, the completed operation remains recorded and cleanup stays pending. The app shows a separate warning; **Retry cleanup** retries deletion. Pending protected data can remain until secure storage is available and cleanup succeeds.
 
 Diagnostics exclude passwords, mail bodies, attachment contents and authentication exchanges. I do not receive automatic application telemetry or diagnostic uploads. If you contact me, I receive the contact details and material you choose to send. Do not send passwords or complete mailboxes.
 

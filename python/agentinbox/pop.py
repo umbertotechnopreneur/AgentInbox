@@ -159,7 +159,7 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
         credentials = (settings["username"], password) if access_token is None else (settings["username"],)
         for credential in credentials:
             if not isinstance(credential, str) or not credential or any(ord(c) < 32 or ord(c) == 127 for c in credential):
-                raise MailError("invalid_credentials", "Enter valid POP3 credentials in local setup.")
+                raise MailError("invalid_credentials", "Check the username and password under Read mail in AgentInbox.")
         context = ssl.create_default_context()
         if progress:
             progress("connection", "started")
@@ -181,7 +181,7 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
                 _request(connection, "user", settings["username"])
                 _request(connection, "pass_", password)
             except poplib.error_proto as error:
-                raise MailError("authentication_failed", "POP3 sign-in failed. Check its username, password or app password and provider settings.") from error
+                raise MailError("authentication_failed", "Your mail provider did not let this app sign in to read mail. Check the sign-in help under Email provider.") from error
         if progress:
             progress("authentication", "passed")
         yield connection

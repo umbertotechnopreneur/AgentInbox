@@ -1,7 +1,6 @@
 """Synthetic persistence failures must not hide committed settings or mail outcomes."""
 
 import copy
-import json
 from unittest import mock
 
 from agentinbox.errors import MailError
@@ -12,91 +11,6 @@ from tests._support import MailApplicationCase
 
 class StorageCleanupTests(MailApplicationCase):
     """Exercise durable cleanup references with real metadata and an in-memory vault."""
-
-    def test_accepted_message_survives_cleanup_failure_and_retries_after_restart(self):
-        request_id = self.prepare()["request_id"]
-        record, frozen = self.app.review_snapshot(request_id)
-        reference = "outgoing-" + request_id
-        delete = self.vault.delete
-
-        def fail_message(key):
-            if key == reference:
-                raise MailError("secure_storage_unavailable", "Synthetic keyring is unavailable.")
-            delete(key)
-
-        with mock.patch.object(self.vault, "delete", side_effect=fail_message):
-            with mock.patch("agentinbox.application.mail.submit", return_value="accepted_by_server") as submit:
-                result = self.app.send_reviewed(record, frozen, True)
-            observed = self.app.outbox.get(request_id)
-            listed = self.app.outbox.pending()
-
-        self.assertEqual("accepted_by_server", result["status"])
-        self.assertEqual("accepted_by_server", observed["status"])
-        self.assertEqual("accepted_by_server", listed[0]["status"])
-        self.assertTrue(result["cleanup_pending"])
-        self.assertEqual("secure_storage_unavailable", result["cleanup_error"])
-        self.assertEqual(1, submit.call_count)
-        self.assertIn(reference, self.vault.values)
-        queued = json.loads(self.app.store.cleanup_path.read_text(encoding="utf-8"))
-        self.assertIn(reference, queued["references"])
-        self.assertNotIn(frozen["body"], self.app.store.cleanup_path.read_text(encoding="utf-8"))
-
-        restarted = Store(self.root)
-        self.assertFalse(restarted.retry_cleanup()["cleanup_pending"])
-        self.assertNotIn(reference, self.vault.values)
-        self.assertEqual("accepted_by_server", self.app.outbox.get(request_id)["status"])
-
-    def test_cleanup_never_deletes_pending_or_inflight_message_content(self):
-        request_id = self.prepare()["request_id"]
-        reference = "outgoing-" + request_id
-        self.assertFalse(self.app.store.retry_cleanup()["cleanup_pending"])
-        self.assertIn(reference, self.vault.values)
-        self.assertTrue(self.app.store.cleanup_queued(reference))
-        with self.app.outbox.submission_lease(request_id) as acquired:
-            self.assertTrue(acquired)
-            self.app.outbox.claim(request_id)
-            self.assertFalse(self.app.store.retry_cleanup()["cleanup_pending"])
-            self.assertIn(reference, self.vault.values)
-            self.assertEqual("submitting", self.app.outbox.get(request_id)["status"])
-
-    def test_settings_lock_contention_cannot_hide_committed_smtp_acceptance(self):
-        request_id = self.prepare()["request_id"]
-        record, frozen = self.app.review_snapshot(request_id)
-        with mock.patch.object(self.app.store, "locked", side_effect=MailError("profile_busy", "Synthetic writer owns the lock.")):
-            with mock.patch("agentinbox.application.mail.submit", return_value="accepted_by_server"):
-                result = self.app.send_reviewed(record, frozen, True)
-            listed = self.app.outbox.pending()
-
-        self.assertEqual("accepted_by_server", result["status"])
-        self.assertTrue(result["cleanup_pending"])
-        self.assertEqual("profile_busy", result["cleanup_error"])
-        self.assertEqual("accepted_by_server", listed[0]["status"])
-        self.assertTrue(listed[0]["cleanup_pending"])
-        self.assertTrue(self.app.store.cleanup_queued("outgoing-" + request_id))
-        self.assertFalse(self.app.store.retry_cleanup()["cleanup_pending"])
-
-    def test_expired_content_outside_latest_hundred_rows_is_cleaned_without_readonly_mutation(self):
-        request_id = self.prepare()["request_id"]
-        original = self.app.outbox.get(request_id)
-        with self.app.outbox.database() as database:
-            database.execute("UPDATE outgoing SET expires=0 WHERE id=?", (request_id,))
-            for index in range(100):
-                database.execute("INSERT INTO outgoing VALUES (?, ?, ?, ?, ?, ?, 'accepted_by_server', NULL)",
-                                 (f"{index + 1:032x}", self.account["id"], self.account["revision"],
-                                  "synthetic-digest", original["created"] + index + 1, 0))
-            database.commit()
-
-        self.app.store.cleanup_status()
-        with self.app.outbox.database() as database:
-            self.assertEqual("pending_approval", database.execute("SELECT status FROM outgoing WHERE id=?", (request_id,)).fetchone()[0])
-        self.assertIn("outgoing-" + request_id, self.vault.values)
-
-        recent = self.app.outbox.pending()
-
-        self.assertEqual(100, len(recent))
-        self.assertNotIn(request_id, {record["id"] for record in recent})
-        self.assertNotIn("outgoing-" + request_id, self.vault.values)
-        self.assertEqual("expired", self.app.outbox.get(request_id)["status"])
 
     def test_remove_keeps_failed_and_unattempted_secret_references_for_retry(self):
         account = self.app.store.account(self.account["id"])
