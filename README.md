@@ -79,10 +79,6 @@ I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contribu
 
 Artwork and writing style: [brand guide](docs/BRAND.md).
 
-## VibeWare
-
-I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
-
 <a id="external-binary-security-policy"></a>
 
 ## A note on security
@@ -90,3 +86,16 @@ I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software
 I care about what goes into this project. Before I add a third-party library or prebuilt binary, including files supplied without source code, I scan the downloaded package, its extracted files and any dependencies with Microsoft Windows Defender. I keep new imports aside until the scan finishes without detections.
 
 I keep a record of where each new import came from and the scan result. If a scan cannot finish or flags something, I leave it out.
+
+---
+
+<p align="right">
+  <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
+    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
+  </a><br>
+  <em>Human Intent, AI Execution, Plenty of Token</em>
+</p>
+
+## VibeWare
+
+I coined [VibeWare](https://umbertogiacobbi.biz/vibeware/manifesto) for software built with AI and human responsibility. I guide the work, review the result and take responsibility for it. You are welcome to explore and reuse the open-source materials under their licenses.
