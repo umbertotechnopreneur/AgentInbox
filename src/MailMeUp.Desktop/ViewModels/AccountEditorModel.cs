@@ -10,6 +10,7 @@ namespace MailMeUp.Desktop.ViewModels;
 /// <summary>Owns an editable account, provider defaults and validation independently of its view.</summary>
 internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : ObservableModel
 {
+    private readonly string _defaultMicrosoftClientId = defaultMicrosoftClientId;
     private bool _loading;
     private bool _validationShown;
     private bool _checking;
@@ -159,7 +160,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
             Label = account?.Label ?? "";
             Email = account?.Email ?? "";
             var auth = account?.Authentication;
-            MicrosoftClientId = auth?.Method == "microsoft_oauth" ? auth.ClientId! : defaultMicrosoftClientId;
+            MicrosoftClientId = auth?.Method == "microsoft_oauth" ? auth.ClientId! : _defaultMicrosoftClientId;
             var tenant = auth?.Tenant ?? "common";
             TenantIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
             OrganizationId = TenantIndex == 3 ? tenant : "";
@@ -268,7 +269,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         AuthenticationIndex = preset.AuthenticationMethods.Contains("microsoft_oauth") ? 1 : 0;
         if (IsMicrosoft)
         {
-            MicrosoftClientId = defaultMicrosoftClientId;
+            MicrosoftClientId = _defaultMicrosoftClientId;
             TenantIndex = PresetIndex == 3 ? 2 : 1;
             ClearPasswords();
         }

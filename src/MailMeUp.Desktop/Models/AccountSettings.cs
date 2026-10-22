@@ -32,7 +32,7 @@ internal sealed record SavedAccount : AccountSettings
     internal static SavedAccount Read(JsonElement value)
     {
         var account = value.Deserialize<SavedAccount>() ?? throw new JsonException("The engine returned no account.");
-        if (account.Id.Length == 0 || account.Revision < 1 || account.Authentication is null || account.Incoming is null
+        if (string.IsNullOrEmpty(account.Id) || account.Revision < 1 || account.Authentication is null || account.Incoming is null
             || account.Authentication.Method is not ("password" or "microsoft_oauth")
             || account.Incoming.Protocol is not ("imap" or "pop3")
             || account.Preset is not (null or "custom" or "gmail" or "icloud" or "outlook" or "microsoft365"))
