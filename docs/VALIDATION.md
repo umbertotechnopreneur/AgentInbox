@@ -1,14 +1,18 @@
 # Validation
 
-Last updated: 2026-10-22.
+Last updated: 2026-10-23.
 
-## Pending configuration-model refactor
+## Configuration-model refactor — installed Debug 1.0.19.0
 
 Source checkpoint `3214c1c` separates account records, unsaved drafts, selection, validation, notices, Microsoft sign-in, connection-check progress and Codex setup state from native controls. Views bind to these models; only rendering, native lifecycle, focus, browser and clipboard adapters remain in the windows. Returning to Accounts preserves the draft rather than reloading over it. Windows loads server defaults from the same Python presets operation used by the CLI.
 
 Python account/preset contracts are now explicit, and one process-local `SessionState` holds references, continuations and the access-token cache used by `MailApplication` and its Microsoft service. Reference expiry/capacity and persisted account/send contracts are unchanged. New synthetic cases describe isolation, bounded expiry and omission of private cache data from diagnostic representations; they have not been run.
 
-Only source inspection was performed. No build, installation, tests, formatting, live UI interaction, MCP launch or provider operation ran for this refactor. Installed Debug 1.0.18.0 predates it; that package does not validate the new bindings or model lifecycles. Outstanding checks are in [todo](../.github/tasks/todo.md).
+Built and signed locally from source checkpoint `e0c7789`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.19.0`, architecture `X64` and status `Ok`. No tests, formatting, application launch, live UI interaction, MCP launch or provider operation ran. Compilation and installation do not validate binding updates or model lifecycles. Outstanding checks are in [todo](../.github/tasks/todo.md).
+
+The retained installer is 105,459,611 bytes, SHA-256 `73197feada8ef19075b652d7a8838cd7fe1f27c4dd7777c87993db00c89bc718`, under `artifacts/msix/debug/x64/1.0.19.0/`, with checksum, package/installation records and unchanged first-import evidence. The build reused Python 3.13.15 and the existing NuGet inputs; no downloads or new scans were needed.
+
+Packaging completed its matching clean and reported no cleanup warning. Its task-owned `artifacts/work/msix-729f4106f02144928c08f79a2056b3e3/` directory was removed and verified absent. Automatic approval review rejected guarded removal of superseded `artifacts/msix/debug/x64/1.0.18.0/` with `blocked by policy`; about 100.6 MiB remain. No alternate removal was attempted. The previously blocked input directory below also remains.
 
 ## Debug MSIX 1.0.18.0 — 2026-10-22
 

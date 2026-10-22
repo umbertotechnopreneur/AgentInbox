@@ -2,9 +2,9 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
-## Configuration-model refactor — source only
+## 2026-10-23 — configuration-model refactor
 
-- Moved Windows draft, validation, account-selection and operation state into observable models with typed account records and native bindings. Centralized provider defaults through Python's presets contract and made process-local Python session state explicit. Preserved drafts across page recreation and documented state lifetimes. Source checkpoint `3214c1c`; build/runtime validation remains pending.
+- Moved Windows draft, validation, account-selection and operation state into observable models with typed account records and native bindings. Centralized provider defaults through Python's presets contract and made process-local Python session state explicit. Preserved drafts across page recreation and documented state lifetimes. Built source checkpoint `e0c7789`, signed and installed Debug 1.0.19.0 x64 with status `Ok`. No tests, app launch, UI or provider checks ran. See validation for the retained installer and blocked superseded-package cleanup.
 
 ## 2026-10-22 — source changes
 
