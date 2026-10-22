@@ -14,6 +14,7 @@ import urllib.request
 import uuid
 
 from .errors import MailError, server_response
+from .models import SessionState
 
 
 AUTHORITY = "https://login.microsoftonline.com"
@@ -92,9 +93,9 @@ def _report(diagnostic, message, *secrets):
 class MicrosoftAuth:
     """Manage explicit device-code flows and protected refresh-token rotation."""
 
-    def __init__(self, store):
+    def __init__(self, store, session: SessionState | None = None):
         self.store = store
-        self._tokens = {}
+        self.session = session if session is not None else SessionState()
 
     def _account(self, identity, revision=None):
         account = self.store.account(identity)
@@ -416,7 +417,7 @@ class MicrosoftAuth:
                 except MailError:
                     pass
                 else:
-                    self._tokens[self._cache_key(current)] = (access, started + lifetime)
+                    self.session.access_tokens[self._cache_key(current)] = (access, started + lifetime)
                 return {"status": "connected", "account": connected,
                         **{key: connected[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error")}}
 
@@ -431,8 +432,8 @@ class MicrosoftAuth:
         """Refresh under a per-account lease; never persist access tokens."""
         current = self._account(account["id"], account["revision"])
         key = self._cache_key(current)
-        self._tokens = {stored: value for stored, value in self._tokens.items() if value[1] > time.time()}
-        cached = self._tokens.get(key)
+        self.session.access_tokens = {stored: value for stored, value in self.session.access_tokens.items() if value[1] > time.time()}
+        cached = self.session.access_tokens.get(key)
         if cached is not None and cached[1] > time.time() + 60:
             return cached[0]
         with self._lease("account", current["id"]):
@@ -454,5 +455,5 @@ class MicrosoftAuth:
                     raise MailError("configuration_changed", "Your Microsoft sign-in details changed. Try again with the saved account.")
                 if rotated is not None:
                     self.store.vault.put(reference, rotated)
-                self._tokens[self._cache_key(latest)] = (access, started + lifetime)
+                self.session.access_tokens[self._cache_key(latest)] = (access, started + lifetime)
             return access

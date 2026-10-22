@@ -8,13 +8,14 @@ import uuid
 from pathlib import Path
 
 from .errors import MailError
+from .models import AccountSettings, AuthenticationSettings, ProviderPreset, ServerSettings
 
 SCHEMA_VERSION = 3
 MAX_MESSAGE_BYTES = 10 * 1024 * 1024
 MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 MAX_BODY_CHARS = 100_000
 MAX_RECIPIENTS = 25
-PRESETS = {
+PRESETS: dict[str, ProviderPreset] = {
     "custom": {"label": "Custom mail server", "incoming": {}, "smtp": None,
                "authentication_methods": ["password"]},
     "gmail": {"label": "Gmail", "incoming": {
@@ -122,7 +123,7 @@ def flag(value: object, name: str) -> bool:
     return value
 
 
-def endpoint(value: object, protocol: str) -> dict:
+def endpoint(value: object, protocol: str) -> ServerSettings:
     """Validate one server with mandatory transport encryption."""
     purpose = "sending" if protocol == "smtp" else "reading"
     section = "Send mail" if protocol == "smtp" else "Read mail"
@@ -140,7 +141,7 @@ def endpoint(value: object, protocol: str) -> dict:
             "username": text(value["username"], f"Email address for {purpose}")}
 
 
-def authentication(value: object) -> dict:
+def authentication(value: object) -> AuthenticationSettings:
     """Accept password auth or an explicit Microsoft public-client registration."""
     if value == {"method": "password"}:
         return dict(value)
@@ -156,7 +157,7 @@ def authentication(value: object) -> dict:
     return {"method": "microsoft_oauth", "client_id": client_id, "tenant": tenant}
 
 
-def account_input(value: object) -> dict:
+def account_input(value: object) -> AccountSettings:
     """Validate connection settings and optional provider-preset metadata."""
     keys = {"id", "label", "email", "incoming", "smtp", "authentication", "read_enabled", "send_enabled", "folders"}
     if not isinstance(value, dict) or set(value) not in (keys, keys | {"preset"}):

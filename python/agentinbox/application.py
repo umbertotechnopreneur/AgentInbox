@@ -16,6 +16,7 @@ from .errors import MailError
 from .storage import Store
 from .sending import SendLedger, request_identity
 from .microsoft import MicrosoftAuth
+from .models import AccountSettings, SavedAccount, SessionState
 
 
 class MailApplication:
@@ -24,17 +25,16 @@ class MailApplication:
     def __init__(self, root: Path):
         self.store = Store(root)
         self.sends = SendLedger(root)
-        self.microsoft = MicrosoftAuth(self.store)
-        self.references = {}
-        self.continuations = {}
+        self.session = SessionState()
+        self.microsoft = MicrosoftAuth(self.store, self.session)
 
-    def _credentials(self, account: dict, protocol: str) -> dict:
+    def _credentials(self, account: SavedAccount, protocol: str) -> dict:
         if account["authentication"]["method"] == "microsoft_oauth":
             return {"password": "", "access_token": self.microsoft.access_token(account)}
         return {"password": self.store.vault.get(account[protocol + "_secret"])}
 
     @staticmethod
-    def _incoming(account: dict):
+    def _incoming(account: AccountSettings):
         return pop if account["incoming"]["protocol"] == "pop3" else mail
 
     def _incoming_connection(self, account: dict):
@@ -42,13 +42,13 @@ class MailApplication:
         connect = pop.pop_connection if module is pop else mail.imap_connection
         return connect(account["incoming"], **self._credentials(account, "incoming"))
 
-    def _read_account(self, identity: str, folder: str) -> dict:
+    def _read_account(self, identity: str, folder: str) -> SavedAccount:
         account = self.store.account(identity)
         if not account["read_enabled"] or folder not in account["folders"]:
             raise MailError("access_disabled", "Reading this account or folder is not enabled in local setup.")
         return account
 
-    def _send_account(self, identity: str, revision: int | None = None) -> dict:
+    def _send_account(self, identity: str, revision: int | None = None) -> SavedAccount:
         account = self.store.account(identity)
         if not account["send_enabled"] or account["smtp"] is None:
             raise MailError("sending_disabled", "Enable SMTP for this account in Windows setup before sending mail.")
@@ -78,9 +78,9 @@ class MailApplication:
                     end: str | None = None, query: str = "", unread: bool = False,
                     limit: int = 10, continuation: str | None = None) -> dict:
         """Return a bounded page from one explicitly shared account and folder."""
-        self._expire_references()
+        self.session.expire_references(time.time())
         if continuation:
-            saved = self.continuations.get(continuation)
+            saved = self.session.continuations.get(continuation)
             if saved is None or saved["account_id"] != account_id:
                 raise MailError("reference_expired", "The continuation expired or belongs to another account. Search again.")
             if folder != "INBOX" or start is not None or end is not None or query or unread or limit != 10:
@@ -116,7 +116,7 @@ class MailApplication:
         results = []
         for item in page["messages"]:
             reference = secrets.token_urlsafe(24)
-            self.references[reference] = {"account_id": account_id, "folder": item["folder"],
+            self.session.references[reference] = {"account_id": account_id, "folder": item["folder"],
                                           "uid": item["uid"], "validity": item["uid_validity"],
                                           "revision": account["revision"], "expires": time.time() + 600}
             results.append({"reference": reference, "account_id": account_id,
@@ -126,12 +126,12 @@ class MailApplication:
         undated += page.get("undated_messages_skipped", 0)
         if page["more"]:
             next_token = secrets.token_urlsafe(24)
-            self.continuations[next_token] = {"account_id": account_id, "folder": parameters["folder"],
+            self.session.continuations[next_token] = {"account_id": account_id, "folder": parameters["folder"],
                                              "revision": account["revision"], "parameters": parameters,
                                              "candidates": page["candidates"], "validity": page["uid_validity"],
                                              "offset": page["next_offset"], "truncated": truncated, "undated": undated, "expires": time.time() + 600}
         if continuation:
-            self.continuations.pop(continuation, None)
+            self.session.continuations.pop(continuation, None)
         return {"messages": results, "continuation": next_token,
                 "start": parameters["start"].isoformat(), "end": parameters["end"].isoformat(),
                 "folder": parameters["folder"], "account_id": account_id,
@@ -142,19 +142,10 @@ class MailApplication:
                 "candidate_limit_reached": truncated,
                 "notice": "Narrow the date range to search beyond the newest 300 candidates." if truncated else None}
 
-    def _expire_references(self):
-        now = time.time()
-        for cache in (self.references, self.continuations):
-            for key in list(cache):
-                if cache[key]["expires"] <= now:
-                    del cache[key]
-            while len(cache) > 1000:
-                del cache[next(iter(cache))]
-
     def read_mail(self, reference: str) -> dict:
         """Read a search result while applying current sharing choices."""
-        self._expire_references()
-        saved = self.references.get(reference)
+        self.session.expire_references(time.time())
+        saved = self.session.references.get(reference)
         if saved is None:
             raise MailError("reference_expired", "The message reference expired. Search again in this connection.")
         account = self._read_account(saved["account_id"], saved["folder"])

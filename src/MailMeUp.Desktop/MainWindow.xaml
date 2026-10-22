@@ -5,6 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="AgentInbox">
     <Grid x:Name="Root" Background="{ThemeResource SetupSurfaceBrush}" Loaded="Root_Loaded">
+        <Grid.Resources>
+            <DataTemplate x:Key="AccountListTemplate">
+                <StackPanel Spacing="4" Padding="0,4">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Email}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </DataTemplate>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

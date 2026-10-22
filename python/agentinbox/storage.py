@@ -10,6 +10,7 @@ from pathlib import Path
 from .config import SCHEMA_VERSION, account_input
 from .errors import MailError
 from .vault import Vault
+from .models import SavedAccount
 
 
 MAX_SETTINGS_BYTES = 256_000
@@ -56,7 +57,7 @@ class Store:
                 else:
                     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
-    def accounts(self) -> list[dict]:
+    def accounts(self) -> list[SavedAccount]:
         """Read and validate the complete current schema without migration."""
         if not self.settings.exists():
             return []
@@ -97,7 +98,7 @@ class Store:
         except (ValueError, TypeError, KeyError, OSError, MailError) as error:
             raise MailError("invalid_profile", "The saved profile is invalid or incompatible. Correct the current settings or use a new profile; no migration is performed.") from error
 
-    def account(self, identity: str) -> dict:
+    def account(self, identity: str) -> SavedAccount:
         """Resolve a current account and fail when it has been removed."""
         for account in self.accounts():
             if account["id"] == identity:
