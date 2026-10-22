@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-22.
 
+## Pending configuration-model refactor
+
+Source checkpoint `3214c1c` separates account records, unsaved drafts, selection, validation, notices, Microsoft sign-in, connection-check progress and Codex setup state from native controls. Views bind to these models; only rendering, native lifecycle, focus, browser and clipboard adapters remain in the windows. Returning to Accounts preserves the draft rather than reloading over it. Windows loads server defaults from the same Python presets operation used by the CLI.
+
+Python account/preset contracts are now explicit, and one process-local `SessionState` holds references, continuations and the access-token cache used by `MailApplication` and its Microsoft service. Reference expiry/capacity and persisted account/send contracts are unchanged. New synthetic cases describe isolation, bounded expiry and omission of private cache data from diagnostic representations; they have not been run.
+
+Only source inspection was performed. No build, installation, tests, formatting, live UI interaction, MCP launch or provider operation ran for this refactor. Installed Debug 1.0.18.0 predates it; that package does not validate the new bindings or model lifecycles. Outstanding checks are in [todo](../.github/tasks/todo.md).
+
 ## Debug MSIX 1.0.18.0 — 2026-10-22
 
 Microsoft sign-in logs now use collapsed native expanders in the account page and dialog. The sign-in code is centered with a Copy icon beside it; copying the code is separate from copying the redacted diagnostics. Built and signed locally from source checkpoint `1aa7491`, then installed through `install-debug-msix`. Windows reports version `1.0.18.0`, architecture `X64` and status `Ok`. No automated tests, application launch, UI checks or mail-provider requests ran in this task.

@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## Configuration-model refactor — source only
+
+- Moved Windows draft, validation, account-selection and operation state into observable models with typed account records and native bindings. Centralized provider defaults through Python's presets contract and made process-local Python session state explicit. Preserved drafts across page recreation and documented state lifetimes. Source checkpoint `3214c1c`; build/runtime validation remains pending.
+
 ## 2026-10-22 — source changes
 
 - Collapsed Microsoft diagnostics into native expanders, centered the sign-in code and added an adjacent Copy icon. Corrected rejection of extra prior mail-resource grants and added required/returned permission details. Built source checkpoint `1aa7491`, signed and installed Debug 1.0.18.0 x64 with status `Ok`. UI/provider checks remain pending; see validation for recovered inputs, the retained installer and blocked input cleanup.
