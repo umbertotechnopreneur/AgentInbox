@@ -25,7 +25,13 @@ internal sealed class ConfigurationModel : ObservableModel
         _engine = engine;
         Editor = new AccountEditorModel(microsoftClientId);
         Editor.PropertyChanged += (_, _) => Notify();
-        Accounts.CollectionChanged += (_, _) => Notify();
+        Accounts.CollectionChanged += (_, _) =>
+        {
+            foreach (var row in AccountItems.Where(row => !Accounts.Contains(row.Account)).ToArray()) AccountItems.Remove(row);
+            foreach (var account in Accounts.Where(account => !AccountItems.Any(row => ReferenceEquals(row.Account, account))))
+                AccountItems.Add(new(account));
+            Notify();
+        };
         SignIn = new MicrosoftSignInModel(engine);
         Assistant = new AssistantConnectionModel(engine, Notice);
         Assistant.PropertyChanged += (_, _) => Notify();
@@ -35,6 +41,13 @@ internal sealed class ConfigurationModel : ObservableModel
     public MicrosoftSignInModel SignIn { get; }
     public AssistantConnectionModel Assistant { get; }
     public ObservableCollection<SavedAccount> Accounts { get; } = [];
+    public ObservableCollection<AccountListItemModel> AccountItems { get; } = [];
+    public AccountListItemModel? SelectedAccountItem
+    {
+        get => AccountItems.FirstOrDefault(row => ReferenceEquals(row.Account, SelectedAccount));
+        set { if (!_updatingAccounts) SelectedAccount = value?.Account; }
+    }
+    public bool CanTestAll => IsIdle && Accounts.Count > 0;
     public NotificationModel Notice { get; } = new();
     public NotificationModel Cleanup { get; } = new();
     public bool IsBusy { get => _isBusy; set { if (Set(ref _isBusy, value)) Notify(); } }
@@ -56,8 +69,8 @@ internal sealed class ConfigurationModel : ObservableModel
     public bool CanCheckReading => IsIdle && Editor.CanCheckReading;
     public bool CanCheckSending => IsIdle && Editor.ConfigureSending;
     public bool CanChooseAccountFolders => IsIdle && Editor.CanSelectFolders;
-    internal AccountCheckModel CreateCheck(AccountSnapshot snapshot, bool saveAccount, bool smtpOnly) =>
-        new(_engine, this, snapshot, saveAccount, smtpOnly);
+    internal AccountCheckModel CreateCheck(AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false) =>
+        new(_engine, this, snapshot, saveAccount, smtpOnly, savedCheck);
     public string SaveText => CreatingAccount ? "Create account" : "Save changes";
     public string SaveStatus => CreatingAccount ? "New connection" : Editor.HasChanges ? "Unsaved changes" : "All changes saved";
     public string SaveHint => CreatingAccount ? "Check this account and choose folders. For Microsoft, save the settings and sign in."

@@ -7,10 +7,21 @@
     <Grid x:Name="Root" Background="{ThemeResource SetupSurfaceBrush}" Loaded="Root_Loaded">
         <Grid.Resources>
             <DataTemplate x:Key="AccountListTemplate">
-                <StackPanel Spacing="4" Padding="0,4">
+                <Grid ColumnSpacing="10" Padding="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid Width="32" Height="32" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE715;" FontSize="24" Opacity="0.55" AutomationProperties.AccessibilityView="Raw" />
+                        <Image Width="32" Height="32" AutomationProperties.AccessibilityView="Raw" ImageFailed="ProviderLogo_Failed" ImageOpened="ProviderLogo_Opened">
+                            <Image.Source><BitmapImage UriSource="{Binding ProviderLogo}" /></Image.Source>
+                        </Image>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Spacing="4">
                     <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Email}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+                    </StackPanel>
+                    <FontIcon Grid.Column="2" Glyph="{Binding CheckGlyph}" Foreground="Green" FontSize="18" VerticalAlignment="Center"
+                              AutomationProperties.Name="{Binding CheckDescription}" ToolTipService.ToolTip="{Binding CheckDescription}" />
+                </Grid>
             </DataTemplate>
         </Grid.Resources>
         <Grid.RowDefinitions>
@@ -57,30 +68,29 @@
         </NavigationView>
         <StackPanel Grid.Row="2" Padding="28,8,28,16" Spacing="8">
             <ProgressBar x:Name="Progress" IsIndeterminate="True" Visibility="Collapsed" />
-            <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
-            <InfoBar x:Name="CleanupNotice" IsOpen="False" IsClosable="False" Severity="Warning" Title="Local cleanup is pending">
-                <InfoBar.ActionButton>
-                    <Button x:Name="CleanupRetryButton" Content="Retry cleanup" Click="RetryCleanup_Click"
-                            ToolTipService.ToolTip="Retry removal of temporary protected files left by the previous operation." />
-                </InfoBar.ActionButton>
-            </InfoBar>
             <Grid x:Name="BrandFooter" ColumnSpacing="20" RowSpacing="8" SizeChanged="BrandFooter_SizeChanged">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <StackPanel x:Name="FooterLinks" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <HyperlinkButton Content="umbertogiacobbi.biz" NavigateUri="https://umbertogiacobbi.biz/" Padding="0,6"
-                                     AutomationProperties.Name="Umberto Giacobbi website" ToolTipService.ToolTip="Open Umberto Giacobbi's website." />
-                    <HyperlinkButton Content="Terms" NavigateUri="https://umbertogiacobbi.biz/agentinbox/terms/" Padding="6"
-                                     AutomationProperties.Name="AgentInbox terms of use" ToolTipService.ToolTip="Read the AgentInbox terms of use." />
-                    <HyperlinkButton Content="Privacy" NavigateUri="https://umbertogiacobbi.biz/agentinbox/privacy/" Padding="6"
-                                     AutomationProperties.Name="AgentInbox privacy policy" ToolTipService.ToolTip="Read how AgentInbox handles your data." />
+                    <HyperlinkButton NavigateUri="https://umbertogiacobbi.biz/" Padding="0,6"
+                                     AutomationProperties.Name="Umberto Giacobbi website" ToolTipService.ToolTip="Open Umberto Giacobbi's website.">
+                        <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="UmbertoGiacobbi.Biz" /><FontIcon Glyph="&#xE8A7;" FontSize="12" VerticalAlignment="Center" /></StackPanel>
+                    </HyperlinkButton>
+                    <HyperlinkButton NavigateUri="https://umbertogiacobbi.biz/agentinbox/terms/" Padding="6"
+                                     AutomationProperties.Name="AgentInbox terms of use" ToolTipService.ToolTip="Read the AgentInbox terms of use.">
+                        <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Terms" /><FontIcon Glyph="&#xE8A7;" FontSize="12" VerticalAlignment="Center" /></StackPanel>
+                    </HyperlinkButton>
+                    <HyperlinkButton NavigateUri="https://umbertogiacobbi.biz/agentinbox/privacy/" Padding="6"
+                                     AutomationProperties.Name="AgentInbox privacy policy" ToolTipService.ToolTip="Read how AgentInbox handles your data.">
+                        <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="Privacy" /><FontIcon Glyph="&#xE8A7;" FontSize="12" VerticalAlignment="Center" /></StackPanel>
+                    </HyperlinkButton>
                 </StackPanel>
                 <HyperlinkButton x:Name="VibeWareLink" Grid.Column="1" NavigateUri="https://umbertogiacobbi.biz/vibeware/manifesto" Padding="0,6"
                                  HorizontalAlignment="Right" AutomationProperties.Name="AgentInbox participates in VibeWare. Read the manifesto."
                                  ToolTipService.ToolTip="Created with AI under Umberto Giacobbi's direction and responsibility. Read the VibeWare manifesto.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Manifesto" VerticalAlignment="Center" />
                         <Image Source="Assets/VibeWare.png" Width="80" Height="80" Stretch="Uniform" AutomationProperties.AccessibilityView="Raw" />
-                        <TextBlock Text="This is VibeWare · Manifesto" VerticalAlignment="Center" />
                     </StackPanel>
                 </HyperlinkButton>
             </Grid>

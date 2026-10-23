@@ -29,7 +29,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     {
         _model = model;
         Title = "AgentInbox";
-        SystemBackdrop = new DesktopAcrylicBackdrop();
+        SystemBackdrop = new MicaBackdrop();
         var root = new Grid { Padding = new Thickness(24), RowSpacing = 18 };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -64,8 +64,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
-        var message = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
-        ModelBinding.Bind(message, TextBlock.TextProperty, model, nameof(AccountCheckModel.Message));
+        var message = new TextBox { TextWrapping = TextWrapping.Wrap, IsReadOnly = true, AcceptsReturn = true, MaxHeight = 220 };
+        AutomationProperties.SetName(message, "Connection check details");
+        ModelBinding.Bind(message, TextBox.TextProperty, model, nameof(AccountCheckModel.Message));
         var footer = new StackPanel { Spacing = 14 };
         footer.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"] });
         footer.Children.Add(new ScrollViewer { Content = message, MaxHeight = 220,
@@ -103,7 +104,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         };
         Closed += (_, _) => { _windowClosed = true; model.Closed(); _closed.TrySetResult(); };
         model.PropertyChanged += ModelChanged;
-        OwnAndPosition(owner);
+        OwnAndPosition(this, owner);
     }
 
     internal Task ClosedTask => _closed.Task;
@@ -148,15 +149,15 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     public void Dispose() => _model.PropertyChanged -= ModelChanged;
 
     /// <summary>Uses the owner relationship for native modality and centers the window within its display.</summary>
-    private void OwnAndPosition(Window owner)
+    internal static void OwnAndPosition(Window window, Window owner)
     {
-        var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var handle = WinRT.Interop.WindowNative.GetWindowHandle(window);
         var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
         Marshal.SetLastPInvokeError(0);
         if (SetWindowLongPtr(handle, -8, ownerHandle) == IntPtr.Zero && Marshal.GetLastPInvokeError() != 0)
             throw new InvalidOperationException("The account check window could not be attached to its owner.");
         var presenter = OverlappedPresenter.CreateForDialog();
-        AppWindow.SetPresenter(presenter);
+        window.AppWindow.SetPresenter(presenter);
         presenter.IsModal = true;
         presenter.IsResizable = false;
         presenter.IsMaximizable = false;
@@ -167,7 +168,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         var height = Math.Min((int)Math.Round(640 * scale), area.Height);
         var x = Math.Clamp(owner.AppWindow.Position.X + (owner.AppWindow.Size.Width - width) / 2, area.X, area.X + area.Width - width);
         var y = Math.Clamp(owner.AppWindow.Position.Y + (owner.AppWindow.Size.Height - height) / 2, area.Y, area.Y + area.Height - height);
-        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+        window.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", ExactSpelling = true, SetLastError = true)]

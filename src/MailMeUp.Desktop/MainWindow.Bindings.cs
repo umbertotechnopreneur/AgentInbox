@@ -17,20 +17,9 @@ public sealed partial class MainWindow
     private void BindApplicationState()
     {
         ModelBinding.Bind(Navigation, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
-        ModelBinding.Bind(CleanupRetryButton, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
         ModelBinding.Visible(Progress, _configuration, nameof(ConfigurationModel.IsBusy));
         ModelBinding.Visible(SaveBar, _configuration, nameof(ConfigurationModel.ShowSaveBar));
-        BindNotification(Notice, _configuration.Notice);
-        BindNotification(CleanupNotice, _configuration.Cleanup);
         _configuration.PropertyChanged += (_, _) => UpdateAccountLayout();
-    }
-
-    private static void BindNotification(InfoBar bar, NotificationModel model)
-    {
-        ModelBinding.Bind(bar, InfoBar.TitleProperty, model, nameof(NotificationModel.Title));
-        ModelBinding.Bind(bar, InfoBar.MessageProperty, model, nameof(NotificationModel.Message));
-        ModelBinding.Bind(bar, InfoBar.IsOpenProperty, model, nameof(NotificationModel.IsOpen), BindingMode.TwoWay);
-        ModelBinding.Bind(bar, InfoBar.SeverityProperty, model, nameof(NotificationModel.Severity), converter: ModelBinding.SeverityConverter.Instance);
     }
 
     private void BindAccountControls()
@@ -108,8 +97,8 @@ public sealed partial class MainWindow
             if (!_renderingFolders && !_configuration.Editor.IsLoading)
                 _configuration.Editor.SelectFolders(_folders.SelectedItems.Cast<string>().ToArray());
         };
-        ModelBinding.Bind(_accountPicker, ItemsControl.ItemsSourceProperty, _configuration, nameof(ConfigurationModel.Accounts));
-        ModelBinding.Bind(_accountPicker, ListView.SelectedItemProperty, _configuration, nameof(ConfigurationModel.SelectedAccount), BindingMode.TwoWay);
+        ModelBinding.Bind(_accountPicker, ItemsControl.ItemsSourceProperty, _configuration, nameof(ConfigurationModel.AccountItems));
+        ModelBinding.Bind(_accountPicker, ListView.SelectedItemProperty, _configuration, nameof(ConfigurationModel.SelectedAccountItem), BindingMode.TwoWay);
         _accountPicker.ItemTemplate = (DataTemplate)Root.Resources["AccountListTemplate"];
         ModelBinding.Bind(_accountPicker, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
         ModelBinding.Bind(_accountTabs, TabView.SelectedIndexProperty, _configuration, nameof(ConfigurationModel.EditorTab), BindingMode.TwoWay);

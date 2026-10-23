@@ -2,6 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] Check Test all with successful accounts, first-account and later-account errors, cancellation, unavailable saved folders, configured SMTP and an unsaved editor draft. Check session success marks, provider favicon loading/offline fallback, Mica result details/cleanup retry, keyboard focus, narrow footer and simplified Connect Codex. No automated or live-provider checks have run for these changes.
+
 - [ ] Verify binding updates, retained unsaved drafts across navigation, preset loading, account selection during refresh/save, field errors, folder selection and cancellation/committed outcomes in both check and sign-in windows. The configuration-model refactor is compiled and installed in Debug 1.0.19.0; runtime checks remain unrun. Run the synthetic session-isolation/expiry/privacy cases only when tests are requested.
 - [ ] Check the collapsed Microsoft log expanders, centered sign-in code and adjacent Copy icon in installed Debug 1.0.18.0, including narrow layouts and clipboard failure. Verify returned/required mail permissions, extra prior grants and missing permissions using the redacted details.
 - [ ] Try field borders/focus, Microsoft sign-in before saving, local sign-in details, the expanded Codex connection details and Test connection in installed Debug 1.0.18.0. Check cancellation, saved sign-in with refresh failure, missing/stale settings, startup failure, timeout and unexpected replies. A local MCP handshake must not call mailbox tools. Automated UI checks and real Microsoft sign-in require separate authorization.

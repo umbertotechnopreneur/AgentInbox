@@ -8,6 +8,26 @@ namespace MailMeUp.Desktop;
 
 public sealed partial class MainWindow
 {
+    private async Task TestAllAccountsAsync()
+    {
+        var accounts = _configuration.AccountItems.ToArray();
+        foreach (var row in accounts) row.Passed = false;
+        foreach (var row in accounts)
+        {
+            _lifetime.Token.ThrowIfCancellationRequested();
+            var snapshot = new AccountSnapshot(row.Account, new() { ["incoming"] = "", ["smtp"] = "" }, row.Account.Revision);
+            using var model = _configuration.CreateCheck(snapshot, saveAccount: false, smtpOnly: false, savedCheck: true);
+            using var window = new AccountCheckWindow(this, model);
+            using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
+            window.Activate();
+            await model.RunAsync(_lifetime.Token);
+            await window.ClosedTask;
+            if (!model.Succeeded) return;
+            row.Passed = true;
+            if (model.Cancelled) return;
+        }
+    }
+
     private AccountSnapshot CaptureAccount(bool checking = false, bool smtpOnly = false)
     {
         try { return _configuration.Editor.Snapshot(checking, smtpOnly); }

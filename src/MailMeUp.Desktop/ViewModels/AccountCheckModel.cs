@@ -24,19 +24,21 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     private bool _pop;
     private string _heading;
     private string _message = "Please wait while I check the connection and sign-in.";
+    private readonly bool _savedCheck;
 
-    internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot snapshot, bool saveAccount, bool smtpOnly)
+    internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false)
     {
         _engine = engine; _configuration = configuration; _snapshot = snapshot;
         SaveAccount = saveAccount; SmtpOnly = smtpOnly;
-        _heading = smtpOnly ? "Checking sending connection" : "Checking your account";
+        _savedCheck = savedCheck;
+        _heading = savedCheck ? $"Checking {snapshot.Account.Label}" : smtpOnly ? "Checking sending connection" : "Checking your account";
         Stages.Add(new("settings", smtpOnly ? "Sending settings" : "Account settings"));
         Stages.Add(new("connection", "Secure connection"));
         Stages.Add(new("authentication", "Sign-in"));
         if (!smtpOnly)
         {
             Stages.Add(new("folders", "Server folders"));
-            Stages.Add(new("reading", "Read one message (optional)", "Not requested"));
+            if (!savedCheck) Stages.Add(new("reading", "Read one message (optional)", "Not requested"));
             if (snapshot.Account.Smtp is not null) Stages.Add(new("smtp", "Sending connection and sign-in"));
             if (saveAccount) Stages.Add(new("save", "Save account"));
         }
@@ -48,6 +50,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     public bool UpdatingFolders { get; private set; }
     public bool SaveAccount { get; }
     public bool SmtpOnly { get; }
+    public bool Succeeded { get; private set; }
+    public bool Cancelled { get; private set; }
     public bool IsWorking => _phase is CheckPhase.Checking or CheckPhase.Reading or CheckPhase.Saving;
     public bool IsSaving => _phase == CheckPhase.Saving;
     public bool ShouldClose => _closeWhenReady && !IsWorking;
@@ -127,6 +131,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
 
     private void Complete(bool succeeded, string message)
     {
+        Succeeded = succeeded;
         if (!succeeded && _activeStage is not null)
         {
             var stage = Stages.First(item => item.Key == _activeStage);
@@ -160,6 +165,15 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
             cancellation.Token.ThrowIfCancellationRequested();
             var available = result.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString()!).ToArray();
             if (available.Length == 0) throw new EngineException("The server returned no selectable folders. No account was saved.");
+            if (_savedCheck)
+            {
+                var missing = _snapshot.Account.Folders.Where(folder => !available.Contains(folder)).ToArray();
+                if (missing.Length > 0) throw new EngineException("One or more saved folders are no longer available. Check this account's folder settings.");
+                Complete(true, "Connection and sign-in passed. No message was read or sent and no settings were changed.");
+                _closeWhenReady = true;
+                Notify();
+                return;
+            }
             ShowFolderChoices(available);
             var chosen = await _selection.Task.WaitAsync(cancellation.Token);
             if (chosen is null) return;
@@ -198,6 +212,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         }
         catch (OperationCanceledException)
         {
+            Cancelled = _stop.IsCancellationRequested || lifetime.IsCancellationRequested;
             Complete(false, saving ? "The save result could not be confirmed. Reload your accounts before trying again."
                 : "The check was cancelled or timed out. No account was saved.");
         }

@@ -104,6 +104,24 @@ public sealed partial class MainWindow : Window
         Navigation.SelectedItem = Navigation.MenuItems[0];
     }
 
+    private void ProviderLogo_Failed(object sender, ExceptionRoutedEventArgs args)
+    {
+        if (sender is Image image && image.Parent is Grid grid)
+        {
+            image.Opacity = 0;
+            grid.Children[0].Opacity = 0.55;
+        }
+    }
+
+    private void ProviderLogo_Opened(object sender, RoutedEventArgs args)
+    {
+        if (sender is Image image && image.Parent is Grid grid)
+        {
+            image.Opacity = 1;
+            grid.Children[0].Opacity = 0;
+        }
+    }
+
     private async void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (!_loaded || args.SelectedItem is not NavigationViewItem item) return;
@@ -137,7 +155,7 @@ public sealed partial class MainWindow : Window
                 PageActions.Children.Clear();
                 _configuration.Page = "";
                 Page.Children.Add(Text("This page could not be opened", 22));
-                Page.Children.Add(Hint("Check the error below. You can try again or choose another page."));
+                Page.Children.Add(Hint("You can try again or choose another page."));
                 Page.Children.Add(Action("Try again", () => _ = OpenPageAsync(page),
                     tooltip: "Reload this page without repeating a mail operation."));
                 throw;
@@ -184,7 +202,10 @@ public sealed partial class MainWindow : Window
         accountActions.Children.Add(_removeAccount);
         accountActions.Children.Add(IconAction("Refresh accounts", "\uE72C", 0x2477C8, () => _ = RunAsync(LoadAccountsAsync),
             "Reload saved accounts and their settings."));
-        _accountToolbar = Stack(Text("Connections", 22), accountActions, _accountPicker);
+        var testAll = Action("Test all", () => _ = RunAsync(TestAllAccountsAsync),
+            tooltip: "Check connection and sign-in for every saved account, including configured sending. Stop at the first error. No email is read or sent.");
+        ModelBinding.Bind(testAll, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanTestAll));
+        _accountToolbar = Stack(Text("Connections", 22), accountActions, testAll, _accountPicker);
         _accountToolbar.SizeChanged += (_, args) =>
             accountActions.Orientation = args.NewSize.Width < 260 ? Orientation.Vertical : Orientation.Horizontal;
         _accountWorkspace = new Grid { ColumnSpacing = 24, RowSpacing = 20 };
@@ -355,7 +376,7 @@ public sealed partial class MainWindow : Window
     private async Task BuildAssistantPageAsync()
     {
         Page.Children.Clear();
-        Page.Children.Add(Heading("Connect Your Codex Assistant", ""));
+        Page.Children.Add(Heading("Connect Codex", ""));
         Page.Children.Add(Hint("Checking Codex on this computer…"));
         await _configuration.Assistant.DetectAsync(_lifetime.Token);
         RenderAssistantPage();
@@ -365,7 +386,7 @@ public sealed partial class MainWindow : Window
     {
         var model = _configuration.Assistant;
         Page.Children.Clear();
-        Page.Children.Add(PageHeading("Connect Your Codex Assistant", "",
+        Page.Children.Add(PageHeading("Connect Codex", "Give Codex access to the accounts you enable in AgentInbox.",
             IconAction("Check Codex again", "\uE72C", 0x2477C8, () => _ = RunAsync(BuildAssistantPageAsync),
                 "Look for Codex and check its saved AgentInbox connection.")));
         TextBlock Label(string property, bool hint = false, double size = 0)
@@ -395,17 +416,14 @@ public sealed partial class MainWindow : Window
         ModelBinding.Visible(connect, model, nameof(AssistantConnectionModel.ShowConnect));
         Page.Children.Add(Section("", title, status, Label(nameof(AssistantConnectionModel.Message)), connect));
         var path = FieldFor("Codex settings file", nameof(AssistantConnectionModel.ConfigurationPath));
-        Page.Children.Add(Section("How this is connected",
-            Text("Direct connection to an app on this PC (MCP)"),
-            Hint("Codex starts AgentInbox on this computer when it needs your mail tools. This setup writes an entry in Codex's settings file; it does not install a marketplace plugin or browser add-in."), path));
         var checkStatus = Label(nameof(AssistantConnectionModel.CheckStatus), hint: true);
         ModelBinding.Bind(checkStatus, TextBlock.ForegroundProperty, model, nameof(AssistantConnectionModel.CheckTone), converter: ModelBinding.ToneConverter.Instance);
         var test = Action("Test connection", () => _ = RunAsync(() => model.TestAsync(_lifetime.Token)),
             tooltip: "Check the saved Codex settings, start AgentInbox and ask for its tool list. No email is read or sent.");
         ModelBinding.Bind(test, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanTestAssistant));
-        Page.Children.Add(Section("Check the local connection", test, checkStatus,
-            Hint("This checks the local app connection. To check that Codex can use it in a chat, try the request below. Mailbox sign-in is checked separately under Accounts.")));
-        var tryChat = Section("Try it in a new chat", Text("Open a new chat in Codex and ask:"),
+        Page.Children.Add(Section("1. Test the connection", test, checkStatus,
+            Hint("Starts AgentInbox and checks its tools without reading or sending email. Test your mailboxes separately under Accounts.")));
+        var tryChat = Section("2. Open a new Codex chat", Text("Ask Codex:"),
             Label(nameof(AssistantConnectionModel.TryPrompt), size: 18),
             Action("Copy this prompt", () => _ = RunAsync(() =>
             {
@@ -413,13 +431,12 @@ public sealed partial class MainWindow : Window
                 ShowNotice("Prompt copied", "Paste it into a new Codex chat to check the connection.", InfoBarSeverity.Informational);
                 return Task.CompletedTask;
             }), tooltip: "Copy the first request to try in a new Codex chat."),
-            Hint("If AgentInbox is missing, restart Codex and try a new chat. The local connection test cannot check what happens inside your Codex chat."));
+            Hint("If Codex cannot find AgentInbox, restart Codex and open a new chat."));
         ModelBinding.Visible(tryChat, model, nameof(AssistantConnectionModel.IsConfigured));
         Page.Children.Add(tryChat);
         var afterConnecting = Hint("After connecting, open a new chat in Codex to start using AgentInbox.");
         ModelBinding.Visible(afterConnecting, model, nameof(AssistantConnectionModel.IsConfigured), invert: true);
         Page.Children.Add(afterConnecting);
-        Page.Children.Add(Hint("You choose which accounts Codex can read and whether it can send from them."));
         var app = FieldFor("", nameof(AssistantConnectionModel.Command));
         ModelBinding.Bind(app, TextBox.HeaderProperty, model, nameof(AssistantConnectionModel.AppLabel));
         var arguments = FieldFor("Startup options", nameof(AssistantConnectionModel.Arguments), multiline: true);
@@ -441,8 +458,9 @@ public sealed partial class MainWindow : Window
         {
             Header = "Connection details", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Content = Stack(Label(nameof(AssistantConnectionModel.DetailsHint), hint: true), app, arguments, profile,
-                Hint("This is a local app connection, not a website address or password. The full JSON below is useful for manual setup in another app that supports MCP; Codex stores its entry in its own settings format."), json, copy)
+            Content = Stack(Hint("Codex starts AgentInbox locally through MCP. Connecting saves an entry in this settings file."),
+                path, Label(nameof(AssistantConnectionModel.DetailsHint), hint: true), app, arguments, profile,
+                Hint("Use the JSON below for manual setup in another MCP app."), json, copy)
         };
         ModelBinding.Bind(details, Expander.IsExpandedProperty, model, nameof(AssistantConnectionModel.DetailsExpanded), BindingMode.TwoWay);
         Page.Children.Add(details);
@@ -472,13 +490,33 @@ public sealed partial class MainWindow : Window
         await _configuration.Assistant.ConnectAsync(replaceExisting, _lifetime.Token);
     }
 
-    private Task RunAsync(Func<Task> operation) => _configuration.RunAsync(operation, _lifetime.Token);
+    private async Task RunAsync(Func<Task> operation)
+    {
+        if (_configuration.IsBusy || _lifetime.IsCancellationRequested) return;
+        await _configuration.RunAsync(operation, _lifetime.Token);
+        if (_lifetime.IsCancellationRequested) return;
+        if (_configuration.Notice.IsOpen)
+        {
+            var notice = _configuration.Notice;
+            notice.IsOpen = false;
+            using var window = new NotificationWindow(this, notice.Title, notice.Message, notice.Severity);
+            window.Activate();
+            await window.ClosedTask;
+        }
+        if (_configuration.Cleanup.IsOpen && !_lifetime.IsCancellationRequested)
+        {
+            var cleanup = _configuration.Cleanup;
+            cleanup.IsOpen = false;
+            using var window = new NotificationWindow(this, cleanup.Title, cleanup.Message, cleanup.Severity, allowRetry: true);
+            window.Activate();
+            await window.ClosedTask;
+            if (window.RetryRequested) await RunAsync(() => _configuration.RetryCleanupAsync(_lifetime.Token));
+        }
+    }
 
     private void ShowNotice(string title, string message, InfoBarSeverity severity) =>
         _configuration.Notice.Show(title, message, (int)severity);
 
-    private async void RetryCleanup_Click(object sender, RoutedEventArgs args) =>
-        await RunAsync(() => _configuration.RetryCleanupAsync(_lifetime.Token));
     /// <summary>Keeps legal links on the left and the VibeWare signature on the right at smaller widths.</summary>
     private void BrandFooter_SizeChanged(object sender, SizeChangedEventArgs args)
     {
