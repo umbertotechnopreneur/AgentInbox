@@ -93,7 +93,10 @@
                                  HorizontalAlignment="Right" AutomationProperties.Name="AgentInbox participates in VibeWare. Read the manifesto."
                                  ToolTipService.ToolTip="Created with AI under Umberto Giacobbi's direction and responsibility. Read the VibeWare manifesto.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="Manifesto" VerticalAlignment="Center" />
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="This is VibeWare" />
+                            <TextBlock Text="Manifesto" />
+                        </StackPanel>
                         <Image Source="Assets/VibeWare.png" Width="80" Height="80" Stretch="Uniform" AutomationProperties.AccessibilityView="Raw" />
                     </StackPanel>
                 </HyperlinkButton>

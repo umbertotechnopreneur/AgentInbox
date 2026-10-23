@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-23 — Codex page and two-line manifesto link
+
+- Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Source changes only; no build, installation or runtime checks ran.
+
 ## 2026-10-23 — account checks and result dialogs
 
 - Follow-up source changes add the Add caption and inline Test All toolbar action, extend Mica into branded dialog title bars, render stage-result icons and retain account failures/cancellation details in the list. Result details can be reopened from the account list. Built from checkpoint `37c4a40` and installed in Debug 1.0.21.0 x64, status `Ok`. No tests, UI or provider checks ran; see validation for evidence and cleanup.

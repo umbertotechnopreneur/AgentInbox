@@ -398,7 +398,7 @@ public sealed partial class MainWindow : Window
     {
         var model = _configuration.Assistant;
         Page.Children.Clear();
-        Page.Children.Add(PageHeading("Connect Codex", "Give Codex access to the accounts you enable in AgentInbox.",
+        Page.Children.Add(PageHeading("Connect Codex", "Use your enabled email accounts in a Codex chat.",
             IconAction("Check Codex again", "\uE72C", 0x2477C8, () => _ = RunAsync(BuildAssistantPageAsync),
                 "Look for Codex and check its saved AgentInbox connection.")));
         TextBlock Label(string property, bool hint = false, double size = 0)
@@ -414,10 +414,8 @@ public sealed partial class MainWindow : Window
             ModelBinding.Bind(box, TextBox.TextProperty, model, property);
             return box;
         }
-        var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        title.Children.Add(ColoredIcon("\uE71B", 0x8B62CF));
-        title.Children.Add(Label(nameof(AssistantConnectionModel.DisplayName), size: 20));
         var status = Label(nameof(AssistantConnectionModel.StatusText));
+        status.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
         ModelBinding.Visible(status, model, nameof(AssistantConnectionModel.ShowStatus));
         ModelBinding.Bind(status, TextBlock.ForegroundProperty, model, nameof(AssistantConnectionModel.StatusTone), converter: ModelBinding.ToneConverter.Instance);
         var connect = Action("Connect to Codex", () => _ = RunAsync(ConnectAssistantAsync), accent: true,
@@ -426,24 +424,28 @@ public sealed partial class MainWindow : Window
         ModelBinding.Bind(connect, AutomationProperties.NameProperty, model, nameof(AssistantConnectionModel.ConnectName));
         ModelBinding.Bind(connect, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanConnectAssistant));
         ModelBinding.Visible(connect, model, nameof(AssistantConnectionModel.ShowConnect));
-        Page.Children.Add(Section("", title, status, Label(nameof(AssistantConnectionModel.Message)), connect));
+        var setupMessage = Label(nameof(AssistantConnectionModel.Message));
+        ModelBinding.Visible(setupMessage, model, nameof(AssistantConnectionModel.IsConfigured), invert: true);
+        Page.Children.Add(Section("", status, setupMessage, connect));
         var path = FieldFor("Codex settings file", nameof(AssistantConnectionModel.ConfigurationPath));
         var checkStatus = Label(nameof(AssistantConnectionModel.CheckStatus), hint: true);
         ModelBinding.Bind(checkStatus, TextBlock.ForegroundProperty, model, nameof(AssistantConnectionModel.CheckTone), converter: ModelBinding.ToneConverter.Instance);
         var test = Action("Test connection", () => _ = RunAsync(() => model.TestAsync(_lifetime.Token)),
             tooltip: "Check the saved Codex settings, start AgentInbox and ask for its tool list. No email is read or sent.");
         ModelBinding.Bind(test, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanTestAssistant));
-        Page.Children.Add(Section("1. Test the connection", test, checkStatus,
-            Hint("Starts AgentInbox and checks its tools without reading or sending email. Test your mailboxes separately under Accounts.")));
-        var tryChat = Section("2. Open a new Codex chat", Text("Ask Codex:"),
-            Label(nameof(AssistantConnectionModel.TryPrompt), size: 18),
+        Page.Children.Add(Section("1. Check AgentInbox on this PC",
+            Hint("This checks that AgentInbox can start and reply. It does not read or send email."),
+            test, checkStatus));
+        var prompt = FieldFor("", nameof(AssistantConnectionModel.TryPrompt), multiline: true);
+        AutomationProperties.SetName(prompt, "Request to paste into Codex");
+        var tryChat = Section("2. Try it in Codex", Hint("Open a new Codex chat and paste this request:"), prompt,
             Action("Copy this prompt", () => _ = RunAsync(() =>
             {
                 CopyText(model.TryPrompt);
                 ShowNotice("Prompt copied", "Paste it into a new Codex chat to check the connection.", InfoBarSeverity.Informational);
                 return Task.CompletedTask;
             }), tooltip: "Copy the first request to try in a new Codex chat."),
-            Hint("If Codex cannot find AgentInbox, restart Codex and open a new chat."));
+            Hint("If Codex cannot connect, restart Codex and open a new chat. A successful local check does not verify the connection inside your chat."));
         ModelBinding.Visible(tryChat, model, nameof(AssistantConnectionModel.IsConfigured));
         Page.Children.Add(tryChat);
         var afterConnecting = Hint("After connecting, open a new chat in Codex to start using AgentInbox.");
@@ -470,7 +472,7 @@ public sealed partial class MainWindow : Window
         {
             Header = "Connection details", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Content = Stack(Hint("Codex starts AgentInbox locally through MCP. Connecting saves an entry in this settings file."),
+            Content = Stack(Hint("Codex starts AgentInbox locally through MCP. Test mailbox access separately under Accounts."),
                 path, Label(nameof(AssistantConnectionModel.DetailsHint), hint: true), app, arguments, profile,
                 Hint("Use the JSON below for manual setup in another MCP app."), json, copy)
         };

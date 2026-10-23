@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Source changes only; build, installation and UI checks have not run for this follow-up.
+
 - Keep Add, delete, refresh and a separated Test All action in one quiet toolbar. Show the app logo in Mica dialog title bars and replace terminal check-stage words with green success, red failure and orange warning symbols. Retain failed/cancelled account outcomes and their details in the session list. Result details can be reopened from the account status symbol, and timeout is distinguished from cancellation. Built and installed in Debug 1.0.21.0 x64; tests, UI and provider checks remain unrun.
 
 - Replace bottom operation banners with owned Mica result dialogs and copyable details. Add Test all for saved accounts: reuse the connection window sequentially, stop on failure or cancellation, and mark successful accounts for this session without changing the editor draft. Load provider favicons from Google's favicon CDN with a native mail-icon fallback. Simplify Connect Codex and footer links while retaining the save bar and manifesto tooltip. Built and installed in Debug 1.0.20.0 x64; runtime/UI/provider validation remains pending.

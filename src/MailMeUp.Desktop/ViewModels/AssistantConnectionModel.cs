@@ -26,7 +26,7 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
     public string ConfigurationPath => _client?.ConfigurationPath is { Length: > 0 } path ? path : "Not available";
     public string ConnectText => RequiresConfirmation ? "Update connection" : "Connect to Codex";
     public string ConnectName => RequiresConfirmation ? "Update AgentInbox connection in Codex" : "Connect AgentInbox to Codex";
-    public string StatusText => IsConfigured ? "Settings saved in Codex" : _client?.IsDetected != true ? "Codex not found"
+    public string StatusText => IsConfigured ? "AgentInbox is enabled in Codex settings" : _client?.IsDetected != true ? "Codex not found"
         : CanConnect ? "Ready to add AgentInbox" : "A setup issue needs your attention";
     public int StatusTone => IsConfigured ? 1 : CanConnect ? 0 : 2;
     public string CheckStatus { get; private set; } = "";
@@ -67,7 +67,7 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
 
     private void ResetCheck()
     {
-        CheckStatus = IsConfigured ? "Local connection: not checked yet. Saved settings alone do not show that AgentInbox can reply."
+        CheckStatus = IsConfigured ? "Not checked on this PC yet."
             : "Add or update the connection in Codex before testing it.";
         CheckTone = 0;
     }
@@ -81,7 +81,7 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         try
         {
             var count = await _service.TestConnectionAsync(_client, cancellationToken);
-            CheckStatus = $"Local connection passed. AgentInbox started and returned {count} mail tools. No email was read or sent.";
+            CheckStatus = $"Local check passed. AgentInbox replied with {count} mail tools.";
             CheckTone = 1;
             notice.Show("Local connection passed", "Now try AgentInbox in a new Codex chat. This check did not open a mailbox.", 1);
         }
@@ -93,7 +93,7 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            const string message = "Could not read Codex's settings file. Check the file shown above, then press Check Codex again.";
+            const string message = "Could not read Codex's settings file. Open Connection details to check its location, then press Check Codex again.";
             CheckStatus = "Local connection failed. " + message;
             CheckTone = 3;
             throw new EngineException(message);

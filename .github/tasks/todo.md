@@ -2,6 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] When requested, build/install and check the simplified Connect Codex page and two-line VibeWare link. Verify missing/mismatched/configured settings, test outcomes, prompt copying, narrow footer layout and keyboard access. A local handshake result must not be presented as verification of an existing Codex chat connection.
+
 - [ ] Verify the installed Debug 1.0.21.0 toolbar, branded Mica title bar and stage icons. Check title-bar drag/caption controls, narrow toolbar fit, success/failure/warning symbols and retained per-account failure details, including reopening the result by clicking its status symbol. The installed 1.0.20.0 does not retain dismissed account-check diagnostics on disk; its Outlook outcome could not be recovered from the local profile logs or recent Windows Application errors. Capture the next result before claiming a provider cause.
 
 - [ ] Check Test all with successful accounts, first-account and later-account errors, cancellation, unavailable saved folders, configured SMTP and an unsaved editor draft. Check session success marks, provider favicon loading/offline fallback, Mica result details/cleanup retry, keyboard focus, narrow footer and simplified Connect Codex. No automated or live-provider checks have run for these changes.
