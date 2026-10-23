@@ -27,14 +27,19 @@ def manage(application, session: bool) -> int:
             return 1
         try:
             request = json.loads(raw)
-            if not isinstance(request, dict) or set(request) not in ({"operation", "arguments"}, {"operation", "arguments", "progress"}) or not isinstance(request["operation"], str):
+            if not isinstance(request, dict) or set(request) not in ({"operation", "arguments"}, {"operation", "arguments", "progress"}, {"operation", "arguments", "diagnostics"}) or not isinstance(request["operation"], str):
                 raise MailError("invalid_request", "Supply operation and arguments in the local setup request.")
             report = None
             if "progress" in request:
                 if request["progress"] is not True or request["operation"] not in {"check_account", "check_smtp"}:
                     raise MailError("invalid_request", "Progress is available only for an explicit account or SMTP check.")
                 report = lambda stage, state: write({"progress": {"stage": stage, "state": state}})
-            result = application.manage(request["operation"], request["arguments"], progress=report)
+            diagnostic = None
+            if "diagnostics" in request:
+                if request["diagnostics"] is not True or request["operation"] not in {"start_microsoft_signin", "poll_microsoft_signin"}:
+                    raise MailError("invalid_request", "Sign-in details are available only for an explicit Microsoft sign-in.")
+                diagnostic = lambda message: write({"diagnostic": message})
+            result = application.manage(request["operation"], request["arguments"], progress=report, diagnostic=diagnostic)
             response = {"ok": True, "result": result}
         except MailError as error:
             failed = True

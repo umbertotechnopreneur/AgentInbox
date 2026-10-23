@@ -50,7 +50,7 @@ class _BoundedWire:
     def _remaining_time(self):
         remaining = self._deadline - time.monotonic()
         if remaining <= 0:
-            raise MailError("operation_timeout", "The bounded mail operation timed out.")
+            raise MailError("operation_timeout", "Your mail provider took too long to reply. Check the connection before trying again.")
         return min(TIMEOUT, remaining)
 
     def _receive(self, maximum):
@@ -60,7 +60,7 @@ class _BoundedWire:
             raise MailError("response_too_large", "The mail response exceeds its byte limit.")
         chunk = self.sock.recv(capacity)
         if not chunk:
-            raise MailError("connection_failed", "The mail server closed an incomplete response.")
+            raise MailError("connection_failed", "Your mail provider closed the connection before its reply was complete.")
         self._wire_buffer.extend(chunk)
 
     def _take(self, size):
@@ -165,7 +165,7 @@ def _settings(settings, protocol):
             or ("protocol" in settings and settings["protocol"] != protocol)
             or type(settings.get("port")) is not int
             or not isinstance(settings.get("tls"), str)):
-        raise MailError("invalid_configuration", "Supply the supported mail protocol, port and TLS settings.")
+        raise MailError("invalid_configuration", "Check the server, port and Connection security settings for this account.")
     return endpoint({key: settings[key] for key in keys}, protocol)
 
 
@@ -245,13 +245,13 @@ def imap_connection(settings: dict, password: str, *, access_token: str | None =
             del error._imap_reply
         raise
     except ssl.SSLError as error:
-        raise MailError("tls_failed", "The server's TLS connection or certificate could not be verified.",
+        raise MailError("tls_failed", "A secure connection to your mail provider could not be verified. Check the server and Connection security under Read mail.",
                         server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     except (OSError, socket.timeout, imaplib.IMAP4.abort) as error:
-        raise MailError("connection_failed", "The mail server could not complete the connection. Check the server, port and TLS mode.",
+        raise MailError("connection_failed", "Could not connect to your mail provider. Check the server, port and Connection security under Read mail.",
                         server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     except imaplib.IMAP4.error as error:
-        raise MailError("mail_operation_failed", "The IMAP server rejected the operation.",
+        raise MailError("mail_operation_failed", "Your mail provider could not finish the requested reading action.",
                         server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     finally:
         if connection is not None:
@@ -296,7 +296,7 @@ def _folder_name(row) -> str | None:
     elif re.fullmatch(rb'[^\x00-\x20\x7f(){"\\*%]+', mailbox) is None:
         raise MailError("invalid_server_response", "The server returned an invalid folder name.")
     if not 1 <= len(mailbox) <= 255 or any(byte < 32 or byte > 126 for byte in mailbox) or mailbox != mailbox.strip():
-        raise MailError("unsupported_folder", "This preview requires exact ASCII folder names of at most 255 characters.")
+        raise MailError("unsupported_folder", "Folder names currently need basic English letters, numbers or punctuation, with at most 255 characters.")
     return mailbox.decode("ascii")
 
 
@@ -364,7 +364,7 @@ def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
         criteria.append("UNSEEN")
     if query:
         if not query.isascii():
-            raise MailError("unsupported_query", "This preview accepts ASCII server search text. Use dates and inspect message text for other languages.")
+            raise MailError("unsupported_query", "Search text currently needs basic English letters, numbers or punctuation. Use a date range to find messages in other languages.")
         criteria.extend(["TEXT", _quote(query)])
     truncated = False
     if candidates is None:
@@ -507,7 +507,7 @@ def smtp_connection(settings: dict, password: str, *, access_token: str | None =
         raise MailError("authentication_failed", "Your mail provider did not let this app sign in to send mail. Check the sign-in help under Email provider.",
                         server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except ssl.SSLError as error:
-        raise MailError("tls_failed", "The SMTP TLS connection or certificate could not be verified.",
+        raise MailError("tls_failed", "A secure sending connection could not be verified. Check the server and Connection security under Send mail.",
                         server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except (OSError, smtplib.SMTPException) as error:
         raise MailError("smtp_failed", "Your mail provider could not finish this sending request.",

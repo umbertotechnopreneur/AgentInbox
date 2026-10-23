@@ -1,13 +1,15 @@
 # AgentInbox — Read and send email with your AI assistant.
 
+[![CI status](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
+![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
+![Status: in development](https://img.shields.io/badge/status-in_development-F6C453)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
+
 I kept switching between mailboxes to find the message I needed. I built AgentInbox to bring those inboxes into one conversation, using IMAP or POP3 to read mail and optional SMTP to send it, like a regular email client.
 
 Connect a compatible mailbox, choose what your assistant can read, and ask for the messages you need. Sending is optional: enable SMTP for an account in Windows setup, then ask Codex to send a message.
 
 **[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
-
-[![MIT](https://img.shields.io/badge/license-MIT-71DEB7)](LICENSE)
-![Project status: development](https://img.shields.io/badge/status-in_development-F6C453)
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 

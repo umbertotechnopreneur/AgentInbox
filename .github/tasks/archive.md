@@ -2,8 +2,25 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-23 — Codex page and two-line manifesto link
+
+- Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Published the nineteen local commits through PR #36 and built/installed Debug 1.0.22.0 x64, status Ok. Windows CI passed 108 synthetic Python tests; no live UI/provider checks ran. See validation for recovered imports and package evidence. Merge was not requested.
+
+## 2026-10-23 — account checks and result dialogs
+
+- Follow-up source changes add the Add caption and inline Test All toolbar action, extend Mica into branded dialog title bars, render stage-result icons and retain account failures/cancellation details in the list. Result details can be reopened from the account list. Built from checkpoint `37c4a40` and installed in Debug 1.0.21.0 x64, status `Ok`. No tests, UI or provider checks ran; see validation for evidence and cleanup.
+
+- Added sequential saved-account checks with session-only success marks, provider favicons with offline fallback, Mica result dialogs with copyable details, simpler Codex setup and external-link footer icons. Preserved the unsaved editor draft and persistent save status. See validation for build/install evidence and todo for pending behavior checks.
+
+## 2026-10-23 — configuration-model refactor
+
+- Moved Windows draft, validation, account-selection and operation state into observable models with typed account records and native bindings. Centralized provider defaults through Python's presets contract and made process-local Python session state explicit. Preserved drafts across page recreation and documented state lifetimes. Built source checkpoint `e0c7789`, signed and installed Debug 1.0.19.0 x64 with status `Ok`. No tests, app launch, UI or provider checks ran. See validation for the retained installer and blocked superseded-package cleanup.
+
 ## 2026-10-22 — source changes
 
+- Collapsed Microsoft diagnostics into native expanders, centered the sign-in code and added an adjacent Copy icon. Corrected rejection of extra prior mail-resource grants and added required/returned permission details. Built source checkpoint `1aa7491`, signed and installed Debug 1.0.18.0 x64 with status `Ok`. UI/provider checks remain pending; see validation for recovered inputs, the retained installer and blocked input cleanup.
+- Removed the Microsoft browser-address allowlist, kept sign-in available with pending changes, added save-before-sign-in and a bounded private local trace, and added native field-level validation. Built source checkpoint `f426a32`, signed and installed Debug 1.0.17.0 x64 with status `Ok`. UI/provider checks remain pending; see validation for the retained installer and blocked superseded-package cleanup.
+- Replaced Username labels/errors with email wording, added blank sign-in email defaults at save/check time, clarified local Codex configuration and implemented a user-triggered MCP launcher check with no mail-tool calls. Included in installed Debug 1.0.17.0; execution of the new actions remains pending.
 - Added provider persistence, shared Microsoft sign-in presentation, local redacted Microsoft replies, plain setup wording and the Connect Codex title. Copied the approved VibeWare artwork and license, linked the footer to the manifesto and recorded display rules. Built source checkpoint `2f72826`, signed and installed Debug 1.0.16.0 x64 with status `Ok`. The owner excluded automated tests and is trying the installed app directly; UI/provider validation remains pending. See validation for the retained installer and blocked cleanup.
 - Added provider-specific sign-in instructions and official links, Microsoft OAuth/account-type defaults and the recovered public client ID in application settings. Built source checkpoint `a4cb4be`, signed and installed Debug 1.0.15.0 x64 with status `Ok`. Runtime checks and live registration validation remain pending; see validation for the retained installer and blocked superseded-package cleanup.
 - Restricted Windows setup to accounts, permissions and connecting Codex. Removed native/Python message review, the preparation queue and desktop send actions; MCP now submits directly with durable status and duplicate prevention.

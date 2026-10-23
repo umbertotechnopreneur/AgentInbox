@@ -10,6 +10,7 @@ from pathlib import Path
 from .config import SCHEMA_VERSION, account_input
 from .errors import MailError
 from .vault import Vault
+from .models import SavedAccount
 
 
 MAX_SETTINGS_BYTES = 256_000
@@ -56,7 +57,7 @@ class Store:
                 else:
                     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
-    def accounts(self) -> list[dict]:
+    def accounts(self) -> list[SavedAccount]:
         """Read and validate the complete current schema without migration."""
         if not self.settings.exists():
             return []
@@ -97,7 +98,7 @@ class Store:
         except (ValueError, TypeError, KeyError, OSError, MailError) as error:
             raise MailError("invalid_profile", "The saved profile is invalid or incompatible. Correct the current settings or use a new profile; no migration is performed.") from error
 
-    def account(self, identity: str) -> dict:
+    def account(self, identity: str) -> SavedAccount:
         """Resolve a current account and fail when it has been removed."""
         for account in self.accounts():
             if account["id"] == identity:
@@ -273,7 +274,9 @@ class Store:
                     elif previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol] and previous[field]:
                         account[field] = previous[field]
                     else:
-                        raise MailError("password_required", f"Enter the {protocol.upper()} password for the new server or username.")
+                        purpose = "reading" if protocol == "incoming" else "sending"
+                        section = "Read mail" if protocol == "incoming" else "Send mail"
+                        raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
                     if previous and previous[field] and previous[field] != account[field]:
                         obsolete.append(previous[field])
                 account["oauth_secret"] = None

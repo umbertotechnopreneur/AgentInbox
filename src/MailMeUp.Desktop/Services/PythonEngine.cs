@@ -15,7 +15,7 @@ internal sealed class PythonEngine
 
     /// <summary>Runs one local operation, optionally forwarding real account-check progress records.</summary>
     internal async Task<JsonElement> ManageAsync(string operation, object arguments, CancellationToken cancellationToken,
-        Action<AccountCheckProgress>? progress = null)
+        Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(90));
@@ -25,9 +25,10 @@ internal sealed class PythonEngine
         {
             var request = new Dictionary<string, object> { ["operation"] = operation, ["arguments"] = arguments };
             if (progress is not null) request["progress"] = true;
+            if (diagnostic is not null) request["diagnostics"] = true;
             await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(), timeout.Token);
             process.StandardInput.Close();
-            var result = await ReadResponseAsync(process, timeout.Token, progress);
+            var result = await ReadResponseAsync(process, timeout.Token, progress, diagnostic);
             await process.WaitForExitAsync(timeout.Token);
             if (process.ExitCode != 0) throw new EngineException("The Python engine exited before completing the request.");
             return result;
@@ -189,7 +190,7 @@ internal sealed class PythonEngine
 
     /// <summary>Accepts a bounded sequence of opt-in progress records before the final operation result.</summary>
     private static async Task<JsonElement> ReadResponseAsync(Process process, CancellationToken cancellationToken,
-        Action<AccountCheckProgress>? progress = null)
+        Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
         try
         {
@@ -197,6 +198,16 @@ internal sealed class PythonEngine
             {
                 using var document = JsonDocument.Parse(await ReadRecordAsync(process, cancellationToken));
                 var root = document.RootElement;
+                if (root.TryGetProperty("diagnostic", out var detailRecord))
+                {
+                    if (diagnostic is null || root.EnumerateObject().Count() != 1
+                        || detailRecord.ValueKind != JsonValueKind.String
+                        || detailRecord.GetString() is not { Length: > 0 and <= 1200 } detail
+                        || detail.Any(char.IsControl))
+                        throw new EngineException("The Python engine returned invalid sign-in details.");
+                    diagnostic(detail);
+                    continue;
+                }
                 if (root.TryGetProperty("progress", out var update))
                 {
                     var stage = update.GetProperty("stage").GetString();

@@ -19,7 +19,9 @@ In **Account**, choose your **Email provider** and enter your email address. Ins
 
 Your provider choice is saved with the account. Earlier saves did not record it: select the provider once and save changes. AgentInbox does not guess that choice from your email address or rewrite old settings when reading them.
 
-For Microsoft, save changes and press **Sign in with Microsoft**, then **Open Microsoft**. Enter the displayed code on Microsoft's page. You do not need to supply an app ID. Reading and sending use the same sign-in, and their password fields are hidden. When sending was not configured, reopening the account fills its provider's outgoing defaults without enabling sending. See [Microsoft setup](AUTHENTICATION.md) for technical requirements and validation limits.
+For Microsoft, press **Sign in with Microsoft**, then **Open Microsoft**. The button stays available before saving and saves your complete account settings first. Enter the displayed code on Microsoft's page. **Sign-in details** keeps a local trace of the steps and errors, with private sign-in values hidden. You do not need to supply an app ID. Reading and sending use the same sign-in, and their password fields are hidden. When sending was not configured, reopening the account fills its provider's outgoing defaults without enabling sending. See [Microsoft setup](AUTHENTICATION.md) for technical requirements and validation limits.
+
+When you save or check an account, missing or malformed fields get a red border and a short explanation underneath. The app selects the tab and focuses the first field to fix. These errors update as you edit. Controls keep their native WinUI templates and use the theme's critical-color brush; no validation library or custom control style is added. WinUI 3 has no complete built-in form-validation framework; this follows [Microsoft's form guidance](https://learn.microsoft.com/en-us/windows/apps/get-started/line-of-business/build-validated-form).
 
 In **Read mail**, choose IMAP or POP3 and enter the server settings from your provider. IMAP shares your selected folders; POP3 has only INBOX. Enable reading only for accounts you want to share.
 
@@ -37,9 +39,11 @@ Choose between one and twenty exact server folder names. Current support require
 
 ## Connect Codex
 
-Open **Connect Codex**, headed **Connect Your Codex Assistant**, and choose **Connect to Codex**. Existing matching settings show **Added to Codex**. If a different entry exists, **Update connection** asks before replacing it. Start a new Codex chat and use the provided account-list prompt to check access.
+Open **Connect Codex**, headed **Connect Your Codex Assistant**, and choose **Connect to Codex**. Existing matching settings show **Settings saved in Codex**. If a different entry exists, **Update connection** asks before replacing it. The page explains the direct local MCP connection and shows the Codex settings file.
 
-**Manual setup and troubleshooting** contains the configuration path and copyable MCP settings. Saving client settings does not prove a mailbox connection. See [Codex setup](CODEX_SETUP.md).
+Press **Test connection** to check the saved configuration, start AgentInbox and request its mail-tool list. This uses the local connection without calling a mail tool or opening a mailbox. A successful result is separate from saved settings and from access inside a Codex chat. Start a new chat and try the provided account-list request afterward.
+
+**Connection details** shows the app command, startup options, account-settings folder and a full multiline JSON preview. The JSON is for manual setup in another MCP app; Codex saves its own TOML entry in the file shown above. See [Codex setup](CODEX_SETUP.md).
 
 The footer links to umbertogiacobbi.biz and the AgentInbox Terms and Privacy pages. On the right, the approved rendered VibeWare logo links to the manifesto. Its tooltip explains AI assistance under Umberto's direction and responsibility. See the [brand guide](BRAND.md#vibeware-participation).
 

@@ -14,6 +14,7 @@ import urllib.request
 import uuid
 
 from .errors import MailError, server_response
+from .models import SessionState
 
 
 AUTHORITY = "https://login.microsoftonline.com"
@@ -65,32 +66,36 @@ def _flow_key(flow_id):
 
 
 def _verification_uri(value):
-    _bounded_string(value, 256, "verification address")
+    """Accept the HTTPS sign-in address returned by Microsoft's verified endpoint."""
+    _bounded_string(value, 2048, "verification address")
     try:
         parsed = urllib.parse.urlsplit(value)
         allowed = (
             parsed.scheme == "https"
-            and parsed.hostname in {"microsoft.com", "www.microsoft.com"}
-            and parsed.port in {None, 443}
+            and bool(parsed.hostname)
+            and parsed.port != 0
             and parsed.username is None
             and parsed.password is None
-            and not parsed.query
-            and not parsed.fragment
-            and parsed.path in {"/devicelogin", "/devicelogin/"}
         )
     except ValueError:
         allowed = False
     if not allowed:
-        raise MailError("microsoft_response", "Microsoft returned an unexpected verification address.")
+        raise MailError("microsoft_response", "Microsoft did not return a valid secure sign-in address. Try again.")
     return value
+
+
+def _report(diagnostic, message, *secrets):
+    """Send bounded, redacted details only to an explicitly requested local trace."""
+    if diagnostic is not None:
+        diagnostic(server_response("Microsoft", message, *secrets))
 
 
 class MicrosoftAuth:
     """Manage explicit device-code flows and protected refresh-token rotation."""
 
-    def __init__(self, store):
+    def __init__(self, store, session: SessionState | None = None):
         self.store = store
-        self._tokens = {}
+        self.session = session if session is not None else SessionState()
 
     def _account(self, identity, revision=None):
         account = self.store.account(identity)
@@ -128,9 +133,10 @@ class MicrosoftAuth:
             raise MailError("microsoft_configuration", "This Microsoft sign-in step is not supported.")
         return f"{AUTHORITY}/{tenant}/oauth2/v2.0/{operation}"
 
-    def _post(self, account, operation, fields):
+    def _post(self, account, operation, fields, *, diagnostic=None):
         """POST bounded JSON requests over verified TLS, without redirects or retries."""
         endpoint = self._endpoint(account, operation)
+        _report(diagnostic, f"POST {endpoint}")
         request = urllib.request.Request(
             endpoint,
             data=urllib.parse.urlencode(fields).encode("ascii"),
@@ -150,6 +156,7 @@ class MicrosoftAuth:
                     raise MailError("microsoft_redirect", "Microsoft returned an unexpected address during sign-in.")
                 status = response.getcode()
                 content = response.read(MAX_RESPONSE + 1)
+            _report(diagnostic, f"HTTP {status}; received {len(content)} bytes. Response contents hidden.")
             if len(content) > MAX_RESPONSE:
                 raise MailError("microsoft_response", "Microsoft's response exceeded the size limit.")
             result = json.loads(content.decode("utf-8"))
@@ -160,8 +167,13 @@ class MicrosoftAuth:
             return result
         except MailError:
             raise
-        except (OSError, urllib.error.URLError, http.client.HTTPException, ValueError, UnicodeError):
-            raise MailError("microsoft_unavailable", "Microsoft sign-in could not complete over a verified connection. Try again later.") from None
+        except (OSError, urllib.error.URLError, http.client.HTTPException, ValueError, UnicodeError) as error:
+            sensitive = [account["email"], *fields.values()]
+            encoded = [urllib.parse.quote_plus(value) for value in sensitive]
+            detail = server_response("Microsoft", f"{type(error).__name__}: {error}", *sensitive, *encoded)
+            _report(diagnostic, "The secure request or response could not be completed.")
+            raise MailError("microsoft_unavailable", "Microsoft sign-in could not complete over a verified connection. Try again later.",
+                            server_response=detail) from None
 
     @staticmethod
     def _raise_error(response, *secrets):
@@ -193,6 +205,8 @@ class MicrosoftAuth:
         elif error in {"invalid_client", "unauthorized_client", "invalid_scope", "invalid_request"}:
             code = "microsoft_configuration"
             message = "Microsoft couldn't connect this app. Its Microsoft setup may need fixing."
+            if error == "invalid_client" and isinstance(description, str) and "must be marked as 'mobile'" in description:
+                message = "Microsoft sign-in has not been enabled for this app. The app owner needs to enable desktop sign-in in its Microsoft settings."
         elif error in {"invalid_grant", "interaction_required", "consent_required", "login_required"}:
             code = "microsoft_reauthentication"
             message = "Please sign in with Microsoft again. If your work account is blocked, ask your IT team for help."
@@ -260,19 +274,24 @@ class MicrosoftAuth:
     def _discard(self, flow_id):
         return self.store.retire_protected([_flow_key(flow_id)])
 
-    def start(self, account_id):
+    def start(self, account_id, *, diagnostic=None):
         """Start a user-requested Microsoft device flow without opening a browser."""
         account = self._account(account_id)
+        _report(diagnostic, f"App ID: {account['authentication']['client_id']}; account type: {account['authentication']['tenant']}.")
+        _report(diagnostic, f"Requested mail permissions: {self._scopes(account)}")
         started = time.time()
         response = self._post(account, "devicecode", {
             "client_id": account["authentication"]["client_id"], "scope": self._scopes(account)
-        })
+        }, diagnostic=diagnostic)
         self._raise_error(response, account["email"])
         device_code = _bounded_string(response.get("device_code"), 2048, "device code")
         user_code = _bounded_string(response.get("user_code"), 32, "user code")
         if not re.fullmatch(r"[A-Za-z0-9-]{4,32}", user_code):
             raise MailError("microsoft_response", "Microsoft returned an invalid user code.")
         verification = _verification_uri(response.get("verification_uri"))
+        address = urllib.parse.urlsplit(verification)
+        # The address can carry a sign-in code in its query, fragment or path.
+        _report(diagnostic, f"Sign-in address accepted: {address.scheme}://{address.netloc}. Path, query and fragment hidden.", device_code, user_code, account["email"])
         expires_in = _duration(response.get("expires_in"), 3600)
         interval = _duration(response.get("interval", 5), 300)
         flow_id = uuid.uuid4().hex
@@ -280,10 +299,11 @@ class MicrosoftAuth:
                  "expires": started + expires_in, "interval": interval,
                  "next_poll": time.time() + interval, "scope": self._scopes(account)}
         self._save_flow(flow_id, state)
+        _report(diagnostic, f"Temporary sign-in saved securely. Code valid for {expires_in} seconds; checking every {interval} seconds.")
         return {"flow_id": flow_id, "user_code": user_code, "verification_uri": verification,
                 "expires_in": max(1, math.floor(state["expires"] - time.time())), "interval": interval}
 
-    def _token_response(self, response, account, require_refresh, *secrets):
+    def _token_response(self, response, account, require_refresh, *secrets, diagnostic=None):
         self._raise_error(response, account["email"], *secrets)
         if not isinstance(response.get("token_type"), str) or response["token_type"].lower() != "bearer":
             raise MailError("microsoft_response", "Microsoft did not finish sign-in. Please try again.")
@@ -292,6 +312,16 @@ class MicrosoftAuth:
         supplied = response.get("scope")
         if not isinstance(supplied, str) or len(supplied) > 2048:
             raise MailError("microsoft_response", "Microsoft did not confirm the granted mail permissions.")
+        sensitive = [account["email"], *secrets]
+        for field in ("access_token", "refresh_token", "id_token", "device_code", "user_code"):
+            if isinstance(response.get(field), str) and response[field]:
+                sensitive.append(response[field])
+        sensitive += [urllib.parse.quote_plus(value) for value in sensitive]
+        required = {scope[len(RESOURCE):] for scope in self._scopes(account).split() if scope.startswith(RESOURCE)}
+        required_text = " ".join(sorted(required))
+        _report(diagnostic, f"Required mail permissions: {required_text}")
+        _report(diagnostic, f"Returned permissions: {supplied or '(none)'}", *sensitive)
+        detail = server_response("Microsoft", f"Required: {required_text}; returned: {supplied or '(none)'}", *sensitive)
         granted = set()
         for scope in supplied.split():
             if scope in {"offline_access", "openid", "profile", "email"}:
@@ -301,10 +331,21 @@ class MicrosoftAuth:
             elif scope.startswith("https://outlook.office365.com/"):
                 granted.add(scope[len("https://outlook.office365.com/"):])
             else:
-                raise MailError("microsoft_response", "Microsoft returned permissions for an unexpected resource.")
-        required = {scope[len(RESOURCE):] for scope in self._scopes(account).split() if scope.startswith(RESOURCE)}
-        if not required.issubset(granted) or not granted.issubset({"IMAP.AccessAsUser.All", "POP.AccessAsUser.All", "SMTP.Send"}):
-            raise MailError("microsoft_permission", "Microsoft did not grant the required mail permissions.")
+                raise MailError("microsoft_response", "Microsoft returned permissions for a different service, so mail access could not be confirmed.",
+                                server_response=detail)
+        missing = required - granted
+        if missing:
+            actions = []
+            if missing & {"IMAP.AccessAsUser.All", "POP.AccessAsUser.All"}:
+                actions.append("reading mail")
+            if "SMTP.Send" in missing:
+                actions.append("sending mail")
+            raise MailError("microsoft_permission", "Microsoft signed you in, but did not allow " + " and ".join(actions) + ".",
+                            server_response=detail)
+        # Microsoft can return earlier grants for the same resource. They do not
+        # enable features or bypass the account's local read/send permissions.
+        if granted - required:
+            _report(diagnostic, "Other previously granted permissions are not used: " + " ".join(sorted(granted - required)), *sensitive)
         refresh = response.get("refresh_token")
         if refresh is not None:
             _bounded_string(refresh, 2560, "refresh token")
@@ -318,7 +359,7 @@ class MicrosoftAuth:
     def _cache_key(account):
         return account["id"], account["revision"], account.get("oauth_secret")
 
-    def poll(self, flow_id):
+    def poll(self, flow_id, *, diagnostic=None):
         """Poll once at the persisted interval and consume successful flows once."""
         _flow_key(flow_id)
         with self._lease("flow", flow_id):
@@ -340,15 +381,18 @@ class MicrosoftAuth:
                 response = self._post(account, "token", {
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                     "client_id": account["authentication"]["client_id"], "device_code": state["device_code"],
-                })
+                }, diagnostic=diagnostic)
                 if isinstance(response.get("error"), str) and response["error"] in {"authorization_pending", "slow_down"}:
+                    _report(diagnostic, "Microsoft is waiting for you to finish sign-in." if response["error"] == "authorization_pending"
+                            else "Microsoft asked the app to check less often.")
                     if response["error"] == "slow_down":
                         state["interval"] = min(300, state["interval"] + 5)
                     state["next_poll"] = time.time() + state["interval"]
                     self._save_flow(flow_id, state)
                     return {"status": "pending", "interval": state["interval"]}
                 try:
-                    access, refresh, lifetime = self._token_response(response, account, True, state["device_code"])
+                    access, refresh, lifetime = self._token_response(response, account, True, state["device_code"], diagnostic=diagnostic)
+                    _report(diagnostic, "Microsoft accepted sign-in and confirmed the requested mail permissions.")
                     if time.time() >= state["expires"]:
                         raise MailError("signin_expired", "Microsoft sign-in expired. Start again.")
                     connected = self.store.connect_oauth(
@@ -373,7 +417,7 @@ class MicrosoftAuth:
                 except MailError:
                     pass
                 else:
-                    self._tokens[self._cache_key(current)] = (access, started + lifetime)
+                    self.session.access_tokens[self._cache_key(current)] = (access, started + lifetime)
                 return {"status": "connected", "account": connected,
                         **{key: connected[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error")}}
 
@@ -388,8 +432,8 @@ class MicrosoftAuth:
         """Refresh under a per-account lease; never persist access tokens."""
         current = self._account(account["id"], account["revision"])
         key = self._cache_key(current)
-        self._tokens = {stored: value for stored, value in self._tokens.items() if value[1] > time.time()}
-        cached = self._tokens.get(key)
+        self.session.access_tokens = {stored: value for stored, value in self.session.access_tokens.items() if value[1] > time.time()}
+        cached = self.session.access_tokens.get(key)
         if cached is not None and cached[1] > time.time() + 60:
             return cached[0]
         with self._lease("account", current["id"]):
@@ -411,5 +455,5 @@ class MicrosoftAuth:
                     raise MailError("configuration_changed", "Your Microsoft sign-in details changed. Try again with the saved account.")
                 if rotated is not None:
                     self.store.vault.put(reference, rotated)
-                self._tokens[self._cache_key(latest)] = (access, started + lifetime)
+                self.session.access_tokens[self._cache_key(latest)] = (access, started + lifetime)
             return access

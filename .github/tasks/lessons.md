@@ -2,6 +2,7 @@
 
 Keep reusable findings here. Rules belong in [AGENTS.md](../../AGENTS.md), evidence in [validation](../../docs/VALIDATION.md).
 
+- Keep an editable draft separate from saved engine snapshots and native controls. Publish collection/selection changes coherently so two-way selection bindings cannot overwrite an account while it is loading. Recreating a page should rebind its model, not reconstruct or discard its draft.
 - A successful build does not establish UI behavior, native credentials, provider interoperability or delivery. Record each boundary separately.
 - Save the user's provider choice as metadata. Server names alone cannot recover that choice; unfinished sending fields must not erase an explicit Microsoft sign-in selection.
 - A generic Microsoft registration failure does not identify its cause. Preserve the bounded provider reason locally, redact request and response secrets, and keep the public MCP error separate.
