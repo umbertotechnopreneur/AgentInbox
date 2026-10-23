@@ -135,11 +135,12 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         if (!succeeded && _activeStage is not null)
         {
             var stage = Stages.First(item => item.Key == _activeStage);
-            stage.Status = "Failed";
+            stage.Status = Cancelled ? "Cancelled" : "Failed";
         }
         _phase = CheckPhase.Finished;
         _heading = SmtpOnly ? succeeded ? "Sending check complete" : "Sending check stopped"
             : succeeded ? SaveAccount ? "Account added" : "Account check complete" : "Account check stopped";
+        if (_savedCheck && !succeeded) _heading = $"Check stopped: {_snapshot.Account.Label}";
         _message = message;
         Notify();
     }
@@ -238,5 +239,9 @@ internal sealed class CheckStageModel(string key, string label, string status = 
     private string _status = status;
     public string Key { get; } = key;
     public string Label { get; } = label;
-    public string Status { get => _status; set => Set(ref _status, value); }
+    public string Status { get => _status; set { if (Set(ref _status, value)) Notify(); } }
+    public string StatusGlyph => Status switch { "Passed" => "✓", "Failed" => "✕", "Empty folder" or "Cancelled" => "!", _ => "" };
+    public int StatusTone => Status switch { "Passed" => 1, "Failed" => 3, "Empty folder" or "Cancelled" => 2, _ => 0 };
+    public bool ShowStatusText => StatusGlyph.Length == 0;
+    public string StatusDescription => Label + ": " + Status;
 }

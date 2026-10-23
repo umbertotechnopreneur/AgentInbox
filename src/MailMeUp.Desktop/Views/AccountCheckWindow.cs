@@ -139,10 +139,17 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         var status = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
         ModelBinding.Bind(label, TextBlock.TextProperty, stage, nameof(CheckStageModel.Label));
         ModelBinding.Bind(status, TextBlock.TextProperty, stage, nameof(CheckStageModel.Status));
-        AutomationProperties.SetName(status, stage.Label + " status");
+        ModelBinding.Visible(status, stage, nameof(CheckStageModel.ShowStatusText));
+        var statusIcon = new TextBlock { FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+        ModelBinding.Bind(statusIcon, TextBlock.TextProperty, stage, nameof(CheckStageModel.StatusGlyph));
+        ModelBinding.Bind(statusIcon, TextBlock.ForegroundProperty, stage, nameof(CheckStageModel.StatusTone), converter: ModelBinding.ToneConverter.Instance);
+        ModelBinding.Bind(statusIcon, AutomationProperties.NameProperty, stage, nameof(CheckStageModel.StatusDescription));
+        ModelBinding.Bind(statusIcon, ToolTipService.ToolTipProperty, stage, nameof(CheckStageModel.StatusDescription));
         row.Children.Add(label);
         Grid.SetColumn(status, 1);
         row.Children.Add(status);
+        Grid.SetColumn(statusIcon, 1);
+        row.Children.Add(statusIcon);
         panel.Children.Add(row);
     }
 
@@ -151,6 +158,27 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     /// <summary>Uses the owner relationship for native modality and centers the window within its display.</summary>
     internal static void OwnAndPosition(Window window, Window owner)
     {
+        window.ExtendsContentIntoTitleBar = true;
+        window.AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+        window.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+        var content = window.Content;
+        window.Content = null;
+        var surface = new Grid();
+        surface.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        surface.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var titleBar = new Grid { Height = 40, Padding = new Thickness(12, 0, 140, 0), ColumnSpacing = 10, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+        titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        titleBar.Children.Add(new Image { Width = 20, Height = 20,
+            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "Logo.png"))) });
+        var title = new TextBlock { Text = "AgentInbox", VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(title, 1);
+        titleBar.Children.Add(title);
+        surface.Children.Add(titleBar);
+        Grid.SetRow(content, 1);
+        surface.Children.Add(content);
+        window.Content = surface;
+        window.SetTitleBar(titleBar);
         var handle = WinRT.Interop.WindowNative.GetWindowHandle(window);
         var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
         Marshal.SetLastPInvokeError(0);

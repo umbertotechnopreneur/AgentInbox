@@ -19,7 +19,7 @@
                     <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Email}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <FontIcon Grid.Column="2" Glyph="{Binding CheckGlyph}" Foreground="Green" FontSize="18" VerticalAlignment="Center"
+                    <FontIcon Grid.Column="2" Glyph="{Binding CheckGlyph}" DataContextChanged="AccountStatus_DataContextChanged" FontSize="18" VerticalAlignment="Center"
                               AutomationProperties.Name="{Binding CheckDescription}" ToolTipService.ToolTip="{Binding CheckDescription}" />
                 </Grid>
             </DataTemplate>

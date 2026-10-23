@@ -113,6 +113,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void AccountStatus_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        if (sender is FontIcon icon && args.NewValue is AccountListItemModel model)
+            ModelBinding.Bind(icon, IconElement.ForegroundProperty, model, nameof(AccountListItemModel.CheckTone), converter: ModelBinding.ToneConverter.Instance);
+    }
+
     private void ProviderLogo_Opened(object sender, RoutedEventArgs args)
     {
         if (sender is Image image && image.Parent is Grid grid)
@@ -196,18 +202,24 @@ public sealed partial class MainWindow : Window
 
         var accountActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom };
         accountActions.Children.Add(IconAction("Add connection", "\uE710", 0x2BAF90, StartNewAccount,
-            "Add a mailbox and configure its connection settings."));
+            "Add a mailbox and configure its connection settings.", caption: "Add"));
         _removeAccount = IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync),
             "Remove this account from AgentInbox. Your emails stay with your mail provider.");
         accountActions.Children.Add(_removeAccount);
         accountActions.Children.Add(IconAction("Refresh accounts", "\uE72C", 0x2477C8, () => _ = RunAsync(LoadAccountsAsync),
             "Reload saved accounts and their settings."));
-        var testAll = Action("Test all", () => _ = RunAsync(TestAllAccountsAsync),
-            tooltip: "Check connection and sign-in for every saved account, including configured sending. Stop at the first error. No email is read or sent.");
+        var testAll = IconAction("Test All", "\uE73E", 0x16856A, () => _ = RunAsync(TestAllAccountsAsync),
+            "Check connection and sign-in for every saved account, including configured sending. Stop at the first error. No email is read or sent.", caption: "Test All");
+        testAll.Margin = new Thickness(12, 0, 0, 0);
         ModelBinding.Bind(testAll, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanTestAll));
-        _accountToolbar = Stack(Text("Connections", 22), accountActions, testAll, _accountPicker);
+        accountActions.Children.Add(testAll);
+        _accountToolbar = Stack(Text("Connections", 22), accountActions, _accountPicker);
         _accountToolbar.SizeChanged += (_, args) =>
-            accountActions.Orientation = args.NewSize.Width < 260 ? Orientation.Vertical : Orientation.Horizontal;
+        {
+            var compact = args.NewSize.Width < 260;
+            accountActions.Orientation = compact ? Orientation.Vertical : Orientation.Horizontal;
+            testAll.Margin = compact ? new Thickness(0, 12, 0, 0) : new Thickness(12, 0, 0, 0);
+        };
         _accountWorkspace = new Grid { ColumnSpacing = 24, RowSpacing = 20 };
         _accountWorkspace.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _accountWorkspace.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -594,15 +606,24 @@ public sealed partial class MainWindow : Window
         Foreground = IconBrush(color), Width = 20, Height = 20, VerticalAlignment = VerticalAlignment.Center
     };
 
-    private static Button IconAction(string name, string glyph, uint color, Action handler, string? tooltip = null)
+    private static Button IconAction(string name, string glyph, uint color, Action handler, string? tooltip = null, string? caption = null)
     {
         var button = new Button
         {
-            Content = ColoredIcon(glyph, color), Width = 36, Height = 36,
+            Content = ColoredIcon(glyph, color), MinWidth = 36, Height = 36,
             Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["QuietButton"],
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center
         };
+        if (caption is null) button.Width = 36;
+        else
+        {
+            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            content.Children.Add(ColoredIcon(glyph, color));
+            content.Children.Add(new TextBlock { Text = caption, VerticalAlignment = VerticalAlignment.Center });
+            button.Content = content;
+            button.Padding = new Thickness(6, 0, 6, 0);
+        }
         AutomationProperties.SetName(button, name);
         ToolTipService.SetToolTip(button, tooltip ?? name);
         button.Click += (_, _) => handler();

@@ -11,7 +11,7 @@ public sealed partial class MainWindow
     private async Task TestAllAccountsAsync()
     {
         var accounts = _configuration.AccountItems.ToArray();
-        foreach (var row in accounts) row.Passed = false;
+        foreach (var row in accounts) row.ResetCheck();
         foreach (var row in accounts)
         {
             _lifetime.Token.ThrowIfCancellationRequested();
@@ -21,9 +21,9 @@ public sealed partial class MainWindow
             using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
             window.Activate();
             await model.RunAsync(_lifetime.Token);
+            row.RecordCheck(model.Succeeded, model.Cancelled, model.Message);
             await window.ClosedTask;
             if (!model.Succeeded) return;
-            row.Passed = true;
             if (model.Cancelled) return;
         }
     }

@@ -2,6 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] Build/install the toolbar, branded Mica title-bar and stage-icon follow-up when requested. Verify title-bar drag/caption controls, narrow toolbar fit, success/failure/warning symbols and retained per-account failure details. The installed 1.0.20.0 does not retain dismissed account-check diagnostics on disk; its Outlook outcome could not be recovered from the local profile logs or recent Windows Application errors. Capture the next result before claiming a provider cause.
+
 - [ ] Check Test all with successful accounts, first-account and later-account errors, cancellation, unavailable saved folders, configured SMTP and an unsaved editor draft. Check session success marks, provider favicon loading/offline fallback, Mica result details/cleanup retry, keyboard focus, narrow footer and simplified Connect Codex. No automated or live-provider checks have run for these changes.
 
 - [ ] Verify binding updates, retained unsaved drafts across navigation, preset loading, account selection during refresh/save, field errors, folder selection and cancellation/committed outcomes in both check and sign-in windows. The configuration-model refactor is compiled and installed in Debug 1.0.19.0; runtime checks remain unrun. Run the synthetic session-isolation/expiry/privacy cases only when tests are requested.
