@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-23.
 
+## Toolbar and branded Mica dialogs — installed Debug 1.0.21.0
+
+Built and signed locally from source checkpoint `37c4a40`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.21.0`, architecture x64 and package status `Ok`. This includes the inline Add/delete/refresh/Test All toolbar, Mica dialog title bars with the app logo, colored stage symbols, per-account failure/cancellation marks and clickable session result details. Timeout and explicit cancellation have different messages. No automated tests, application launch, UI interaction, MCP launch or mail-provider requests ran. The earlier Outlook check's provider cause remains unknown: no persisted check diagnostics or recent AgentInbox Application errors were found. No previous provider success is assumed.
+
+The first build failed with CS1503 in the new title-bar container because `Grid.SetRow` requires a `FrameworkElement`; the content cast was corrected before rebuilding. Both attempts ran their matching clean and left no cleanup warning. Their exact task directories, `artifacts/work/msix-179fe65644fa4e299cd6a0ace7094825/` and `artifacts/work/msix-cfad727397de4861badaf0d61570f7c3/`, were verified absent. The failed package output was removed before retrying, and superseded `artifacts/msix/debug/x64/1.0.20.0/` was verified absent after installation; no deletion by this task is claimed.
+
+The retained installer is 105,461,598 bytes, SHA-256 `90a77b0383c543b13d1a9ed44ba6e33f6440f6f56b763d34d42fc7b5edf09bb1`, under `artifacts/msix/debug/x64/1.0.21.0/`, with checksum, package and installation records and unchanged first-import reuse evidence. The existing Python 3.13.15 and NuGet inputs were reused; no downloads or new scans ran. The previously blocked input directory `artifacts/inputs/debug-1.0.18.0-20261022/` remains at 502,715,034 bytes (479.4 MiB). The older package directory `artifacts/msix/debug/x64/1.0.18.0/` is now absent; this task did not remove it. See [todo](../.github/tasks/todo.md) for pending runtime checks.
+
 ## Mica results and Test all — installed Debug 1.0.20.0
 
 Built and signed locally from source checkpoint `9e15072`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.20.0`, architecture x64 and package status `Ok`. This includes Mica operation dialogs, sequential saved-account checks, transient success marks, CDN provider favicons, simplified Codex setup and footer links. No tests, app launch, live UI interaction, MCP launch or mailbox/provider operation ran. Compilation and installation do not establish visual or provider correctness. See [todo](../.github/tasks/todo.md).

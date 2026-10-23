@@ -4,7 +4,7 @@ Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [valid
 
 ## 2026-10-23 — account checks and result dialogs
 
-- Follow-up source changes add the Add caption and inline Test All toolbar action, extend Mica into branded dialog title bars, render stage-result icons and retain account failures/cancellation details in the list. No build, installation or tests ran for this follow-up. The installed 1.0.20.0 does not contain it.
+- Follow-up source changes add the Add caption and inline Test All toolbar action, extend Mica into branded dialog title bars, render stage-result icons and retain account failures/cancellation details in the list. Result details can be reopened from the account list. Built from checkpoint `37c4a40` and installed in Debug 1.0.21.0 x64, status `Ok`. No tests, UI or provider checks ran; see validation for evidence and cleanup.
 
 - Added sequential saved-account checks with session-only success marks, provider favicons with offline fallback, Mica result dialogs with copyable details, simpler Codex setup and external-link footer icons. Preserved the unsaved editor draft and persistent save status. See validation for build/install evidence and todo for pending behavior checks.
 
