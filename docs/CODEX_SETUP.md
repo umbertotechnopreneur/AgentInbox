@@ -1,12 +1,14 @@
 # Connect a local MCP client
 
-AgentInbox connects to Codex through a local app connection called MCP. Codex starts AgentInbox on your PC when it needs its mail tools. The Windows setup adds a direct entry to Codex's settings file; this action does not install a marketplace plugin or browser add-in. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+I wanted one assistant connection for all my mailboxes. AgentInbox exposes your enabled Gmail, iCloud, Microsoft and custom-provider accounts through one local MCP connection. Your assistant lists the accounts you share, then searches, reads or sends through the account you specify. You do not need a separate MCP registration for each mailbox.
+
+Windows setup guides you through connecting Codex. Another assistant can use the same mail tools if you configure its local MCP client manually. Codex starts AgentInbox on your PC when it needs its mail tools. Windows setup adds an entry to Codex's settings file. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ## Installed Windows app
 
 Open **Connect Codex**. AgentInbox finds Codex on your computer and reads its saved connection settings. Press **Connect to Codex**. If an AgentInbox entry already differs, **Update connection** asks before replacing only that entry. The page shows which Codex settings file it uses.
 
-**Settings saved in Codex** means that an enabled entry matches this installation. It does not mean that a Codex chat has used it. Press **Test connection** to check the saved entry, start its local AgentInbox command, complete the MCP greeting and ask for the five mail-tool definitions. The check makes no mail-tool calls: it does not list your accounts, sign in to a mail server, read email or send anything. It stops after 30 seconds and closes its child process. Changed settings, a missing launcher, a failed startup or an unexpected reply produce a failure rather than a success state.
+**AgentInbox is enabled in Codex settings** means that an enabled entry matches this installation. It does not mean that a Codex chat has used it. Press **Test connection** to check the saved entry, start its local AgentInbox command, complete the MCP greeting and ask for the five mail-tool definitions. The check makes no mail-tool calls: it does not list your accounts, sign in to a mail server, read email or send anything. It stops after 30 seconds and closes its child process. Changed settings, a missing launcher, a failed startup or an unexpected reply produce a failure rather than a success state.
 
 **Connection details** shows the app path, separate startup options, the AgentInbox settings folder and the full generated JSON. Matching saved entries and settings still to be added have different labels. The JSON has a multiline, scrollable preview; it is for manual setup in another MCP app. Codex keeps its own entry in TOML, in the file shown above. Neither format contains account passwords.
 
