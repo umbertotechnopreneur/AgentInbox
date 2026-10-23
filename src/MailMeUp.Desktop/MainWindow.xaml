@@ -19,8 +19,12 @@
                     <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Email}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <FontIcon Grid.Column="2" Glyph="{Binding CheckGlyph}" DataContextChanged="AccountStatus_DataContextChanged" FontSize="18" VerticalAlignment="Center"
-                              AutomationProperties.Name="{Binding CheckDescription}" ToolTipService.ToolTip="{Binding CheckDescription}" />
+                    <Button Grid.Column="2" IsEnabled="{Binding HasCheckResult}" Click="AccountCheckDetails_Click"
+                            Style="{StaticResource QuietButton}" Padding="4" VerticalAlignment="Center"
+                            AutomationProperties.Name="Show account check details" ToolTipService.ToolTip="{Binding CheckDescription}">
+                        <FontIcon Glyph="{Binding CheckGlyph}" DataContextChanged="AccountStatus_DataContextChanged" FontSize="18"
+                                  AutomationProperties.Name="{Binding CheckDescription}" />
+                    </Button>
                 </Grid>
             </DataTemplate>
         </Grid.Resources>

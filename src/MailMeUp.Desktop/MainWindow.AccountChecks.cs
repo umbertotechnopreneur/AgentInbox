@@ -8,6 +8,17 @@ namespace MailMeUp.Desktop;
 
 public sealed partial class MainWindow
 {
+    private async void AccountCheckDetails_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs args)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.Button { DataContext: MailMeUp.Desktop.ViewModels.AccountListItemModel row }
+            && row.HasCheckResult)
+            await RunAsync(() =>
+            {
+                _configuration.Notice.Show($"Account check: {row.Label}", row.CheckDescription, row.CheckTone);
+                return Task.CompletedTask;
+            });
+    }
+
     private async Task TestAllAccountsAsync()
     {
         var accounts = _configuration.AccountItems.ToArray();

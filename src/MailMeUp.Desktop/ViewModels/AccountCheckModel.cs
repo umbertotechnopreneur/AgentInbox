@@ -215,7 +215,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         {
             Cancelled = _stop.IsCancellationRequested || lifetime.IsCancellationRequested;
             Complete(false, saving ? "The save result could not be confirmed. Reload your accounts before trying again."
-                : "The check was cancelled or timed out. No account was saved.");
+                : Cancelled ? "The check was cancelled. No settings were changed."
+                : "The connection check timed out. No settings were changed. Check the connection and try again.");
         }
         catch (Exception exception)
         {

@@ -22,6 +22,7 @@ internal sealed class AccountListItemModel(SavedAccount account) : ObservableMod
         _ => null
     };
     public bool Passed => _passed;
+    public bool HasCheckResult => _details.Length > 0;
     public string CheckGlyph => Passed ? "\uE73E" : _failed ? "\uE711" : _cancelled ? "\uE7BA" : "";
     public int CheckTone => Passed ? 1 : _failed ? 3 : _cancelled ? 2 : 0;
     public string CheckDescription => _details.Length > 0 ? _details : "Not checked in this run";
