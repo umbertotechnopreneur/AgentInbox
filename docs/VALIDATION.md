@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-23.
 
+## Mica results and Test all — installed Debug 1.0.20.0
+
+Built and signed locally from source checkpoint `9e15072`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.20.0`, architecture x64 and package status `Ok`. This includes Mica operation dialogs, sequential saved-account checks, transient success marks, CDN provider favicons, simplified Codex setup and footer links. No tests, app launch, live UI interaction, MCP launch or mailbox/provider operation ran. Compilation and installation do not establish visual or provider correctness. See [todo](../.github/tasks/todo.md).
+
+The installer is 105,459,913 bytes, SHA-256 `23b6b653a14b40fc626fa8f7ed99248533843dd612c03d01fe4639a963dbf820`, retained under `artifacts/msix/debug/x64/1.0.20.0/` with its checksum, package and installation records and unchanged first-import reuse evidence. Python 3.13.15 and the pinned NuGet inputs were reused without dependency downloads or new scans. HEAD requests returned HTTP 200 for the three fixed Gmail/iCloud/Outlook favicon URLs; this does not verify WinUI rendering. The icons are fetched at runtime, with a native fallback.
+
+Packaging ran its matching `dotnet clean` without a cleanup warning. Its exact `artifacts/work/msix-8ad10585ec024a73b6f5ce6f144f24fc/` directory and the superseded `artifacts/msix/debug/x64/1.0.19.0/` were removed and verified absent. Previously blocked cleanup was not bypassed: `artifacts/inputs/debug-1.0.18.0-20261022/` remains at 502,715,034 bytes (479.4 MiB), and `artifacts/msix/debug/x64/1.0.18.0/` remains at 105,453,405 bytes (100.6 MiB).
+
 ## Configuration-model refactor — installed Debug 1.0.19.0
 
 Source checkpoint `3214c1c` separates account records, unsaved drafts, selection, validation, notices, Microsoft sign-in, connection-check progress and Codex setup state from native controls. Views bind to these models; only rendering, native lifecycle, focus, browser and clipboard adapters remain in the windows. Returning to Accounts preserves the draft rather than reloading over it. Windows loads server defaults from the same Python presets operation used by the CLI.
