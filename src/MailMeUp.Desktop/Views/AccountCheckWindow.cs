@@ -161,7 +161,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         window.ExtendsContentIntoTitleBar = true;
         window.AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
         window.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
-        var content = window.Content;
+        var content = (FrameworkElement)window.Content;
         window.Content = null;
         var surface = new Grid();
         surface.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
