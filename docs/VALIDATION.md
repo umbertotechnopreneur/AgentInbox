@@ -2,6 +2,16 @@
 
 Last updated: 2026-10-23.
 
+## Published configuration changes — installed Debug 1.0.22.0
+
+The owner authorized publishing all nineteen previously local commits through [PR #36](https://github.com/umbertotechnopreneur/AgentInbox/pull/36), plus a local build and installation. The PR remains open; merge was not requested. The required [Windows CI run](https://github.com/umbertotechnopreneur/AgentInbox/actions/runs/39960504558) passed 108 synthetic Python tests against source checkpoint `0713396`. These checks do not validate real providers, the installed MCP alias or WinUI rendering.
+
+Built and signed locally from `0713396`, then installed with `install-debug-msix`. Windows reports Debug `1.0.22.0`, x64 and status `Ok`. This includes the simpler Connect Codex page and two-line VibeWare link. No local automated tests, application launch, live UI interaction or mail-provider requests ran in this delivery. The retained installer is 105,461,645 bytes, SHA-256 `ad14fb3a3d85ee5ed4af1caf3d31cd5a5b7ed53b90deb9e0850371a8b7a88cd9`, under `artifacts/msix/debug/x64/1.0.22.0/`, with checksum, package/installation records and import evidence.
+
+The former build-input directory was already absent. Recovered Python 3.13.15 and five NuGet archives from official sources matched previously recorded SHA-256 values and reused their earlier scan evidence. For the other fifteen required NuGet archives, the original individual fingerprints were unavailable: archives and extracted contents were staged separately and received one explicit targeted `Start-MpScan -ScanType CustomScan -ScanPath <task inputs/recovered>` before use. Defender events 1000/1001 identify completed scan `{A7EBEFE7-6FCD-4423-A374-8DAC5FE88706}` with no detected threats. Sources, hashes, scope and completion are retained in the package's `first-import-evidence.json`. The initial recovery helper collected unused framework/lower-version alternatives; those were removed before scanning. No application was reconstructed from installed or prebuilt application binaries, and no scan covered installed SDK/runtime trees or generated output.
+
+Packaging ran its matching clean without warnings and removed `artifacts/work/msix-0cfab9d7a034483b8710073137fcd945/`. The delivery scratch directory, downloaded archives, extracted inputs, helper scripts and PR draft were removed after final use; only the current package and minimal evidence remain. Cleanup and retention were verified after installation.
+
 ## Toolbar and branded Mica dialogs — installed Debug 1.0.21.0
 
 Built and signed locally from source checkpoint `37c4a40`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.21.0`, architecture x64 and package status `Ok`. This includes the inline Add/delete/refresh/Test All toolbar, Mica dialog title bars with the app logo, colored stage symbols, per-account failure/cancellation marks and clickable session result details. Timeout and explicit cancellation have different messages. No automated tests, application launch, UI interaction, MCP launch or mail-provider requests ran. The earlier Outlook check's provider cause remains unknown: no persisted check diagnostics or recent AgentInbox Application errors were found. No previous provider success is assumed.

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Source changes only; build, installation and UI checks have not run for this follow-up.
+- Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Built and installed as Debug 1.0.22.0 x64, status Ok. PR #36 publishes the nineteen local configuration/sign-in commits; Windows CI passed 108 synthetic Python tests. UI/provider checks remain unrun.
 
 - Keep Add, delete, refresh and a separated Test All action in one quiet toolbar. Show the app logo in Mica dialog title bars and replace terminal check-stage words with green success, red failure and orange warning symbols. Retain failed/cancelled account outcomes and their details in the session list. Result details can be reopened from the account status symbol, and timeout is distinguished from cancellation. Built and installed in Debug 1.0.21.0 x64; tests, UI and provider checks remain unrun.
 

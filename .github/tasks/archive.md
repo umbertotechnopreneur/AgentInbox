@@ -4,7 +4,7 @@ Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [valid
 
 ## 2026-10-23 — Codex page and two-line manifesto link
 
-- Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Source changes only; no build, installation or runtime checks ran.
+- Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Published the nineteen local commits through PR #36 and built/installed Debug 1.0.22.0 x64, status Ok. Windows CI passed 108 synthetic Python tests; no live UI/provider checks ran. See validation for recovered imports and package evidence. Merge was not requested.
 
 ## 2026-10-23 — account checks and result dialogs
 
