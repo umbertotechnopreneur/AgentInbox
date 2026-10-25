@@ -19,6 +19,8 @@ class Vault:
         self.root = root / "protected"
 
     def _key(self, key: str) -> str:
+        if sys.platform not in {"win32", "darwin", "linux"}:
+            raise MailError("unsupported_platform", "AgentInbox supports Windows, macOS and Linux only.")
         if not re.fullmatch(r"(?:incoming|smtp|oauth|signin)-[a-f0-9]{32}", key):
             raise MailError("invalid_reference", "Invalid protected-storage reference.")
         return key
@@ -26,6 +28,8 @@ class Vault:
     def put(self, key: str, value: str) -> None:
         """Protect a value before making it available to an account or request."""
         key = self._key(key)
+        if "\0" in value:
+            raise MailError("invalid_credential", "Protected values cannot contain a NUL character.")
         if sys.platform == "win32" and not key.startswith("signin-"):
             self._wincred(key, value.encode("utf-8"))
         elif sys.platform == "win32":
@@ -151,16 +155,22 @@ class Vault:
                 raise OSError()
             secret, glib, gio, objects = [ctypes.CDLL(name) for name in libraries]
         except OSError as error:
-            raise MailError("secure_storage_unavailable", "Linux requires libsecret and an unlocked Secret Service keyring.") from error
+            raise MailError("secure_storage_unavailable", "Linux requires libsecret and an unlocked Secret Service keyring in the user session running MCP.") from error
         pointer = ctypes.c_void_p
         glib.g_hash_table_new.argtypes = [pointer, pointer]
         glib.g_hash_table_new.restype = pointer
         glib.g_hash_table_insert.argtypes = [pointer, ctypes.c_char_p, ctypes.c_char_p]
+        glib.g_hash_table_insert.restype = ctypes.c_int
         glib.g_hash_table_unref.argtypes = [pointer]
+        glib.g_hash_table_unref.restype = None
         glib.g_error_free.argtypes = [pointer]
+        glib.g_error_free.restype = None
+        gio.g_cancellable_new.argtypes = []
         gio.g_cancellable_new.restype = pointer
         gio.g_cancellable_cancel.argtypes = [pointer]
+        gio.g_cancellable_cancel.restype = None
         objects.g_object_unref.argtypes = [pointer]
+        objects.g_object_unref.restype = None
         secret.secret_password_storev_sync.argtypes = [pointer, pointer, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, pointer, ctypes.POINTER(pointer)]
         secret.secret_password_storev_sync.restype = ctypes.c_int
         secret.secret_password_lookupv_sync.argtypes = [pointer, pointer, pointer, ctypes.POINTER(pointer)]
@@ -168,6 +178,7 @@ class Vault:
         secret.secret_password_clearv_sync.argtypes = [pointer, pointer, pointer, ctypes.POINTER(pointer)]
         secret.secret_password_clearv_sync.restype = ctypes.c_int
         secret.secret_password_free.argtypes = [pointer]
+        secret.secret_password_free.restype = None
         attributes = glib.g_hash_table_new(ctypes.cast(glib.g_str_hash, pointer), ctypes.cast(glib.g_str_equal, pointer))
         pairs = [(b"application", b"AgentInbox"), (b"entry", key.encode("ascii"))]
         for name, entry in pairs:
@@ -206,8 +217,11 @@ class Vault:
 
     @staticmethod
     def _macos(key: str, value: bytes | None = None, *, delete: bool = False) -> bytes:
-        security = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
-        core = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        try:
+            security = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
+            core = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        except OSError as error:
+            raise MailError("secure_storage_unavailable", "The macOS Keychain frameworks are unavailable.") from error
         pointer, length = ctypes.c_void_p(), ctypes.c_uint32()
         item = ctypes.c_void_p()
         service, account = b"AgentInbox", key.encode("ascii")
@@ -216,9 +230,11 @@ class Vault:
                          ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p)]
         find.restype = ctypes.c_int32
         security.SecKeychainItemFreeContent.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        security.SecKeychainItemFreeContent.restype = ctypes.c_int32
         security.SecKeychainItemDelete.argtypes = [ctypes.c_void_p]
         security.SecKeychainItemDelete.restype = ctypes.c_int32
         core.CFRelease.argtypes = [ctypes.c_void_p]
+        core.CFRelease.restype = None
         status = find(None, len(service), service, len(account), account, ctypes.byref(length), ctypes.byref(pointer), ctypes.byref(item))
         try:
             if status not in (0, -25300):

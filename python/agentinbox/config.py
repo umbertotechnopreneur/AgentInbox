@@ -69,6 +69,8 @@ def windows_package_family() -> str | None:
 
 def data_directory() -> Path:
     """Resolve only the current profile; never migrate or fall back to old data."""
+    if sys.platform not in {"win32", "darwin", "linux"}:
+        raise MailError("unsupported_platform", "AgentInbox supports Windows, macOS and Linux only.")
     if os.environ.get("MAILMEUP_DATA_DIR"):
         raise MailError("unsupported_configuration", "Remove MAILMEUP_DATA_DIR. Configure a new AgentInbox profile.")
     explicit = os.environ.get("AGENTINBOX_DATA_DIR")
@@ -85,7 +87,8 @@ def data_directory() -> Path:
     elif sys.platform == "darwin":
         path = Path.home() / "Library" / "Application Support" / "AgentInbox"
     else:
-        path = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "agentinbox"
+        base = os.environ.get("XDG_DATA_HOME")
+        path = (Path(base) if base else Path.home() / ".local" / "share") / "agentinbox"
     if not path.is_absolute():
         raise MailError("invalid_directory", "The profile base directory must be absolute.")
     path = path.resolve()

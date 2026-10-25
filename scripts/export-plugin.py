@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -24,6 +25,10 @@ def main():
     profile = Path(options.data_dir)
     if not interpreter.is_absolute() or not interpreter.is_file() or not profile.is_absolute():
         parser.error("Use an existing absolute Python executable and an absolute data directory.")
+    if os.name == "posix" and not os.access(interpreter, os.X_OK):
+        parser.error("The Python interpreter must have execute permission.")
+    if profile.exists() and not profile.is_dir():
+        parser.error("The data directory points to an existing file. Choose a directory.")
     environment = {"AGENTINBOX_DATA_DIR": str(profile.resolve())}
     templates = repository / "integrations" / "codex"
     plugin = destination / "plugins" / "agentinbox"
@@ -38,7 +43,8 @@ def main():
             shutil.copyfile(path, target)
         configuration = json.loads((plugin / "mcp.json").read_text(encoding="utf-8"))
         server = configuration["mcpServers"]["agentinbox"]
-        server["command"] = str(interpreter.resolve())
+        # Resolving a venv's Python symlink can select the base interpreter instead.
+        server["command"] = str(interpreter)
         server["env"] = environment
         (plugin / "mcp.json").write_text(json.dumps(configuration, indent=2) + "\n", encoding="utf-8")
         catalog = destination / ".agents" / "plugins" / "marketplace.json"
@@ -52,7 +58,9 @@ def main():
             "Read mail and send through optional SMTP when requested through your assistant. "
             "Password is the default; Microsoft OAuth2 requires explicit selection and a suitable public-client app registration. "
             "Authentication never switches automatically, and Google OAuth is not included. "
-            "Configure the chosen profile in the local setup app before use. "
+            "Configure the chosen profile through Windows setup or the source management CLI before use. "
+            "For the CLI, pass a local JSON request to `python -B python/run.py manage`; "
+            "use the same `AGENTINBOX_DATA_DIR` as the MCP process. "
             "The interpreter and profile paths are specific to this installation. "
             "Keep passwords and tokens out of plugin configuration.\n\n"
             "POP3 exposes INBOX only, has no unread flags or server folders, and searches headers using email Date values. "
@@ -60,6 +68,9 @@ def main():
             "Source preview: client, operating-system and live-provider validation are still required. "
             "Windows credentials use Credential Manager; temporary Microsoft sign-in blobs use DPAPI. "
             "Native macOS Keychain and Linux Secret Service paths remain untested; contributor improvements through pull requests are welcome. "
+            "On Linux, libsecret and an unlocked Secret Service keyring must be available in the MCP user's session. "
+            "On macOS, Keychain must be available to the user running the MCP process. "
+            "Export separately on each target machine with Python 3.11 or newer; a virtual environment's interpreter path is preserved. "
             "The Windows app only configures connections. Sending through MCP has no separate app confirmation.\n\n"
             "Before importing or running external libraries or binaries, scan their archives and "
             "extracted files with an explicit targeted Microsoft Defender scan. "

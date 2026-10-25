@@ -2,6 +2,14 @@
 
 Last updated: 2026-10-26.
 
+## Linux/macOS source hardening — not executed
+
+Source changes preserve the selected Python interpreter path during plugin export, including virtual-environment symlinks; reject nonexecutable POSIX interpreters and profile paths that are existing files before creating export output; and document management CLI setup and native credential prerequisites. Linux now treats an empty `XDG_DATA_HOME` like an unset value. Unsupported operating systems fail explicitly before profile selection or credential access. Native storage rejects NUL-containing values before a C string can truncate them, declares native return types, and reports unavailable macOS frameworks through a bounded application error.
+
+Added synthetic regression cases for backend routing, missing native dependencies, unsupported platforms, NUL values, Linux profile selection and exporter path validation. The interpreter-symlink and execute-permission cases require POSIX and are skipped on Windows. These cases have not been run. Reviewed the source diff only; no tests, formatters, linters, builds, exports, installation, native credential calls, provider requests or CI/CD ran. No external binaries or dependencies were imported. Linux/macOS execution and end-to-end MCP integration remain unverified.
+
+The path decisions were checked against the official [Python virtual-environment documentation](https://docs.python.org/3.11/library/venv.html) and [XDG Base Directory specification](https://specifications.freedesktop.org/basedir/latest/). The existing nullable schema and caller-owned attributes follow the [libsecret store API](https://gnome.pages.gitlab.gnome.org/libsecret/func.password_storev_sync.html); no schema migration was introduced.
+
 ## Product wording across entry points — source only
 
 Updated README/setup guides, repository wording instructions, Windows UI/package descriptions, Python and PowerShell help, plugin metadata/export copy and MCP initialization/tool descriptions to lead with multiple compatible mailboxes and selected folders through one MCP connection. Provider examples include Gmail, Microsoft, iCloud and GoDaddy when compatible IMAP/POP3 access is available. Copy describes dozens of IMAP folders across accounts while preserving the implemented twenty-folder selection limit per account and POP3's single INBOX. Mail policy and permissions did not change.

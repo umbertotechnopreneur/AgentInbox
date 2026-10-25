@@ -33,3 +33,7 @@
 - Keep Windows distribution MSIX-only, with local Debug and explicit Store Release workflows. Authorized installs may force-close AgentInbox. New dependency imports are scanned once; builds do not trigger scans. Windows CI excludes execution aliases when finding Python.
 
 Debug 1.0.19.0 x64 is installed from source checkpoint `e0c7789`, with package status `Ok`. No automated tests, app launch, UI or provider checks ran for this installation. Local checkpoint commits are preauthorized at coherent steps. Build records, checksums and historical test results are in [validation](docs/VALIDATION.md); completed milestones are in [archive](.github/tasks/archive.md).
+
+## 2026-10-26 — Cross-platform source setup
+
+Preserve virtual-environment interpreter paths in source plugin exports and reject unusable interpreter/profile paths before export. Handle empty Linux XDG data paths, reject unsupported operating systems explicitly, and harden native credential boundaries. Added setup guidance and unexecuted regression cases. See [validation](docs/VALIDATION.md#linuxmacos-source-hardening--not-executed) for the source-only evidence and remaining native checks.
