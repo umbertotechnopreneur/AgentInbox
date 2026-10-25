@@ -2,7 +2,34 @@
 
 I wanted my agent to work across all my mailboxes and their folders. The CLI configures as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. Run one MCP process for all enabled accounts, or use a management session. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account. Each search targets one account and folder, so repeat it for the mailboxes and folders you want your agent to use.
 
-The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. Synthetic management-session tests pass; process startup and packaged commands still need end-to-end validation.
+The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. The new human-facing setup commands and their regression cases have not been executed. Earlier management-session results do not validate these commands. See [validation](VALIDATION.md).
+
+## Configure your mailboxes from the command line
+
+Start with the [two-mailbox setup guide](CLI_SETUP_GUIDE.md) and its [Gmail/Microsoft JSON example](examples/accounts.setup.json). These commands connect existing mailboxes; they do not create accounts at Google or Microsoft. Add `--help` to any command for its options.
+
+Prefix each command below with `python -B python/run.py` from the source checkout. Set `AGENTINBOX_DATA_DIR` to an absolute profile directory and use the same value for MCP.
+
+| Command | What it does |
+| --- | --- |
+| `profile show` | Show the selected profile and protected-storage locations |
+| `presets` | Show supported providers and connection requirements |
+| `accounts list` | List all saved connections, including disabled ones |
+| `accounts show ID` | Show settings, current revision and Microsoft sign-in status |
+| `accounts add --file FILE --entry gmail` | Create one connection from a named settings entry; prompt for a password if needed |
+| `accounts update ID --revision N --file FILE --entry gmail` | Update that connection using its current revision |
+| `accounts update ID --revision N --file FILE --entry gmail --replace-passwords` | Also prompt for replacement passwords |
+| `accounts signin ID` | Show a Microsoft URL/code and wait for device-code sign-in; Ctrl+C cancels temporary local state |
+| `accounts folders ID` | Connect and list available folder names |
+| `accounts check ID` | Check saved incoming and configured SMTP connections without reading a sample or sending |
+| `accounts check ID --read-message` | Also attempt one bounded sample read without returning message content |
+| `accounts check-smtp ID` | Check the SMTP connection without sending |
+| `accounts remove ID` | Remove local access and credentials, preserving the provider mailbox |
+| `profile cleanup` | Retry pending credential cleanup without repeating the original operation |
+
+All these commands accept `--json` for one `ok`/`result` or `ok`/`error` response. Password prompts, sign-in instructions and connection progress go to stderr. Hidden password input requires an interactive terminal; the CLI refuses an input method that would echo a password. No password option or plaintext credential file is provided. Save, Microsoft authorization and provider connection checks are separate outcomes. Pending cleanup is reported separately from an already committed save or sign-in.
+
+The setup file is UTF-8 JSON, optionally with a BOM, at most 256 KB, with one top-level `accounts` object. Its keys are entry names; each value is the existing account input contract described below. Duplicate JSON keys are rejected. Leave each account's `id` empty. `add` creates a new ID; `update ID` supplies the selected saved ID and requires the explicit revision. Only the chosen entry is validated and saved; no bulk import or implicit overwrite occurs. Passwords and tokens are not allowed in entries. New password-based accounts prompt for incoming and, when configured, SMTP credentials separately. Microsoft OAuth never prompts for a password. Updates reuse existing protected credentials unless `--replace-passwords` is requested; changed server settings can require that option. Changing Microsoft scopes/settings can require another `accounts signin`.
 
 ## Windows installation
 
@@ -54,7 +81,7 @@ Use a session to search and then read a result. References and continuation toke
 {"operation":"read_mail","arguments":{"reference":"REFERENCE_FROM_SEARCH"}}
 ```
 
-Search parameters and limits match the [MCP read contract](MCP_CONTRACT.md#reading). Keep credentials on stdin and out of shell history. Use Windows setup for interactive configuration.
+Search parameters and limits match the [MCP read contract](MCP_CONTRACT.md#reading). Keep credentials on stdin and out of shell history. Use the account commands above or Windows setup for interactive configuration.
 
 ## Data and failures
 
@@ -80,4 +107,4 @@ This retries local deletion of retired credentials and sign-in state. It does no
 
 Unknown formats, invalid fields, unavailable secure storage and unsupported connections fail explicitly. There are no data importers or legacy command aliases.
 
-Stdout contains protocol or management JSON. Diagnostics go to stderr. The Windows native app opens configuration only and accepts no command-line arguments. Removed commands fail explicitly; there is no review subprocess or GUI dependency in the Python engine.
+`mcp` and `manage` keep stdout reserved for protocol/management JSON. Human-facing setup commands use readable text unless `--json` is selected. Diagnostics go to stderr. The Windows native app opens configuration only and accepts no command-line arguments. Removed commands fail explicitly; there is no review subprocess or GUI dependency in the Python engine.

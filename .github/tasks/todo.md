@@ -2,6 +2,10 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] When authorized, run the new CLI account-configuration cases, including hidden password input, JSON entry validation, stale revisions, device-flow polling/cancellation, cleanup reporting and JSON output. Validate the complete quick-start workflow on Windows, Linux and macOS with native credential stores and separately authorized provider accounts. New commands are not yet included in an installed package.
+
+- [ ] Resolve blocked PDF task cleanup: `artifacts/work/pdf-cli-setup-20261026/` (about 925 KiB) and `artifacts/docs/cli-setup-20261026/` (about 19 KiB). The definitive PDF and example are already in `docs/`; automatic approval review rejected guarded deletion with `blocked by policy`. See validation; do not bypass the rejection.
+
 - [ ] When requested, compile/check the updated mailbox-and-folder wording in Windows layouts, CLI help, MCP initialization/tool descriptions and an exported source plugin. Confirm copy does not imply an archive importer, unlimited folders per account, POP3 folders, validated provider access or automatic cross-account search. Installation and publication of this wording remain separate tasks.
 
 - [ ] Check the Account-tab Enable receive and Enable send controls in Debug 1.0.23.0: load existing permissions, retain a changed draft across navigation, enable send without existing SMTP, disable SMTP setup, save and reload, and verify missing sending fields focus the Send mail tab. Build and installation passed; UI/model behavior has not been tested.

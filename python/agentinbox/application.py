@@ -51,7 +51,7 @@ class MailApplication:
     def _send_account(self, identity: str, revision: int | None = None) -> SavedAccount:
         account = self.store.account(identity)
         if not account["send_enabled"] or account["smtp"] is None:
-            raise MailError("sending_disabled", "Enable SMTP for this account in Windows setup before sending mail.")
+            raise MailError("sending_disabled", "Enable SMTP for this account in local setup before sending mail.")
         if revision is not None and account["revision"] != revision:
             raise MailError("configuration_changed", "The account settings changed before submission. Check the account before sending again.")
         return account

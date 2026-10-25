@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-26 — command-line account configuration
+
+- Added human-facing CLI commands for the full local account-configuration workflow, keeping the existing JSON automation adapter and shared application behavior. Added a settings-only Gmail/Microsoft example and a six-page PDF quick start linked prominently from the README. Provider guidance uses official links and distinguishes Microsoft passwords from persisted protected refresh tokens. Application regression cases are written but unrun; document verification is recorded separately in validation.
+
 ## 2026-10-26 — consistent mailbox and folder positioning
 
 - Made multiple compatible mailboxes, providers and selected folders the lead message in README/guides, app/package descriptions, CLI help, plugin metadata/export copy and MCP tool/server instructions. Added the same wording rule to repository instructions. Kept per-account permissions, folder limits and explicit sending unchanged. No build, installation, automated tests, UI checks, provider operations or publication ran for this copy follow-up.

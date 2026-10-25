@@ -1,5 +1,9 @@
 # Connect unlimited mailboxes (Gmail, Microsoft, iCloud, GoDaddy, or custom) to your AI assistant via MCP.
 
+**[CLI Quick Start (PDF)](docs/AgentInbox-CLI-Quick-Start.pdf)** · [Two-mailbox JSON example](docs/examples/accounts.setup.json) · [Command reference](docs/CLI_REFERENCE.md)
+
+Configure Gmail and Microsoft 365 from your terminal: create local connections, enter an app password securely, sign in with Microsoft and check access. The quick start describes the current source commands; runtime validation and an updated Windows package are still pending.
+
 [![CI status](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
 ![Status: in development](https://img.shields.io/badge/status-in_development-F6C453)

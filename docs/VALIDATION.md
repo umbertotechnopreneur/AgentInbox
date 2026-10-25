@@ -2,6 +2,16 @@
 
 Last updated: 2026-10-26.
 
+## Command-line account configuration and PDF quick start
+
+Implemented a human-facing CLI for profile inspection/cleanup, provider presets, account creation/update/list/show/removal, Microsoft device-code sign-in, folder discovery and incoming/SMTP checks. Setup commands use the shared `MailApplication.manage` contracts, validate one settings-only JSON entry at a time, use hidden password prompts, preserve revision checks and keep committed outcomes separate from pending cleanup. Microsoft sign-in waits at the engine's requested intervals and attempts local temporary-state cancellation on interruption. `manage` and MCP retain their existing JSON interfaces. Added synthetic regression cases; none were executed.
+
+The [PDF quick start](AgentInbox-CLI-Quick-Start.pdf), [editable guide](CLI_SETUP_GUIDE.md) and [two-account JSON](examples/accounts.setup.json) explain exact file/profile locations, Gmail app passwords, Microsoft mailbox IMAP/POP controls, public-client registration and OAuth token storage. The README links to the PDF at the top. Official Google/Microsoft pages were read for provider guidance. All example mailboxes use `example.test`; the public-client ID is a deliberately invalid replacement marker. No real account or secret was used.
+
+Generated the six-page A4 PDF using the bundled ReportLab runtime, rendered all six pages with bundled Poppler and visually inspected every page for clipping, overlap and readable code. PDF extraction confirmed that its complete two-account JSON matches the editable file and that all three required account/admin links are present among twelve clickable links. This validates the document only. No application tests, CLI execution, formatter, linter, build, package, installation, sign-in, mailbox call, export or CI/CD ran. The installed Windows package does not contain the new commands; Linux/macOS and the complete account setup flow remain unverified. No external dependencies were downloaded or imported into the repository.
+
+The owner requested the PDF in repository documentation and a prominent README link. The retained deliverable is `docs/AgentInbox-CLI-Quick-Start.pdf` (17,922 bytes; SHA-256 `8f7043956d4e1641a5a2d0159fdb9816b14d43d3f0047c3568a9f17123ec516b`). Automatic approval review rejected the guarded task-directory cleanup with `blocked by policy`. Remaining ignored output is `artifacts/work/pdf-cli-setup-20261026/` (947,363 bytes, renderer and six previews) and `artifacts/docs/cli-setup-20261026/` (19,045 bytes, duplicate PDF and JSON). No alternative deletion was attempted.
+
 ## Linux/macOS source hardening — not executed
 
 Source changes preserve the selected Python interpreter path during plugin export, including virtual-environment symlinks; reject nonexecutable POSIX interpreters and profile paths that are existing files before creating export output; and document management CLI setup and native credential prerequisites. Linux now treats an empty `XDG_DATA_HOME` like an unset value. Unsupported operating systems fail explicitly before profile selection or credential access. Native storage rejects NUL-containing values before a C string can truncate them, declares native return types, and reports unavailable macOS frameworks through a bounded application error.

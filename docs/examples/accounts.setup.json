@@ -1,0 +1,44 @@
+{
+  "accounts": {
+    "gmail": {
+      "id": "",
+      "label": "My Gmail mailbox",
+      "email": "gmail.reader@example.test",
+      "preset": "gmail",
+      "incoming": {
+        "protocol": "imap",
+        "host": "imap.gmail.com",
+        "port": 993,
+        "tls": "tls",
+        "username": "gmail.reader@example.test"
+      },
+      "smtp": null,
+      "authentication": { "method": "password" },
+      "read_enabled": true,
+      "send_enabled": false,
+      "folders": ["INBOX"]
+    },
+    "microsoft": {
+      "id": "",
+      "label": "My Microsoft 365 mailbox",
+      "email": "microsoft.reader@example.test",
+      "preset": "microsoft365",
+      "incoming": {
+        "protocol": "imap",
+        "host": "outlook.office365.com",
+        "port": 993,
+        "tls": "tls",
+        "username": "microsoft.reader@example.test"
+      },
+      "smtp": null,
+      "authentication": {
+        "method": "microsoft_oauth",
+        "client_id": "REPLACE_WITH_PUBLIC_CLIENT_ID",
+        "tenant": "organizations"
+      },
+      "read_enabled": true,
+      "send_enabled": false,
+      "folders": ["INBOX"]
+    }
+  }
+}
