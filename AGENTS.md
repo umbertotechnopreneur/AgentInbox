@@ -25,6 +25,8 @@ AgentInbox is an MIT-licensed local email MCP bridge: a Python engine and a WinU
 
 ## Writing and records
 
+- Lead product wording with the core benefit: connect as many compatible mailboxes as you need and let your AI agent work across their selected folders through one MCP connection. Name Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Explain dozens of IMAP folders across accounts, while retaining the current twenty-folder selection limit per account and POP3's single INBOX. Say connect existing mailboxes, not import message archives. Distinguish provider compatibility from validated provider access; do not reduce the product to one mailbox or Codex-only use.
+
 - Follow the [MeUp style guide](docs/assets/meup/README.md). Start each README with the daily problem I encountered, how I solved it and what you can do. Use plain English, short sentences and concrete actions; put reference detail in focused guides.
 - Address the reader as "you" and speak as "I", "me" or "my". Umberto is the solo maintainer with contributor help; do not imply a company or inflate credits. Preserve quotations, licenses and historical evidence.
 - Use plain setup labels such as **Sign in with Microsoft**. Keep protocol jargon in technical settings or server details. Follow [VibeWare guidance](docs/BRAND.md#vibeware-participation): use the approved rendered logo unchanged, preserve its license, and describe participation under human direction rather than a separate publisher or quality certification.

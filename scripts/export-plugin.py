@@ -47,7 +47,9 @@ def main():
         shutil.copyfile(repository / "LICENSE", plugin / "LICENSE")
         (plugin / "README.md").write_text(
             "# AgentInbox local Python plugin\n\n"
-            "IMAP or POP3 reads and SMTP sends requested through your assistant. "
+            "Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. "
+            "One MCP connection lets your AI agent work across enabled accounts and dozens of selected IMAP folders across mailboxes, up to twenty folders per account. "
+            "Read mail and send through optional SMTP when requested through your assistant. "
             "Password is the default; Microsoft OAuth2 requires explicit selection and a suitable public-client app registration. "
             "Authentication never switches automatically, and Google OAuth is not included. "
             "Configure the chosen profile in the local setup app before use. "

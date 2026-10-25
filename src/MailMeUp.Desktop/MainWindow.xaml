@@ -38,7 +38,7 @@
             <Image Source="Assets/Logo.png" Width="42" Height="42" AutomationProperties.AccessibilityView="Raw" />
             <StackPanel Grid.Column="1" Spacing="2">
                 <TextBlock Text="AgentInbox" FontSize="22" FontWeight="SemiBold" />
-                <TextBlock Text="Your email, connected to Codex." Style="{StaticResource SubtleText}" />
+                <TextBlock Text="All your mailboxes. One AI assistant via MCP." TextWrapping="Wrap" Style="{StaticResource SubtleText}" />
             </StackPanel>
         </Grid>
         <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Auto" IsBackButtonVisible="Collapsed"

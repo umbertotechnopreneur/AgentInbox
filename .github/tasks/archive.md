@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-26 — consistent mailbox and folder positioning
+
+- Made multiple compatible mailboxes, providers and selected folders the lead message in README/guides, app/package descriptions, CLI help, plugin metadata/export copy and MCP tool/server instructions. Added the same wording rule to repository instructions. Kept per-account permissions, folder limits and explicit sending unchanged. No build, installation, automated tests, UI checks, provider operations or publication ran for this copy follow-up.
+
 ## 2026-10-25 — visible account permissions
 
 - Moved Enable receive and Enable send to Account, directly below How to connect, while retaining server configuration in the mail tabs. Enabling send prepares SMTP in the draft. Built source `74537b7` and installed Debug 1.0.23.0 x64, status Ok. No automated tests, UI checks or provider operations ran. See validation for the package, matching recovered inputs and verified cleanup.

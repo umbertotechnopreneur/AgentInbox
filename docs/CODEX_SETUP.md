@@ -1,6 +1,6 @@
 # Connect a local MCP client
 
-I wanted one assistant connection for all my mailboxes. AgentInbox exposes your enabled Gmail, iCloud, Microsoft and custom-provider accounts through one local MCP connection. Your assistant lists the accounts you share, then searches, reads or sends through the account you specify. You do not need a separate MCP registration for each mailbox.
+I wanted one assistant connection for all my mailboxes. Connect as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. One local MCP connection exposes all enabled accounts and their selected folders. Your AI agent can work across dozens of IMAP folders across mailboxes, searching each selected account and folder in turn. You do not need a separate MCP registration for each mailbox. IMAP allows up to twenty selected folders per account; POP3 exposes one INBOX per account.
 
 Windows setup guides you through connecting Codex. Another assistant can use the same mail tools if you configure its local MCP client manually. Codex starts AgentInbox on your PC when it needs its mail tools. Windows setup adds an entry to Codex's settings file. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 

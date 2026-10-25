@@ -174,7 +174,7 @@ public sealed partial class MainWindow : Window
 
         _save = Action("Save changes", () => _ = RunAsync(SaveAccountAsync), accent: true);
         _cancelAccount = Action("Cancel", CancelNewAccount, tooltip: "Discard this new account and return to your saved accounts.");
-        Page.Children.Add(Heading("Email accounts", "Choose the mailboxes your assistant can use."));
+        Page.Children.Add(Heading("Email accounts", "Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other IMAP or POP3 providers. Share accounts and selected IMAP folders with your AI agent through one MCP connection."));
         _saveStatus = Hint("");
         _saveStatus.VerticalAlignment = VerticalAlignment.Center;
         PageActions.Children.Add(_save);
@@ -183,7 +183,7 @@ public sealed partial class MainWindow : Window
         _createFirstAccount = Action("Create your first account", StartNewAccount, accent: true,
             tooltip: "Open the setup form for your first email account.");
         _accountEmptyState = AccountPlaceholder("Add your first mailbox",
-            "Connect a mailbox to choose what your assistant can read and send. Start by adding your email account.",
+            "Start with Gmail, Microsoft, iCloud, GoDaddy or another compatible IMAP/POP3 provider. Add more mailboxes and choose the accounts and folders your AI agent can use.",
             _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
         _accountTabs = new TabView
@@ -202,7 +202,7 @@ public sealed partial class MainWindow : Window
 
         var accountActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom };
         accountActions.Children.Add(IconAction("Add connection", "\uE710", 0x2BAF90, StartNewAccount,
-            "Add a mailbox and configure its connection settings.", caption: "Add"));
+            "Add another compatible IMAP or POP3 mailbox. Share multiple accounts and their selected folders through one MCP connection.", caption: "Add"));
         _removeAccount = IconAction("Remove account", "\uE74D", 0xD83B35, () => _ = RunAsync(RemoveAccountAsync),
             "Remove this account from AgentInbox. Your emails stay with your mail provider.");
         accountActions.Children.Add(_removeAccount);
@@ -290,7 +290,7 @@ public sealed partial class MainWindow : Window
         _folders = new ListView { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 220, MinHeight = 48 };
         AutomationProperties.SetName(_folders, "Folders available to your assistant");
         _checkConnection = Action("Check connection and get folders", () => _ = RunAsync(() => CheckAccountAsync(saveAccount: false)),
-            tooltip: "Check this account, then choose the folders Codex can read. Nothing is saved or sent.");
+            tooltip: "Check this account, then choose the IMAP folders your AI agent can read. Add more accounts to work across more folders. Nothing is saved or sent.");
         _folderHint = Hint("");
         var incomingSettings = Section("", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
             Pair(_incomingUser, Stack(_incomingPassword, _incomingSignInHint)), _checkConnection, Text("Folders available to your assistant"), _folders, _folderHint,
@@ -404,7 +404,7 @@ public sealed partial class MainWindow : Window
     {
         var model = _configuration.Assistant;
         Page.Children.Clear();
-        Page.Children.Add(PageHeading("Connect Codex", "Use your enabled email accounts in a Codex chat.",
+        Page.Children.Add(PageHeading("Connect Codex", "One connection for all enabled mailboxes and their selected folders. Use your AI agent across accounts and providers.",
             IconAction("Check Codex again", "\uE72C", 0x2477C8, () => _ = RunAsync(BuildAssistantPageAsync),
                 "Look for Codex and check its saved AgentInbox connection.")));
         TextBlock Label(string property, bool hint = false, double size = 0)

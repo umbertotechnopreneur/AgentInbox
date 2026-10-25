@@ -114,7 +114,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public string IncomingServerPlaceholder => IsPop ? "pop.example.com" : "imap.example.com";
     public string FolderHint => IsPop
         ? "POP3 has one inbox, shown as INBOX. It has no other folders and can't tell which messages are unread. Your emails stay with your mail provider."
-        : "Check the connection, then choose up to twenty folders for Codex to read. Folder names currently need basic English letters, numbers or punctuation.";
+        : "Choose up to twenty IMAP folders for this account. Add more mailboxes to let your AI agent work across dozens of selected folders. Folder names currently need basic English letters, numbers or punctuation.";
     public string ReadCheckHint => IsPop ? "Check saved POP3 settings by reading mail without deleting messages."
         : "Check saved IMAP settings by reading mail without marking messages as read.";
     public string Tenant => TenantIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => OrganizationId.Trim() };
@@ -138,7 +138,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                     "Sending help for your IT team", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
                 _ when UsesMicrosoftServers(includeSmtp: false) => (microsoftHint, "Help connecting Microsoft mail",
                     "https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth"),
-                _ => ("Choose your email provider to fill in its settings. Some providers need a separate password for mail apps. Check their help page if your usual password doesn't work.", "", "")
+                _ => ("Connect GoDaddy or another provider that allows compatible IMAP or POP3 access. Enter your provider's mail server settings; choose Microsoft 365 above for Microsoft-hosted accounts. Some providers require a separate app password.", "", "")
             };
                 return (message, linkText, address);
         }

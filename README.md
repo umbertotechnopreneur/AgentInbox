@@ -1,4 +1,4 @@
-# Connect unlimited mailboxes (Gmail, iCloud, Microsoft, or custom) to your AI assistant via MCP.
+# Connect unlimited mailboxes (Gmail, Microsoft, iCloud, GoDaddy, or custom) to your AI assistant via MCP.
 
 [![CI status](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
@@ -7,7 +7,9 @@
 
 I could connect only one mailbox at a time to my AI assistant. I built AgentInbox so I could use all my mailboxes in the same conversation.
 
-Add your personal, work and custom-domain accounts to one local MCP connection. There is no fixed mailbox-count limit. Choose which accounts your assistant can read and which it can send from, then ask for what you need.
+Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other providers that allow IMAP or POP3 access. Bring personal, work and custom-domain accounts into one conversation through a single local MCP connection.
+
+Let your AI agent work across the accounts and folders you choose, from a few inboxes to dozens of selected IMAP folders across multiple mailboxes. Ask it to find messages across your accounts, read the results or send a message from the account you specify. Reading and sending permissions stay separate for each account.
 
 **[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
 
@@ -16,7 +18,7 @@ Add your personal, work and custom-domain accounts to one local MCP connection. 
 ## Bring your mailboxes into one conversation
 
 1. Open **Accounts** in Windows setup and choose **Add** for each mailbox you want to connect.
-2. Choose Gmail, iCloud, Microsoft or a custom provider, then follow its sign-in instructions.
+2. Choose Gmail, iCloud, Microsoft or a custom provider such as GoDaddy, then follow its sign-in instructions.
 3. Enable reading and optional sending separately for each account. Use **Test All** to check your saved connections.
 4. Open **Connect Codex** for guided setup, or configure another local MCP client manually. One connection exposes the accounts you enable.
 
@@ -30,7 +32,7 @@ Then name the accounts you want it to use:
 
 Your mailboxes stay with their providers. AgentInbox gives your assistant tools to search and read the accounts you choose, and to send messages when you request them.
 
-## Connect Gmail, iCloud, Microsoft or a custom provider
+## Gmail, Microsoft, iCloud, GoDaddy and other providers
 
 Choose your **Email provider** to see its instructions and fill in the settings. Gmail and iCloud need a separate password for this app; the setup page links to their instructions. Outlook.com and Microsoft 365 select **Sign in with Microsoft**: press that button, then enter the code on Microsoft's page. Windows setup saves the account settings first. You do not need to enter an app ID or a second password for sending.
 
@@ -38,12 +40,14 @@ Choose your **Email provider** to see its instructions and fill in the settings.
 | --- | --- |
 | Gmail | A Google app password; your usual Gmail password will not work here |
 | iCloud Mail | An app-specific password |
-| Custom providers | IMAP or POP3 over TLS with a password or app password |
+| GoDaddy and other custom providers | A plan that permits compatible IMAP or POP3 access over TLS, with a password or app password; use the Microsoft preset for Microsoft 365 accounts |
 | Outlook.com / Microsoft 365 | Sign in with Microsoft. Outlook settings or your IT team may need to allow mail apps and sending |
 
 Your provider or organization can block access even when the settings are correct. Choosing a Microsoft provider selects **Sign in with Microsoft**. A rejected connection does not change that choice. This app's Microsoft setup still needs a real sign-in check; see [signing in](docs/AUTHENTICATION.md).
 
 IMAP exposes selected server folders and read status. POP3 exposes one mailbox as `INBOX`, has no unread flags or server folders, and searches message headers; its dates come from the email's `Date` header. AgentInbox sends no delete commands; provider retention settings can still affect your mailbox. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
+
+Choose up to twenty IMAP folders per account. With several mailboxes, your agent can work across dozens of selected folders by searching each account and folder in turn. POP3 gives each connected account one INBOX. There is no fixed mailbox-count limit; local profile size and provider access requirements still apply.
 
 The Windows setup app uses WinUI 3. It keeps incoming mail and optional outgoing mail settings together, with separate connection checks. See [Windows setup](docs/WINDOWS_SETUP.md).
 

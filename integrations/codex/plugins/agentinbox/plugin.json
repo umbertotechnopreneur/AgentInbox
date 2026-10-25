@@ -2,25 +2,25 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "agentinbox",
   "version": "2.0.0",
-  "description": "Read shared IMAP or POP3 mail and send requested messages through optional SMTP.",
+  "description": "Connect as many compatible mailboxes as you need and let your AI agent work across their selected folders through MCP.",
   "author": { "name": "Umberto Giacobbi", "url": "https://umbertogiacobbi.biz" },
   "homepage": "https://github.com/umbertotechnopreneur/AgentInbox",
   "repository": "https://github.com/umbertotechnopreneur/AgentInbox",
   "license": "MIT",
-  "keywords": ["email", "imap", "pop3", "smtp", "local", "python"],
+  "keywords": ["email", "multiple-mailboxes", "folders", "mcp", "imap", "pop3", "smtp", "local", "python"],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "AgentInbox",
-        "shortDescription": "IMAP or POP3 reading and optional SMTP sending.",
-        "longDescription": "Choose mail servers and account permissions in local setup. Password is the default; optional Microsoft sign-in requires explicit selection and your app registration. Search shared IMAP or POP3 mail, and send messages when you explicitly ask. AgentInbox has no second confirmation window. POP3 has no unread flags or server folders. Requested mail content can reach your assistant's AI service. This source implementation remains unvalidated.",
+        "shortDescription": "All your mailboxes and selected folders, one AI agent.",
+        "longDescription": "Connect Gmail, Microsoft, iCloud, GoDaddy and other providers that allow compatible IMAP or POP3 access. One MCP connection exposes all enabled accounts to your AI agent. Work across dozens of selected IMAP folders across mailboxes, with up to twenty per account; POP3 exposes one INBOX per account. Choose read and optional send permissions in local setup. Microsoft accounts use Microsoft sign-in. Send only when you explicitly ask; there is no second AgentInbox confirmation window. Mail stays with its providers, and requested content can reach your assistant's AI service. See the validation record for checked behavior and remaining limits.",
         "developerName": "Umberto Giacobbi",
         "category": "Productivity",
         "capabilities": ["Read", "Write"],
         "websiteURL": "https://github.com/umbertotechnopreneur/AgentInbox",
         "privacyPolicyURL": "https://github.com/umbertotechnopreneur/AgentInbox/blob/main/docs/PRIVACY.md",
         "defaultPrompt": [
-          "Use AgentInbox to list my shared accounts and find messages from today within each account's supported capabilities.",
+          "Use AgentInbox to list all my shared mailboxes and selected folders, then find messages from today across the accounts I choose.",
           "Which of my AgentInbox accounts have sending enabled?"
         ],
         "brandColor": "#177F74"

@@ -40,7 +40,7 @@ VBWR E -->
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Description>Configure email accounts and assistant access for AgentInbox.</Description>
+    <Description>Connect multiple IMAP or POP3 mailboxes and selected folders to your AI agent through MCP.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />

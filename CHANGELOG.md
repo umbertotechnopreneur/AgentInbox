@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Lead product wording across README/setup guides, Windows UI and package metadata, Python/PowerShell CLI help, exported plugin copy and MCP instructions with all compatible mailboxes and selected folders through one MCP connection. Name Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Explain dozens of IMAP folders across accounts, the twenty-folder selection limit per account and POP3's single INBOX. This changes copy and agent guidance, not account permissions or mail behavior. New wording has not been built, installed or runtime-tested.
+
 - Move Enable receive and Enable send into Account immediately below How to connect. Keep server/folder configuration in Read mail and Send mail. Enabling send prepares SMTP configuration in the draft, so the visible permission is not silently discarded on save. Saved permissions and defaults stay unchanged until the owner edits and saves them. Built and installed as Debug 1.0.23.0 x64, status Ok; tests, UI and provider checks remain unrun.
 
 - Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Built and installed as Debug 1.0.22.0 x64, status Ok. PR #36 publishes the nineteen local configuration/sign-in commits; Windows CI passed 108 synthetic Python tests. UI/provider checks remain unrun.

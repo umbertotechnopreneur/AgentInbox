@@ -25,6 +25,9 @@ if ($Command -eq 'help') {
     @'
 AgentInbox source commands
 
+Connect as many compatible mailboxes as you need to your AI agent through MCP.
+Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers; selected IMAP folders across accounts.
+
 package-msix       Build Windows 11 x64 or ARM64 MSIX. Debug is the default.
 build-store-msix   Build unsigned local Release MSIX packages for x64 and ARM64 together.
 install-debug-msix Build, sign and immediately install a Debug MSIX using an existing current-user certificate.

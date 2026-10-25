@@ -1,6 +1,12 @@
 # Validation
 
-Last updated: 2026-10-25.
+Last updated: 2026-10-26.
+
+## Product wording across entry points — source only
+
+Updated README/setup guides, repository wording instructions, Windows UI/package descriptions, Python and PowerShell help, plugin metadata/export copy and MCP initialization/tool descriptions to lead with multiple compatible mailboxes and selected folders through one MCP connection. Provider examples include Gmail, Microsoft, iCloud and GoDaddy when compatible IMAP/POP3 access is available. Copy describes dozens of IMAP folders across accounts while preserving the implemented twenty-folder selection limit per account and POP3's single INBOX. Mail policy and permissions did not change.
+
+Reviewed the text diffs and the currently published AgentInbox product page. The public page still leads with Codex and describes the former send-approval flow. Updated website source copy and SEO in English, Italian and Vietnamese separately; those edits have not been published. No build, installation, CLI execution, automated tests, live UI check, provider operation or CI/CD ran for this wording follow-up. The installed 1.0.23.0 does not contain the new copy.
 
 ## Account permissions on the first tab — installed Debug 1.0.23.0
 

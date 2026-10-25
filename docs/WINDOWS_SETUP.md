@@ -1,10 +1,10 @@
 # Windows configuration
 
-The WinUI 3 app configures AgentInbox on Windows 11. Email operations run through Codex and the Python engine. See [validation](VALIDATION.md) for the source, package and provider checks actually performed.
+I wanted one assistant conversation for all my mailboxes and their folders. In Windows setup, connect as many compatible Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 accounts as you need. Your AI agent uses the enabled accounts and selected folders through one local MCP connection. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account. See [validation](VALIDATION.md) for the source, package and provider checks actually performed.
 
 ## Connections
 
-Choose **Add connection**, or select a saved connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. No account form appears until you create or select one.
+Choose **Add** for each mailbox, or select a saved connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. No account form appears until you create or select one.
 
 When no mailbox is selected, a centered mail icon, heading and short guide explain how to select one or add another with the **+** button. An empty account list uses the same layout with a button to create your first account.
 
@@ -23,9 +23,11 @@ For Microsoft, press **Sign in with Microsoft**, then **Open Microsoft**. The bu
 
 When you save or check an account, missing or malformed fields get a red border and a short explanation underneath. The app selects the tab and focuses the first field to fix. These errors update as you edit. Controls keep their native WinUI templates and use the theme's critical-color brush; no validation library or custom control style is added. WinUI 3 has no complete built-in form-validation framework; this follows [Microsoft's form guidance](https://learn.microsoft.com/en-us/windows/apps/get-started/line-of-business/build-validated-form).
 
-In **Read mail**, choose IMAP or POP3 and enter the server settings from your provider. IMAP shares your selected folders; POP3 has only INBOX. Enable reading only for accounts you want to share.
+In **Account**, use **Enable receive** and **Enable send** below **How to connect**, then save. These permissions determine which mailboxes your AI agent can use; successful connection tests do not enable sharing automatically.
 
-In **Send mail**, turn on **Set up sending** and separately choose whether Codex may send from this account. Sending starts disabled. Enabling it permits immediate sends requested through Codex; this configuration window does not compose or send messages.
+In **Read mail**, choose IMAP or POP3 and enter the server settings from your provider. IMAP shares your selected folders; POP3 has only INBOX.
+
+In **Send mail**, configure the SMTP server. **Enable send** under **Account** prepares SMTP configuration and allows your assistant to send from that account after you save. Sending starts disabled and requires your explicit request; this configuration window does not compose or send messages.
 
 ## Connection checks
 

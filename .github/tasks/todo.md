@@ -2,6 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] When requested, compile/check the updated mailbox-and-folder wording in Windows layouts, CLI help, MCP initialization/tool descriptions and an exported source plugin. Confirm copy does not imply an archive importer, unlimited folders per account, POP3 folders, validated provider access or automatic cross-account search. Installation and publication of this wording remain separate tasks.
+
 - [ ] Check the Account-tab Enable receive and Enable send controls in Debug 1.0.23.0: load existing permissions, retain a changed draft across navigation, enable send without existing SMTP, disable SMTP setup, save and reload, and verify missing sending fields focus the Send mail tab. Build and installation passed; UI/model behavior has not been tested.
 
 - [ ] Check the simplified Connect Codex page and two-line VibeWare link in installed Debug 1.0.22.0. Verify missing/mismatched/configured settings, test outcomes, prompt copying, narrow footer layout and keyboard access. A local handshake result must not be presented as verification of an existing Codex chat connection. Windows CI passed 108 synthetic Python tests; WinUI/provider checks remain unrun.

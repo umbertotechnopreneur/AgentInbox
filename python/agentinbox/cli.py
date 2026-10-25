@@ -57,10 +57,14 @@ def manage(application, session: bool) -> int:
 
 def main(arguments=None):
     """Run one explicit current command without legacy aliases or migration."""
-    parser = argparse.ArgumentParser(prog="agentinbox", description="Local email tools for your assistant and account configuration.")
+    parser = argparse.ArgumentParser(prog="agentinbox",
+        description="Connect as many compatible mailboxes as you need to your AI agent through one local MCP connection.",
+        epilog="Gmail, Microsoft, iCloud, GoDaddy and other providers that allow IMAP or POP3 access. Work across dozens of selected IMAP folders across accounts (up to twenty per account); POP3 exposes one INBOX per account. Choose read/send permissions for each mailbox in local setup.")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("mcp", help="Run the local MCP server over stdio.")
-    management = commands.add_parser("manage", help="Configure accounts, check connections and inspect local status using stdin JSON.")
+    commands.add_parser("mcp", help="Expose all enabled mailboxes and their selected folders to your AI agent over stdio MCP.",
+        description="One local MCP connection for all enabled mailboxes. Your agent searches each selected account and folder in turn; mail stays with its providers.")
+    management = commands.add_parser("manage", help="Add mailboxes, choose shared folders and permissions, and check connections using stdin JSON.",
+        description="Configure multiple IMAP/POP3 mailboxes and optional SMTP sending. Choose up to twenty IMAP folders per account; POP3 has one INBOX per account.")
     management.add_argument("--session", action="store_true", help="Read one JSON request per line until EOF. Use this session for search references and continuations.")
     options = parser.parse_args(arguments)
     try:
