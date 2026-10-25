@@ -238,6 +238,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                 if (PresetIndex > 0) ApplyPreset();
             }
             if (property == nameof(ConfigureSending) && !ConfigureSending) SendEnabled = false;
+            if (property == nameof(SendEnabled) && SendEnabled) ConfigureSending = true;
             UpdateAuthenticationChoices();
             if (property == nameof(AuthenticationIndex) && IsMicrosoft) ClearPasswords();
             if (IsPop) SetFolderChoices(["INBOX"], ["INBOX"]);

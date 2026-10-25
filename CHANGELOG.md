@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move Enable receive and Enable send into Account immediately below How to connect. Keep server/folder configuration in Read mail and Send mail. Enabling send prepares SMTP configuration in the draft, so the visible permission is not silently discarded on save. Saved permissions and defaults stay unchanged until the owner edits and saves them. Built and installed as Debug 1.0.23.0 x64, status Ok; tests, UI and provider checks remain unrun.
+
 - Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Built and installed as Debug 1.0.22.0 x64, status Ok. PR #36 publishes the nineteen local configuration/sign-in commits; Windows CI passed 108 synthetic Python tests. UI/provider checks remain unrun.
 
 - Keep Add, delete, refresh and a separated Test All action in one quiet toolbar. Show the app logo in Mica dialog title bars and replace terminal check-stage words with green success, red failure and orange warning symbols. Retain failed/cancelled account outcomes and their details in the session list. Result details can be reopened from the account status symbol, and timeout is distinguished from cancellation. Built and installed in Debug 1.0.21.0 x64; tests, UI and provider checks remain unrun.

@@ -1,6 +1,14 @@
 # Validation
 
-Last updated: 2026-10-23.
+Last updated: 2026-10-25.
+
+## Account permissions on the first tab — installed Debug 1.0.23.0
+
+Built and signed locally from source checkpoint `74537b7`, then installed through `install-debug-msix` on 2026-10-25. Windows reports Debug `1.0.23.0`, architecture x64 and package status `Ok`. Enable receive and Enable send now appear under How to connect in Account. Enabling send also prepares SMTP configuration in the unsaved draft. No automated tests, application launch, UI interaction, mail-provider operation or CI/CD ran for this installation. Existing account data was preserved; no account permissions were edited by the build.
+
+The installer is 105,461,798 bytes, SHA-256 `1b90710ac0fe66e2b3d76e59076a63a21243602ebf5129d343fdf72270716747`, retained under `artifacts/msix/debug/x64/1.0.23.0/` with checksum, package/installation records and import evidence. Python 3.13.15 and twenty NuGet archives were recovered from the official sources in the retained 1.0.22.0 import record. All twenty-one SHA-256 values matched. Existing first-import scans were reused; no new scan ran.
+
+Packaging completed its matching clean without a warning. Its exact `artifacts/work/msix-844cc97b8bad429e83a491641aefcb52/` directory was verified absent. The task-owned recovery directory `artifacts/work/install-1.0.23.0-20261025/`, including archives, extracted inputs and the helper script, and superseded `artifacts/msix/debug/x64/1.0.22.0/` were removed and verified absent. Only the current package and minimal evidence were retained for this channel.
 
 ## Published configuration changes — installed Debug 1.0.22.0
 

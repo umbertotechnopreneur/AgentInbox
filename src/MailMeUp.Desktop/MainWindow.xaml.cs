@@ -266,7 +266,16 @@ public sealed partial class MainWindow : Window
             Visibility = Visibility.Collapsed
         };
         var providerChoice = Stack(_preset, _authenticationHint, _providerHelpLink);
-        var accountContent = Section("", providerChoice, _email, _authentication, _microsoftFields);
+        _readEnabled = new ToggleSwitch { Header = "Enable receive", OnContent = "Enabled", OffContent = "Disabled" };
+        AutomationProperties.SetName(_readEnabled, "Enable receive for this account");
+        ToolTipService.SetToolTip(_readEnabled, "Allow your assistant to search and read the selected folders after you save changes.");
+        _sendEnabled = new ToggleSwitch { Header = "Enable send", OnContent = "Enabled", OffContent = "Disabled" };
+        AutomationProperties.SetName(_sendEnabled, "Enable send for this account");
+        ToolTipService.SetToolTip(_sendEnabled, "Allow your assistant to send email from this account when you ask, after you save changes.");
+        var accountAccess = Stack(_readEnabled, _sendEnabled,
+            Hint("Save changes to apply these permissions. Configure servers and folders under Read mail and Send mail."));
+        accountAccess.Margin = new Thickness(0, 8, 0, 0);
+        var accountContent = Section("", providerChoice, _email, _authentication, accountAccess, _microsoftFields);
 
         _incomingProtocol = new ComboBox { Header = "How to read mail", HorizontalAlignment = HorizontalAlignment.Stretch };
         _incomingProtocol.Items.Add("IMAP — mail and server folders");
@@ -283,10 +292,9 @@ public sealed partial class MainWindow : Window
         _checkConnection = Action("Check connection and get folders", () => _ = RunAsync(() => CheckAccountAsync(saveAccount: false)),
             tooltip: "Check this account, then choose the folders Codex can read. Nothing is saved or sent.");
         _folderHint = Hint("");
-        _readEnabled = new ToggleSwitch { Header = "Share this account with my assistant", OnContent = "Enabled", OffContent = "Disabled" };
         var incomingSettings = Section("", _incomingProtocol, Pair(_incomingHost, _incomingPort), _incomingTls,
             Pair(_incomingUser, Stack(_incomingPassword, _incomingSignInHint)), _checkConnection, Text("Folders available to your assistant"), _folders, _folderHint,
-            Hint("Windows stores your sign-in details on this computer. They are not copied to Codex's settings."), _readEnabled);
+            Hint("Windows stores your sign-in details on this computer. They are not copied to Codex's settings."));
         _testRead = Action("Check reading", () => _ = RunAsync(TestReadAsync));
         _incomingChecks = Stack(_testRead, Hint("Save changes before testing. This check uses the saved incoming settings."));
         var incomingContent = Stack(incomingSettings, _incomingChecks);
@@ -298,15 +306,13 @@ public sealed partial class MainWindow : Window
         _smtpUser = Field("Email address for sending", "you@example.com");
         _smtpPassword = Password("Password for sending");
         _smtpSignInHint = Hint("Uses the same Microsoft sign-in as incoming mail. No extra password is needed.");
-        _sendEnabled = new ToggleSwitch { Header = "Enable sending from this account", OnContent = "Enabled", OffContent = "Disabled" };
         _testSmtp = Action("Check sending connection", () => _ = RunAsync(TestSmtpAsync),
             tooltip: "Check these sending settings without saving changes or sending an email.");
         _smtpChecks = Stack(_testSmtp, Hint("Check the connection and sign-in without saving settings or sending an email."));
-        _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, Stack(_smtpPassword, _smtpSignInHint)), _sendEnabled,
-            Hint("When enabled, Codex can send email from this account when you ask it to."), _smtpChecks);
+        _smtpFields = Stack(Pair(_smtpHost, _smtpPort), _smtpTls, Pair(_smtpUser, Stack(_smtpPassword, _smtpSignInHint)), _smtpChecks);
 
         var outgoingContent = Stack(_configureSmtp,
-            Hint("Turn this on if you want Codex to send email when you ask."), _smtpFields);
+            Hint("Configure the outgoing server here. Choose Enable send under Account to allow your assistant to send email."), _smtpFields);
         foreach (var tab in new[] {
             AccountTab("Account", "\uE77B", 0xB58ADA, accountContent),
             AccountTab("Read mail", "\uE715", 0x409BE0, incomingContent),

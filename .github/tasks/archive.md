@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-25 — visible account permissions
+
+- Moved Enable receive and Enable send to Account, directly below How to connect, while retaining server configuration in the mail tabs. Enabling send prepares SMTP in the draft. Built source `74537b7` and installed Debug 1.0.23.0 x64, status Ok. No automated tests, UI checks or provider operations ran. See validation for the package, matching recovered inputs and verified cleanup.
+
 ## 2026-10-23 — Codex page and two-line manifesto link
 
 - Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Published the nineteen local commits through PR #36 and built/installed Debug 1.0.22.0 x64, status Ok. Windows CI passed 108 synthetic Python tests; no live UI/provider checks ran. See validation for recovered imports and package evidence. Merge was not requested.

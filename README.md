@@ -1,27 +1,44 @@
-# AgentInbox — Read and send email with your AI assistant.
+# Connect unlimited mailboxes (Gmail, iCloud, Microsoft, or custom) to your AI assistant via MCP.
 
 [![CI status](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
 ![Status: in development](https://img.shields.io/badge/status-in_development-F6C453)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
 
-I kept switching between mailboxes to find the message I needed. I built AgentInbox to bring those inboxes into one conversation, using IMAP or POP3 to read mail and optional SMTP to send it, like a regular email client.
+I could connect only one mailbox at a time to my AI assistant. I built AgentInbox so I could use all my mailboxes in the same conversation.
 
-Connect a compatible mailbox, choose what your assistant can read, and ask for the messages you need. Sending is optional: enable SMTP for an account in Windows setup, then ask Codex to send a message.
+Add your personal, work and custom-domain accounts to one local MCP connection. There is no fixed mailbox-count limit. Choose which accounts your assistant can read and which it can send from, then ask for what you need.
 
 **[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
 
-## Connect your mailbox
+## Bring your mailboxes into one conversation
 
-Choose your **Email provider** to see its instructions and fill in the settings. Gmail and iCloud need a separate password for this app; the setup page links to their instructions. Outlook.com and Microsoft 365 select **Sign in with Microsoft**: save changes, press that button, then enter the code on Microsoft's page. You do not need to enter an app ID or a second password for sending.
+1. Open **Accounts** in Windows setup and choose **Add** for each mailbox you want to connect.
+2. Choose Gmail, iCloud, Microsoft or a custom provider, then follow its sign-in instructions.
+3. Enable reading and optional sending separately for each account. Use **Test All** to check your saved connections.
+4. Open **Connect Codex** for guided setup, or configure another local MCP client manually. One connection exposes the accounts you enable.
+
+Start by asking your assistant:
+
+> Which email accounts can you access through AgentInbox?
+
+Then name the accounts you want it to use:
+
+> Find messages about invoices in my work and personal mailboxes from the past week.
+
+Your mailboxes stay with their providers. AgentInbox gives your assistant tools to search and read the accounts you choose, and to send messages when you request them.
+
+## Connect Gmail, iCloud, Microsoft or a custom provider
+
+Choose your **Email provider** to see its instructions and fill in the settings. Gmail and iCloud need a separate password for this app; the setup page links to their instructions. Outlook.com and Microsoft 365 select **Sign in with Microsoft**: press that button, then enter the code on Microsoft's page. Windows setup saves the account settings first. You do not need to enter an app ID or a second password for sending.
 
 | Mail service | Connection requirement |
 | --- | --- |
 | Gmail | A Google app password; your usual Gmail password will not work here |
 | iCloud Mail | An app-specific password |
-| Other providers | IMAP or POP3 over TLS with a password or app password |
+| Custom providers | IMAP or POP3 over TLS with a password or app password |
 | Outlook.com / Microsoft 365 | Sign in with Microsoft. Outlook settings or your IT team may need to allow mail apps and sending |
 
 Your provider or organization can block access even when the settings are correct. Choosing a Microsoft provider selects **Sign in with Microsoft**. A rejected connection does not change that choice. This app's Microsoft setup still needs a real sign-in check; see [signing in](docs/AUTHENTICATION.md).
@@ -30,15 +47,15 @@ IMAP exposes selected server folders and read status. POP3 exposes one mailbox a
 
 The Windows setup app uses WinUI 3. It keeps incoming mail and optional outgoing mail settings together, with separate connection checks. See [Windows setup](docs/WINDOWS_SETUP.md).
 
-## Sending through Codex
+## Send from the account you choose
 
-SMTP starts disabled. When you enable it, Codex can send from that account through `send_email`. Give Codex the intended recipients and content; the tool submits immediately, without another confirmation in AgentInbox.
+Sending starts disabled for every account. Enable SMTP only for the accounts you want your assistant to send from. When you request a message, specify the sending account, recipients and content. The `send_email` tool submits immediately, without another confirmation in AgentInbox.
 
 The Windows app only configures connections and permissions. Its SMTP test checks connection and sign-in without sending. A successful send result means the server accepted the message, not that the recipient received it. Unresolved sends are never retried automatically.
 
-## Use it with your assistant
+## One local MCP connection for your enabled accounts
 
-The Python engine runs as a local MCP process. It reads mail through IMAP or POP3 and submits optional SMTP sends. It does not need a .NET backend.
+Your assistant lists your enabled accounts and calls the mail tools for each account you want it to use. It can work with several mailboxes in the same conversation. The Python engine runs locally, using IMAP or POP3 for reading and optional SMTP for sending. It does not need a .NET backend.
 
 Source entry point:
 
@@ -48,7 +65,7 @@ python -B python/run.py mcp
 
 Use an absolute interpreter path and an absolute path to `python/run.py` in your MCP client. See [connection setup](docs/CODEX_SETUP.md) and the [tool contract](docs/MCP_CONTRACT.md).
 
-Use it with Codex, Claude or another local MCP client.
+The Windows app guides you through connecting Codex. For another assistant, configure its local MCP connection manually using the same account profile.
 
 ## Where it runs
 
@@ -71,7 +88,7 @@ The engine requires Python 3.11 or newer and uses the standard library. On Windo
 
 ## More from MeUp
 
-- [**AgentInbox**](https://github.com/umbertotechnopreneur/AgentInbox) · Read and send email with your AI assistant.
+- [**AgentInbox**](https://github.com/umbertotechnopreneur/AgentInbox) · Connect your mailboxes to your AI assistant via MCP.
 - [**PromptMeUp**](https://github.com/umbertotechnopreneur/PromptMeUp) · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.
 - [**WorkTrail**](https://github.com/umbertotechnopreneur/WorkTrail) · Track your time. Find what you worked on.
 
