@@ -2,7 +2,7 @@
 
 I wanted my agent to work across all my mailboxes and their folders. The CLI configures as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. Run one MCP process for all enabled accounts, or use a management session. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account. Each search targets one account and folder, so repeat it for the mailboxes and folders you want your agent to use.
 
-The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. The new human-facing setup commands and their regression cases have not been executed. Earlier management-session results do not validate these commands. See [validation](VALIDATION.md).
+The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. The current isolated Windows suite passed 129 cases, including the new setup commands, with two POSIX-only cases skipped. Native terminal interaction, provider access, installed-package behavior and Linux/macOS execution remain unverified. See [validation](VALIDATION.md).
 
 ## Configure your mailboxes from the command line
 

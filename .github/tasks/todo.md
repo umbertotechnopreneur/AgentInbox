@@ -2,7 +2,7 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
-- [ ] When authorized, run the new CLI account-configuration cases, including hidden password input, JSON entry validation, stale revisions, device-flow polling/cancellation, cleanup reporting and JSON output. Validate the complete quick-start workflow on Windows, Linux and macOS with native credential stores and separately authorized provider accounts. New commands are not yet included in an installed package.
+- [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. New commands are not yet included in an installed package.
 
 - [ ] Resolve blocked PDF task cleanup: `artifacts/work/pdf-cli-setup-20261026/` (about 925 KiB) and `artifacts/docs/cli-setup-20261026/` (about 19 KiB). The definitive PDF and example are already in `docs/`; automatic approval review rejected guarded deletion with `blocked by policy`. See validation; do not bypass the rejection.
 

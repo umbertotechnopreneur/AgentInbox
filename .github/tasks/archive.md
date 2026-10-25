@@ -2,9 +2,13 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-26 — isolated CLI configuration tests
+
+- Ran the complete Python suite at `92a8a94` on Windows/Python 3.13.15: 129 passed, two POSIX-only cases skipped, no failures or errors. Test profiles and credentials were synthetic; task-only write guards and blocked network/native-library access recorded zero violations. No owner configuration or mailbox was used. Cleaned this run's temporary output and retained only its summary and log; see validation for scope and evidence.
+
 ## 2026-10-26 — command-line account configuration
 
-- Added human-facing CLI commands for the full local account-configuration workflow, keeping the existing JSON automation adapter and shared application behavior. Added a settings-only Gmail/Microsoft example and a six-page PDF quick start linked prominently from the README. Provider guidance uses official links and distinguishes Microsoft passwords from persisted protected refresh tokens. Application regression cases are written but unrun; document verification is recorded separately in validation.
+- Added human-facing CLI commands for the full local account-configuration workflow, keeping the existing JSON automation adapter and shared application behavior. Added a settings-only Gmail/Microsoft example and a six-page PDF quick start linked prominently from the README. Provider guidance uses official links and distinguishes Microsoft passwords from persisted protected refresh tokens. The later synthetic run is recorded above; document verification is recorded separately in validation.
 
 ## 2026-10-26 — consistent mailbox and folder positioning
 
