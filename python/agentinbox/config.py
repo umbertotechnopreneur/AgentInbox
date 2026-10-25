@@ -8,13 +8,14 @@ import uuid
 from pathlib import Path
 
 from .errors import MailError
+from .models import AccountSettings, AuthenticationSettings, ProviderPreset, ServerSettings
 
 SCHEMA_VERSION = 3
 MAX_MESSAGE_BYTES = 10 * 1024 * 1024
 MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 MAX_BODY_CHARS = 100_000
 MAX_RECIPIENTS = 25
-PRESETS = {
+PRESETS: dict[str, ProviderPreset] = {
     "custom": {"label": "Custom mail server", "incoming": {}, "smtp": None,
                "authentication_methods": ["password"]},
     "gmail": {"label": "Gmail", "incoming": {
@@ -22,24 +23,24 @@ PRESETS = {
                   "pop3": {"host": "pop.gmail.com", "port": 995, "tls": "tls"}},
               "smtp": {"host": "smtp.gmail.com", "port": 465, "tls": "tls"},
               "authentication_methods": ["password"],
-              "notice": "Use an app password. Availability depends on your Google account settings."},
+              "notice": "Your usual Gmail password will not work. Create a Google app password for reading and sending."},
     "icloud": {"label": "iCloud", "incoming": {
                    "imap": {"host": "imap.mail.me.com", "port": 993, "tls": "tls"}},
                "smtp": {"host": "smtp.mail.me.com", "port": 587, "tls": "starttls"},
                "authentication_methods": ["password"],
-               "notice": "Use an app-specific password. SMTP uses your full email address."},
+               "notice": "Create an Apple app-specific password for reading and sending. Use your full email address for sending."},
     "outlook": {"label": "Outlook.com", "incoming": {
                     "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                     "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                 "smtp": {"host": "smtp-mail.outlook.com", "port": 587, "tls": "starttls"},
                 "authentication_methods": ["password", "microsoft_oauth"],
-                "notice": "Outlook.com requires Microsoft web authorization. Select it yourself when setting up this account; AgentInbox will not switch automatically."},
+                "notice": "Sign in with Microsoft. Windows setup selects this for you when you choose Outlook.com."},
     "microsoft365": {"label": "Microsoft 365", "incoming": {
                          "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                          "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                      "smtp": {"host": "smtp.office365.com", "port": 587, "tls": "starttls"},
                      "authentication_methods": ["password", "microsoft_oauth"],
-                     "notice": "Microsoft 365 no longer accepts IMAP or POP3 passwords. Select Microsoft web authorization yourself. Your organization may still block access or sending."},
+                     "notice": "Sign in with Microsoft. Windows setup selects this for you. Your work or school may need to allow mail apps and sending."},
 }
 
 
@@ -95,8 +96,10 @@ def data_directory() -> Path:
 
 def text(value: object, name: str, maximum: int = 255, *, allow_empty: bool = False) -> str:
     """Validate a bounded single-line string without including it in an error."""
-    if not isinstance(value, str) or len(value) > maximum or any(ord(c) < 32 or ord(c) == 127 for c in value):
-        raise MailError("invalid_configuration", f"{name} must be a valid single-line value.")
+    if not isinstance(value, str) or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise MailError("invalid_configuration", f"Enter {name.lower()} again on one line.")
+    if len(value) > maximum:
+        raise MailError("invalid_configuration", f"{name} must be {maximum} characters or fewer.")
     result = value.strip()
     if not result and not allow_empty:
         raise MailError("invalid_configuration", f"{name} is required.")
@@ -107,7 +110,7 @@ def address(value: object) -> str:
     """Accept one explicit ASCII mailbox, never a display-name or address list."""
     result = text(value, "Email address", 254)
     if not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", result):
-        raise MailError("invalid_address", "Enter one email address without a display name.")
+        raise MailError("invalid_address", "Enter one email address, such as you@example.com, without a person's name.")
     if ".." in result or result.startswith(".") or ".@" in result:
         raise MailError("invalid_address", "Enter a valid email address.")
     return result
@@ -116,76 +119,85 @@ def address(value: object) -> str:
 def flag(value: object, name: str) -> bool:
     """Reject truthy strings and numeric substitutes for a boolean."""
     if type(value) is not bool:
-        raise MailError("invalid_configuration", f"{name} must be true or false.")
+        raise MailError("invalid_configuration", f"Choose whether {name.lower()} is on or off.")
     return value
 
 
-def endpoint(value: object, protocol: str) -> dict:
+def endpoint(value: object, protocol: str) -> ServerSettings:
     """Validate one server with mandatory transport encryption."""
+    purpose = "sending" if protocol == "smtp" else "reading"
+    section = "Send mail" if protocol == "smtp" else "Read mail"
     if not isinstance(value, dict) or set(value) != {"host", "port", "tls", "username"}:
-        raise MailError("invalid_configuration", f"{protocol.upper()} needs host, port, tls and username only.")
-    host = text(value["host"], "Server").rstrip(".").lower()
+        raise MailError("invalid_configuration", f"Check the server, port, connection security and email address under {section}.")
+    host = text(value["host"], f"Server for {purpose}").rstrip(".").lower()
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host) or ".." in host:
-        raise MailError("invalid_configuration", "Enter a server hostname without a URL or path.")
+        raise MailError("invalid_configuration", f"Check the server under {section}. Enter a name such as mail.example.com, without https:// or a folder path.")
     port = value["port"]
     if type(port) is not int or not 1 <= port <= 65535:
-        raise MailError("invalid_configuration", "Port must be an integer between 1 and 65535.")
+        raise MailError("invalid_configuration", f"Enter a whole number from 1 to 65535 in Port under {section}.")
     if value["tls"] not in {"tls", "starttls"}:
-        raise MailError("invalid_configuration", "Choose TLS or mandatory STARTTLS. Unencrypted connections are not supported.")
-    return {"host": host, "port": port, "tls": value["tls"], "username": text(value["username"], "Username")}
+        raise MailError("invalid_configuration", f"Choose a Connection security option under {section}. A secure connection is required.")
+    return {"host": host, "port": port, "tls": value["tls"],
+            "username": text(value["username"], f"Email address for {purpose}")}
 
 
-def authentication(value: object) -> dict:
+def authentication(value: object) -> AuthenticationSettings:
     """Accept password auth or an explicit Microsoft public-client registration."""
     if value == {"method": "password"}:
         return dict(value)
     if not isinstance(value, dict) or set(value) != {"method", "client_id", "tenant"} or value["method"] != "microsoft_oauth":
-        raise MailError("invalid_configuration", "Choose a password or Microsoft web authorization.")
+        raise MailError("invalid_configuration", "Choose Use a password or Sign in with Microsoft.")
     try:
         client_id = str(uuid.UUID(value["client_id"]))
         tenant = value["tenant"]
         if tenant not in {"common", "organizations", "consumers"}:
             tenant = str(uuid.UUID(tenant))
     except (ValueError, TypeError, AttributeError) as error:
-        raise MailError("invalid_configuration", "Microsoft web authorization needs a public app ID and a valid Microsoft account type or directory ID.") from error
+        raise MailError("invalid_configuration", "Check the Microsoft account type. This app's Microsoft settings may also need fixing.") from error
     return {"method": "microsoft_oauth", "client_id": client_id, "tenant": tenant}
 
 
-def account_input(value: object) -> dict:
-    """Validate the new account schema without accepting compatibility fields."""
+def account_input(value: object) -> AccountSettings:
+    """Validate connection settings and optional provider-preset metadata."""
     keys = {"id", "label", "email", "incoming", "smtp", "authentication", "read_enabled", "send_enabled", "folders"}
-    if not isinstance(value, dict) or set(value) != keys:
-        raise MailError("invalid_configuration", "The account does not match the current mail schema.")
+    if not isinstance(value, dict) or set(value) not in (keys, keys | {"preset"}):
+        raise MailError("invalid_configuration", "These account settings could not be read. Reload the account and try again.")
+    metadata = {}
+    if "preset" in value:
+        preset = text(value["preset"], "Email provider", 32)
+        if preset not in PRESETS:
+            raise MailError("invalid_configuration", "Choose one of the listed email providers.")
+        metadata["preset"] = preset
+    email_address = address(value["email"])
     incoming = value["incoming"]
     if not isinstance(incoming, dict) or set(incoming) != {"protocol", "host", "port", "tls", "username"} or incoming["protocol"] not in {"imap", "pop3"}:
-        raise MailError("invalid_configuration", "Choose IMAP or POP3 and supply its server settings.")
+        raise MailError("invalid_configuration", "Under Read mail, choose how to read mail and enter your provider's server settings.")
     protocol = incoming["protocol"]
     incoming = {"protocol": protocol, **endpoint({k: v for k, v in incoming.items() if k != "protocol"}, protocol)}
     auth = authentication(value["authentication"])
-    email_address = address(value["email"])
     identity = text(value["id"], "Account ID", 64, allow_empty=True)
     if identity and not re.fullmatch(r"[a-f0-9]{32}", identity):
         raise MailError("invalid_configuration", "Invalid account ID.")
     folders = value["folders"]
     if not isinstance(folders, list) or not 1 <= len(folders) <= 20:
-        raise MailError("invalid_configuration", "Choose between one and twenty distinct IMAP folders.")
+        raise MailError("invalid_configuration", "Choose between one and twenty mail folders under Read mail.")
     normalized = [text(folder, "Folder", 255) for folder in folders]
     if len(set(normalized)) != len(normalized):
-        raise MailError("invalid_configuration", "Choose distinct IMAP folder names.")
+        raise MailError("invalid_configuration", "Choose each mail folder only once.")
     if any(not folder.isascii() for folder in normalized):
-        raise MailError("unsupported_folder", "This preview requires an ASCII IMAP folder name, such as INBOX.")
+        raise MailError("unsupported_folder", "Folder names currently need basic English letters, numbers or punctuation, such as INBOX.")
     if protocol == "pop3" and normalized != ["INBOX"]:
         raise MailError("unsupported_folder", "POP3 exposes only INBOX.")
     send_enabled = flag(value["send_enabled"], "Sending")
     smtp = endpoint(value["smtp"], "smtp") if value["smtp"] is not None else None
     if send_enabled and smtp is None:
-        raise MailError("invalid_configuration", "Configure SMTP before enabling sending.")
+        raise MailError("invalid_configuration", "Open Send mail and enter the sending server settings before enabling sending.")
     if auth["method"] == "microsoft_oauth":
         hosts = {"outlook.office365.com", "imap-mail.outlook.com" if protocol == "imap" else "pop-mail.outlook.com"}
         if incoming["host"] not in hosts or (smtp and smtp["host"] not in {"smtp.office365.com", "smtp-mail.outlook.com"}):
-            raise MailError("invalid_configuration", "Microsoft tokens can be used only with Microsoft mail servers.")
+            raise MailError("invalid_configuration", "Microsoft sign-in only works with Microsoft mail servers.")
         if incoming["username"].casefold() != email_address.casefold() or (smtp and smtp["username"].casefold() != incoming["username"].casefold()):
-            raise MailError("invalid_configuration", "Microsoft mail usernames must match the account email address.")
-    return {"id": identity, "label": text(value["label"], "Account name", 100), "email": email_address,
+            raise MailError("invalid_configuration", "For Microsoft, use the same email address under Account, Read mail and Send mail.")
+    return {**metadata, "id": identity, "label": text(value["label"], "Connection name", 100), "email": email_address,
             "incoming": incoming, "smtp": smtp, "authentication": auth,
             "read_enabled": flag(value["read_enabled"], "Reading"), "send_enabled": send_enabled, "folders": normalized}

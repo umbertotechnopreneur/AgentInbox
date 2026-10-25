@@ -6,8 +6,6 @@ AgentInbox source is MIT-licensed. Third-party components retain their own licen
 
 The engine uses Python 3.11 or newer and its standard library, without third-party Python packages. Python and its bundled components have their own license and notices. A distribution containing a Python interpreter must include the license and notices supplied with that exact interpreter.
 
-Source review uses tkinter where available. If Tcl/Tk is included in a distribution, preserve its supplied license and notices too.
-
 ## Windows setup
 
 The WinUI 3 setup project has two direct package references, with versions declared centrally:
@@ -23,11 +21,15 @@ The Windows app also uses .NET. Existing unmodified [.NET license](docs/licenses
 
 ## Packaging requirements
 
-For each approved MSIX build, collect the actual runtime and dependency inventory and preserve supplied licenses, notices and required attribution. Include Python, Tcl/Tk if bundled, .NET, Windows App SDK components and any transitive components that are distributed.
+For each approved MSIX build, collect the actual runtime and dependency inventory and preserve supplied licenses, notices and required attribution. Include Python, .NET, Windows App SDK components and any transitive components that are distributed.
 
 Targeted Microsoft Windows Defender scans are required before importing or running new external packages and their extracted dependencies. See the [README policy](README.md#external-binary-security-policy).
 
 No new runtime has been downloaded for this documentation update. No package restore, scan, build or distribution-license completeness check is claimed.
+
+## VibeWare artwork
+
+The approved `resources/vibeware/vibeware-logo.png` is copied unchanged from `Branding/vibeware-logo.png` in [VibeWare](https://github.com/umbertotechnopreneur/VibeWare). Copyright (c) 2026 Umberto Giacobbi, MIT License. The original notice is kept in [resources/vibeware/LICENSE](resources/vibeware/LICENSE) and copied to `Assets/VibeWare-LICENSE.txt` in desktop builds. See the [brand guide](docs/BRAND.md#vibeware-participation) for provenance and display rules. Participation in the initiative does not imply independent review or certification.
 
 ## Names and marks
 

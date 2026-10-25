@@ -2,11 +2,10 @@
 
 import argparse
 import json
-import os
 import sys
 
 from .application import MailApplication
-from .config import data_directory, windows_package_family
+from .config import data_directory
 from .errors import MailError
 
 
@@ -28,18 +27,23 @@ def manage(application, session: bool) -> int:
             return 1
         try:
             request = json.loads(raw)
-            if not isinstance(request, dict) or set(request) not in ({"operation", "arguments"}, {"operation", "arguments", "progress"}) or not isinstance(request["operation"], str):
+            if not isinstance(request, dict) or set(request) not in ({"operation", "arguments"}, {"operation", "arguments", "progress"}, {"operation", "arguments", "diagnostics"}) or not isinstance(request["operation"], str):
                 raise MailError("invalid_request", "Supply operation and arguments in the local setup request.")
             report = None
             if "progress" in request:
-                if request["progress"] is not True or request["operation"] != "check_account":
-                    raise MailError("invalid_request", "Progress is available only for an explicit account check.")
+                if request["progress"] is not True or request["operation"] not in {"check_account", "check_smtp"}:
+                    raise MailError("invalid_request", "Progress is available only for an explicit account or SMTP check.")
                 report = lambda stage, state: write({"progress": {"stage": stage, "state": state}})
-            result = application.manage(request["operation"], request["arguments"], progress=report)
+            diagnostic = None
+            if "diagnostics" in request:
+                if request["diagnostics"] is not True or request["operation"] not in {"start_microsoft_signin", "poll_microsoft_signin"}:
+                    raise MailError("invalid_request", "Sign-in details are available only for an explicit Microsoft sign-in.")
+                diagnostic = lambda message: write({"diagnostic": message})
+            result = application.manage(request["operation"], request["arguments"], progress=report, diagnostic=diagnostic)
             response = {"ok": True, "result": result}
         except MailError as error:
             failed = True
-            response = {"ok": False, "error": error.result()}
+            response = {"ok": False, "error": error.result(include_server_response=True)}
         except (ValueError, TypeError, KeyError):
             failed = True
             response = {"ok": False, "error": {"code": "invalid_request", "message": "The request or saved data has an invalid format."}}
@@ -53,27 +57,17 @@ def manage(application, session: bool) -> int:
 
 def main(arguments=None):
     """Run one explicit current command without legacy aliases or migration."""
-    parser = argparse.ArgumentParser(prog="agentinbox", description="Local IMAP/POP3 reads and individually approved SMTP sending.")
+    parser = argparse.ArgumentParser(prog="agentinbox", description="Local email tools for your assistant and account configuration.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("mcp", help="Run the local MCP server over stdio.")
-    management = commands.add_parser("manage", help="Manage accounts, inspect profile paths, read mail and prepare or cancel messages using local stdin JSON.")
+    management = commands.add_parser("manage", help="Configure accounts, check connections and inspect local status using stdin JSON.")
     management.add_argument("--session", action="store_true", help="Read one JSON request per line until EOF. Use this session for search references and continuations.")
-    review = commands.add_parser("review", help="Review one pending outgoing message locally.")
-    review.add_argument("--pipe", action="store_true", help="Use private redirected review handles from the Windows app.")
-    review.add_argument("request_id")
     options = parser.parse_args(arguments)
     try:
         application = MailApplication(data_directory())
         if options.command == "mcp":
             from .mcp import serve
             return serve(application)
-        if options.command == "review":
-            from .review import desktop_review, pipe_review
-            if options.pipe:
-                return pipe_review(application, options.request_id, write)
-            result = application.open_review(options.request_id) if os.environ.get("AGENTINBOX_REVIEW_APP") or windows_package_family() else desktop_review(application, options.request_id)
-            write({"ok": True, "result": result})
-            return 0
         return manage(application, options.session)
     except MailError as error:
         if options.command == "mcp":

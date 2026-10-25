@@ -8,20 +8,16 @@ using Microsoft.UI.Xaml;
 
 namespace MailMeUp.Desktop;
 
-/// <summary>Creates the Windows configuration and human approval interface.</summary>
+/// <summary>Creates the Windows configuration interface.</summary>
 public partial class App : Microsoft.UI.Xaml.Application
 {
     private readonly DispatcherQueue _dispatcher = DispatcherQueue.GetForCurrentThread();
-    private readonly SetupLaunchOptions _launchOptions;
     private MainWindow? _window;
     private int _started;
 
     /// <summary>Initializes application resources.</summary>
-    public App() : this(new SetupLaunchOptions()) { }
-
-    internal App(SetupLaunchOptions launchOptions)
+    public App()
     {
-        _launchOptions = launchOptions;
         InitializeComponent();
     }
 
@@ -33,11 +29,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (Interlocked.Exchange(ref _started, 1) != 0) return;
         _window = new MainWindow(new PythonEngine());
         _window.Closed += (_, _) => _window = null;
-        _window.RequestReview(_launchOptions.ReviewRequestId);
         _window.Activate();
     }
 
-    internal void ActivateExistingWindow(SetupLaunchOptions options) => _dispatcher.TryEnqueue(() =>
+    internal void ActivateExistingWindow() => _dispatcher.TryEnqueue(() =>
     {
         var window = _window;
         if (window is null) return;
@@ -45,7 +40,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             if (window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
                 presenter.Restore();
-            window.RequestReview(options.ReviewRequestId);
             window.Activate();
             SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(window));
         }

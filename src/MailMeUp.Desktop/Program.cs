@@ -19,7 +19,6 @@
  * VBWR E */
 
 using System.Runtime.InteropServices;
-using MailMeUp.Desktop.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
 using Windows.ApplicationModel.Activation;
@@ -32,9 +31,9 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        if (!SetupLaunchOptions.TryParse(args, out var options))
+        if (args.Length != 0)
         {
-            Console.Error.WriteLine(SetupLaunchOptions.UsageError);
+            Console.Error.WriteLine("Open AgentInbox without command-line arguments.");
             return 2;
         }
 
@@ -48,19 +47,19 @@ internal static class Program
 
             App? app = null;
             var activationGate = new object();
-            var pendingActivations = new Queue<SetupLaunchOptions>();
+            var activationPending = false;
             void OnActivated(object? sender, AppActivationArguments arguments)
             {
-                if (!TryParseActivation(arguments, out var requested))
+                if (!IsSetupActivation(arguments))
                 {
-                    Console.Error.WriteLine(SetupLaunchOptions.UsageError);
+                    Console.Error.WriteLine("Open AgentInbox without command-line arguments.");
                     return;
                 }
 
                 lock (activationGate)
                 {
-                    if (app is null) pendingActivations.Enqueue(requested);
-                    else app.ActivateExistingWindow(requested);
+                    if (app is null) activationPending = true;
+                    else app.ActivateExistingWindow();
                 }
             }
             instance.Activated += OnActivated;
@@ -70,13 +69,12 @@ internal static class Program
                 {
                     SynchronizationContext.SetSynchronizationContext(
                         new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-                    var setupApp = new App(options);
+                    var setupApp = new App();
                     setupApp.StartSetupWindow();
                     lock (activationGate)
                     {
                         app = setupApp;
-                        while (pendingActivations.TryDequeue(out var pending))
-                            setupApp.ActivateExistingWindow(pending);
+                        if (activationPending) setupApp.ActivateExistingWindow();
                     }
                 });
             }
@@ -95,9 +93,8 @@ internal static class Program
         }
     }
 
-    private static bool TryParseActivation(AppActivationArguments activation, out SetupLaunchOptions options)
+    private static bool IsSetupActivation(AppActivationArguments activation)
     {
-        options = new();
         try
         {
             var commandLine = activation.Data switch
@@ -113,10 +110,9 @@ internal static class Program
             if (buffer == IntPtr.Zero) return false;
             try
             {
-                var arguments = new string[count];
-                for (var index = 0; index < count; index++)
-                    arguments[index] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(buffer, index * IntPtr.Size)) ?? "";
-                return SetupLaunchOptions.TryParseActivation(arguments, out options);
+                if (count != 1) return false;
+                var executable = Marshal.PtrToStringUni(Marshal.ReadIntPtr(buffer)) ?? "";
+                return string.Equals(Path.GetFileName(executable), "AgentInbox.Desktop.exe", StringComparison.OrdinalIgnoreCase);
             }
             finally
             {

@@ -15,7 +15,7 @@ internal sealed class PythonEngine
 
     /// <summary>Runs one local operation, optionally forwarding real account-check progress records.</summary>
     internal async Task<JsonElement> ManageAsync(string operation, object arguments, CancellationToken cancellationToken,
-        Action<AccountCheckProgress>? progress = null)
+        Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(90));
@@ -25,35 +25,15 @@ internal sealed class PythonEngine
         {
             var request = new Dictionary<string, object> { ["operation"] = operation, ["arguments"] = arguments };
             if (progress is not null) request["progress"] = true;
+            if (diagnostic is not null) request["diagnostics"] = true;
             await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(), timeout.Token);
             process.StandardInput.Close();
-            var result = await ReadResponseAsync(process, timeout.Token, progress);
+            var result = await ReadResponseAsync(process, timeout.Token, progress, diagnostic);
             await process.WaitForExitAsync(timeout.Token);
             if (process.ExitCode != 0) throw new EngineException("The Python engine exited before completing the request.");
             return result;
         }
         finally { Stop(process); }
-    }
-
-    internal async Task<ReviewSession> OpenReviewAsync(string requestId, CancellationToken cancellationToken)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
-        var process = Start("review", "--pipe", requestId);
-        using var cancellation = timeout.Token.Register(() => Stop(process));
-        try
-        {
-            var preview = await ReadResponseAsync(process, timeout.Token);
-            if (preview.GetProperty("request_id").GetString() != requestId)
-                throw new EngineException("The review response does not match the selected message.");
-            return new ReviewSession(process, preview);
-        }
-        catch
-        {
-            Stop(process);
-            process.Dispose();
-            throw;
-        }
     }
 
     internal string CreateClientConfiguration()
@@ -74,12 +54,8 @@ internal sealed class PythonEngine
         }
         else
         {
-            var executable = Environment.ProcessPath;
-            if (string.IsNullOrWhiteSpace(executable) || !Path.IsPathFullyQualified(executable))
-                throw new EngineException("AgentInbox could not locate its Windows review application.");
             command = ResolvePython();
             arguments = ["-B", ResolveEntryPoint(), "mcp"];
-            environment["AGENTINBOX_REVIEW_APP"] = executable;
         }
         return JsonSerializer.Serialize(new
         {
@@ -214,7 +190,7 @@ internal sealed class PythonEngine
 
     /// <summary>Accepts a bounded sequence of opt-in progress records before the final operation result.</summary>
     private static async Task<JsonElement> ReadResponseAsync(Process process, CancellationToken cancellationToken,
-        Action<AccountCheckProgress>? progress = null)
+        Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
         try
         {
@@ -222,6 +198,16 @@ internal sealed class PythonEngine
             {
                 using var document = JsonDocument.Parse(await ReadRecordAsync(process, cancellationToken));
                 var root = document.RootElement;
+                if (root.TryGetProperty("diagnostic", out var detailRecord))
+                {
+                    if (diagnostic is null || root.EnumerateObject().Count() != 1
+                        || detailRecord.ValueKind != JsonValueKind.String
+                        || detailRecord.GetString() is not { Length: > 0 and <= 1200 } detail
+                        || detail.Any(char.IsControl))
+                        throw new EngineException("The Python engine returned invalid sign-in details.");
+                    diagnostic(detail);
+                    continue;
+                }
                 if (root.TryGetProperty("progress", out var update))
                 {
                     var stage = update.GetProperty("stage").GetString();
@@ -235,8 +221,12 @@ internal sealed class PythonEngine
                 }
                 if (!root.GetProperty("ok").GetBoolean())
                 {
-                    var message = root.GetProperty("error").GetProperty("message").GetString();
-                    throw new EngineException(message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.");
+                    var error = root.GetProperty("error");
+                    var message = error.GetProperty("message").GetString();
+                    message = message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.";
+                    if (error.TryGetProperty("server_response", out var response) && response.GetString() is { Length: > 0 and <= 2200 } detail)
+                        message += "\n\nServer reply (sign-in details hidden):\n" + detail;
+                    throw new EngineException(message);
                 }
                 return root.GetProperty("result").Clone();
             }
@@ -252,43 +242,6 @@ internal sealed class PythonEngine
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
         catch (InvalidOperationException) { }
         catch (System.ComponentModel.Win32Exception) { }
-    }
-
-    /// <summary>Owns one unexposed approval challenge and the immutable message preview.</summary>
-    internal sealed class ReviewSession : IDisposable
-    {
-        private readonly Process _process;
-        private readonly string _challenge;
-        private bool _completed;
-        internal JsonElement Preview { get; }
-
-        internal ReviewSession(Process process, JsonElement preview)
-        {
-            _process = process;
-            Preview = preview;
-            _challenge = preview.GetProperty("challenge").GetString() ?? throw new EngineException("The review challenge is missing.");
-        }
-
-        internal async Task<JsonElement> CompleteAsync(bool approved, CancellationToken cancellationToken)
-        {
-            if (_completed) throw new EngineException("This review has already been completed.");
-            _completed = true;
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(90));
-            using var cancellation = timeout.Token.Register(() => Stop(_process));
-            await _process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { challenge = _challenge, approved }).AsMemory(), timeout.Token);
-            _process.StandardInput.Close();
-            var result = await ReadResponseAsync(_process, timeout.Token);
-            await _process.WaitForExitAsync(timeout.Token);
-            return result;
-        }
-
-        /// <summary>Closes the review process without approving any remaining request.</summary>
-        public void Dispose()
-        {
-            Stop(_process);
-            _process.Dispose();
-        }
     }
 }
 

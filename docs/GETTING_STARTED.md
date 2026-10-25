@@ -1,6 +1,6 @@
 # Getting started
 
-AgentInbox connects to email servers through IMAP or POP3 for reading and optional SMTP for sending. The Python engine and Windows setup are in development and unvalidated.
+AgentInbox connects to email servers through IMAP or POP3 for reading and optional SMTP for sending. See [validation](VALIDATION.md) for checks performed on each source snapshot.
 
 ## 1. Check your provider
 
@@ -15,7 +15,7 @@ Use the settings published by your provider. A preset fills parameters; it does 
 
 ## 2. Enter incoming mail settings
 
-In Windows setup, choose a preset or custom connection and select IMAP or POP3. Enter the account address, host, port, TLS mode and username. Keep Password selected and enter a password, or explicitly choose **Web authorization with Microsoft** for a Microsoft account and supply the client ID and tenant settings. Save before testing or starting web authorization. Choose whether your assistant may read that account.
+In Windows setup, choose a preset or custom connection and select IMAP or POP3. Enter the account address, host, port, TLS mode and username. Keep Password selected and enter a password, or explicitly choose **Web authorization with Microsoft** for a Microsoft account and supply the client ID and tenant settings. Use the current-form connection check before saving a password-based account. Save before starting Microsoft web authorization. Choose whether your assistant may read that account.
 
 IMAP supports selected server folders. POP3 exposes only INBOX, without unread flags or server folders; its searches use headers and the email Date header. The iCloud preset uses IMAP. See [authentication](AUTHENTICATION.md).
 
@@ -23,13 +23,13 @@ Use implicit TLS or required STARTTLS. Certificate and hostname checks cannot be
 
 The read check tests authentication and a bounded mailbox read. It does not prove that every folder or later search will work. An empty mailbox can be a successful connection with no message to sample.
 
-Windows passwords and Microsoft refresh tokens go to Credential Manager. Temporary outgoing-message and sign-in blobs use DPAPI. The native macOS Keychain and Linux Secret Service paths remain untested. Unavailable secure storage is an error, not a reason to write plain-text credentials.
+Windows passwords and Microsoft refresh tokens go to Credential Manager. Temporary sign-in blobs use DPAPI. The native macOS Keychain and Linux Secret Service paths remain untested. Unavailable secure storage is an error, not a reason to write plain-text credentials.
 
 ## 3. Enable sending if needed
 
 SMTP starts disabled. Enter its host, port, TLS mode and credentials, then run the separate connection check.
 
-That check does not send a message. A test email is a real send: prepare it, review every recipient and its content, then approve it locally.
+That check does not send a message. Enable sending only when you want Codex to send from this account. Then ask Codex to send to your chosen recipients with the intended content. There is no second confirmation window in AgentInbox; a test email is a real send too.
 
 ## 4. Connect your assistant
 

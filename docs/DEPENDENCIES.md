@@ -2,11 +2,11 @@
 
 The Python 3.11+ mail engine uses the standard library. It has no third-party Python package dependency.
 
-Credentials use native facilities. Windows Credential Manager stores passwords and Microsoft refresh tokens; current-user DPAPI protects temporary outgoing-message and sign-in blobs. macOS uses Keychain, and Linux requires an available unlocked Secret Service through `libsecret` and GLib. AgentInbox does not install these facilities or fall back to plain-text credentials. Native OS libraries are accessed through Python's standard-library `ctypes`; no Python package installation is required.
+Credentials use native facilities. Windows Credential Manager stores passwords and Microsoft refresh tokens; current-user DPAPI protects temporary sign-in blobs. macOS uses Keychain, and Linux requires an available unlocked Secret Service through `libsecret` and GLib. AgentInbox does not install these facilities or fall back to plain-text credentials. Native OS libraries are accessed through Python's standard-library `ctypes`; no Python package installation is required.
 
 The macOS and Linux paths remain untested. Contributor pull requests with platform fixes and reproducible validation are welcome. Optional Microsoft web authorization uses standard-library HTTPS and requires your own public-client app registration; it needs no third-party sign-in SDK. Web authorization is not available for Google accounts.
 
-Local Python review uses tkinter and needs a graphical session. Some Python installations require a separate tkinter system package. Unavailable review must not enable sending.
+The Python engine has no GUI dependency. Native configuration is provided only by the Windows WinUI 3 app.
 
 WinUI 3 setup targets `net10.0-windows10.0.19041.0`. Its direct references are `Microsoft.WindowsAppSDK` 2.4.0 and `Microsoft.Windows.SDK.BuildTools` 10.0.26100.9169; the latter uses `PrivateAssets="all"`. Versions come from `Directory.Packages.props`. This is a source inventory, not a restored transitive graph. Linux and macOS do not use the Windows UI.
 

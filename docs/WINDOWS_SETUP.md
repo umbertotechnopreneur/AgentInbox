@@ -1,49 +1,56 @@
-# Windows setup
+# Windows configuration
 
-The WinUI 3 app configures a bundled Python mail engine. See [validation](VALIDATION.md) for package, test and live-provider evidence.
+The WinUI 3 app configures AgentInbox on Windows 11. Email operations run through Codex and the Python engine. See [validation](VALIDATION.md) for the source, package and provider checks actually performed.
 
-Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. Debug 1.0.9.0 built and installed locally on x64. Account-form navigation, native tabs, resizing and error recovery were exercised with an isolated profile. Saving native credentials and live mail access remain unvalidated.
+## Connections
 
-## Configure an account
+Choose **Add connection**, or select a saved connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. No account form appears until you create or select one.
 
-If no accounts are saved, choose **Create your first account** to open the form. **Cancel** returns to the empty state. To edit an existing account, use **Edit account**, which shows its name and email address. The colored add icon opens a separate new-account form; Cancel returns to the previous account. Remove and refresh sit beside the selector. Buttons have tooltips.
+When no mailbox is selected, a centered mail icon, heading and short guide explain how to select one or add another with the **+** button. An empty account list uses the same layout with a button to create your first account.
 
-The editor uses native WinUI tabs: **Account**, **Incoming** and **Outgoing**, with vertically centered headers and the native separator below them. Content stays at the top left and fits the available width. **Create account** or **Save changes** sits at the top right on a wide window; actions and paired fields stack when space is limited. The initial window size follows Windows display scaling and the monitor's available work area.
+**Connection name** stays above the native **Account**, **Read mail** and **Send mail** tabs. Edit it and press **Save changes** to rename the connection. Tab icons are colored; the selected label is bold. Save and Cancel stay below the form with the current save status. The window uses Acrylic and adapts to display scaling and available space.
 
-In **Account**, choose a provider preset or custom server and enter the account name, address and authentication choice. In **Incoming**, select IMAP or POP3, then enter the hostname, port, TLS mode, username and password. **Check connection and get folders** sits directly below the credentials and uses the current form, including unsaved changes.
+In **Account**, choose your **Email provider** and enter your email address. Instructions and an official link appear directly below it:
 
-The account check opens an owned Mica window. It reports actual settings validation, verified TLS, sign-in, folder discovery and optional SMTP authentication. The first check does not read a message or send an email. Cancel stops a running check. Errors stay in the window with the stage that failed; they do not switch the authentication method or save an incomplete account.
+- **Gmail:** create an app password with 2-Step Verification enabled; your normal password does not work here. Account or administrator restrictions may prevent app passwords.
+- **iCloud:** create an app-specific password with two-factor authentication enabled. Incoming mail uses IMAP; POP3 is unavailable.
+- **Outlook.com:** **Sign in with Microsoft** and **Personal** are selected. Outlook's settings may also need to allow mail apps; use the help link.
+- **Microsoft 365:** **Sign in with Microsoft** and **Work or school** are selected. Your IT team may need to allow mail apps or sending.
 
-After a successful check, select between one and twenty server folders. The list contains exact mailbox names, including names containing commas, rather than raw IMAP descriptions. Current support requires ASCII server names. Existing selections are kept when available; new folders are never selected automatically. **Use selected folders** updates the form without saving it. With a new password-based account, **Create account** runs this same check, then **Add account** in the check window saves the explicit folder choices. The final result remains visible until you close it. A save already in progress cannot be cancelled or repeated automatically.
+Your provider choice is saved with the account. Earlier saves did not record it: select the provider once and save changes. AgentInbox does not guess that choice from your email address or rewrite old settings when reading them.
 
-Choose **Also test reading one message** to run a bounded read from the first selected folder before applying choices or saving. The action label changes to include the read test. IMAP preserves its read status; POP3 sends no delete commands. The result distinguishes a successful sample from an empty folder, and no message content is returned or saved. After adding an account with sending enabled, **Send a test email…** opens recipient selection and the normal preview and approval flow. It does not send immediately. A server's SMTP acceptance is still separate from recipient delivery.
+For Microsoft, press **Sign in with Microsoft**, then **Open Microsoft**. The button stays available before saving and saves your complete account settings first. Enter the displayed code on Microsoft's page. **Sign-in details** keeps a local trace of the steps and errors, with private sign-in values hidden. You do not need to supply an app ID. Reading and sending use the same sign-in, and their password fields are hidden. When sending was not configured, reopening the account fills its provider's outgoing defaults without enabling sending. See [Microsoft setup](AUTHENTICATION.md) for technical requirements and validation limits.
 
-**Web authorization with Microsoft** appears only for supported Microsoft incoming and SMTP servers; Gmail and iCloud presets do not offer it. If a server change invalidates a selected method, choose how to sign in again before saving. For a Microsoft account, explicitly select **Web authorization with Microsoft**, enter your public-client app registration ID and tenant, save, then press **Start web authorization…**. The dialog shows a code and opens Microsoft's page only when you press its browser button. A password failure does not start this flow automatically. Registration and organization rules can still prevent access; see [account settings](AUTHENTICATION.md).
+When you save or check an account, missing or malformed fields get a red border and a short explanation underneath. The app selects the tab and focuses the first field to fix. These errors update as you edit. Controls keep their native WinUI templates and use the theme's critical-color brush; no validation library or custom control style is added. WinUI 3 has no complete built-in form-validation framework; this follows [Microsoft's form guidance](https://learn.microsoft.com/en-us/windows/apps/get-started/line-of-business/build-validated-form).
 
-POP3 uses only INBOX and has no unread flags or server folders. Its search inspects headers and uses the email Date header. IMAP supports selected server folders. Connections require TLS or required STARTTLS with certificate and hostname checks; there is no plaintext mode or custom-CA setting.
+In **Read mail**, choose IMAP or POP3 and enter the server settings from your provider. IMAP shares your selected folders; POP3 has only INBOX. Enable reading only for accounts you want to share.
 
-Enable assistant reads for the accounts you want to share. Saving folder choices does not enable reading by itself. The separate **Test IMAP reading** or **Test POP3 reading** action appears only for a saved account without pending edits; it tests a bounded message read. An empty mailbox is reported separately from a successful sample read.
+In **Send mail**, turn on **Set up sending** and separately choose whether Codex may send from this account. Sending starts disabled. Enabling it permits immediate sends requested through Codex; this configuration window does not compose or send messages.
 
-Sending is a separate opt-in in **Outgoing**. The current-form account check includes SMTP authentication when SMTP is configured. The separate saved-settings SMTP and test-message actions require sending to be enabled; they stay disabled while changes are pending. **Send a test email…** opens the normal review flow. Checking SMTP does not enable sending or send a message.
+## Connection checks
 
-## Review every send
+**Check connection and get folders** uses the current form, including unsaved passwords and settings. It opens an owned Acrylic window showing settings, secure connection, sign-in and folder discovery, plus SMTP when configured. Cancel stops the check. Nothing is saved or sent by checking.
 
-Review the sending account, all To, CC and BCC recipients, subject, body and attachments. Approval applies once to the exact message.
+Choose between one and twenty exact server folder names. Current support requires ASCII names. Existing choices are kept when available; new folders are not silently selected. **Use selected folders** updates the form. Creating a password-based account runs this same check before saving the explicit folder selection.
 
-Test messages follow the same flow. Closing or cancelling review does not authorize sending. Changed content needs a new approval. The engine enforces these rules independently of the UI.
+**Also test reading one message** performs one bounded read from the first chosen folder, without marking IMAP mail read or issuing POP3 delete commands. An empty folder is reported separately from a successful read. A saved account also offers a read test when there are no unsaved changes.
 
-## Local data
+**Check sending connection** uses the same progress and result window, with settings, secure connection and sign-in stages. It needs neither a reading password nor enabled sending and never sends email. Errors show the actual server reply when available, with sign-in details and addresses hidden. Microsoft sign-in errors also include its bounded reply locally. Text is selectable and scrollable. A failure does not change your chosen sign-in method.
 
-The app and engine share schema 3 settings. Passwords and Microsoft refresh tokens use Windows Credential Manager; temporary outgoing-message and sign-in blobs use current-user DPAPI. Unknown formats fail; previous account data is not imported.
+## Connect Codex
 
-An MSIX installation uses `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`; a source launch uses `%LOCALAPPDATA%\AgentInbox`. The packaged Python alias and native app select the same physical profile. The copied MCP configuration includes that exact path. An explicit `AGENTINBOX_DATA_DIR` overrides either default and must be absolute. The local `profile_info` operation reports the selected paths without secrets.
+Open **Connect Codex**, headed **Connect Your Codex Assistant**, and choose **Connect to Codex**. Existing matching settings show **Settings saved in Codex**. If a different entry exists, **Update connection** asks before replacing it. The page explains the direct local MCP connection and shows the Codex settings file.
 
-**Connect assistant** detects Codex and guides registration through its installed CLI. Replacement of an existing AgentInbox entry requires confirmation. Manual configuration is under **Advanced setup**. Both paths use the stable `AgentInbox.exe` alias with `-B -m agentinbox mcp`, without version-specific package paths; outgoing review locates the current installed app. See [client setup](CODEX_SETUP.md).
+Press **Test connection** to check the saved configuration, start AgentInbox and request its mail-tool list. This uses the local connection without calling a mail tool or opening a mailbox. A successful result is separate from saved settings and from access inside a Codex chat. Start a new chat and try the provided account-list request afterward.
 
-A save, account removal, completed sign-in or outgoing result can succeed while protected-data deletion remains pending. The app shows a separate **Local cleanup is pending** notice. **Retry cleanup** retries queued local deletion without repeating the completed operation or sending another email. Keep the warning until the engine reports that the shared queue is clear.
+**Connection details** shows the app command, startup options, account-settings folder and a full multiline JSON preview. The JSON is for manual setup in another MCP app; Codex saves its own TOML entry in the file shown above. See [Codex setup](CODEX_SETUP.md).
 
-Removing an account does not delete server messages. See [privacy](PRIVACY.md), [account settings](AUTHENTICATION.md) and [validation](VALIDATION.md).
+The footer links to umbertogiacobbi.biz and the AgentInbox Terms and Privacy pages. On the right, the approved rendered VibeWare logo links to the manifesto. Its tooltip explains AI assistance under Umberto's direction and responsibility. See the [brand guide](BRAND.md#vibeware-participation).
 
-## Developer installation
+## Local data and installation
 
-For an authorized local installation, use `install-debug-msix -Version <four-part-version>` with the supplied runtime and dependency inputs and an existing current-user certificate. It builds Debug, attempts installation immediately, then checks installed version and package status. Explicit Store work uses the local `build-store-msix -Version X.Y.Z` recipe for unsigned Release x64 and ARM64 packages. Neither recipe uploads or publishes. See the focused [packaging instructions](../packaging/windows/README.md#build-or-install); no package or installation has been validated for this implementation.
+The app and engine share the same profile. Passwords and Microsoft refresh tokens use Windows Credential Manager; temporary sign-in state uses current-user DPAPI. Account settings use schema 3; send metadata uses schema 4. Unsupported older formats fail without migration or deletion.
+
+A save or sign-in can succeed while old credential cleanup remains pending. The separate warning offers **Retry cleanup**, which retries deletion without repeating the completed action. Removing an account does not remove server messages. See [privacy](PRIVACY.md) and [recovery](RECOVERY.md).
+
+Authorized local installs use the source-built Debug MSIX workflow. Installation may force-close the running AgentInbox app without another prompt and preserves saved data. Store builds are separate, explicitly requested work. See [packaging](../packaging/windows/README.md).

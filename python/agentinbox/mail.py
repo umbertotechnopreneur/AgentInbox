@@ -14,7 +14,7 @@ import time
 from html.parser import HTMLParser
 
 from .config import MAX_MESSAGE_BYTES, endpoint
-from .errors import MailError
+from .errors import MailError, server_response
 
 TIMEOUT = 20
 MAX_CONTROL_BYTES = 65_536
@@ -50,7 +50,7 @@ class _BoundedWire:
     def _remaining_time(self):
         remaining = self._deadline - time.monotonic()
         if remaining <= 0:
-            raise MailError("operation_timeout", "The bounded mail operation timed out.")
+            raise MailError("operation_timeout", "Your mail provider took too long to reply. Check the connection before trying again.")
         return min(TIMEOUT, remaining)
 
     def _receive(self, maximum):
@@ -60,7 +60,7 @@ class _BoundedWire:
             raise MailError("response_too_large", "The mail response exceeds its byte limit.")
         chunk = self.sock.recv(capacity)
         if not chunk:
-            raise MailError("connection_failed", "The mail server closed an incomplete response.")
+            raise MailError("connection_failed", "Your mail provider closed the connection before its reply was complete.")
         self._wire_buffer.extend(chunk)
 
     def _take(self, size):
@@ -128,10 +128,11 @@ class _SmtpLimits(_BoundedWire):
     def getreply(self):
         """Bound the complete SMTP reply, including continuation lines."""
         self._set_response_limits(MAX_CONTROL_BYTES, lines=100, line_limit=8192)
-        rows, expected = [], None
+        rows, raw_rows, expected = [], [], None
         try:
             while True:
                 line = self.readline()
+                raw_rows.append(line)
                 if len(line) < 5 or not line[:3].isdigit() or (line[3:4] not in {b" ", b"-"} and line[3:] != b"\r\n"):
                     raise MailError("invalid_server_response", "The SMTP server returned an invalid status line.")
                 code = int(line[:3])
@@ -143,7 +144,10 @@ class _SmtpLimits(_BoundedWire):
                     return code, b"\n".join(rows)
         except MailError as error:
             # Once DATA is sent, losing a valid reply must become an unknown outcome.
-            raise smtplib.SMTPServerDisconnected("The bounded SMTP reply could not be completed.") from error
+            failure = smtplib.SMTPServerDisconnected(f"SMTP reply failed ({error.code}): {error}")
+            # Keep bounded wire content private until the connection redacts credentials.
+            failure._smtp_reply = b"".join(raw_rows) + bytes(self._wire_buffer)
+            raise failure from error
 
 
 class _SMTP(_SmtpLimits, smtplib.SMTP):
@@ -161,7 +165,7 @@ def _settings(settings, protocol):
             or ("protocol" in settings and settings["protocol"] != protocol)
             or type(settings.get("port")) is not int
             or not isinstance(settings.get("tls"), str)):
-        raise MailError("invalid_configuration", "Supply the supported mail protocol, port and TLS settings.")
+        raise MailError("invalid_configuration", "Check the server, port and Connection security settings for this account.")
     return endpoint({key: settings[key] for key in keys}, protocol)
 
 
@@ -178,8 +182,31 @@ def _quote(value: str) -> str:
 
 def _ok(result: tuple, message: str) -> list:
     if result[0] != "OK":
-        raise MailError("mail_operation_failed", message)
+        replies = [item.decode("utf-8", errors="replace") if isinstance(item, bytes) else item
+                   for item in (result[1] or []) if isinstance(item, (str, bytes))]
+        error = MailError("mail_operation_failed", message)
+        # Keep the raw reply private until the connection can redact its credentials.
+        error._imap_reply = str(result[0]) + " " + " ".join(replies)
+        raise error
     return result[1]
+
+
+def _connection_detail(protocol, error, settings, password, access_token):
+    username = settings.get("username", "")
+    secrets = (username, password, access_token or "", f"\0{username}\0{password}",
+               f"{username}\0{username}\0{password}",
+               f"user={username}\x01auth=Bearer {access_token}\x01\x01")
+    if isinstance(error, smtplib.SMTPResponseException):
+        reply = error.smtp_error
+        reply = reply.decode("utf-8", errors="replace") if isinstance(reply, bytes) else str(reply)
+        reply = f"{error.smtp_code} {reply}"
+    else:
+        reply = error.args[0] if error.args and isinstance(error.args[0], (str, bytes)) else str(error)
+    received = getattr(error, "_smtp_reply", b"")
+    if received:
+        reply = reply.decode("utf-8", errors="replace") if isinstance(reply, bytes) else reply
+        reply += " Received from server: " + received.decode("utf-8", errors="replace")
+    return server_response(protocol, reply, *secrets)
 
 
 @contextlib.contextmanager
@@ -207,16 +234,25 @@ def imap_connection(settings: dict, password: str, *, access_token: str | None =
             else:
                 _imap_request(connection, "login", settings["username"], password)
         except imaplib.IMAP4.error as error:
-            raise MailError("authentication_failed", "IMAP sign-in failed. Check the selected authentication method, credentials and provider settings.") from error
+            raise MailError("authentication_failed", "Your mail provider did not let this app sign in to read mail. Check the sign-in help under Email provider.",
+                            server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
         if progress:
             progress("authentication", "passed")
         yield connection
+    except MailError as error:
+        if hasattr(error, "_imap_reply"):
+            error.server_response = _connection_detail("IMAP", Exception(error._imap_reply), settings, password, access_token)
+            del error._imap_reply
+        raise
     except ssl.SSLError as error:
-        raise MailError("tls_failed", "The server's TLS connection or certificate could not be verified.") from error
+        raise MailError("tls_failed", "A secure connection to your mail provider could not be verified. Check the server and Connection security under Read mail.",
+                        server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     except (OSError, socket.timeout, imaplib.IMAP4.abort) as error:
-        raise MailError("connection_failed", "The mail server could not complete the connection. Check the server, port and TLS mode.") from error
+        raise MailError("connection_failed", "Could not connect to your mail provider. Check the server, port and Connection security under Read mail.",
+                        server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     except imaplib.IMAP4.error as error:
-        raise MailError("mail_operation_failed", "The IMAP server rejected the operation.") from error
+        raise MailError("mail_operation_failed", "Your mail provider could not finish the requested reading action.",
+                        server_response=_connection_detail("IMAP", error, settings, password, access_token)) from error
     finally:
         if connection is not None:
             try:
@@ -260,7 +296,7 @@ def _folder_name(row) -> str | None:
     elif re.fullmatch(rb'[^\x00-\x20\x7f(){"\\*%]+', mailbox) is None:
         raise MailError("invalid_server_response", "The server returned an invalid folder name.")
     if not 1 <= len(mailbox) <= 255 or any(byte < 32 or byte > 126 for byte in mailbox) or mailbox != mailbox.strip():
-        raise MailError("unsupported_folder", "This preview requires exact ASCII folder names of at most 255 characters.")
+        raise MailError("unsupported_folder", "Folder names currently need basic English letters, numbers or punctuation, with at most 255 characters.")
     return mailbox.decode("ascii")
 
 
@@ -328,7 +364,7 @@ def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
         criteria.append("UNSEEN")
     if query:
         if not query.isascii():
-            raise MailError("unsupported_query", "This preview accepts ASCII server search text. Use dates and inspect message text for other languages.")
+            raise MailError("unsupported_query", "Search text currently needs basic English letters, numbers or punctuation. Use a date range to find messages in other languages.")
         criteria.extend(["TEXT", _quote(query)])
     truncated = False
     if candidates is None:
@@ -441,11 +477,13 @@ def check_connection_read(connection, folder: str, *, deadline=None) -> dict:
 
 
 @contextlib.contextmanager
-def smtp_connection(settings: dict, password: str, *, access_token: str | None = None):
-    """Connect and authenticate to a configured submission server over verified TLS."""
+def smtp_connection(settings: dict, password: str, *, access_token: str | None = None, progress=None):
+    """Connect over verified TLS and report each completed connection and sign-in stage."""
     connection = None
     try:
         settings = _settings(settings, "smtp")
+        if progress:
+            progress("connection", "started")
         context = ssl.create_default_context()
         if settings["tls"] == "tls":
             connection = _SMTPSSL(settings["host"], settings["port"], timeout=TIMEOUT, context=context)
@@ -453,19 +491,27 @@ def smtp_connection(settings: dict, password: str, *, access_token: str | None =
             connection = _SMTP(settings["host"], settings["port"], timeout=TIMEOUT)
             connection.ehlo()
             connection.starttls(context=context)
+        if progress:
+            progress("connection", "passed")
+            progress("authentication", "started")
         connection.ehlo()
         if access_token is not None:
             response = f"user={settings['username']}\x01auth=Bearer {access_token}\x01\x01"
             connection.auth("XOAUTH2", lambda challenge=None: response if challenge is None else "", initial_response_ok=True)
         else:
             connection.login(settings["username"], password)
+        if progress:
+            progress("authentication", "passed")
         yield connection
     except smtplib.SMTPAuthenticationError as error:
-        raise MailError("authentication_failed", "SMTP sign-in failed. Check the selected authentication method, credentials and provider settings.") from error
+        raise MailError("authentication_failed", "Your mail provider did not let this app sign in to send mail. Check the sign-in help under Email provider.",
+                        server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except ssl.SSLError as error:
-        raise MailError("tls_failed", "The SMTP TLS connection or certificate could not be verified.") from error
+        raise MailError("tls_failed", "A secure sending connection could not be verified. Check the server and Connection security under Send mail.",
+                        server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     except (OSError, smtplib.SMTPException) as error:
-        raise MailError("smtp_failed", "The SMTP server could not complete the operation.") from error
+        raise MailError("smtp_failed", "Your mail provider could not finish this sending request.",
+                        server_response=_connection_detail("SMTP", error, settings, password, access_token)) from error
     finally:
         if connection is not None:
             try:

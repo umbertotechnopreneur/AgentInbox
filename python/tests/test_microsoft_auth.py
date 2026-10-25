@@ -5,6 +5,7 @@ import copy
 import os
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -149,7 +150,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.store.saved["incoming"]["protocol"] = "pop3"
         self.store.saved["incoming"]["port"] = 995
 
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             self.assertEqual("devicecode", operation)
             self.assertEqual(
@@ -181,7 +182,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
             self.assertEqual(2, post.call_count)
 
     def test_connected_flow_persists_only_refresh_and_reuses_access_in_memory(self):
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             return self.device_response() if operation == "devicecode" else self.token_response()
 
@@ -205,7 +206,7 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.store.saved["oauth_secret"] = original
         self.store.vault.put(original, "synthetic-original-refresh")
 
-        def post(account, operation, fields):
+        def post(account, operation, fields, *, diagnostic=None):
             self.assertFalse(self.store.in_transaction)
             self.store.saved["revision"] += 1
             self.store.saved["oauth_secret"] = replacement
@@ -233,15 +234,15 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.assertEqual("refresh_token", post.call_args.args[2]["grant_type"])
         self.assertFalse(any(token in value for value in self.store.vault.values.values()))
 
-    def test_unexpected_browser_addresses_are_rejected_before_saving_flow(self):
+    def test_invalid_secure_browser_addresses_are_rejected_before_saving_flow(self):
         for uri in (
             "http://microsoft.com/devicelogin",
-            "https://microsoft.com.example.test/devicelogin",
+            "https:///missing-host",
             "https://microsoft.com@attacker.example.test/devicelogin",
             "https://@microsoft.com/devicelogin",
             "https://:@microsoft.com/devicelogin",
-            "https://microsoft.com/devicelogin?user_code=unexpected",
-            "https://login.microsoftonline.com/unverified/path",
+            "https://microsoft.com:invalid/devicelogin",
+            "https://microsoft.com:0/devicelogin",
         ):
             with self.subTest(uri=uri):
                 with mock.patch.object(self.auth, "_post", return_value=self.device_response(verification_uri=uri)):
@@ -250,21 +251,121 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
                 self.assertEqual("microsoft_response", failure.exception.code)
         self.assertEqual({}, self.store.vault.values)
 
+    def test_returned_https_address_is_preserved_without_codes_in_diagnostics(self):
+        uri = "https://signin.example.test/ABCD-EFGH?code=synthetic-device-code#ABCD-EFGH"
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response(verification_uri=uri)):
+            started = self.auth.start(self.store.saved["id"], diagnostic=details.append)
+        self.assertEqual(uri, started["verification_uri"])
+        trace = "\n".join(details)
+        self.assertIn("https://signin.example.test", trace)
+        self.assertNotIn("ABCD-EFGH", trace)
+        self.assertNotIn("synthetic-device-code", trace)
+        self.assertNotIn(self.store.saved["email"], trace)
+
     def test_declined_flow_discards_device_code_and_redacts_server_description(self):
         with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
             started = self.auth.start(self.store.saved["id"])
             self.clock.return_value = 1005
             post.return_value = {
                 "error": "authorization_declined",
-                "error_description": "private diagnostic and synthetic-secret-value",
+                "error_description": "Sign-in declined for reader@example.test with synthetic-device-code",
             }
             with self.assertRaises(MailError) as failure:
                 self.auth.poll(started["flow_id"])
 
         self.assertEqual("authorization_declined", failure.exception.code)
-        self.assertNotIn("synthetic-secret-value", str(failure.exception))
+        detail = failure.exception.server_response
+        self.assertIn("Sign-in declined", detail)
+        self.assertNotIn("synthetic-device-code", detail)
+        self.assertNotIn("reader@example.test", detail)
+        self.assertNotIn("server_response", failure.exception.result())
         self.assertNotIn("signin-" + started["flow_id"], self.store.vault.values)
         self.assertIsNone(self.store.saved["oauth_secret"])
+
+    def test_prior_grants_do_not_reject_requested_mail_permission(self):
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
+            started = self.auth.start(self.store.saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response(scope=RESOURCE + "IMAP.AccessAsUser.All " + RESOURCE + "User.Read")
+            result = self.auth.poll(started["flow_id"], diagnostic=details.append)
+        self.assertEqual("connected", result["status"])
+        self.assertIsNotNone(self.store.saved["oauth_secret"])
+        self.assertIn("User.Read", "\n".join(details))
+        self.assertFalse(self.store.saved["send_enabled"])
+
+    def test_missing_mail_permission_reports_requested_and_received_without_secrets(self):
+        details = []
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
+            started = self.auth.start(self.store.saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = self.token_response(scope=RESOURCE + "User.Read")
+            with self.assertRaises(MailError) as failure:
+                self.auth.poll(started["flow_id"], diagnostic=details.append)
+        self.assertIn("did not allow reading mail", str(failure.exception))
+        detail = failure.exception.server_response
+        self.assertIn("IMAP.AccessAsUser.All", detail)
+        self.assertIn("User.Read", detail)
+        self.assertNotIn("server_response", failure.exception.result())
+        trace = "\n".join(details) + detail
+        for secret in ("synthetic-device-code", "synthetic-access-token", "synthetic-refresh-token", self.store.saved["email"]):
+            self.assertNotIn(secret, trace)
+        self.assertIsNone(self.store.saved["oauth_secret"])
+        self.assertNotIn("signin-" + started["flow_id"], self.store.vault.values)
+
+    def test_start_error_keeps_bounded_server_reason_only_for_local_setup(self):
+        response = {
+            "error": "invalid_client",
+            "error_description": "SYNTHETIC_REGISTRATION_FAILURE reader@example.test private-code\n\x00 " + "x" * 2000,
+            "user_code": "private-code",
+        }
+        with mock.patch.object(self.auth, "_post", return_value=response):
+            with self.assertRaises(MailError) as failure:
+                self.auth.start(self.store.saved["id"])
+        error = failure.exception
+        self.assertEqual("microsoft_configuration", error.code)
+        local = error.result(include_server_response=True)
+        self.assertIn("SYNTHETIC_REGISTRATION_FAILURE", local["server_response"])
+        self.assertNotIn("reader@example.test", local["server_response"])
+        self.assertNotIn("private-code", local["server_response"])
+        self.assertNotIn("\x00", local["server_response"])
+        self.assertNotIn("\n", local["server_response"])
+        self.assertLessEqual(len(local["server_response"]), 1040)
+        self.assertNotIn("server_response", error.result())
+        self.assertNotIn("SYNTHETIC_REGISTRATION_FAILURE", str(error))
+        self.assertEqual({}, self.store.vault.values)
+
+    def test_refresh_error_redacts_request_token_and_returned_secrets(self):
+        refresh = "synthetic-refresh/+value"
+        reference = "oauth-" + "c" * 32
+        self.store.saved["oauth_secret"] = reference
+        self.store.vault.put(reference, refresh)
+        encoded = urllib.parse.quote_plus(refresh)
+        response = {
+            "error": "invalid_grant", "access_token": "private-access",
+            "error_description": f"SYNTHETIC_EXPIRED_GRANT {refresh} {encoded} private-access",
+        }
+        with mock.patch.object(self.auth, "_post", return_value=response):
+            with self.assertRaises(MailError) as failure:
+                self.auth.access_token(self.store.saved)
+        detail = failure.exception.server_response
+        self.assertIn("SYNTHETIC_EXPIRED_GRANT", detail)
+        for secret in (refresh, encoded, "private-access"):
+            self.assertNotIn(secret, detail)
+        self.assertEqual(refresh, self.store.vault.get(reference))
+
+    def test_poll_error_keeps_server_reason_when_cleanup_is_pending(self):
+        with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
+            started = self.auth.start(self.store.saved["id"])
+            self.clock.return_value = 1005
+            post.return_value = {"error": "access_denied", "error_description": "SYNTHETIC_ACCOUNT_BLOCKED"}
+            with mock.patch.object(self.store, "retire_protected", return_value={"cleanup_pending": True}):
+                with self.assertRaises(MailError) as failure:
+                    self.auth.poll(started["flow_id"])
+        self.assertEqual("authorization_declined", failure.exception.code)
+        self.assertIn("SYNTHETIC_ACCOUNT_BLOCKED", failure.exception.server_response)
+        self.assertIn("Retry cleanup", str(failure.exception))
 
     def test_malformed_token_error_discards_flow_with_sanitized_failure(self):
         with mock.patch.object(self.auth, "_post", return_value=self.device_response()) as post:
@@ -316,6 +417,20 @@ class MicrosoftAuthorizationTests(unittest.TestCase):
         self.assertEqual(reference, refreshed["oauth_secret"])
         self.assertEqual("rotated-synthetic-refresh", store.vault.get(reference))
         self.assertFalse(any("synthetic-access-token" in value for value in store.vault.values.values()))
+
+    def test_saving_provider_choice_preserves_microsoft_connection(self):
+        store, saved = self.real_store()
+        connected = store.connect_oauth(saved["id"], saved["revision"], "synthetic-refresh-token")
+        before = store.account(saved["id"])
+        value = {key: copy.deepcopy(value) for key, value in before.items()
+                 if key != "revision" and not key.endswith("_secret")}
+        value["preset"] = "outlook"
+        updated = store.save(value, {"incoming": "", "smtp": ""}, connected["revision"])
+        after = store.account(saved["id"])
+        self.assertEqual("outlook", updated["preset"])
+        self.assertTrue(updated["microsoft_connected"])
+        self.assertEqual(before["oauth_secret"], after["oauth_secret"])
+        self.assertEqual("synthetic-refresh-token", store.vault.get(after["oauth_secret"]))
 
     def test_real_store_enabling_smtp_invalidates_connection_and_blocks_stale_access(self):
         store, saved = self.real_store()

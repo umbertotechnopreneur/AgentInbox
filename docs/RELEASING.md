@@ -20,7 +20,7 @@ It builds unsigned Release MSIX packages for both x64 and ARM64 under `artifacts
 
 The `Manual Windows MSIX` workflow is for Debug artifacts only. Store packages are built locally, not through GitHub Actions. The local scripts retain packages, checksums and small packaging records; they do not install Store packages, upload, publish or create tags. An unsigned artifact is not an installed or approved release.
 
-When authorized, validate packaged entry points, architecture, native review and installation separately. Local `install-debug-msix -Version <four-part-version>` uses an existing current-user certificate, installs immediately and checks the installed package. It does not authorize UI or live-mail checks.
+When authorized, validate packaged entry points, architecture, Windows configuration and installation separately. Local `install-debug-msix -Version <four-part-version>` uses an existing current-user certificate, installs immediately and checks the installed package. It does not authorize UI or live-mail checks.
 
 No historical test result validates this engine. SMTP acceptance is not recipient delivery.
 

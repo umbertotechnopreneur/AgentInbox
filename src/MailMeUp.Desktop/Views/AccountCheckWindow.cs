@@ -1,43 +1,33 @@
 // SPDX-License-Identifier: MIT
 
+using System.ComponentModel;
 using System.Runtime.InteropServices;
-using MailMeUp.Desktop.Services;
+using MailMeUp.Desktop.ViewModels;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 
 namespace MailMeUp.Desktop.Views;
 
-/// <summary>Presents actual connection progress and explicit folder choices in an owned Mica window.</summary>
+/// <summary>Renders the shared check model and forwards native input without owning mail-operation state.</summary>
 internal sealed class AccountCheckWindow : Window, IDisposable
 {
-    private readonly CancellationTokenSource _stop = new();
+    private readonly AccountCheckModel _model;
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TaskCompletionSource<string[]?> _selection = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly Dictionary<string, TextBlock> _stages = new(StringComparer.Ordinal);
-    private readonly ProgressRing _ring = new() { IsActive = true, Width = 28, Height = 28 };
-    private readonly TextBlock _heading = new() { Text = "Checking your account", FontSize = 24, TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _message = new() { Text = "Please wait while I check the connection and sign-in.", TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _folderHeading = new() { Text = "Choose folders for your assistant", Visibility = Visibility.Collapsed };
-    private readonly ListView _folders = new() { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 180, Visibility = Visibility.Collapsed };
-    private readonly CheckBox _readSample = new() { Content = "Also test reading one message", Visibility = Visibility.Collapsed };
-    private readonly Button _primary = new() { Visibility = Visibility.Collapsed, MinWidth = 112 };
-    private readonly Button _close = new() { Content = "Cancel", MinWidth = 100 };
-    private readonly bool _saveAccount;
-    private bool _working = true;
-    private bool _saving;
-    private bool _closeWhenReady;
-    private bool _isClosed;
-    private bool _completed;
-    private string? _activeStage;
+    private readonly ListView _folders = new() { SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 220 };
+    private readonly Button _primary = new() { MinWidth = 112 };
+    private readonly Button _close = new() { MinWidth = 100 };
+    private bool _renderingFolders;
+    private bool _windowClosed;
 
-    /// <summary>Creates a modal, DPI-aware progress window without performing mail or storage work.</summary>
-    internal AccountCheckWindow(Window owner, bool smtp, bool saveAccount)
+    internal AccountCheckWindow(Window owner, AccountCheckModel model)
     {
-        _saveAccount = saveAccount;
+        _model = model;
         Title = "AgentInbox";
         SystemBackdrop = new MicaBackdrop();
         var root = new Grid { Padding = new Thickness(24), RowSpacing = 18 };
@@ -47,240 +37,155 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         var heading = new Grid { ColumnSpacing = 14 };
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        heading.Children.Add(_ring);
-        Grid.SetColumn(_heading, 1);
-        heading.Children.Add(_heading);
+        var ring = new ProgressRing { Width = 28, Height = 28 };
+        var title = new TextBlock { FontSize = 24, TextWrapping = TextWrapping.Wrap };
+        ModelBinding.Bind(ring, ProgressRing.IsActiveProperty, model, nameof(AccountCheckModel.IsWorking));
+        ModelBinding.Bind(title, TextBlock.TextProperty, model, nameof(AccountCheckModel.Heading));
+        heading.Children.Add(ring);
+        Grid.SetColumn(title, 1);
+        heading.Children.Add(title);
         root.Children.Add(heading);
         var body = new StackPanel { Spacing = 14 };
-        AddStage(body, "settings", "Account settings");
-        AddStage(body, "connection", "Secure connection");
-        AddStage(body, "authentication", "Sign-in");
-        AddStage(body, "folders", "Server folders");
-        AddStage(body, "reading", "Read one message (optional)");
-        _stages["reading"].Text = "Not requested";
-        if (smtp) AddStage(body, "smtp", "SMTP connection and sign-in");
-        if (saveAccount) AddStage(body, "save", "Save account");
-        body.Children.Add(_folderHeading);
+        foreach (var stage in model.Stages) AddStage(body, stage);
+        var folderHeading = new TextBlock { Text = "Folders available to your assistant" };
+        var readSample = new CheckBox { Content = "Also test reading one message" };
+        body.Children.Add(folderHeading);
         body.Children.Add(_folders);
-        body.Children.Add(_readSample);
+        body.Children.Add(readSample);
+        ModelBinding.Visible(folderHeading, model, nameof(AccountCheckModel.ShowFolders));
+        ModelBinding.Visible(_folders, model, nameof(AccountCheckModel.ShowFolders));
+        ModelBinding.Visible(readSample, model, nameof(AccountCheckModel.ShowFolders));
+        ModelBinding.Bind(_folders, ItemsControl.ItemsSourceProperty, model, nameof(AccountCheckModel.AvailableFolders));
+        ModelBinding.Bind(_folders, Control.IsEnabledProperty, model, nameof(AccountCheckModel.CanSelectFolders));
+        ModelBinding.Bind(readSample, Control.IsEnabledProperty, model, nameof(AccountCheckModel.ShowPrimary));
+        ModelBinding.Bind(readSample, ToggleButton.IsCheckedProperty, model, nameof(AccountCheckModel.ReadMessageRequested), BindingMode.TwoWay);
+        ToolTipService.SetToolTip(readSample, "Check reading with one message from the first selected folder. It won't be marked as read or deleted, and its text won't be saved or shown.");
         var scroll = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
+        var message = new TextBox { TextWrapping = TextWrapping.Wrap, IsReadOnly = true, AcceptsReturn = true, MaxHeight = 220 };
+        AutomationProperties.SetName(message, "Connection check details");
+        ModelBinding.Bind(message, TextBox.TextProperty, model, nameof(AccountCheckModel.Message));
         var footer = new StackPanel { Spacing = 14 };
         footer.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"] });
-        footer.Children.Add(_message);
+        footer.Children.Add(new ScrollViewer { Content = message, MaxHeight = 220,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
         _primary.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         actions.Children.Add(_primary);
         actions.Children.Add(_close);
-        root.SizeChanged += (_, args) =>
-        {
-            actions.Orientation = args.NewSize.Width < 460 ? Orientation.Vertical : Orientation.Horizontal;
-        };
         footer.Children.Add(actions);
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
+        root.SizeChanged += (_, args) => actions.Orientation = args.NewSize.Width < 460 ? Orientation.Vertical : Orientation.Horizontal;
         Content = root;
+        BindButton(_primary, nameof(AccountCheckModel.PrimaryText), nameof(AccountCheckModel.PrimaryHint), nameof(AccountCheckModel.CanChooseFolders));
+        BindButton(_close, nameof(AccountCheckModel.CloseText), nameof(AccountCheckModel.CloseHint), nameof(AccountCheckModel.CanClose));
+        ModelBinding.Visible(_primary, model, nameof(AccountCheckModel.ShowPrimary));
         AutomationProperties.SetName(_folders, "Folders available to your assistant");
-        SetButtonDescription(_close, "Cancel this check without saving an account.");
-        _close.Click += (_, _) => CancelOrClose();
-        _primary.Click += (_, _) =>
+        _primary.Click += (_, _) => model.ChooseFolders();
+        _close.Click += (_, _) => model.RequestClose();
+        _folders.SelectionChanged += (_, _) =>
         {
-            if (_completed) { TestEmailRequested = true; Close(); }
-            else ChooseFolders();
+            if (!_renderingFolders && !model.UpdatingFolders) model.SelectFolders(_folders.SelectedItems.Cast<string>().ToArray());
         };
-        _readSample.Checked += (_, _) => UpdatePrimaryText();
-        _readSample.Unchecked += (_, _) => UpdatePrimaryText();
-        ToolTipService.SetToolTip(_readSample, "Read one bounded sample from the first selected folder. IMAP keeps its read status; POP3 sends no delete commands. No message content is saved or returned.");
-        _folders.SelectionChanged += (_, _) => _primary.IsEnabled = _folders.SelectedItems.Count is >= 1 and <= 20;
         root.KeyDown += (_, args) =>
         {
             if (args.Key != Windows.System.VirtualKey.Escape) return;
             args.Handled = true;
-            if (!_saving) CancelOrClose();
+            if (!model.IsSaving) model.RequestClose();
         };
         AppWindow.Closing += (_, args) =>
         {
-            if (!_working) return;
+            if (!model.IsWorking) return;
             args.Cancel = true;
-            _closeWhenReady = true;
-            if (!_saving) _stop.Cancel();
+            model.RequestClose();
         };
-        Closed += (_, _) =>
-        {
-            _isClosed = true;
-            _selection.TrySetResult(null);
-            _closed.TrySetResult();
-            if (!_saving) _stop.Cancel();
-        };
-        OwnAndPosition(owner);
+        Closed += (_, _) => { _windowClosed = true; model.Closed(); _closed.TrySetResult(); };
+        model.PropertyChanged += ModelChanged;
+        OwnAndPosition(this, owner);
     }
 
-    internal CancellationToken StopToken => _stop.Token;
     internal Task ClosedTask => _closed.Task;
-    internal Task<string[]?> FolderSelection => _selection.Task;
-    internal bool ReadMessageRequested => _readSample.IsChecked == true;
-    internal bool TestEmailRequested { get; private set; }
 
-    /// <summary>Updates only a recognized stage from an actual engine or save result.</summary>
-    internal void Report(AccountCheckProgress progress)
+    private void BindButton(Button button, string text, string hint, string enabled)
     {
-        if (_isClosed || !_working || !_stages.TryGetValue(progress.Stage, out var status)) return;
-        status.Text = progress.State switch { "passed" => "Passed", "empty" => "Empty folder", _ => "Checking…" };
-        _activeStage = progress.State == "started" ? progress.Stage : null;
+        ModelBinding.Bind(button, ContentControl.ContentProperty, _model, text);
+        ModelBinding.Bind(button, AutomationProperties.NameProperty, _model, text);
+        ModelBinding.Bind(button, ToolTipService.ToolTipProperty, _model, hint);
+        ModelBinding.Bind(button, Control.IsEnabledProperty, _model, enabled);
     }
 
-    /// <summary>Pauses after authentication so only explicitly selected folders are shared.</summary>
-    internal void ShowFolders(IReadOnlyList<string> folders, IReadOnlyCollection<string> selected, bool pop)
+    private void ModelChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (_isClosed) return;
-        _working = false;
-        _ring.IsActive = false;
-        _heading.Text = "Connection verified";
-        _message.Text = pop ? "POP3 provides one mailbox: INBOX. No message was read or sent."
-            : $"Found {folders.Count} selectable folders. Choose between one and twenty. No message was read or sent.";
-        foreach (var folder in folders)
+        if (_windowClosed) return;
+        _renderingFolders = true;
+        try
         {
-            _folders.Items.Add(folder);
-            if (selected.Contains(folder)) _folders.SelectedItems.Add(folder);
+            _folders.SelectedItems.Clear();
+            foreach (var folder in _model.SelectedFolders) _folders.SelectedItems.Add(folder);
         }
-        _folderHeading.Visibility = Visibility.Visible;
-        _folders.Visibility = Visibility.Visible;
-        _folders.IsEnabled = !pop;
-        _readSample.Visibility = Visibility.Visible;
-        UpdatePrimaryText();
-        _primary.Visibility = Visibility.Visible;
-        _primary.IsEnabled = _folders.SelectedItems.Count is >= 1 and <= 20;
-        SetButtonDescription(_primary, _saveAccount ? "Save this checked account with only the selected folders." : "Use these folder choices in the account form without saving it.");
-        _close.Content = _saveAccount ? "Cancel" : "Close";
-        SetButtonDescription(_close, "Close without saving or applying new folder choices.");
-        _folders.Focus(FocusState.Programmatic);
-        if (_closeWhenReady) Close();
+        finally { _renderingFolders = false; }
+        if (_model.ShouldClose) Close();
     }
 
-    /// <summary>Shows a separate, cancellable real message-read check before a requested save.</summary>
-    internal void BeginReadCheck()
-    {
-        _saving = false;
-        _working = true;
-        _ring.IsActive = true;
-        _heading.Text = "Testing message reading";
-        _message.Text = "I will read one bounded sample from the first selected folder. No email will be sent.";
-        _stages["reading"].Text = "Waiting";
-        _close.IsEnabled = true;
-        _close.Content = "Cancel";
-        SetButtonDescription(_close, "Cancel the read check without saving an account.");
-    }
-
-    /// <summary>Prevents cancellation of a save whose committed result must be preserved.</summary>
-    internal void BeginSaving()
-    {
-        _saving = true;
-        _working = true;
-        _ring.IsActive = true;
-        _heading.Text = "Saving your account";
-        _close.IsEnabled = false;
-        _primary.IsEnabled = false;
-        Report(new AccountCheckProgress("save", "started"));
-    }
-
-    /// <summary>Shows the final verified outcome and keeps the window open until the owner closes it.</summary>
-    internal void Complete(bool succeeded, string message, bool offerTestEmail = false)
-    {
-        if (_isClosed) return;
-        if (!succeeded && _activeStage is not null) _stages[_activeStage].Text = "Failed";
-        _working = false;
-        _saving = false;
-        _completed = true;
-        _ring.IsActive = false;
-        _heading.Text = succeeded ? (_saveAccount ? "Account added" : "Account check complete") : "Account check stopped";
-        _message.Text = message;
-        _primary.Visibility = succeeded && offerTestEmail ? Visibility.Visible : Visibility.Collapsed;
-        _primary.Content = "Send a test email…";
-        _primary.IsEnabled = true;
-        SetButtonDescription(_primary, "Choose a recipient, then review and explicitly approve a test email. Nothing is sent by this button alone.");
-        _folders.IsEnabled = false;
-        _close.Content = "Close";
-        _close.IsEnabled = true;
-        SetButtonDescription(_close, "Close the account check window.");
-        _close.Focus(FocusState.Programmatic);
-        if (_closeWhenReady) Close();
-    }
-
-    /// <summary>Releases the cancellation source after the check and owned window have ended.</summary>
-    public void Dispose() => _stop.Dispose();
-
-    /// <summary>Adds one open, unboxed progress row with a readable status.</summary>
-    private void AddStage(StackPanel panel, string key, string label)
+    private static void AddStage(StackPanel panel, CheckStageModel stage)
     {
         var row = new Grid { ColumnSpacing = 16 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
-        var status = new TextBlock { Text = "Waiting", VerticalAlignment = VerticalAlignment.Center };
-        AutomationProperties.SetName(status, label + " status");
+        var label = new TextBlock { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+        var status = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+        ModelBinding.Bind(label, TextBlock.TextProperty, stage, nameof(CheckStageModel.Label));
+        ModelBinding.Bind(status, TextBlock.TextProperty, stage, nameof(CheckStageModel.Status));
+        ModelBinding.Visible(status, stage, nameof(CheckStageModel.ShowStatusText));
+        var statusIcon = new TextBlock { FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+        ModelBinding.Bind(statusIcon, TextBlock.TextProperty, stage, nameof(CheckStageModel.StatusGlyph));
+        ModelBinding.Bind(statusIcon, TextBlock.ForegroundProperty, stage, nameof(CheckStageModel.StatusTone), converter: ModelBinding.ToneConverter.Instance);
+        ModelBinding.Bind(statusIcon, AutomationProperties.NameProperty, stage, nameof(CheckStageModel.StatusDescription));
+        ModelBinding.Bind(statusIcon, ToolTipService.ToolTipProperty, stage, nameof(CheckStageModel.StatusDescription));
+        row.Children.Add(label);
         Grid.SetColumn(status, 1);
         row.Children.Add(status);
+        Grid.SetColumn(statusIcon, 1);
+        row.Children.Add(statusIcon);
         panel.Children.Add(row);
-        _stages.Add(key, status);
     }
 
-    /// <summary>Returns an explicit folder choice without performing the requested save.</summary>
-    private void ChooseFolders()
-    {
-        if (_folders.SelectedItems.Count is < 1 or > 20) return;
-        _primary.IsEnabled = false;
-        _folders.IsEnabled = false;
-        _readSample.IsEnabled = false;
-        _working = true;
-        _saving = _saveAccount && !ReadMessageRequested;
-        _close.IsEnabled = !_saving;
-        _selection.TrySetResult(_folders.SelectedItems.Cast<string>().ToArray());
-    }
-
-    /// <summary>Makes any optional message-read test explicit in the action that will run it.</summary>
-    private void UpdatePrimaryText()
-    {
-        _primary.Content = (_saveAccount, ReadMessageRequested) switch
-        {
-            (true, true) => "Test reading and add account",
-            (true, false) => "Add account",
-            (false, true) => "Test reading and use folders",
-            _ => "Use selected folders"
-        };
-        SetButtonDescription(_primary, ReadMessageRequested
-            ? "Test reading one message, then apply the selected folders. No email is sent."
-            : _saveAccount ? "Save this checked account with only the selected folders." : "Use these folder choices in the form without saving it.");
-    }
-
-    /// <summary>Cancels a running check or closes a completed or paused window.</summary>
-    private void CancelOrClose()
-    {
-        if (_saving) return;
-        if (!_working) { Close(); return; }
-        _closeWhenReady = true;
-        _close.IsEnabled = false;
-        _stop.Cancel();
-    }
-
-    /// <summary>Gives every button a matching accessible action name and tooltip.</summary>
-    private static void SetButtonDescription(Button button, string description)
-    {
-        AutomationProperties.SetName(button, button.Content?.ToString() ?? description);
-        ToolTipService.SetToolTip(button, description);
-    }
+    public void Dispose() => _model.PropertyChanged -= ModelChanged;
 
     /// <summary>Uses the owner relationship for native modality and centers the window within its display.</summary>
-    private void OwnAndPosition(Window owner)
+    internal static void OwnAndPosition(Window window, Window owner)
     {
-        var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        window.ExtendsContentIntoTitleBar = true;
+        window.AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+        window.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        var surface = new Grid();
+        surface.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        surface.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var titleBar = new Grid { Height = 40, Padding = new Thickness(12, 0, 140, 0), ColumnSpacing = 10, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+        titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        titleBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        titleBar.Children.Add(new Image { Width = 20, Height = 20,
+            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "Logo.png"))) });
+        var title = new TextBlock { Text = "AgentInbox", VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(title, 1);
+        titleBar.Children.Add(title);
+        surface.Children.Add(titleBar);
+        Grid.SetRow(content, 1);
+        surface.Children.Add(content);
+        window.Content = surface;
+        window.SetTitleBar(titleBar);
+        var handle = WinRT.Interop.WindowNative.GetWindowHandle(window);
         var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
         Marshal.SetLastPInvokeError(0);
         if (SetWindowLongPtr(handle, -8, ownerHandle) == IntPtr.Zero && Marshal.GetLastPInvokeError() != 0)
             throw new InvalidOperationException("The account check window could not be attached to its owner.");
         var presenter = OverlappedPresenter.CreateForDialog();
-        AppWindow.SetPresenter(presenter);
+        window.AppWindow.SetPresenter(presenter);
         presenter.IsModal = true;
         presenter.IsResizable = false;
         presenter.IsMaximizable = false;
@@ -291,7 +196,7 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         var height = Math.Min((int)Math.Round(640 * scale), area.Height);
         var x = Math.Clamp(owner.AppWindow.Position.X + (owner.AppWindow.Size.Width - width) / 2, area.X, area.X + area.Width - width);
         var y = Math.Clamp(owner.AppWindow.Position.Y + (owner.AppWindow.Size.Height - height) / 2, area.Y, area.Y + area.Height - height);
-        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+        window.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", ExactSpelling = true, SetLastError = true)]

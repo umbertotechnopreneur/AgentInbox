@@ -1,128 +1,159 @@
 # Validation
 
-Last updated: 2026-10-20.
+Last updated: 2026-10-23.
 
-## Local refactoring validation (2026-10-20)
+## Published configuration changes — installed Debug 1.0.22.0
 
-The local refactoring, including the account-check files that had not yet been committed, passed all **90 synthetic Python tests** on Windows with Python 3.13.15 in 1.949 seconds. The command was `python -B -m unittest discover -s python/tests -t python -v`, with isolated data, test and temporary directories, no user-site imports and no bytecode. Network and credential boundaries were mocked; no real mailbox was used.
+The owner authorized publishing all nineteen previously local commits through [PR #36](https://github.com/umbertotechnopreneur/AgentInbox/pull/36), plus a local build and installation. The PR remains open; merge was not requested. The required [Windows CI run](https://github.com/umbertotechnopreneur/AgentInbox/actions/runs/39960504558) passed 108 synthetic Python tests against source checkpoint `0713396`. These checks do not validate real providers, the installed MCP alias or WinUI rendering.
 
-Debug MSIX **1.0.12.0 x64** was built locally from that working-tree source with the unchanged, previously scanned official Python and NuGet inputs. Offline restore and WinUI publish succeeded. The unsigned package is 104,681,573 bytes; its SHA-256 was checked against the generated checksum. Matching Debug x64 `dotnet clean` and removal of the unique packaging work directory completed without a warning. No dependency download, import scan, signing, installation or desktop control ran.
+Built and signed locally from `0713396`, then installed with `install-debug-msix`. Windows reports Debug `1.0.22.0`, x64 and status `Ok`. This includes the simpler Connect Codex page and two-line VibeWare link. No local automated tests, application launch, live UI interaction or mail-provider requests ran in this delivery. The retained installer is 105,461,645 bytes, SHA-256 `ad14fb3a3d85ee5ed4af1caf3d31cd5a5b7ed53b90deb9e0850371a8b7a88cd9`, under `artifacts/msix/debug/x64/1.0.22.0/`, with checksum, package/installation records and import evidence.
 
-The extracted package's bundled Python runtime passed `-B -m agentinbox --help` and `-B -m agentinbox manage` with an isolated `list_accounts` request and an empty account list. This checks packaged CLI and management startup, not the installed execution alias, MCP startup, WinUI behavior, native credentials or live providers.
+The former build-input directory was already absent. Recovered Python 3.13.15 and five NuGet archives from official sources matched previously recorded SHA-256 values and reused their earlier scan evidence. For the other fifteen required NuGet archives, the original individual fingerprints were unavailable: archives and extracted contents were staged separately and received one explicit targeted `Start-MpScan -ScanType CustomScan -ScanPath <task inputs/recovered>` before use. Defender events 1000/1001 identify completed scan `{A7EBEFE7-6FCD-4423-A374-8DAC5FE88706}` with no detected threats. Sources, hashes, scope and completion are retained in the package's `first-import-evidence.json`. The initial recovery helper collected unused framework/lower-version alternatives; those were removed before scanning. No application was reconstructed from installed or prebuilt application binaries, and no scan covered installed SDK/runtime trees or generated output.
 
-Automatic approval review rejected the checked cleanup command with `blocked by policy` before execution. No alternate removal method was attempted. The owner then confirmed a separate cleanup, and `artifacts/` was verified empty: the package, checksum, import staging and original local evidence are no longer retained. The observed test/build results are recorded above; a short replacement result record is under ignored `artifacts/verification/main-consolidation-ci-20261020/`. Twenty ignored legacy `src/*/bin` and `src/*/obj` directories still contain about 2.3 MiB; their paths are recorded there in `legacy-output.json` and cleanup remains open.
+Packaging ran its matching clean without warnings and removed `artifacts/work/msix-0cfab9d7a034483b8710073137fcd945/`. The delivery scratch directory, downloaded archives, extracted inputs, helper scripts and PR draft were removed after final use; only the current package and minimal evidence remain. Cleanup and retention were verified after installation.
 
-The owner selected the new `Python source tests (Windows)` check as the required CI for this replacement, retaining pull requests and conversation resolution. Earlier .NET CI results do not validate the Python replacement. Linux and macOS remain source-only and unvalidated.
+## Toolbar and branded Mica dialogs — installed Debug 1.0.21.0
 
-The first replacement CI run stopped before tests because PATH resolved `python.exe` to a WindowsApps execution alias that could not be hashed. Runtime selection now excludes those aliases, checks for a complete standard library and considers preinstalled Python locations and the runner tool cache. The revised preparation step passed locally without downloads or scans; the PR CI records the remote result.
+Built and signed locally from source checkpoint `37c4a40`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.21.0`, architecture x64 and package status `Ok`. This includes the inline Add/delete/refresh/Test All toolbar, Mica dialog title bars with the app logo, colored stage symbols, per-account failure/cancellation marks and clickable session result details. Timeout and explicit cancellation have different messages. No automated tests, application launch, UI interaction, MCP launch or mail-provider requests ran. The earlier Outlook check's provider cause remains unknown: no persisted check diagnostics or recent AgentInbox Application errors were found. No previous provider success is assumed.
 
-## Local Debug MSIX 1.0.11.0 (installed)
+The first build failed with CS1503 in the new title-bar container because `Grid.SetRow` requires a `FrameworkElement`; the content cast was corrected before rebuilding. Both attempts ran their matching clean and left no cleanup warning. Their exact task directories, `artifacts/work/msix-179fe65644fa4e299cd6a0ace7094825/` and `artifacts/work/msix-cfad727397de4861badaf0d61570f7c3/`, were verified absent. The failed package output was removed before retrying, and superseded `artifacts/msix/debug/x64/1.0.20.0/` was verified absent after installation; no deletion by this task is claimed.
 
-Debug MSIX **1.0.11.0 x64** was built from the current working-tree source, signed with the existing current-user certificate and installed over 1.0.9.0. Windows reports version `1.0.11.0`, architecture `X64` and package status `Ok`. This package includes the account-check flow and owned Mica window described below. No automated, UI or live-provider tests ran as part of this build and installation.
+The retained installer is 105,461,598 bytes, SHA-256 `90a77b0383c543b13d1a9ed44ba6e33f6440f6f56b763d34d42fc7b5edf09bb1`, under `artifacts/msix/debug/x64/1.0.21.0/`, with checksum, package and installation records and unchanged first-import reuse evidence. The existing Python 3.13.15 and NuGet inputs were reused; no downloads or new scans ran. The previously blocked input directory `artifacts/inputs/debug-1.0.18.0-20261022/` remains at 502,715,034 bytes (479.4 MiB). The older package directory `artifacts/msix/debug/x64/1.0.18.0/` is now absent; this task did not remove it. See [todo](../.github/tasks/todo.md) for pending runtime checks.
 
-The build reused the unchanged official Python 3.13.15 and NuGet inputs from the 1.0.10.0 build, including their existing first-import scan evidence. No new dependency import or antivirus scan was needed. The packaging script completed matching Debug x64 `dotnet clean` and removed its unique build-task directory without a cleanup warning.
+## Mica results and Test all — installed Debug 1.0.20.0
 
-The retained installer is 104,700,379 bytes, with SHA-256 `ac3a2e6c81b30c9f3a65ae14d57865fe30611c06ad2c18451db2d5f01c67e0ed`. The MSIX, checksum, package record and successful installation record are under ignored `artifacts/msix/debug/x64/1.0.11.0/`.
+Built and signed locally from source checkpoint `9e15072`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.20.0`, architecture x64 and package status `Ok`. This includes Mica operation dialogs, sequential saved-account checks, transient success marks, CDN provider favicons, simplified Codex setup and footer links. No tests, app launch, live UI interaction, MCP launch or mailbox/provider operation ran. Compilation and installation do not establish visual or provider correctness. See [todo](../.github/tasks/todo.md).
 
-Automatic approval review rejected the checked removal of the superseded `artifacts/msix/debug/x64/1.0.10.0/` directory with `blocked by policy`. About 100 MiB remain there. No alternate deletion method was attempted. Earlier blocked input-staging and test-log cleanup recorded below also remains pending.
+The installer is 105,459,913 bytes, SHA-256 `23b6b653a14b40fc626fa8f7ed99248533843dd612c03d01fe4639a963dbf820`, retained under `artifacts/msix/debug/x64/1.0.20.0/` with its checksum, package and installation records and unchanged first-import reuse evidence. Python 3.13.15 and the pinned NuGet inputs were reused without dependency downloads or new scans. HEAD requests returned HTTP 200 for the three fixed Gmail/iCloud/Outlook favicon URLs; this does not verify WinUI rendering. The icons are fetched at runtime, with a native fallback.
 
-## Current account-check source
+Packaging ran its matching `dotnet clean` without a cleanup warning. Its exact `artifacts/work/msix-8ad10585ec024a73b6f5ce6f144f24fc/` directory and the superseded `artifacts/msix/debug/x64/1.0.19.0/` were removed and verified absent. Previously blocked cleanup was not bypassed: `artifacts/inputs/debug-1.0.18.0-20261022/` remains at 502,715,034 bytes (479.4 MiB), and `artifacts/msix/debug/x64/1.0.18.0/` remains at 105,453,405 bytes (100.6 MiB).
 
-On 2026-10-19, all **90 synthetic Python tests passed** on Windows with Python 3.13.15 in 1.701 seconds. The full suite used `python -B -m unittest discover -s python/tests -t python -v`, disabled user-site imports and bytecode, and isolated profile and temporary paths under ignored `artifacts/verification/account-checks-20261019/`. Network and native credential boundaries were mocked. No real mailbox, message or credential was used.
+## Configuration-model refactor — installed Debug 1.0.19.0
 
-The thirteen new cases cover unsaved checks without persistence, changed-host credential isolation, stale revisions, opt-in progress records, exact quoted/literal folder names, POP3's single INBOX, optional sample reads versus empty folders, invalid input types, failed TLS, rejected IMAP sign-in and rejected SMTP sign-in. A sample-read result returns no message content. Existing transport, approval, storage and cleanup tests also passed.
+Source checkpoint `3214c1c` separates account records, unsaved drafts, selection, validation, notices, Microsoft sign-in, connection-check progress and Codex setup state from native controls. Views bind to these models; only rendering, native lifecycle, focus, browser and clipboard adapters remain in the windows. Returning to Accounts preserves the draft rather than reloading over it. Windows loads server defaults from the same Python presets operation used by the CLI.
 
-The WinUI source now includes vertically centered account tab headers, a visible current-form check, an owned Mica progress window, explicit server-folder selection, optional sample reading and a link to the separately approved test-email flow after a confirmed save. **This WinUI source is compiled, packaged and installed in Debug 1.0.11.0; it has not been exercised on the live desktop.** Earlier UI evidence below does not validate these changes. No antivirus scan or external import was needed for this test run.
+Python account/preset contracts are now explicit, and one process-local `SessionState` holds references, continuations and the access-token cache used by `MailApplication` and its Microsoft service. Reference expiry/capacity and persisted account/send contracts are unchanged. New synthetic cases describe isolation, bounded expiry and omission of private cache data from diagnostic representations; they have not been run.
 
-The suite removed its disposable profiles. Automatic approval review rejected removal of the remaining `tests.log` (16,294 bytes) and empty `profiles/` and `tmp/` directories with `blocked by policy`. The ignored task directory retains these and the small `result.json` record, including tested source hashes. No other deletion method was attempted; final transient cleanup remains pending.
+Built and signed locally from source checkpoint `e0c7789`, then installed through `install-debug-msix` on 2026-10-23. Windows reports version `1.0.19.0`, architecture `X64` and status `Ok`. No tests, formatting, application launch, live UI interaction, MCP launch or provider operation ran. Compilation and installation do not validate binding updates or model lifecycles. Outstanding checks are in [todo](../.github/tasks/todo.md).
 
-## Earlier local Python tests
+The retained installer is 105,459,611 bytes, SHA-256 `73197feada8ef19075b652d7a8838cd7fe1f27c4dd7777c87993db00c89bc718`, under `artifacts/msix/debug/x64/1.0.19.0/`, with checksum, package/installation records and unchanged first-import evidence. The build reused Python 3.13.15 and the existing NuGet inputs; no downloads or new scans were needed.
 
-**77 tests passed, with no failures or errors**, on Windows using the existing Python 3.13.15 installation. The suite completed in 1.659 seconds on its first run; no test or implementation change was needed to obtain this result.
+Packaging completed its matching clean and reported no cleanup warning. Its task-owned `artifacts/work/msix-729f4106f02144928c08f79a2056b3e3/` directory was removed and verified absent. Automatic approval review rejected guarded removal of superseded `artifacts/msix/debug/x64/1.0.18.0/` with `blocked by policy`; about 100.6 MiB remain. No alternate removal was attempted. The previously blocked input directory below also remains.
 
-After a targeted Defender scan of the runtime directory completed with exit code 0 and no detections, the following command ran from the repository root:
+## Debug MSIX 1.0.18.0 — 2026-10-22
 
-```text
-python -B -m unittest discover -s python/tests -t python -v
-```
+Microsoft sign-in logs now use collapsed native expanders in the account page and dialog. The sign-in code is centered with a Copy icon beside it; copying the code is separate from copying the redacted diagnostics. Built and signed locally from source checkpoint `1aa7491`, then installed through `install-debug-msix`. Windows reports version `1.0.18.0`, architecture `X64` and status `Ok`. No automated tests, application launch, UI checks or mail-provider requests ran in this task.
 
-The run disabled user-site imports and bytecode output. `AGENTINBOX_DATA_DIR`, `AGENTINBOX_TEST_ROOT` and temporary-directory variables pointed inside a fresh task directory under ignored `artifacts/verification/`. Disposable profiles and unnecessary logs were removed after use; minimal scan and result records remain there.
+The owner's installed-app trace shows authorization pending, then HTTP 200 from the token endpoint, followed by the local permission rejection and temporary-data cleanup. It does not capture the returned scope values and does not establish which permission comparison failed. Source now accepts additional previously granted scopes for the same mail resource while requiring every requested mail permission; missing/wrong-resource cases include bounded, redacted required/returned details. Microsoft documents that earlier grants can be returned together. Synthetic cases cover extra grants, missing reading permission, no unintended sending, redaction and cleanup; they were not run. No live service request was made by this task.
 
-Tests exercise real application/storage behavior with synthetic `example.test` accounts and fake external boundaries. Coverage includes:
+The retained installer is 105,437,582 bytes, SHA-256 `e99d706bacc6df5ba9bba75ac564f619cfd6ed09ef7489a911b6de459bb544a3`, under `artifacts/msix/debug/x64/1.0.18.0/`, with checksum, package/installation records and import-reuse evidence. Earlier installers and inputs were already absent before this task. Python 3.13.15 and twenty NuGet archives were recovered from their official URLs, and each SHA-256 matched the previous 1.0.17.0 import record. These are unchanged imports covered by the earlier targeted first-import scans; no new scan ran. The first download orchestration attempt failed before downloading because PowerShell's parallel pipeline does not support `-ErrorAction`; the corrected attempt verified every archive before building.
 
-- Account permissions, revision changes, strict input types and same-process management sessions.
-- Immutable review, approval reuse, attachment snapshots, Bcc handling and Unicode MIME.
-- SMTP envelope decisions, interrupted or uncertain submission, and bounded/malformed replies.
-- IMAP literal, line, aggregate-response and deadline limits.
-- POP3 UIDL identity, bounded header/body reads, unsupported filters and incomplete date coverage.
-- Microsoft device-flow pacing, scope selection, refresh rotation, stale revisions and consumed flows.
-- Atomic settings limits, cleanup failures, durable retry references and preservation of committed outcomes.
-- Windows Credential Manager/DPAPI routing with mocked native functions.
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-edc4977956e941e487ec524b0dc8b382/`, was removed and verified absent. Automatic approval review rejected guarded removal of `artifacts/inputs/debug-1.0.18.0-20261022/` with `blocked by policy`; 502,715,034 bytes (about 479.4 MiB) remain. No alternate removal was attempted. The retained package folder contains the minimal import-reuse record independently of these archives.
 
-These results do not prove network interoperability, native credential protection, GUI behavior or packaged startup.
+## Debug MSIX 1.0.17.0 — 2026-10-22
 
-After the Microsoft wording changes, the same 77 synthetic tests passed again on 2026-10-19 in 1.701 seconds. They used an isolated task profile; its empty scratch directory was removed afterward. No provider or live desktop was involved.
+Microsoft sign-in now saves valid pending account settings, keeps its button available, and streams bounded local details into the page and sign-in dialog. Required form fields use native descriptions, theme error borders and first-error focus. The browser address no longer uses a domain/path allowlist; a valid HTTPS address returned by the verified Microsoft endpoint is accepted. The reported address failure came from the former local guard; the exact rejected address was not captured and no real sign-in has been verified. Source cases were updated for the new address contract and private diagnostics.
 
-## Local Debug MSIX 1.0.10.0 (not installed)
+The email field labels, sign-in email defaults, account/connection errors and Connect Codex presentation were also revised. The new Test connection action checks the saved launcher with MCP initialization and tools/list, without tools/call. It has a deadline, bounded replies, no retained child diagnostics and explicit process cleanup. No automated test, launcher execution, application launch, live UI check or provider operation ran during this build/install task.
 
-On 2026-10-19, Debug MSIX **1.0.10.0 x64** was built from current source commit `7cd237c`, signed with the existing current-user certificate and verified with `Get-AuthenticodeSignature` (`Valid`). The MSIX is 104,688,604 bytes and has SHA-256 `1efce56c10a43df9516e8188abdc9a1ed936cf2d51d88359e0284c9d8fd5741f`. The package, checksum and package record are under ignored `artifacts/msix/debug/x64/1.0.10.0/`.
+Built and signed locally from source checkpoint `f426a32`, then installed through `install-debug-msix`. Windows reports version `1.0.17.0`, architecture `X64` and status `Ok`. The retained installer is 105,462,895 bytes, SHA-256 `cae508836aa8cd9c2cab16e9d6c2ee728b2f3b2f1ebabf218bd7b2a0f1a692e9`, under `artifacts/msix/debug/x64/1.0.17.0/`, with checksum and package/installation records. The build reused unchanged Python 3.13.15 and previously scanned NuGet inputs. No downloads or new scans were needed.
 
-The build used .NET SDK 10.0.402, the official Python 3.13.15 embeddable archive and 23 NuGet packages obtained from the official feed. The Python archive hash and every NuGet archive hash were checked against the staged manifest. Before use, targeted Defender scans of the archive-only Python folder, extracted Python folder and NuGet archive/extraction folder completed without detections. A direct scan of the Python ZIP had reported `skipped`; it was not accepted as evidence, so the folder containing only that ZIP was scanned separately. The commands, sources, hashes and results are recorded in ignored `artifacts/inputs/1.0.10.0-source-20261019/first-import-scans.json`. The package build itself started no antivirus scan.
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-dae273938e574e698adb50c3b5081cf4/`, was removed and verified absent. Automatic approval review rejected guarded removal of superseded `artifacts/msix/debug/x64/1.0.16.0/` with `blocked by policy`; about 100.6 MiB remain. No alternate removal was attempted. Earlier cleanup blocks remain unresolved.
 
-Offline restore, WinUI publish, MSIX creation, signing and matching `dotnet clean` succeeded. A read-only package check found the `1.0.10.0` manifest, current Python source wording and bundled runtime. This is a local Debug package, not a Store build. It was **not installed**: Windows still reports AgentInbox 1.0.9.0 X64 with status `Ok`. The new UI, packaged CLI/MCP and live mail providers were not exercised.
+The owner's screenshot supplies a specific Microsoft refusal: `invalid_client`, `AADSTS70002`, with a requirement to mark the app as mobile. Microsoft's desktop configuration guide confirms the existing registration's public-client flow setting as the fix for that explanation. No registration was changed and no Microsoft service probe ran. See [Microsoft setup](AUTHENTICATION.md#sign-in-with-microsoft).
 
-The packaging script removed its task-owned `artifacts/work/msix-*` build directory. The earlier ignored artifact tree was empty when this task began. This task retains the compressed official inputs for reproducibility: 23 NuGet archives (481.1 MiB), the Python ZIP (10.5 MiB), manifest and scan evidence. Cleanup of the unneeded staging copies was **blocked by automatic approval review** with `blocked by policy`, both for recursive removal and a checked file-by-file removal of the `restore/` directory. Removal of empty `work/` and `verification/` parents was also rejected. The remaining unneeded task-owned paths are `artifacts/inputs/1.0.10.0-source-20261019/nuget/` (1,077.6 MiB), `restore/` (481.4 MiB) and `python/` (20.3 MiB). No other deletion mechanism was used; cleanup is incomplete.
+## Earlier implementation evidence
 
-## Local Debug MSIX 1.0.9.0
+Provider-choice persistence, shared Microsoft reading/sending sign-in, local Microsoft error details, plain setup text, the Connect Codex page and approved VibeWare logo are included in installed Debug 1.0.16.0. This also includes the centered mailbox prompts, + action and redundant Codex-status removal. The owner requested installation for hands-on use and explicitly excluded automated tests. No live UI or provider checks ran in this build/install task.
 
-On 2026-10-19, Debug MSIX **1.0.9.0 x64** was built locally from commit `1eaf1c5`, signed with the existing current-user certificate and installed over 1.0.8.0. Windows reports version `1.0.9.0`, architecture `X64` and package status `Ok`.
+The approved VibeWare source image was visually inspected and copied byte-for-byte. Source and repository copy have matching SHA-256 `84321fe9f77ccc083813e02c02ff3716ad50a45ed000b8663c5a2d416e2ba5af`; the original MIT notice is included. This verifies the asset copy, not the rendered WinUI footer. New synthetic cases for provider round trips, rejected metadata, retained secrets, Microsoft reply redaction and cleanup failures were not run locally. No Microsoft service request was made; the precise cause of the owner's sign-in refusal is still unknown.
 
-The build used .NET SDK 10.0.402, embedded Python 3.13.15 and the pinned WinUI dependencies. Offline restore, WinUI publish, signing and installation succeeded. No antivirus scan was started by this build.
+The required Windows check on [PR #35](https://github.com/umbertotechnopreneur/AgentInbox/pull/35) ran 102 synthetic cases. Its [initial run](https://github.com/umbertotechnopreneur/AgentInbox/actions/runs/39653414220) failed during cleanup because the old-ledger test fixture left its SQLite handle open. The fixture now closes that handle explicitly before cleanup; application behavior and the installed 1.0.16.0 payload are unchanged by this test-only fix. Current check results are attached to the PR.
 
-At the time, its installer was 104,641,178 bytes, with SHA-256 `60332d079f5e1318f6a4dffd1ab5570cdbcdd76169172968593607316e68a75e`. Matching `dotnet clean` and packaging task-directory cleanup completed. Its ignored installer and evidence files were no longer present at the start of the 1.0.10.0 task.
+The configuration-only Windows redesign, direct MCP sending, provider guidance and bundled Microsoft app identity were first built from source and installed as Debug 1.0.15.0 x64. New synthetic cases cover direct dispatch, duplicate IDs, permission changes before DATA, BCC/Unicode/attachments, unresolved submissions, metadata failures and old-schema rejection. They run in the required PR check described above; local tests and visual checks remain unrun. Earlier approval-model test results do not validate this new sending path.
 
-## Stock TabView source build (not installed)
+The source now removes local approval and pending-message storage. Historical tests of that former flow do not validate direct sending. Website Terms/Privacy source edits remain local and unpublished. Existing public product-policy URLs returned HTTP 200 with the correct page titles during this work; that check does not validate the edited policy content in production.
 
-On 2026-10-19, the account editor was changed to use the WinUI 3 TabView theme and default sizing without local tab resources. Its three tabs use native leading icons without forced colors. An isolated offline Debug x64 restore and publish completed for that source. It reused unchanged imported packages and started no antivirus scan. The source preview did not include a new MSIX or a visual check; the later 1.0.10.0 package build is recorded above.
+## Debug MSIX 1.0.16.0 — 2026-10-22
 
-Earlier build failures were corrected as recorded in the changelog.
+Built and signed locally from source checkpoint `2f72826`, then installed through `install-debug-msix`. Windows reports version `1.0.16.0`, architecture `X64` and status `Ok`. No automated tests, application launch, UI control or provider operations ran.
 
-The earlier 1.0.6.4 build completed 48 scans without detections under the previous policy. The owner later replaced that policy with a one-time first-import scan. The previous input archives, scan record, installers and UI-build directories were no longer present at the start of the 1.0.10.0 task; their historical validation results above do not certify this task's new imports.
+The retained installer is 105,449,345 bytes, SHA-256 `ec2df557aca2e5b2a3f5466daaea5cc17f5eb4a33bc33fc22956b80a28a7575f`, under `artifacts/msix/debug/x64/1.0.16.0/`, with checksum and package/installation records. The build reused unchanged Python 3.13.15 and previously scanned NuGet inputs. No downloads or new scans were needed.
 
-## Account UI regression checks
+Packaging reported no cleanup warning. Its exact task-owned directory, `artifacts/work/msix-d82447cdb9894b4183064b0465c3acca/`, was removed and verified absent. Automatic approval review rejected the guarded removal of superseded `artifacts/msix/debug/x64/1.0.15.0/` with `blocked by policy`; about 99.8 MiB remain. No alternate removal was attempted. Earlier cleanup blocks remain unresolved.
 
-Version 1.0.8.0 passed build and installation but failed when opening Accounts. The owner reported the failure, and an isolated run reproduced it. A diagnostic build established that resolving the tab resource dictionary succeeded, but assigning that application-owned dictionary to `TabView.Resources` threw `ArgumentException` (`0x80070057`). This was a UI construction error, not a Python failure.
+## Debug MSIX 1.0.15.0 — 2026-10-22
 
-The corrected source creates each native TabView and its local resources through a DataTemplate. Actual Windows UI interaction verified:
+Built and signed locally from source checkpoint `a4cb4be`, then installed through `install-debug-msix`. Windows reports version `1.0.15.0`, architecture `X64` and status `Ok`. This package includes provider-specific guidance, automatic Microsoft OAuth selection and the public Microsoft client ID in desktop application settings. No application launch, UI automation, synthetic tests or provider operations ran; the recovered registration's device flow and mail permissions remain unvalidated.
 
-- Empty state hides the account editor and Save/Cancel; Create explicitly opens the form, and Cancel restores the empty state.
-- All three tabs change content and display a visible selected background and border.
-- Gmail exposes password authentication only and fills its incoming server. Optional SMTP fields open while sending stays disabled; no credentials were entered or saved.
-- A narrow window (approximately 814 pixels wide in the capture) stacks paired fields and header actions. Maximizing keeps the content at the top left and limits its width.
-- Navigating away and back recreates the page. An intentionally incompatible synthetic profile produces a complete error page without partial form actions; explicit retry succeeds after correcting that test profile, and the editor opens again.
+The retained installer is 104,649,885 bytes, SHA-256 `a9f696a532e7eec8b412a98b7c87559fbf3cfe86bdaa43091a1bb2063f9a059d`, under `artifacts/msix/debug/x64/1.0.15.0/`, with checksum, package/installation records and reused first-import evidence. Python 3.13.15 and the NuGet inputs were unchanged; no downloads or new scans were needed.
 
-After installation, the packaged 1.0.9.0 executable was launched with its bundled runtime and an isolated `AGENTINBOX_DATA_DIR`. Visual interaction verified startup, empty state, explicit Create, the Incoming tab and Cancel. No unexpected setup error was logged. Its ignored diagnostic files were no longer present at the start of the 1.0.10.0 task.
+Matching `dotnet clean` completed without a cleanup warning. The task-owned `artifacts/work/msix-fe2bdacbab854df58c61a63153f89cd7/` directory was removed and verified absent. Automatic approval review blocked the guarded removal of superseded `artifacts/msix/debug/x64/1.0.14.0/` with `blocked by policy`; about 99.8 MiB remain. No alternate deletion was attempted. Earlier cleanup blocks remain unresolved.
 
-These checks did not save accounts or credentials, send mail, test live providers, exercise every keyboard path, or verify light/high-contrast themes. At that time, the earlier Python and guided-setup checks were not repeated because their implementation did not change.
+## Debug MSIX 1.0.14.0 — 2026-10-22
 
-## Guided Codex setup checks
+Built and signed locally from the current working-tree source, then installed through `install-debug-msix` with package-scoped forced shutdown enabled. Windows reports version `1.0.14.0`, architecture `X64` and status `Ok`. No application launch, UI automation, synthetic tests or provider operations ran.
 
-Nine local checks passed against the installed Codex CLI with a synthetic temporary `CODEX_HOME`: detection, registration, preservation of unrelated settings/comments, unchanged-connection recognition, replacement detection, refusal without confirmation, confirmed replacement, rejection of a stale detection snapshot and temporary-profile cleanup.
+The retained installer is 104,647,982 bytes, SHA-256 `ecaaab77097de7d78d358c8a6f2175a27d13654507cd2deabca19aa38e2d2e76`, under `artifacts/msix/debug/x64/1.0.14.0/`, with its checksum, package/installation records and copied first-import evidence. The build reused unchanged Python 3.13.15 and NuGet inputs previously scanned for 1.0.13.0; no downloads or new scans were needed.
 
-The final run completed in 0.88 seconds after the last service change. It did not start a mail server, change the owner's Codex configuration or claim a verified MCP connection. The temporary profile was removed and matching `dotnet clean` completed. Its ignored harness and results were no longer present at the start of the 1.0.10.0 task. WinUI interaction and real client connection still need separate validation.
+Matching `dotnet clean` completed without a cleanup warning. The task-owned `artifacts/work/msix-753d62d178d44cd08883f53aae9b582d/` directory was removed and verified absent. Automatic approval review blocked the checked removal of superseded `artifacts/msix/debug/x64/1.0.13.0/` with `blocked by policy`; about 99.8 MiB remain, with no alternate removal attempted. The previously blocked input and legacy-output cleanup below also remains open.
 
-## Not yet validated
+## Provider evidence — 2026-10-21
 
-- Actual Windows Credential Manager and DPAPI calls; macOS Keychain and Linux Secret Service paths.
-- Real IMAP/POP3 connections and non-marking/non-deleting behavior with providers.
-- Microsoft app registration, live consent, tenant policy and token refresh.
-- Real SMTP authentication, rejection/acceptance and recipient delivery.
-- Account saving/editing with native credentials, complete keyboard access, light/high-contrast themes and native send approval.
-- CLI/MCP process startup, installed aliases, default shared profile and configuration after package updates.
-- Debug MSIX creation, signing and installation on Windows ARM64.
-- Local Store Release packages, package validation and submission.
-- Linux/macOS execution and external MCP-client integration.
+An explicitly authorized, unauthenticated probe of `smtp.gmail.com:587` completed greeting, EHLO (`250`), mandatory STARTTLS (`220`, TLS 1.3 with certificate/hostname validation), and post-TLS EHLO (`250`) using the bounded SMTP transport. It did not authenticate, inspect saved credentials, read mail or send a message.
 
-The CI source defines isolated Windows synthetic tests without build-time antivirus scans. No remote CI result is claimed. The optional Actions packaging workflow creates Debug artifacts only; the local Store recipe remains unvalidated.
+The minimal record is `artifacts/verification/smtp-starttls-20261021/result.json`, with the network address removed. The owner later reported correcting the password and successful SMTP authentication. This is owner-reported evidence, not an automated authenticated test or delivery check.
 
-Source inspection, synthetic tests, installed startup, authentication, server acceptance and recipient delivery are separate evidence. Results from the previous engine do not validate this implementation.
+## Historical synthetic checks
+
+All runs used Windows and Python 3.13.15, synthetic `example.test` accounts, mocked network/native credentials, isolated profiles and no bytecode/user-site imports. The suite command was `python -B -m unittest discover -s python/tests -t python -v`.
+
+| Date | Result | Scope |
+| --- | --- | --- |
+| 2026-10-19 | 77 passed, 1.659 s | Account policy, strict input, IMAP/POP3 bounds, original approval flow, SMTP outcomes, Microsoft device flow, storage/cleanup and mocked vault routing |
+| 2026-10-19 | 77 passed, 1.701 s | Same suite after Microsoft wording changes |
+| 2026-10-19 | 90 passed, 1.701 s | Added current-form checks, exact folder names, optional sample reads, progress and failure cases |
+| 2026-10-20 | 90 passed, 1.949 s | Complete then-current Python refactoring, including uncommitted account-check source |
+
+The 2026-10-20 extracted package runtime also passed CLI help and an isolated `manage` account listing. This did not exercise the installed alias, MCP integration or native credentials. The owner subsequently emptied `artifacts/`; original historical logs and package evidence were removed. A replacement record is under `artifacts/verification/main-consolidation-ci-20261020/`.
+
+Nine earlier Codex setup checks passed in 0.88 s with a synthetic temporary `CODEX_HOME`: detection, registration, preservation of unrelated settings/comments, matching-entry recognition, replacement detection, refusal without confirmation, confirmed replacement, stale-snapshot rejection and cleanup. They did not change the owner's configuration or start a mail server. The harness is no longer retained.
+
+## Historical local packages
+
+All packages below are Debug x64 source builds, not Store releases. Builds used .NET SDK 10.0.402 and embedded Python 3.13.15. Installation status describes that run, not a fresh query of the current machine.
+
+| Version | Source/date | Result | Bytes | SHA-256 |
+| --- | --- | --- | ---: | --- |
+| 1.0.9.0 | `1eaf1c5`, Oct 19 | Signed, installed, X64 `Ok` | 104641178 | `60332d079f5e1318f6a4dffd1ab5570cdbcdd76169172968593607316e68a75e` |
+| 1.0.10.0 | `7cd237c`, Oct 19 | Signed, signature `Valid`, not installed | 104688604 | `1efce56c10a43df9516e8188abdc9a1ed936cf2d51d88359e0284c9d8fd5741f` |
+| 1.0.11.0 | Working tree, Oct 19 | Signed, installed, X64 `Ok` | 104700379 | `ac3a2e6c81b30c9f3a65ae14d57865fe30611c06ad2c18451db2d5f01c67e0ed` |
+| 1.0.12.0 | Working tree, Oct 20 | Unsigned, checksum checked, not installed | 104681573 | Original checksum removed by owner cleanup |
+| 1.0.13.0 | Working tree, Oct 21 | Signed, installed, X64 `Ok` | 104658616 | `3f5c15ec3b1002afded4adac948d57bf1f5f8c8fcc1d963ac11c17231ad8039a` |
+
+Version 1.0.13.0 includes the current-form SMTP button fix and local server diagnostics. Its first installation returned `0x80073D02` because the app was open; the same package installed after the owner closed it. The later `-ForceApplicationShutdown` installer change was not exercised in that run. The MSIX, checksum, package/installation records and import-scan evidence are retained under `artifacts/msix/debug/x64/1.0.13.0/`.
+
+Version 1.0.11.0 included the earlier Mica account-check UI. Version 1.0.10.0 had a read-only manifest/source/runtime inspection. An earlier isolated stock-TabView Debug restore/publish also passed without packaging or UI validation. These do not validate the current Acrylic window.
+
+## Historical UI checks
+
+Version 1.0.8.0 built and installed but failed opening Accounts. An isolated reproduction identified `ArgumentException` (`0x80070057`) from assigning an application-owned resource dictionary to `TabView.Resources`. The fix avoided reparenting; later source uses the stock TabView.
+
+Isolated Windows UI checks covered empty/create/cancel, all three tabs, password-only Gmail configuration, optional SMTP fields with sending disabled, narrow/maximized layouts, page recreation, an incompatible synthetic profile and explicit retry. Packaged 1.0.9.0 startup also exercised empty state, Create, Incoming and Cancel with its bundled runtime and an isolated profile. No accounts/passwords were saved, and no mail was sent. Complete keyboard, light/high-contrast and native credentials were not checked. Those diagnostic files were later removed with historical artifacts.
+
+## Imports and cleanup
+
+New inputs for 1.0.10.0 and 1.0.13.0 came from official Python and NuGet sources: Python 3.13.15 and a 23-package closure. Targeted Defender scans covered the archive-only Python folder, extracted Python and NuGet archives/extraction; all completed without detections. For 1.0.10.0, a skipped direct ZIP scan was not counted: the containing archive-only folder was scanned successfully. Version 1.0.11.0/12.0 reused unchanged imports. Builds started no scans.
+
+The original 77-test run followed a runtime scan under the earlier policy; 1.0.6.4 had 48 historical clean scans. Those records do not certify new imports or justify repeating scans of installed runtimes. Current first-import sources, hashes, commands and results are in `first-import-scans.json` beside 1.0.13.0.
+
+Matching `dotnet clean` and task-owned packaging cleanup completed for the recorded builds. Automatic approval review blocked some checked deletions with `blocked by policy`. Earlier blocked staging, logs and packages were subsequently removed by the owner when `artifacts/` was emptied. Current unresolved paths are:
+
+- `artifacts/inputs/debug-1.0.13.0-20261021/`: about 1,783.9 MiB. Removal was blocked after the successful build/install; no alternate method was attempted.
+- Twenty ignored legacy `src/*/bin` and `src/*/obj` directories: about 2.3 MiB. Inventory is in `artifacts/verification/main-consolidation-ci-20261020/legacy-output.json`; checked removal was blocked.
+
+## Remaining evidence
+
+Current synthetic tests, Windows visual behavior, actual Credential Manager/DPAPI calls, real IMAP/POP3 reading, Microsoft consent/refresh, direct SMTP submission/delivery, installed MCP alias/update behavior, ARM64, Store packages and Linux/macOS execution require their own authorized checks. See [todo](../.github/tasks/todo.md).
+
+CI defines isolated Windows Python tests. Its interpreter discovery was corrected after a WindowsApps alias caused an early failure; local preparation passed without downloads/scans. No remote CI result is claimed here. Previous-engine checks do not validate this implementation.
