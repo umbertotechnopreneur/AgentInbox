@@ -2,9 +2,11 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
-- [ ] When authorized, run the isolated synthetic suite after the 2026-10-27 source-quality refactor, covering IMAP/POP3 plain/HTML bodies, decoding failures, truncation and attachments. Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Compilation and Debug 1.0.24.0 x64 installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also now prevents implicit SDK workload repair.
+- [ ] When authorized, check portable Release 2.0.0 startup and configuration on clean Windows x64 and native ARM64 hosts, bundled CLI/MCP entry points with isolated profiles, retained settings, and reconnecting after a folder move. Release compilation and archive inspection passed; native UI, packaged-entry-point execution and provider access were not exercised. The shared MSIX adapters were refactored but were not rebuilt or installed again in this portable-release task.
 
-- [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. New commands are not yet included in an installed package.
+- [ ] Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Windows synthetic CI passed on PR #37 after the source-quality refactor, and Debug 1.0.24.0 x64 compilation/installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also prevents implicit SDK workload repair.
+
+- [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. The commands are included in Debug 1.0.24.0 and portable Release 2.0.0; packaged interactive/provider workflows remain unverified.
 
 - [ ] Resolve blocked PDF task cleanup: `artifacts/work/pdf-cli-setup-20261026/` (about 925 KiB) and `artifacts/docs/cli-setup-20261026/` (about 19 KiB). The definitive PDF and example are already in `docs/`; automatic approval review rejected guarded deletion with `blocked by policy`. See validation; do not bypass the rejection.
 

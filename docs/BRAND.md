@@ -86,6 +86,8 @@ Constraints: original standalone artwork. No text, letters, words, logos, vendor
 
 ## Historical screenshot provenance
 
+For the current Accounts and Connect Codex README presentations, see [screenshot provenance and prompts](assets/screenshots/README.md). Those October 27, 2026 assets use owner-supplied app captures with a coordinated background and synthetic account identifiers. The older images below remain historical materials.
+
 The two README screenshots were edited with the built-in image generation tool on September 22, 2026. Their previous MailMeUp versions were the edit targets. The edits changed only the product, process and executable names; account data remains synthetic or hidden. Both results were visually reviewed before use.
 
 ```text
