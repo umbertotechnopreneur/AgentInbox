@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-27 — installed Debug 1.0.24.0
+
+- Built and installed the documented/refactored source as signed x64 MSIX, status Ok. Corrected local-function XML comments and isolated packaging from implicit workload repair. Verified installed-file hashes and unchanged account settings. Retained only the current Debug installer and minimal evidence; runtime/UI/provider checks remain pending. See validation.
+
 ## 2026-10-27 — source documentation and maintainability
 
 - Added purpose/provenance headers, method and parameter documentation, and phase comments across maintained product sources and packaging commands. Split the configuration-window pages and controls, introduced focused account-tab builders, and removed duplicated MIME body conversion. Updated the architecture map and maintenance convention. Execution checks remain pending; see validation and todo.

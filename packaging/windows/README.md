@@ -2,11 +2,13 @@
 
 The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-Debug MSIX 1.0.23.0 was built and signed locally from source checkpoint `74537b7` and installed on Windows x64 with package status `Ok`. Enable receive and Enable send now appear on the Account tab. No automated tests, app launch, live UI or provider checks, or CI/CD ran for this installation. All twenty-one recovered dependency archives matched the retained first-import hashes; no new scan ran. See [validation](../../docs/VALIDATION.md) for package evidence, verification limits and cleanup.
+Debug MSIX 1.0.24.0 was built and signed locally from source checkpoint `d9ed6a0` and installed on Windows x64 with package status `Ok`. Installed file hashes match the package, all sixteen packaged engine modules match the current source, and saved account settings are unchanged. No automated tests, app launch, live UI or provider checks, or CI/CD ran. Eighteen unchanged input archives reused earlier scan evidence; three new .NET 10.0.14 runtime archives and their extracted files passed one targeted Defender scan. See [validation](../../docs/VALIDATION.md) for evidence, limits and cleanup.
 
 ## Prerequisites and inputs
 
 After explicit owner authorization, use Windows with PowerShell 7, the required .NET SDK and Windows SDK tools. The scripts do not install these tools or start antivirus scans.
+
+The packaging process disables the SDK's first-run workload integrity check to prevent unrelated workload repair/download attempts. This WinUI build uses the staged offline inputs. Its original process environment is restored during cleanup. See the official [.NET environment-variable reference](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables#dotnet_skip_workload_integrity_check).
 
 Stage runtime archives, extracted runtimes and NuGet inputs under a task-specific `artifacts/` directory. For single-architecture packaging or Debug installation, supply these inputs through `scripts/AgentInbox.ps1`:
 

@@ -2,7 +2,7 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
-- [ ] When authorized, run the isolated synthetic suite after the 2026-10-27 source-quality refactor, covering IMAP/POP3 plain/HTML bodies, decoding failures, truncation and attachments. Compile the WinUI app and check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Packaging helpers received documentation only. These source changes have not been executed, installed or validated for Store submission.
+- [ ] When authorized, run the isolated synthetic suite after the 2026-10-27 source-quality refactor, covering IMAP/POP3 plain/HTML bodies, decoding failures, truncation and attachments. Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Compilation and Debug 1.0.24.0 x64 installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also now prevents implicit SDK workload repair.
 
 - [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. New commands are not yet included in an installed package.
 
