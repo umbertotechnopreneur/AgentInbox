@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Add local self-contained Release portable ZIP builds for GitHub on Windows x64 and ARM64, separate from Store Release MSIX and local Debug installation. Share offline input validation, source publishing, notices and cleanup across distribution formats; include a terminal launcher and extraction/setup guide in each ZIP. See [validation](docs/VALIDATION.md) for build and publication evidence.
+
 - Build and install Debug 1.0.24.0 x64 from source `d9ed6a0`, status Ok, with unchanged saved account settings and matching installed-file hashes. Fix invalid XML documentation on local C# functions and prevent implicit SDK workload repair during offline packaging. New .NET 10.0.14 runtime inputs passed targeted first-import scanning. Tests and UI/provider checks remain unrun; see [validation](docs/VALIDATION.md).
 
 - Document named Python product functions, C# methods and constructors, and maintained PowerShell command/helper parameters. Apply VibeWare source headers with file responsibilities and factual review provenance. Split Windows page composition and reusable controls into focused partial files, extract account-tab builders, share MIME body decoding across IMAP and POP3, and clarify intermediate values and operation phases. Source review only; tests, builds, UI, provider access and Store validation remain pending. See [validation](docs/VALIDATION.md).

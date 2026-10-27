@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-27 — portable Release 2.0.0 distribution
+
+- Added shared source-build/distribution helpers with thin Store/MSIX and portable adapters. Built Release x64 and ARM64 ZIPs with bundled runtimes, launcher, notices and a setup guide. Checked archive contents, architecture and source bytes; targeted first-import scans covered five new ARM64 inputs. Matching clean completed for both builds. GitHub publication uses matching source on main and an annotated version tag; UI/provider and native ARM64 execution remain unverified. See validation for exact artifacts and limits.
+
 ## 2026-10-27 — installed Debug 1.0.24.0
 
 - Built and installed the documented/refactored source as signed x64 MSIX, status Ok. Corrected local-function XML comments and isolated packaging from implicit workload repair. Verified installed-file hashes and unchanged account settings. Retained only the current Debug installer and minimal evidence; runtime/UI/provider checks remain pending. See validation.

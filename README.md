@@ -2,7 +2,7 @@
 
 **[CLI Quick Start (PDF)](docs/AgentInbox-CLI-Quick-Start.pdf)** · [Two-mailbox JSON example](docs/examples/accounts.setup.json) · [Command reference](docs/CLI_REFERENCE.md)
 
-Configure Gmail and Microsoft 365 from your terminal: create local connections, enter an app password securely, sign in with Microsoft and check access. The quick start describes the current source commands; runtime validation and an updated Windows package are still pending.
+Configure Gmail and Microsoft 365 from your terminal: create local connections, enter an app password securely, sign in with Microsoft and check access. These commands are bundled in the Windows portable Release. See [validation](docs/VALIDATION.md) for the build checks and the provider workflows still to verify.
 
 [![CI status](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/AgentInbox/actions/workflows/ci.yml)
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
@@ -18,6 +18,22 @@ Let your AI agent work across the accounts and folders you choose, from a few in
 **[Get started](docs/GETTING_STARTED.md)** · [Account settings](docs/AUTHENTICATION.md) · [Privacy](docs/PRIVACY.md) · [Development](docs/DEVELOPMENT.md)
 
 > **Your assistant may send requested mail to its AI service.** AgentInbox runs locally; the whole conversation may not. Read the [privacy policy](docs/PRIVACY.md) before connecting accounts.
+
+## Two pages to get connected
+
+**Accounts — connect your mailboxes and choose what to share.**
+
+Add and name your connections, follow each provider's sign-in instructions, and choose whether your assistant can read or send mail. Reading and sending are separate permissions. Changes apply when you save; choose server settings and shared folders under **Read mail** and **Send mail**.
+
+![AgentInbox Accounts page with example mailboxes, provider guidance and separate receive/send permissions.](docs/assets/screenshots/agentinbox-accounts-v1.png)
+
+**Connect Codex — give your assistant one connection to your enabled accounts.**
+
+Save AgentInbox's connection in Codex, check that the local engine can start and reply, then copy a first request into a new chat. **Connection details** contains manual settings for other local MCP clients. A successful local check does not verify an existing chat connection or mailbox access.
+
+![AgentInbox Connect Codex page showing local connection setup, a connection check and a request to try in a new chat.](docs/assets/screenshots/agentinbox-connect-codex-v1.png)
+
+*Styled screenshots based on app captures, with example account data. They illustrate setup; they do not establish provider access or a successful connection check.*
 
 ## Bring your mailboxes into one conversation
 
@@ -77,7 +93,7 @@ The Windows app guides you through connecting Codex. For another assistant, conf
 
 ## Where it runs
 
-- **Windows 11 x64 and ARM64:** native WinUI 3 setup; commercial distribution is MSIX only.
+- **Windows 11 x64 and ARM64:** native WinUI 3 setup; portable Release ZIPs on [GitHub Releases](https://github.com/umbertotechnopreneur/AgentInbox/releases), with separate MSIX distribution for the Microsoft Store. Extract the whole ZIP and open `AgentInbox.Desktop.exe`. Settings stay in your Windows user profile.
 - **Linux and macOS:** Python source only, for users who can configure and adapt it. No compiled distributions or commercial support are provided. Contributor pull requests with fixes are welcome.
 
 The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).

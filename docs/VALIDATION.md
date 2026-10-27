@@ -1,5 +1,22 @@
 # Validation
 
+## 2026-10-27 — portable Release 2.0.0 x64 and ARM64
+
+Built locally from source checkpoint `056ffdf` with SDK 10.0.403, using the shared offline Windows build engine. Both artifacts use self-contained **Release**, version `2.0.0.0`, with .NET/Windows App SDK dependencies, Python 3.13.15, a terminal launcher, a setup README and license notices. The ZIPs are unsigned and contain no MSIX registration manifest or Debug symbols. They are distinct from installed Debug 1.0.24.0; no Store MSIX was built or submitted in this task.
+
+Archive inspection checked required files, the x64/ARM64 PE machine types of the desktop and Python executables, the relative bundled-engine path, exact launcher contents, all sixteen Python modules against the current source, and absence of profile settings/databases and PDBs. The x64 ZIP contains 607 files; ARM64 contains 605. No application or packaged entry point was executed, no live desktop or provider was accessed, and ARM64 was cross-compiled without a native ARM64-host run. Compilation and archive inspection do not establish GUI/provider behavior. Required Windows synthetic CI passed on the packaging implementation in [PR #38](https://github.com/umbertotechnopreneur/AgentInbox/pull/38); final-head status remains visible on that PR.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `agentinbox-2.0.0-win-x64-portable.zip` | 106,174,003 | `e2cb3cb93e59d808a8ba4655f9d33e2902848d42b098aed3c79e8333a71ce49a` |
+| `agentinbox-2.0.0-win-arm64-portable.zip` | 102,679,950 | `053cda30fc49d22431f49702f34acc29bbe209033369a411e3a0bc5686974d5f` |
+
+Twenty-one unchanged x64/common archives matched the retained Debug 1.0.24.0 import hashes and reused their prior scan evidence. New Python ARM64 and three .NET 10.0.14 ARM64 runtime archives, including extracted files, passed targeted Defender scan `{91BAF0C7-4C5F-4068-8435-E06DCB0D0FC7}`. The first ARM64 restore identified the missing `Microsoft.NETCore.App.Host.win-arm64` 10.0.14 package; its official NuGet archive and extracted files then passed separate targeted scan `{14561B12-9533-46C2-BA6F-43BD03F8308F}`. Both scans completed without detections; unchanged inputs, installed SDK/runtime trees and generated output were not rescanned. ARM64 was rebuilt with that complete offline closure; the completed x64 ZIP was preserved.
+
+Both completed Release builds ran matching `dotnet clean` without cleanup warnings. Their exact task directories and the failed ARM64 restore directory were removed by the builder. ZIPs, checksums, archive/package records and shared import evidence are retained under `artifacts/portable/2.0.0.0/`. Recovery inputs and helper cleanup are recorded in that directory's `cleanup.json`; unrelated artifacts and the current local Debug installer are preserved. See [release requirements](RELEASING.md) for GitHub publication and annotated-tag policy.
+
+The owner also supplied Accounts and Connect Codex captures for the README. Public 1402 × 1122 presentations were made with built-in ImageGen, using coordinated navy/mint backgrounds and elevation. Real mailbox identifiers were replaced with `example.test` data. Visual review confirmed the example labels and the still-unchecked connection state; originals are retained privately. These styled documentation images are not independent evidence of portable launch or successful provider access. See [asset provenance and prompts](assets/screenshots/README.md).
+
 ## 2026-10-27 — installed Debug 1.0.24.0 x64
 
 Built, signed and installed locally from source checkpoint `d9ed6a0` using SDK 10.0.403 and the existing current-user signing certificate. Windows reports version `1.0.24.0`, architecture x64 and package status `Ok`. Hashes of the installed desktop executable, desktop assembly and shared MIME module match the new MSIX; all sixteen engine modules in the package match the checkout. The saved packaged account-settings file has the same SHA-256 before and after installation. No automated tests, application launch, UI interaction, provider requests, CI, push or publication ran. This confirms compilation, packaging and installation, not runtime/provider behavior or Store readiness.
