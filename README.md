@@ -77,7 +77,7 @@ The Windows app guides you through connecting Codex. For another assistant, conf
 
 ## Where it runs
 
-- **Windows 11 x64 and ARM64:** native WinUI 3 setup; commercial distribution is MSIX only.
+- **Windows 11 x64 and ARM64:** native WinUI 3 setup; portable Release ZIPs on [GitHub Releases](https://github.com/umbertotechnopreneur/AgentInbox/releases), with separate MSIX distribution for the Microsoft Store. Extract the whole ZIP and open `AgentInbox.Desktop.exe`. Settings stay in your Windows user profile.
 - **Linux and macOS:** Python source only, for users who can configure and adapt it. No compiled distributions or commercial support are provided. Contributor pull requests with fixes are welcome.
 
 The engine requires Python 3.11 or newer and uses the standard library. On Windows, passwords and Microsoft refresh tokens use Windows Credential Manager; temporary sign-in blobs use current-user DPAPI. There is no plain-text credential fallback. See [dependencies](docs/DEPENDENCIES.md).

@@ -1,6 +1,6 @@
 # Windows MSIX packaging
 
-The MSIX contains the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. Windows commercial distribution is MSIX only, for Windows 11 x64 and ARM64. The stable `AgentInbox.exe` execution alias points to the bundled Python runtime: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
+Windows distributions contain the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. GitHub uses portable Release ZIPs for Windows 11 x64 and ARM64; the Microsoft Store uses separate Release MSIX packages. Debug MSIX packages are local development builds. In MSIX installations, the stable `AgentInbox.exe` execution alias points to bundled Python: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
 Debug MSIX 1.0.24.0 was built and signed locally from source checkpoint `d9ed6a0` and installed on Windows x64 with package status `Ok`. Installed file hashes match the package, all sixteen packaged engine modules match the current source, and saved account settings are unchanged. No automated tests, app launch, live UI or provider checks, or CI/CD ran. Eighteen unchanged input archives reused earlier scan evidence; three new .NET 10.0.14 runtime archives and their extracted files passed one targeted Defender scan. See [validation](../../docs/VALIDATION.md) for evidence, limits and cleanup.
 
@@ -66,6 +66,8 @@ pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command install-debug-msix <requir
 This command builds and signs the package, immediately calls installation, then checks the installed version, architecture and package status. An authorized installation can force-close the running AgentInbox package without another confirmation; save any edits you need before requesting the update. Saved accounts and user data remain in place. The command does not perform UI or live-mail checks. If no thumbprint is supplied, it requires exactly one suitable existing trusted current-user code-signing certificate.
 
 ## Local Store build
+
+GitHub portable builds use the same input manifests and first-import rules, with `-Command build-portable -Version X.Y.Z`. The shared build engine compiles both architectures in Release and produces ZIPs under `artifacts/portable/X.Y.Z.0/<architecture>/`, with the bundled runtimes, `AgentInbox.cmd`, README and licenses. No MSI or MSIX installation is required to extract these ZIPs. `package-msix` and `build-store-msix` remain thin MSIX adapters over that shared engine. See [release requirements](../../docs/RELEASING.md#github-portable-releases).
 
 Follow the local PromptMeUp recipe after explicit Store authorization:
 
