@@ -64,9 +64,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
-        var message = new TextBox { TextWrapping = TextWrapping.Wrap, IsReadOnly = true, AcceptsReturn = true, MaxHeight = 220 };
+        var message = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
         AutomationProperties.SetName(message, "Connection check details");
-        ModelBinding.Bind(message, TextBox.TextProperty, model, nameof(AccountCheckModel.Message));
+        ModelBinding.Bind(message, TextBlock.TextProperty, model, nameof(AccountCheckModel.Message));
         var footer = new StackPanel { Spacing = 14 };
         footer.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"] });
         footer.Children.Add(new ScrollViewer { Content = message, MaxHeight = 220,
