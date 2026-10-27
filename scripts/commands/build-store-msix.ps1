@@ -1,5 +1,36 @@
 #Requires -Version 7.0
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Build unsigned local Store packages for both Windows architectures from supplied source inputs.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
 # SPDX-License-Identifier: MIT
+#
+# VBWR E
+
+<#
+.SYNOPSIS
+Build unsigned local Store packages for both Windows architectures from supplied source inputs.
+.PARAMETER Version
+Requested package version; Store wrapper accepts three components and appends .0.
+.PARAMETER PythonRuntimesManifest
+JSON manifest of official-source x64 and arm64 Python archives and extracted directories.
+.PARAMETER DependencyManifest
+JSON list of previously scanned NuGet archives, official sources and SHA-256 hashes.
+.PARAMETER MakeAppxPath
+Optional existing Windows SDK MakeAppx executable path.
+#>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+$')][string]$Version,
@@ -12,6 +43,16 @@ $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Local Store packaging requires Windows.' }
 if ($env:GITHUB_ACTIONS -ceq 'true') { throw 'Build Store packages locally; GitHub Actions is not the Store build path.' }
 
+<#
+.SYNOPSIS
+Reject incomplete or unexpected manifest fields.
+.PARAMETER Value
+Manifest object being checked before any build starts.
+.PARAMETER Keys
+Complete allowed key set; missing and additional keys are rejected.
+.PARAMETER Description
+Safe manifest-section label used in validation errors.
+#>
 function Assert-ExactKeys($Value, [string[]]$Keys, [string]$Description) {
     if ($Value -isnot [Collections.IDictionary] -or $Value.Count -ne $Keys.Count) {
         throw "$Description must contain exactly: $($Keys -join ', ')."
@@ -21,6 +62,14 @@ function Assert-ExactKeys($Value, [string[]]$Keys, [string]$Description) {
     }
 }
 
+<#
+.SYNOPSIS
+Require an existing input of the selected kind and reject redirected ancestors.
+.PARAMETER Path
+Exact input or output path whose regular-file and ancestor constraints must be enforced.
+.PARAMETER Kind
+Required filesystem item kind, Leaf or Container.
+#>
 function Resolve-InputPath([string]$Path, [ValidateSet('Leaf', 'Container')][string]$Kind) {
     if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType $Kind)) {
         throw "A required $Kind input does not exist: $Path"
@@ -30,6 +79,12 @@ function Resolve-InputPath([string]$Path, [ValidateSet('Leaf', 'Container')][str
     return $resolved
 }
 
+<#
+.SYNOPSIS
+Reject links or reparse points on the selected path and its ancestors.
+.PARAMETER Path
+Exact input or output path whose regular-file and ancestor constraints must be enforced.
+#>
 function Assert-NoRedirectedAncestor([string]$Path) {
     $current = [IO.Path]::GetFullPath($Path)
     while ($current) {

@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Operating system protected storage with no plaintext fallback.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Operating system protected storage with no plaintext fallback."""
 
 import ctypes
@@ -16,9 +36,20 @@ class Vault:
     """Protect credentials and temporary sign-in data using the current user's OS facilities."""
 
     def __init__(self, root: Path):
+        """Select the profile directory used for protected temporary sign-in blobs.
+
+        Args:
+            root: Absolute directory of the selected local profile; no alternate profile
+                is selected here.
+        """
         self.root = root / "protected"
 
     def _key(self, key: str) -> str:
+        """Require a supported platform and a strictly shaped protected-storage reference.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+        """
         if sys.platform not in {"win32", "darwin", "linux"}:
             raise MailError("unsupported_platform", "AgentInbox supports Windows, macOS and Linux only.")
         if not re.fullmatch(r"(?:incoming|smtp|oauth|signin)-[a-f0-9]{32}", key):
@@ -26,7 +57,12 @@ class Vault:
         return key
 
     def put(self, key: str, value: str) -> None:
-        """Protect a value before making it available to an account or request."""
+        """Protect a value before making it available to an account or request.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+            value: Secret string to protect; embedded NUL characters are rejected.
+        """
         key = self._key(key)
         if "\0" in value:
             raise MailError("invalid_credential", "Protected values cannot contain a NUL character.")
@@ -51,7 +87,11 @@ class Vault:
             self._linux(key, value)
 
     def get(self, key: str) -> str:
-        """Read one protected value without exposing backend error details."""
+        """Read one protected value without exposing backend error details.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+        """
         key = self._key(key)
         if sys.platform == "win32" and not key.startswith("signin-"):
             return self._wincred(key).decode("utf-8")
@@ -65,7 +105,11 @@ class Vault:
         return self._linux(key)
 
     def delete(self, key: str) -> None:
-        """Remove a protected value, failing if the secure store cannot be reached."""
+        """Remove a protected value, failing if the secure store cannot be reached.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+        """
         key = self._key(key)
         if sys.platform == "win32" and not key.startswith("signin-"):
             self._wincred(key, delete=True)
@@ -78,7 +122,14 @@ class Vault:
 
     @staticmethod
     def _wincred(key: str, value: bytes | None = None, *, delete: bool = False) -> bytes:
-        """Store credentials in the current user's Windows Credential Manager."""
+        """Store credentials in the current user's Windows Credential Manager.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+            value: UTF-8 secret bytes to store; None selects reading unless delete is
+                True.
+            delete: Whether to remove the entry instead of reading or storing it.
+        """
         class Credential(ctypes.Structure):
             _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD),
                         ("TargetName", wintypes.LPWSTR), ("Comment", wintypes.LPWSTR),
@@ -126,6 +177,12 @@ class Vault:
 
     @staticmethod
     def _windows(value: bytes, *, protect: bool) -> bytes:
+        """Protect or decrypt temporary bytes with current-user Windows DPAPI.
+
+        Args:
+            value: Bytes to encrypt or decrypt with current-user DPAPI.
+            protect: True to encrypt with current-user DPAPI; False to decrypt.
+        """
         class Blob(ctypes.Structure):
             _fields_ = [("size", wintypes.DWORD), ("data", ctypes.POINTER(ctypes.c_ubyte))]
 
@@ -148,7 +205,14 @@ class Vault:
 
     @staticmethod
     def _linux(key: str, value: str | None = None, *, delete: bool = False) -> str:
-        # Native libsecret avoids secret-tool's small stdin buffer for protected MIME.
+        # Native libsecret keeps protected values out of subprocess arguments and stdin.
+        """Read, store or delete one Secret Service entry with bounded cancellation.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+            value: Secret string to store; None selects reading unless delete is True.
+            delete: Whether to remove the entry instead of reading or storing it.
+        """
         try:
             libraries = [ctypes.util.find_library(name) for name in ("secret-1", "glib-2.0", "gio-2.0", "gobject-2.0")]
             if not all(libraries):
@@ -217,6 +281,14 @@ class Vault:
 
     @staticmethod
     def _macos(key: str, value: bytes | None = None, *, delete: bool = False) -> bytes:
+        """Read, store or delete one login Keychain entry and release native resources.
+
+        Args:
+            key: Protected-storage reference, never the secret value itself.
+            value: UTF-8 secret bytes to store; None selects reading unless delete is
+                True.
+            delete: Whether to remove the entry instead of reading or storing it.
+        """
         try:
             security = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
             core = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")

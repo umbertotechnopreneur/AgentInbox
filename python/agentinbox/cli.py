@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Executable entry point for MCP, JSON automation and local terminal setup.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Executable entry point for MCP, JSON automation and local terminal setup."""
 
 import argparse
@@ -11,13 +31,24 @@ from . import setup_cli
 
 
 def write(value):
-    """Write one UTF-8 protocol record."""
+    """Write one UTF-8 protocol record.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     sys.stdout.buffer.write(json.dumps(value, ensure_ascii=False).encode("utf-8") + b"\n")
     sys.stdout.buffer.flush()
 
 
 def manage(application, session: bool) -> int:
-    """Handle local JSON requests, retaining opaque references only in a session."""
+    """Handle local JSON requests, retaining opaque references only in a session.
+
+    Args:
+        application: Shared MailApplication instance whose session owns this adapter
+            connection.
+        session: Whether to retain one application and process-local references until
+            stdin reaches EOF.
+    """
     failed = False
     while True:
         raw = sys.stdin.buffer.readline(1_048_577)
@@ -57,7 +88,11 @@ def manage(application, session: bool) -> int:
 
 
 def main(arguments=None):
-    """Run one explicit current command without legacy aliases or migration."""
+    """Run one explicit current command without legacy aliases or migration.
+
+    Args:
+        arguments: Command-line argument list, or None to read sys.argv.
+    """
     parser = argparse.ArgumentParser(prog="agentinbox",
         description="Connect as many compatible mailboxes as you need to your AI agent through one local MCP connection.",
         epilog="Start with: agentinbox accounts add --help. Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Choose up to twenty IMAP folders per account; POP3 exposes one INBOX. Setup never creates a mailbox at the provider.")

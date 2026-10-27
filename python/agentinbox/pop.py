@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Bounded POP3 mailbox reads using stable UIDL identities and verified TLS.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Bounded POP3 mailbox reads using stable UIDL identities and verified TLS."""
 
 import base64
@@ -13,7 +33,7 @@ import time
 
 from .config import MAX_MESSAGE_BYTES, text
 from .errors import MailError
-from .mail import _PlainHtml
+from .message_content import message_body
 
 TIMEOUT = 20
 MAX_UIDL_BYTES = 1024 * 1024
@@ -29,6 +49,14 @@ class _BoundedReads:
     """Bound socket reads before poplib accumulates a multiline response."""
 
     def __init__(self, *args, **kwargs):
+        """Initialize POP3 response limits and close resources if greeting setup fails.
+
+        Args:
+            args: Positional arguments forwarded to the standard-library transport
+                constructor.
+            kwargs: Keyword arguments forwarded to the standard-library transport
+                constructor.
+        """
         self._wire_buffer = bytearray()
         self._set_response_limits(4096, 32, time.monotonic() + TIMEOUT)
         try:
@@ -44,6 +72,14 @@ class _BoundedReads:
             raise
 
     def _set_response_limits(self, maximum, lines, deadline):
+        """Reset the byte, line and time budgets for the next server response.
+
+        Args:
+            maximum: Maximum payload bytes, with protocol framing budgeted separately.
+            lines: Maximum response line count allowed for this request.
+            deadline: Absolute time.monotonic deadline, or None to start the default
+                operation budget.
+        """
         if self._wire_buffer:
             raise MailError("invalid_server_response", "The POP3 server sent unexpected data between commands.")
         # Reserve framing and at most one escaped dot per payload line.
@@ -56,6 +92,7 @@ class _BoundedReads:
         self._payload_active = False
 
     def _getline(self):
+        """Read one POP3 line under the shared byte, framing and time budgets."""
         while True:
             remaining_time = self._deadline - time.monotonic()
             if remaining_time <= 0:
@@ -88,6 +125,7 @@ class _BoundedReads:
             self._wire_buffer.extend(chunk)
 
     def _getresp(self):
+        """Validate a positive POP3 status and activate multiline payload accounting."""
         response = super()._getresp()
         if response != b"+OK" and not response.startswith(b"+OK "):
             raise MailError("invalid_server_response", "The POP3 server returned an invalid status response.")
@@ -96,6 +134,7 @@ class _BoundedReads:
         return response
 
     def _getlongresp(self):
+        """Bound a multiline POP3 response and restore payload state afterward."""
         self._multiline = True
         self._payload_active = False
         self._payload_left = self._payload_limit
@@ -106,6 +145,11 @@ class _BoundedReads:
             self._payload_active = False
 
     def _shortcmd(self, command):
+        """Reject unsolicited buffered data after a single-line POP3 command.
+
+        Args:
+            command: Protocol command whose response is being checked.
+        """
         response = super()._shortcmd(command)
         # In particular, never carry plaintext bytes across the STLS handshake.
         if self._wire_buffer:
@@ -122,12 +166,33 @@ class _POP3SSL(_BoundedReads, poplib.POP3_SSL):
 
 
 def _request(connection, method, *arguments, maximum=4096, lines=32, deadline=None, **keywords):
+    """Apply POP3 response budgets before invoking one library operation.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        method: Standard-library protocol method to invoke under the supplied budgets.
+        maximum: Upper size or duration bound enforced by this operation.
+        lines: Maximum response line count allowed for this request.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+        arguments: Positional arguments forwarded to the POP3 library method.
+        keywords: Keyword arguments forwarded to the underlying protocol operation.
+    """
     connection._set_response_limits(maximum, lines, deadline if deadline is not None else time.monotonic() + TIMEOUT)
     return getattr(connection, method)(*arguments, **keywords)
 
 
 def _xoauth2(connection, username, access_token):
-    """Complete one bounded token exchange without retrying with a password."""
+    """Complete one bounded token exchange without retrying with a password.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        username: Sign-in name included in the selected authentication exchange.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+    """
     if not isinstance(access_token, str) or not access_token or len(access_token) > 65_536 or any(not 33 <= ord(c) <= 126 for c in access_token):
         raise MailError("invalid_credentials", "The Microsoft access token is invalid. Connect the account again.")
     payload = base64.b64encode(f"user={username}\x01auth=Bearer {access_token}\x01\x01".encode("utf-8"))
@@ -151,7 +216,18 @@ def _xoauth2(connection, username, access_token):
 
 @contextlib.contextmanager
 def pop_connection(settings: dict, password: str | None = None, *, access_token: str | None = None, progress=None):
-    """Use the explicitly selected authentication after verified TLS or STLS."""
+    """Use the explicitly selected authentication after verified TLS or STLS.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+        progress: Optional callback receiving a stage and state; it must not receive
+            credentials or mail content.
+    """
     connection = None
     try:
         if settings["tls"] not in {"tls", "starttls"}:
@@ -201,11 +277,24 @@ def pop_connection(settings: dict, password: str | None = None, *, access_token:
 
 
 def _folder(folder):
+    """Reject folder names other than the single POP3 INBOX.
+
+    Args:
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+    """
     if folder != "INBOX":
         raise MailError("unsupported_folder", "POP3 exposes only INBOX. Use IMAP for server folders.")
 
 
 def _uidl(connection, deadline):
+    """Read a bounded mapping of stable POP3 identities to current message numbers.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     try:
         _, rows, octets = _request(connection, "uidl", maximum=MAX_UIDL_BYTES, lines=100_000, deadline=deadline)
     except poplib.error_proto as error:
@@ -226,6 +315,12 @@ def _uidl(connection, deadline):
 
 
 def _raw_response(response, maximum):
+    """Reassemble POP3 lines and verify the exact advertised payload size.
+
+    Args:
+        response: Server response whose shape, status or payload must be checked.
+        maximum: Upper size or duration bound enforced by this operation.
+    """
     _, lines, octets = response
     if octets > maximum:
         raise MailError("response_too_large", "The POP3 payload exceeds the permitted size.")
@@ -236,6 +331,11 @@ def _raw_response(response, maximum):
 
 
 def _message_date(message):
+    """Read a timezone-aware Date header as UTC, returning None when unusable.
+
+    Args:
+        message: Message text or parsed MIME object consumed by this operation.
+    """
     try:
         value = email.utils.parsedate_to_datetime(str(message.get("Date", "")))
         if value.tzinfo is None or value.utcoffset() is None:
@@ -246,6 +346,16 @@ def _message_date(message):
 
 
 def _header(connection, number, identity, deadline):
+    """Read POP3 TOP 0 headers and return a preview plus searchable header text.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        number: Current POP3 message number resolved from UIDL in this connection.
+        identity: Stable UIDL string paired with this connection-local message number.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     try:
         response = _request(connection, "top", number, 0, maximum=MAX_HEADER_BYTES, lines=2048, deadline=deadline)
     except poplib.error_proto as error:
@@ -267,7 +377,24 @@ def _header(connection, number, identity, deadline):
 def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
            query: str, unread: bool, limit: int, offset: int = 0,
            candidates: list[str] | None = None, expected_validity: str | None = None) -> dict:
-    """Search at most 300 server-numbered candidates using header dates and text."""
+    """Search at most 300 server-numbered candidates using header dates and text.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        start: Inclusive timezone-aware lower bound of the search interval.
+        end: Exclusive timezone-aware upper bound of the search interval.
+        query: Bounded search text; POP3 matches headers and IMAP uses server text
+            search.
+        unread: Whether to require unread messages; POP3 does not support this filter.
+        limit: Maximum number of message previews in this page.
+        offset: Number of candidates already inspected in the saved search.
+        candidates: Saved bounded candidate identities, or None to obtain the initial
+            candidate set.
+        expected_validity: Folder identity from the preceding page, or None for the
+            initial search.
+    """
     _folder(folder)
     if type(unread) is not bool or unread:
         raise MailError("unsupported_filter", "POP3 does not expose read or unread status. Disable the unread filter or use IMAP.")
@@ -312,6 +439,15 @@ def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
 
 
 def _size(connection, number, deadline):
+    """Read and validate the advertised POP3 message size before retrieval.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        number: Current POP3 message number resolved from UIDL in this connection.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     response = _request(connection, "list", number, deadline=deadline)
     fields = response.split()
     if len(fields) < 3 or fields[0] != b"+OK" or not fields[1].isdigit() or int(fields[1]) != number or not fields[2].isdigit():
@@ -323,7 +459,17 @@ def _size(connection, number, deadline):
 
 
 def read(connection, folder: str, uid: str, validity: str) -> dict:
-    """Resolve a UIDL in this session before reading a bounded complete message."""
+    """Resolve a UIDL in this session before reading a bounded complete message.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        uid: Stable message identifier from the search snapshot, never a guessed
+            sequence number.
+        validity: Folder identity saved with the message reference; changed identities
+            invalidate it.
+    """
     _folder(folder)
     if validity != UID_VALIDITY or not isinstance(uid, str) or not uid.isascii() or not _UID.fullmatch(uid.encode("ascii")):
         raise MailError("reference_expired", "The POP3 message reference is invalid. Search again.")
@@ -339,17 +485,7 @@ def read(connection, folder: str, uid: str, validity: str) -> dict:
     if len(raw) != size:
         raise MailError("incomplete_message", "The POP3 server did not return the complete advertised message.")
     message = email.message_from_bytes(raw, policy=email.policy.default)
-    part = message.get_body(preferencelist=("plain", "html"))
-    content = ""
-    if part is not None:
-        try:
-            content = part.get_content()
-        except (LookupError, UnicodeError, ValueError) as error:
-            raise MailError("invalid_message", "The message text could not be decoded.") from error
-        if part.get_content_type() == "text/html":
-            parser = _PlainHtml()
-            parser.feed(content)
-            content = "".join(parser.parts)
+    content = message_body(message)
     attachments = []
     for item in message.iter_attachments():
         if len(attachments) == 100:
@@ -361,14 +497,32 @@ def read(connection, folder: str, uid: str, validity: str) -> dict:
 
 
 def check_read(settings: dict, password: str | None = None, folder: str = "INBOX", *, access_token: str | None = None) -> dict:
-    """Check real POP3 authentication and one bounded read without saving mail."""
+    """Check real POP3 authentication and one bounded read without saving mail.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+    """
     _folder(folder)
     with pop_connection(settings, password, access_token=access_token) as connection:
         return check_connection_read(connection, folder)
 
 
 def check_connection_read(connection, folder: str = "INBOX", *, deadline=None) -> dict:
-    """Check one bounded POP3 read without issuing delete commands."""
+    """Check one bounded POP3 read without issuing delete commands.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     _folder(folder)
     identities = _uidl(connection, time.monotonic() + TIMEOUT if deadline is None else deadline)
     result = {"connection": "passed", "authentication": "passed", "folder": "passed",

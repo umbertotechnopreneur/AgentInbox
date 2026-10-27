@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Export an isolated Python source plugin with explicit interpreter and profile paths.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Export a local Python source plugin with explicit interpreter and profile paths."""
 
 import argparse
@@ -29,6 +49,8 @@ def main():
         parser.error("The Python interpreter must have execute permission.")
     if profile.exists() and not profile.is_dir():
         parser.error("The data directory points to an existing file. Choose a directory.")
+
+    # Validate every caller-supplied path before creating any export output.
     environment = {"AGENTINBOX_DATA_DIR": str(profile.resolve())}
     templates = repository / "integrations" / "codex"
     plugin = destination / "plugins" / "agentinbox"
@@ -36,6 +58,8 @@ def main():
         plugin.mkdir(parents=True)
         for name in ("plugin.json", "mcp.json"):
             shutil.copyfile(templates / "plugins" / "agentinbox" / name, plugin / name)
+
+        # Include the current engine modules, including shared MIME conversion.
         source = repository / "python"
         for path in [source / "run.py", *(source / "agentinbox").glob("*.py")]:
             target = plugin / "python" / path.relative_to(source)

@@ -1,4 +1,24 @@
-"""Atomic local settings and a metadata-only outgoing request ledger."""
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Atomic account settings and durable protected-credential cleanup.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
+"""Atomic account settings and durable protected-credential cleanup."""
 
 import contextlib
 import json
@@ -21,6 +41,12 @@ class Store:
     """Own settings writes across the desktop, CLI and MCP processes."""
 
     def __init__(self, root: Path):
+        """Bind settings, credential storage and cleanup paths to one profile.
+
+        Args:
+            root: Absolute directory of the selected local profile; no alternate profile
+                is selected here.
+        """
         self.root = root
         self.settings = root / "accounts.json"
         self.cleanup_path = root / "cleanup.json"
@@ -99,13 +125,24 @@ class Store:
             raise MailError("invalid_profile", "The saved profile is invalid or incompatible. Correct the current settings or use a new profile; no migration is performed.") from error
 
     def account(self, identity: str) -> SavedAccount:
-        """Resolve a current account and fail when it has been removed."""
+        """Resolve a current account and fail when it has been removed.
+
+        Args:
+            identity: Saved account ID to resolve from the current settings snapshot.
+        """
         for account in self.accounts():
             if account["id"] == identity:
                 return account
         raise MailError("account_not_found", "The account no longer exists.")
 
     def _atomic_json(self, path: Path, document: dict, maximum: int) -> None:
+        """Flush bounded JSON to a private temporary file before atomically replacing metadata.
+
+        Args:
+            path: Local file path read or atomically replaced by this operation.
+            document: Non-secret JSON metadata to serialize and atomically persist.
+            maximum: Upper size or duration bound enforced by this operation.
+        """
         payload = json.dumps(document, ensure_ascii=False, indent=2).encode("utf-8")
         if len(payload) > maximum:
             raise MailError("profile_too_large", "The saved metadata would exceed its size limit. Reduce the account settings before saving.")
@@ -122,17 +159,35 @@ class Store:
             raise
 
     def _write(self, accounts: list[dict]) -> None:
+        """Write one JSON protocol record and flush stdout.
+
+        Args:
+            accounts: Complete replacement list of validated saved-account metadata.
+        """
         self._atomic_json(self.settings, {"schema_version": SCHEMA_VERSION, "accounts": accounts}, MAX_SETTINGS_BYTES)
 
     @staticmethod
     def _cleanup_result(count: int, error: str | None = None) -> dict:
+        """Describe pending credential cleanup separately from the committed operation.
+
+        Args:
+            count: Number of protected references still waiting for cleanup.
+            error: Optional safe cleanup error code; it does not alter the primary operation result.
+        """
         return {"cleanup_pending": bool(count or error), "cleanup_pending_count": count, "cleanup_error": error}
 
     @staticmethod
     def _cleanup_error(error: Exception) -> str:
+        """Reduce a cleanup exception to a safe application error code.
+
+        Args:
+            error: Failure to reduce to bounded diagnostics or a safe persisted error
+                code.
+        """
         return error.code if isinstance(error, MailError) else "cleanup_failed"
 
     def _cleanup_references(self) -> list[str]:
+        """Read and validate the durable queue of protected-storage references."""
         if not self.cleanup_path.exists():
             return []
         try:
@@ -155,6 +210,12 @@ class Store:
             raise MailError("invalid_cleanup_queue", "The protected-data cleanup queue is invalid or unavailable. Preserve it for recovery.") from error
 
     def _queue_cleanup_locked(self, references) -> None:
+        """Durably enqueue unique protected references while the settings lock is held.
+
+        Args:
+            references: Protected-storage keys to retire; live account credentials
+                remain protected from cleanup.
+        """
         pending = self._cleanup_references()
         changed = False
         for reference in references:
@@ -168,10 +229,12 @@ class Store:
             self._atomic_json(self.cleanup_path, {"schema_version": 1, "references": pending}, MAX_SETTINGS_BYTES)
 
     def _live_references(self) -> set[str]:
+        """Collect protected credentials still referenced by saved accounts."""
         return {account[field] for account in self.accounts()
                 for field in ("incoming_secret", "smtp_secret", "oauth_secret") if account[field]}
 
     def _retry_cleanup_locked(self) -> dict:
+        """Delete a bounded batch of retired credentials while preserving a durable retry queue."""
         pending = []
         queued = []
         try:
@@ -222,18 +285,32 @@ class Store:
             return self._cleanup_result(status["cleanup_pending_count"], self._cleanup_error(error))
 
     def cleanup_queued(self, reference: str) -> bool:
-        """Check whether protected state has been durably marked for removal."""
+        """Check whether protected state has been durably marked for removal.
+
+        Args:
+            reference: Protected-storage key whose durable retirement status is queried.
+        """
         self.vault._key(reference)
         return reference in self._cleanup_references()
 
     def retire_protected(self, references) -> dict:
-        """Durably consume protected state before reporting cancellation or completion."""
+        """Durably consume protected state before reporting cancellation or completion.
+
+        Args:
+            references: Protected-storage keys to retire; live account credentials
+                remain protected from cleanup.
+        """
         with self.locked():
             self._queue_cleanup_locked(references)
             return self._retry_cleanup_locked()
 
     def cleanup_protected(self, references) -> dict:
-        """Queue consumed protected values and report cleanup separately from committed work."""
+        """Queue consumed protected values and report cleanup separately from committed work.
+
+        Args:
+            references: Protected-storage keys to retire; live account credentials
+                remain protected from cleanup.
+        """
         references = list(references)
         try:
             return self.retire_protected(references)
@@ -242,7 +319,15 @@ class Store:
             return self._cleanup_result(max(len(references), status["cleanup_pending_count"]), self._cleanup_error(error))
 
     def save(self, value: dict, passwords: dict, expected_revision: int | None) -> dict:
-        """Save explicit account settings and newly protected credentials atomically."""
+        """Save explicit account settings and newly protected credentials atomically.
+
+        Args:
+            value: Replacement account payload without saved revisions or credential references.
+            passwords: Incoming and SMTP password fields; empty strings request
+                permitted saved-credential reuse.
+            expected_revision: Saved account revision being edited or checked; None
+                denotes a new account.
+        """
         account = account_input(value)
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
@@ -251,6 +336,8 @@ class Store:
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
             raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
+
+        # Serialize the revision check and commit across all local adapters.
         with self.locked():
             accounts = self.accounts()
             previous = next((item for item in accounts if item["id"] == account["id"]), None)
@@ -260,6 +347,8 @@ class Store:
                 raise MailError("configuration_changed", "A new account cannot have an existing revision.")
             account["id"] = previous["id"] if previous else uuid.uuid4().hex
             account["revision"] = previous["revision"] + 1 if previous else 1
+
+            # Queue new references before writing secrets so failed saves remain recoverable.
             obsolete = []
             try:
                 for protocol in ("incoming", "smtp"):
@@ -284,6 +373,8 @@ class Store:
                     account["oauth_secret"] = previous["oauth_secret"]
                 if previous and previous["oauth_secret"] and previous["oauth_secret"] != account["oauth_secret"]:
                     obsolete.append(previous["oauth_secret"])
+
+                # The atomic settings replacement is the commit point. Cleanup follows it.
                 self._queue_cleanup_locked(obsolete)
                 self._write([item for item in accounts if item["id"] != account["id"]] + [account])
             except Exception:
@@ -291,11 +382,23 @@ class Store:
                 if cleanup["cleanup_pending"]:
                     raise MailError("save_failed_cleanup_pending", "Account changes were not committed. Protected-data cleanup remains pending; retry cleanup locally.") from None
                 raise
+
+            # A cleanup failure must not turn a committed save into a retryable save error.
             cleanup = self._retry_cleanup_locked()
         return {**self.public(account), **cleanup}
 
     def connect_oauth(self, identity: str, expected_revision: int, refresh_token: str, *, consumed_references=()) -> dict:
-        """Attach a completed Microsoft sign-in only to its unchanged account."""
+        """Attach a completed Microsoft sign-in only to its unchanged account.
+
+        Args:
+            identity: Saved Microsoft account ID to attach the refresh credential to.
+            expected_revision: Saved account revision being edited or checked; None
+                denotes a new account.
+            refresh_token: Microsoft refresh credential to protect before attaching it
+                to the unchanged account.
+            consumed_references: Temporary device-flow keys to retire with the committed
+                authorization.
+        """
         with self.locked():
             accounts = self.accounts()
             account = next((item for item in accounts if item["id"] == identity), None)
@@ -318,7 +421,11 @@ class Store:
             return {**self.public(account), **cleanup}
 
     def remove(self, identity: str) -> dict:
-        """Revoke local access before removing its protected credentials."""
+        """Revoke local access before removing its protected credentials.
+
+        Args:
+            identity: Saved account ID whose local access is being revoked.
+        """
         with self.locked():
             account = self.account(identity)
             self._queue_cleanup_locked([account[field] for field in ("incoming_secret", "smtp_secret", "oauth_secret") if account[field]])
@@ -328,6 +435,11 @@ class Store:
 
     @staticmethod
     def public(account: dict) -> dict:
-        """Return settings without credential references or values."""
+        """Return settings without credential references or values.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         return {**{key: value for key, value in account.items() if not key.endswith("_secret")},
                 "microsoft_connected": bool(account.get("oauth_secret"))}

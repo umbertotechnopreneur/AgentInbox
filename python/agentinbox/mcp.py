@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Small JSON-RPC stdio adapter for the implemented MCP tool surface.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Small JSON-RPC stdio adapter for the implemented MCP tool surface."""
 
 import json
@@ -11,6 +31,15 @@ STRINGS = {"type": "array", "items": TEXT}
 
 
 def _tool(name, description, properties, required, *, read_only=True):
+    """Describe one MCP tool using the implemented flat argument schema.
+
+    Args:
+        name: Field or protocol name used in validation or dispatch.
+        description: User-facing explanation of the implemented MCP tool.
+        properties: Flat JSON schema properties supported by the tool.
+        required: Names of required schema properties.
+        read_only: Whether the tool only reads state; direct sending is not read-only.
+    """
     return {"name": name, "description": description,
             "inputSchema": {"type": "object", "properties": properties, "required": required, "additionalProperties": False},
             "annotations": {"readOnlyHint": read_only, "destructiveHint": False,
@@ -34,7 +63,12 @@ TOOLS = [
 
 
 def validate_arguments(arguments, schema):
-    """Enforce the implemented flat tool schemas before application dispatch."""
+    """Enforce the implemented flat tool schemas before application dispatch.
+
+    Args:
+        arguments: Arguments accepted by the selected operation.
+        schema: Implemented tool schema used to reject unsupported arguments.
+    """
     if not isinstance(arguments, dict) or set(arguments) - set(schema["properties"]) or set(schema["required"]) - set(arguments):
         raise MailError("invalid_arguments", "The tool arguments do not match its schema.")
     for name, value in arguments.items():
@@ -51,13 +85,23 @@ def validate_arguments(arguments, schema):
 
 
 def _write(value):
+    """Write one JSON protocol record and flush stdout.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     payload = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     sys.stdout.buffer.write(payload.encode("utf-8") + b"\n")
     sys.stdout.buffer.flush()
 
 
 def serve(application):
-    """Serve bounded, newline-delimited JSON-RPC without diagnostic stdout output."""
+    """Serve bounded, newline-delimited JSON-RPC without diagnostic stdout output.
+
+    Args:
+        application: Shared MailApplication instance whose session owns this adapter
+            connection.
+    """
     initialized = False
     negotiated = False
     definitions = {item["name"]: item for item in TOOLS}

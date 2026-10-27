@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Shared application behavior for the MCP and local setup adapters.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Shared application behavior for the MCP and local setup adapters."""
 
 import datetime as dt
@@ -23,32 +43,71 @@ class MailApplication:
     """Apply account policy consistently, including when references are reused."""
 
     def __init__(self, root: Path):
+        """Create the profile services and one explicit process-local session.
+
+        Args:
+            root: Absolute directory of the selected local profile; no alternate profile
+                is selected here.
+        """
         self.store = Store(root)
         self.sends = SendLedger(root)
         self.session = SessionState()
         self.microsoft = MicrosoftAuth(self.store, self.session)
 
     def _credentials(self, account: SavedAccount, protocol: str) -> dict:
+        """Resolve the explicitly selected password or Microsoft access token.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+            protocol: Selected mail protocol, used to validate endpoints or choose
+                credentials.
+        """
         if account["authentication"]["method"] == "microsoft_oauth":
             return {"password": "", "access_token": self.microsoft.access_token(account)}
         return {"password": self.store.vault.get(account[protocol + "_secret"])}
 
     @staticmethod
     def _incoming(account: AccountSettings):
+        """Choose the transport for the validated incoming protocol.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         return pop if account["incoming"]["protocol"] == "pop3" else mail
 
     def _incoming_connection(self, account: dict):
+        """Open the selected incoming transport using current credentials.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         module = self._incoming(account)
         connect = pop.pop_connection if module is pop else mail.imap_connection
         return connect(account["incoming"], **self._credentials(account, "incoming"))
 
     def _read_account(self, identity: str, folder: str) -> SavedAccount:
+        """Require current account and folder sharing before reading.
+
+        Args:
+            identity: Saved account ID whose current folder-sharing permission must be checked.
+            folder: Exact shared server folder name, default INBOX; POP3 accepts only INBOX.
+        """
         account = self.store.account(identity)
         if not account["read_enabled"] or folder not in account["folders"]:
             raise MailError("access_disabled", "Reading this account or folder is not enabled in local setup.")
         return account
 
     def _send_account(self, identity: str, revision: int | None = None) -> SavedAccount:
+        """Require current sending permission and, when supplied, the expected revision.
+
+        Args:
+            identity: Saved account ID whose current sending permission must be checked.
+            revision: Expected account revision, or None when no revision comparison is
+                requested.
+        """
         account = self.store.account(identity)
         if not account["send_enabled"] or account["smtp"] is None:
             raise MailError("sending_disabled", "Enable SMTP for this account in local setup before sending mail.")
@@ -66,6 +125,11 @@ class MailApplication:
 
     @staticmethod
     def _date(value: str) -> dt.datetime:
+        """Parse an explicitly zoned ISO 8601 timestamp and normalize it to UTC.
+
+        Args:
+            value: Untrusted input to validate before it is used or persisted.
+        """
         try:
             result = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
             if result.tzinfo is None:
@@ -77,8 +141,24 @@ class MailApplication:
     def search_mail(self, account_id: str, folder: str = "INBOX", start: str | None = None,
                     end: str | None = None, query: str = "", unread: bool = False,
                     limit: int = 10, continuation: str | None = None) -> dict:
-        """Return a bounded page from one explicitly shared account and folder."""
+        """Return a bounded page from one explicitly shared account and folder.
+
+        Args:
+            account_id: ID of the saved account explicitly selected by the caller.
+            folder: Exact shared server folder name; POP3 accepts only INBOX.
+            start: Inclusive ISO 8601 timestamp with timezone; None defaults to fourteen
+                days before end.
+            end: Exclusive ISO 8601 timestamp with timezone; None defaults to the
+                current UTC time.
+            query: Search text, empty by default; POP3 matches headers and IMAP uses
+                server text search.
+            unread: Require unread messages when True; default False. POP3 rejects True.
+            limit: Maximum previews per page, from 1 to 20; default 10.
+            continuation: Opaque token from the same process, or None for a new search;
+                resume without other filters.
+        """
         self.session.expire_references(time.time())
+        # Resume saved search state or validate a new bounded request.
         if continuation:
             saved = self.session.continuations.get(continuation)
             if saved is None or saved["account_id"] != account_id:
@@ -106,6 +186,8 @@ class MailApplication:
             parameters = {"folder": folder, "start": beginning, "end": stop, "query": query, "unread": unread, "limit": limit}
             candidates, validity, offset, truncated = None, None, 0, False
             undated = 0
+
+        # Network reads complete before current permissions are checked again.
         module = self._incoming(account)
         with self._incoming_connection(account) as connection:
             page = module.search(connection, **parameters, candidates=candidates, expected_validity=validity, offset=offset)
@@ -113,6 +195,8 @@ class MailApplication:
         current = self._read_account(account_id, parameters["folder"])
         if current["revision"] != account["revision"]:
             raise MailError("configuration_changed", "The account changed while reading. Start a new search.")
+
+        # Issue opaque process-local references; do not expose provider identifiers.
         results = []
         for item in page["messages"]:
             reference = secrets.token_urlsafe(24)
@@ -121,6 +205,8 @@ class MailApplication:
                                           "revision": account["revision"], "expires": time.time() + 600}
             results.append({"reference": reference, "account_id": account_id,
                             **{key: value for key, value in item.items() if key not in {"uid", "uid_validity"}}})
+
+        # Carry coverage gaps across pages and consume the previous continuation.
         next_token = None
         truncated = truncated or page["candidate_limit_reached"]
         undated += page.get("undated_messages_skipped", 0)
@@ -143,7 +229,12 @@ class MailApplication:
                 "notice": "Narrow the date range to search beyond the newest 300 candidates." if truncated else None}
 
     def read_mail(self, reference: str) -> dict:
-        """Read a search result while applying current sharing choices."""
+        """Read a search result while applying current sharing choices.
+
+        Args:
+            reference: Opaque reference previously issued by the owning session or
+                protected store.
+        """
         self.session.expire_references(time.time())
         saved = self.session.references.get(reference)
         if saved is None:
@@ -162,31 +253,47 @@ class MailApplication:
     def _compose_message(account: dict, to: list[str], subject: str, body: str,
                          cc: list[str] | None, bcc: list[str] | None,
                          attachments: list[str] | None) -> tuple[list[str], bytes]:
-        """Validate recipients and snapshot bounded attachment bytes into an in-memory MIME message."""
-        groups = []
+        """Validate recipients and snapshot bounded attachment bytes into an in-memory MIME message.
+
+        Args:
+            account: Validated sender account; its email supplies From and the Message-ID domain.
+            to: Explicit To mailbox addresses; display names and address-list strings
+                are rejected.
+            subject: Single-line subject, validated before composition.
+            body: Nonempty bounded plain-text message body.
+            cc: Optional explicit Cc mailbox addresses.
+            bcc: Optional envelope-only Bcc addresses; no Bcc header is emitted.
+            attachments: Optional absolute file paths whose bounded bytes are
+                snapshotted before submission.
+        """
+        recipient_groups = []
         for group in (to, [] if cc is None else cc, [] if bcc is None else bcc):
             if not isinstance(group, list) or len(group) > MAX_RECIPIENTS:
                 raise MailError("invalid_recipients", "Supply a list of at most 25 explicit recipient addresses.")
-            groups.append([address(value) for value in group])
-        recipients = list(dict.fromkeys(item for group in groups for item in group))
+            recipient_groups.append([address(value) for value in group])
+        recipients = list(dict.fromkeys(item for group in recipient_groups for item in group))
         if not recipients or len(recipients) > MAX_RECIPIENTS:
             raise MailError("invalid_recipients", "Choose between one and 25 recipients.")
         subject = text(subject, "Subject", 300)
         if not isinstance(body, str) or not body.strip() or len(body) > MAX_BODY_CHARS or "\0" in body:
             raise MailError("invalid_body", "Enter a nonempty message of at most 100,000 characters.")
+
+        # Keep envelope recipients separate from visible headers, especially Bcc.
         paths = [] if attachments is None else attachments
         if not isinstance(paths, list) or len(paths) > 10:
             raise MailError("attachment_limit", "Attach at most ten files with a combined size of 5 MiB.")
         message = EmailMessage(policy=email.policy.SMTP)
         message["From"] = account["email"]
-        for name, values in zip(("To", "Cc"), groups[:2]):
+        for name, values in zip(("To", "Cc"), recipient_groups[:2]):
             if values:
                 message[name] = ", ".join(values)
         message["Subject"] = subject
         message["Date"] = email.utils.format_datetime(dt.datetime.now(dt.timezone.utc))
         message["Message-ID"] = email.utils.make_msgid(domain=account["email"].split("@", 1)[1])
         message.set_content(body, cte="quoted-printable")
-        total = 0
+
+        # Snapshot file bytes now; SMTP never reopens a potentially changed path.
+        attachment_bytes = 0
         for supplied in paths:
             if not isinstance(supplied, str):
                 raise MailError("invalid_attachment", "Attachment paths must be strings.")
@@ -194,24 +301,40 @@ class MailApplication:
             if not path.is_absolute() or not path.is_file():
                 raise MailError("invalid_attachment", "Choose an existing file using its absolute path.")
             with path.open("rb") as stream:
-                content = stream.read(MAX_ATTACHMENT_BYTES + 1 - total)
-            total += len(content)
-            if total > MAX_ATTACHMENT_BYTES:
+                content = stream.read(MAX_ATTACHMENT_BYTES + 1 - attachment_bytes)
+            attachment_bytes += len(content)
+            if attachment_bytes > MAX_ATTACHMENT_BYTES:
                 raise MailError("attachment_limit", "Attachments exceed the combined 5 MiB limit.")
             name = text(path.name, "Attachment filename", 255)
             content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
-            major, minor = content_type.split("/", 1)
-            message.add_attachment(content, maintype=major, subtype=minor, filename=name)
+            maintype, subtype = content_type.split("/", 1)
+            message.add_attachment(content, maintype=maintype, subtype=subtype, filename=name)
         return recipients, message.as_bytes()
 
     def send_email(self, request_id: str, account_id: str, to: list[str], subject: str, body: str,
                    cc: list[str] | None = None, bcc: list[str] | None = None,
                    attachments: list[str] | None = None) -> dict:
-        """Send the assistant's explicit request once, with no separate desktop confirmation."""
+        """Send the assistant's explicit request once, with no separate desktop confirmation.
+
+        Args:
+            request_id: Caller-owned duplicate-prevention ID; reuse for status lookup
+                rather than resubmission.
+            account_id: ID of the saved account explicitly selected by the caller.
+            to: Explicit To mailbox addresses; display names and address-list strings
+                are rejected.
+            subject: Single-line subject, validated before composition.
+            body: Nonempty bounded plain-text message body.
+            cc: Optional explicit Cc mailbox addresses.
+            bcc: Optional envelope-only Bcc addresses; no Bcc header is emitted.
+            attachments: Optional absolute file paths whose bounded bytes are
+                snapshotted before submission.
+        """
         identity = request_identity(request_id)
         account = self._send_account(account_id)
         recipients, content = self._compose_message(account, to, subject, body, cc, bcc, attachments)
         credentials = self._credentials(account, "smtp")
+
+        # Claim the request before SMTP so a duplicate cannot submit again.
         self.sends.begin(identity, account_id)
         error_code = None
         try:
@@ -222,6 +345,8 @@ class MailApplication:
             outcome, error_code = "rejected", error.code
         except Exception:
             outcome, error_code = "outcome_unknown", "submission_interrupted"
+
+        # Persist the observed outcome separately from the network transaction.
         try:
             record = self.sends.finish(identity, outcome, error_code)
             return self._send_result(record)
@@ -233,6 +358,11 @@ class MailApplication:
 
     @staticmethod
     def _send_result(record: dict) -> dict:
+        """Expose submission metadata without claiming recipient delivery.
+
+        Args:
+            record: Metadata-only send-ledger row.
+        """
         result = {"request_id": record["id"], "status": record["status"], "error": record["error"],
                   "delivery_confirmed": False, "status_recorded": True}
         if record["status"] == "submitting":
@@ -240,10 +370,26 @@ class MailApplication:
         return result
 
     def get_send_status(self, request_id: str) -> dict:
-        """Report server acceptance separately from end-to-end delivery."""
+        """Report server acceptance separately from end-to-end delivery.
+
+        Args:
+            request_id: Caller-owned duplicate-prevention ID; reuse for status lookup
+                rather than resubmission.
+        """
         return self._send_result(self.sends.get(request_id))
 
     def _check_credentials(self, value, passwords, expected_revision, protocols):
+        """Validate an editor snapshot and resolve credentials only for the requested checks.
+
+        Args:
+            value: Untrusted current-form account payload validated without saving it.
+            passwords: Incoming and SMTP password fields; empty strings request
+                permitted saved-credential reuse.
+            expected_revision: Saved account revision being edited or checked; None
+                denotes a new account.
+            protocols: Endpoint keys whose credentials are required for this check
+                (incoming and/or smtp).
+        """
         account = account_input(value)
         if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(
             not isinstance(secret, str) or len(secret) > 4096 or any(c in secret for c in "\0\r\n")
@@ -255,6 +401,8 @@ class MailApplication:
         previous = self.store.account(account["id"]) if account["id"] else None
         if (previous and previous["revision"] != expected_revision) or (previous is None and expected_revision is not None):
             raise MailError("configuration_changed", "The account changed in another window. Reload it before checking.")
+
+        # Reuse credentials only when the saved authentication context still matches.
         credentials = {}
         if account["authentication"]["method"] == "microsoft_oauth":
             if any(passwords.values()):
@@ -280,7 +428,17 @@ class MailApplication:
         return account, credentials
 
     def check_smtp(self, value: dict, passwords: dict, expected_revision: int | None, progress=None) -> dict:
-        """Check only current-form SMTP authentication without saving, reading or enabling sending."""
+        """Check only current-form SMTP authentication without saving, reading or enabling sending.
+
+        Args:
+            value: Untrusted current-form account payload validated without saving it.
+            passwords: Incoming and SMTP password fields; empty strings request
+                permitted saved-credential reuse.
+            expected_revision: Saved account revision being edited or checked; None
+                denotes a new account.
+            progress: Optional callback receiving a stage and state; it must not receive
+                credentials or mail content.
+        """
         if progress:
             progress("settings", "started")
         account, credentials = self._check_credentials(value, passwords, expected_revision, ("smtp",))
@@ -292,7 +450,19 @@ class MailApplication:
             return {"connection": "passed", "authentication": "passed", "saved": False, "sent": False}
 
     def check_account(self, value: dict, passwords: dict, expected_revision: int | None, progress=None, *, read_message=False) -> dict:
-        """Check current settings, discover folders and optionally test one read without saving or sending."""
+        """Check current settings, discover folders and optionally test one read without saving or sending.
+
+        Args:
+            value: Untrusted current-form account payload validated without saving it.
+            passwords: Incoming and SMTP password fields; empty strings request
+                permitted saved-credential reuse.
+            expected_revision: Saved account revision being edited or checked; None
+                denotes a new account.
+            progress: Optional callback receiving a stage and state; it must not receive
+                credentials or mail content.
+            read_message: Whether the explicit connection check should also read one
+                bounded sample.
+        """
         if progress:
             progress("settings", "started")
         read_message = flag(read_message, "Reading a sample")
@@ -318,6 +488,8 @@ class MailApplication:
                 sample = self._incoming(account).check_connection_read(connection, account["folders"][0], deadline=deadline)["message_read"]
                 if progress:
                     progress("reading", "passed" if sample == "passed" else "empty")
+
+        # SMTP checks authenticate without submitting a message or changing permissions.
         if account["smtp"] is not None:
             if progress:
                 progress("smtp", "started")
@@ -329,7 +501,17 @@ class MailApplication:
                 "saved": False, "message_read": sample, "sent": False}
 
     def manage(self, operation: str, arguments: dict, *, progress=None, diagnostic=None):
-        """Dispatch local setup operations through a closed allowlist."""
+        """Dispatch local setup operations through a closed allowlist.
+
+        Args:
+            operation: Allowlisted operation name, with no implicit fallback to another
+                operation.
+            arguments: Arguments accepted by the selected operation.
+            progress: Optional callback receiving a stage and state; it must not receive
+                credentials or mail content.
+            diagnostic: Optional local-only callback for bounded, redacted sign-in
+                details.
+        """
         if not isinstance(arguments, dict):
             raise MailError("invalid_arguments", "Arguments must be an object.")
         if operation == "presets" and not arguments:

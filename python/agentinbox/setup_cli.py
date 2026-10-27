@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Human-facing account setup commands backed by the shared mail application.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Human-facing account setup commands backed by the shared mail application."""
 
 import getpass
@@ -12,7 +32,11 @@ from .errors import MailError
 
 
 def add_commands(commands):
-    """Register discoverable local setup commands without changing the JSON adapter."""
+    """Register discoverable local setup commands without changing the JSON adapter.
+
+    Args:
+        commands: argparse subparser collection receiving the local setup commands.
+    """
     profile = commands.add_parser("profile", help="Show profile paths or retry pending credential cleanup.")
     actions = profile.add_subparsers(dest="action", required=True)
     for name, description in (("show", "Show where settings and protected credentials are stored."),
@@ -52,6 +76,11 @@ def add_commands(commands):
 
 
 def _unique_object(pairs):
+    """Build a JSON object while rejecting duplicate keys.
+
+    Args:
+        pairs: Ordered JSON key/value pairs inspected for duplicate keys.
+    """
     result = {}
     for key, value in pairs:
         if key in result:
@@ -61,7 +90,12 @@ def _unique_object(pairs):
 
 
 def load_entry(path: Path, entry: str) -> dict:
-    """Read a bounded settings-only template and validate it before any password prompt."""
+    """Read a bounded settings-only template and validate it before any password prompt.
+
+    Args:
+        path: Local file path read or atomically replaced by this operation.
+        entry: Named account entry inside the settings-only setup document.
+    """
     try:
         with path.expanduser().open("rb") as stream:
             raw = stream.read(256_001)
@@ -81,6 +115,11 @@ def load_entry(path: Path, entry: str) -> dict:
 
 
 def _password(prompt):
+    """Request a nonempty password with hidden terminal input or fail closed.
+
+    Args:
+        prompt: Safe terminal prompt text; the entered secret is never echoed.
+    """
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", getpass.GetPassWarning)
@@ -93,6 +132,13 @@ def _password(prompt):
 
 
 def _passwords(account, prompt):
+    """Prompt only for the password-based endpoints selected by the setup command.
+
+    Args:
+        account: Account settings or saved snapshot used by this operation; credentials
+            remain in protected storage.
+        prompt: Whether this command should ask for new hidden-input passwords.
+    """
     passwords = {"incoming": "", "smtp": ""}
     if account["authentication"]["method"] == "microsoft_oauth" or not prompt:
         return passwords
@@ -104,6 +150,13 @@ def _passwords(account, prompt):
 
 
 def _saved_account(application, identity):
+    """Resolve one public saved-account snapshot through the management adapter.
+
+    Args:
+        application: Shared MailApplication instance whose session owns this adapter
+            connection.
+        identity: Saved account ID shown by the accounts list command.
+    """
     for account in application.manage("list_accounts", {}):
         if account["id"] == identity:
             return account
@@ -111,6 +164,13 @@ def _saved_account(application, identity):
 
 
 def _signin(application, identity):
+    """Display a Microsoft device code and poll until completion or local cancellation.
+
+    Args:
+        application: Shared MailApplication instance whose session owns this adapter
+            connection.
+        identity: Saved Microsoft account ID selected for this explicit sign-in.
+    """
     flow = application.manage("start_microsoft_signin", {"account_id": identity})
     try:
         sys.stderr.write(f"Open {flow['verification_uri']}\nEnter code: {flow['user_code']}\n"
@@ -137,7 +197,13 @@ def _signin(application, identity):
 
 
 def run(application, options):
-    """Translate one setup command into existing shared application operations."""
+    """Translate one setup command into existing shared application operations.
+
+    Args:
+        application: Shared MailApplication instance whose session owns this adapter
+            connection.
+        options: Parsed command-line options for the selected setup action.
+    """
     if options.command == "presets":
         return application.manage("presets", {})
     if options.command == "profile":
@@ -175,7 +241,12 @@ def run(application, options):
 
 
 def display(options, result):
-    """Show local outcomes without hiding cleanup warnings or claiming provider success."""
+    """Show local outcomes without hiding cleanup warnings or claiming provider success.
+
+    Args:
+        options: Parsed command-line options for the selected setup action.
+        result: Protocol or application result being checked or displayed.
+    """
     if options.command == "accounts" and options.action == "list":
         if not result:
             print("No accounts configured. Start with: accounts add --help")
