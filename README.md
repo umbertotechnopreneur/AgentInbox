@@ -1,5 +1,19 @@
 # Connect unlimited mailboxes (Gmail, Microsoft, iCloud, GoDaddy, or custom) to your AI assistant via MCP.
 
+I could connect only one mailbox at a time to my AI assistant. I built AgentInbox so I could use all my mailboxes in the same conversation.
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="docs/assets/promo/conversation-clean-v2/conversation.png">
+        <img src="docs/assets/promo/conversation-clean-v2/conversation.png" alt="Example ChatGPT conversation with AgentInbox: five mailboxes and seven new emails, including one important message from your son." width="960">
+      </a>
+      <br>
+      <sub>Example conversation. Mailboxes are checked when you ask.</sub>
+    </td>
+  </tr>
+</table>
+
 **[CLI Quick Start (PDF)](docs/AgentInbox-CLI-Quick-Start.pdf)** · [Two-mailbox JSON example](docs/examples/accounts.setup.json) · [Command reference](docs/CLI_REFERENCE.md)
 
 Configure Gmail and Microsoft 365 from your terminal: create local connections, enter an app password securely, sign in with Microsoft and check access. These commands are bundled in the Windows portable Release. See [validation](docs/VALIDATION.md) for the build checks and the provider workflows still to verify.
@@ -8,8 +22,6 @@ Configure Gmail and Microsoft 365 from your terminal: create local connections, 
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
 ![Status: in development](https://img.shields.io/badge/status-in_development-F6C453)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
-
-I could connect only one mailbox at a time to my AI assistant. I built AgentInbox so I could use all my mailboxes in the same conversation.
 
 Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other providers that allow IMAP or POP3 access. Bring personal, work and custom-domain accounts into one conversation through a single local MCP connection.
 
@@ -109,16 +121,6 @@ The engine requires Python 3.11 or newer and uses the standard library. On Windo
 - [Privacy](docs/PRIVACY.md) and [terms](docs/TERMS.md)
 
 [MIT license](LICENSE). [Contributions](CONTRIBUTING.md) and [security reports](SECURITY.md) are welcome. Independent project; no provider or assistant vendor endorsement is implied.
-
-## More from MeUp
-
-- [**AgentInbox**](https://github.com/umbertotechnopreneur/AgentInbox) · Connect your mailboxes to your AI assistant via MCP.
-- [**PromptMeUp**](https://github.com/umbertotechnopreneur/PromptMeUp) · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.
-- [**WorkTrail**](https://github.com/umbertotechnopreneur/WorkTrail) · Track your time. Find what you worked on.
-
-I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contributors. Find me on [LinkedIn](https://www.linkedin.com/in/umbertogiacobbi/) or at [umbertogiacobbi.biz](https://umbertogiacobbi.biz/).
-
-Artwork and writing style: [brand guide](docs/BRAND.md).
 
 <a id="external-binary-security-policy"></a>
 
