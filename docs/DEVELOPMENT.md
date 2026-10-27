@@ -4,6 +4,8 @@ Use Python 3.11+ for the standard-library mail engine. Windows setup also requir
 
 Read [architecture](ARCHITECTURE.md). Python owns account settings, credentials, mail protocols and sending permissions and outcome recording. Keep desktop and MCP adapters thin.
 
+Source documentation conventions live in [AGENTS.md](../AGENTS.md#scope-and-architecture). Each maintained product source header describes its responsibility and records only known AI changes. Method documentation explains inputs, defaults and units; phase comments explain the constraints behind credentials, commits, pagination and submission. Follow the [source map](ARCHITECTURE.md#configuration-and-checks) when choosing where a change belongs.
+
 ## Entry points
 
 ```text

@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Shared account contracts and explicitly process-local session state.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Shared account contracts and explicitly process-local session state."""
 
 from dataclasses import dataclass, field
@@ -88,7 +108,11 @@ class SessionState:
     access_tokens: dict[tuple, tuple[str, float]] = field(default_factory=dict, repr=False)
 
     def expire_references(self, now: float) -> None:
-        """Bound each search cache and remove expired entries before they are used."""
+        """Bound each search cache and remove expired entries before they are used.
+
+        Args:
+            now: Current Unix timestamp used to expire process-local reference entries.
+        """
         for cache in (self.references, self.continuations):
             for key in list(cache):
                 if cache[key]["expires"] <= now:

@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: UI-independent account-check stages, folder choices and committed save outcomes.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -26,6 +44,13 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     private string _message = "Please wait while I check the connection and sign-in.";
     private readonly bool _savedCheck;
 
+    /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
+    /// <param name="engine">Shared adapter for the local Python management contract.</param>
+    /// <param name="configuration">Owner of saved snapshots, notifications and the current editor draft.</param>
+    /// <param name="snapshot">Validated account settings, transient passwords and expected revision for this operation.</param>
+    /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
+    /// <param name="savedCheck">Whether this is a saved-account check that skips editing and folder-choice steps.</param>
     internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false)
     {
         _engine = engine; _configuration = configuration; _snapshot = snapshot;
@@ -73,6 +98,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         : SaveAccount ? "Save this checked account with only the selected folders." : "Use these folder choices in the form without saving it.";
     public bool ReadMessageRequested { get => _readMessageRequested; set { if (Set(ref _readMessageRequested, value)) Notify(); } }
 
+    /// <summary>Forward an explicit folder selection into operation or editor state.</summary>
+    /// <param name="folders">Exact folder names returned by the server or explicitly selected by the user.</param>
     internal void SelectFolders(IEnumerable<string> folders)
     {
         if (UpdatingFolders || !ShowPrimary) return;
@@ -81,6 +108,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         Notify();
     }
 
+    /// <summary>Complete the pending folder-choice step with the validated selection.</summary>
     internal void ChooseFolders()
     {
         if (!CanChooseFolders) return;
@@ -90,6 +118,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         _selection.TrySetResult(folders);
     }
 
+    /// <summary>Request cancellation when safe while preserving an in-progress committed save.</summary>
     internal void RequestClose()
     {
         _closeWhenReady = true;
@@ -97,6 +126,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         Notify();
     }
 
+    /// <summary>Release the pending folder choice and cancel checks after the window closes.</summary>
     internal void Closed()
     {
         _closed = true;
@@ -104,6 +134,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         if (!IsSaving) _stop.Cancel();
     }
 
+    /// <summary>Apply an engine progress record to the active check stage.</summary>
+    /// <param name="progress">Optional account-check progress callback or one completed engine stage update.</param>
     internal void Report(AccountCheckProgress progress)
     {
         var stage = Stages.FirstOrDefault(item => item.Key == progress.Stage);
@@ -112,6 +144,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         _activeStage = progress.State == "started" ? progress.Stage : null;
     }
 
+    /// <summary>Expose selectable server folders while retaining valid snapshot selections.</summary>
+    /// <param name="folders">Exact folder names returned by the server or explicitly selected by the user.</param>
     private void ShowFolderChoices(string[] folders)
     {
         _pop = _snapshot.Account.Incoming.Protocol == "pop3";
@@ -129,6 +163,9 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         Notify();
     }
 
+    /// <summary>Record the check outcome and finish operation presentation.</summary>
+    /// <param name="succeeded">Whether the requested operation completed successfully within its stated scope.</param>
+    /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
     private void Complete(bool succeeded, string message)
     {
         Succeeded = succeeded;
@@ -146,6 +183,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     }
 
     /// <summary>Performs engine calls and records their outcome without reading any UI control.</summary>
+    /// <param name="lifetime">Configuration-window lifetime; saving uses this rather than view-close cancellation.</param>
     internal async Task RunAsync(CancellationToken lifetime)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime, _stop.Token);
@@ -175,6 +213,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
                 Notify();
                 return;
             }
+
+            // Unsaved checks pause for an explicit folder choice before any sample read.
             ShowFolderChoices(available);
             var chosen = await _selection.Task.WaitAsync(cancellation.Token);
             if (chosen is null) return;
@@ -196,6 +236,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
                     ? "One message was read successfully. No email was sent."
                     : "The selected folder is empty: sign-in passed, but no message read could be tested. No email was sent.";
             }
+
+            // Update the draft first; persistence remains a separate explicit operation.
             _configuration.Editor.ApplyFolderChoices(available, chosen);
             if (SaveAccount)
             {
@@ -227,6 +269,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         finally { _snapshot.ClearPasswords(); }
     }
 
+    /// <summary>Release owned resources and sensitive operation state.</summary>
     public void Dispose()
     {
         _snapshot.ClearPasswords();
@@ -235,6 +278,9 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
 }
 
 /// <summary>One engine-reported check stage, separate from its rendered status label.</summary>
+/// <param name="key">Engine progress-stage key, independent of its visible label.</param>
+/// <param name="label">Visible field or operation-stage label.</param>
+/// <param name="status">Initial stage presentation, defaulting to Waiting.</param>
 internal sealed class CheckStageModel(string key, string label, string status = "Waiting") : ObservableModel
 {
     private string _status = status;

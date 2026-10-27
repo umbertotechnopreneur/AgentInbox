@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Typed non-secret account contracts shared with the Python JSON adapter.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -29,6 +47,8 @@ internal sealed record SavedAccount : AccountSettings
     [JsonPropertyName("cleanup_pending_count")] public int CleanupPendingCount { get; init; }
     [JsonPropertyName("cleanup_error")] public string? CleanupError { get; init; }
 
+    /// <summary>Deserialize the public saved-account contract returned by the Python engine.</summary>
+    /// <param name="value">Model value or text consumed by this control or binding.</param>
     internal static SavedAccount Read(JsonElement value)
     {
         var account = value.Deserialize<SavedAccount>() ?? throw new JsonException("The engine returned no account.");
@@ -60,12 +80,19 @@ internal sealed record AccountAuthentication
 }
 
 /// <summary>One captured edit operation; temporary passwords are cleared after use.</summary>
+/// <param name="Account">Validated non-secret account payload for the engine contract.</param>
+/// <param name="Passwords">Transient endpoint passwords cleared after the operation.</param>
+/// <param name="Revision">Expected saved-account revision, or null for a new account.</param>
 internal sealed record AccountSnapshot(AccountSettings Account, Dictionary<string, string> Passwords, int? Revision)
 {
+    /// <summary>Release password values held by this draft or operation snapshot.</summary>
     internal void ClearPasswords() => Passwords.Clear();
 }
 
 /// <summary>A field error that can be displayed by any configuration adapter.</summary>
+/// <param name="Property">Editor property associated with the field error.</param>
+/// <param name="Message">Safe presentation guidance or outcome explanation.</param>
+/// <param name="Tab">Account tab index containing the invalid field.</param>
 internal sealed record AccountFieldError(string Property, string Message, int Tab);
 
 /// <summary>Provider defaults returned by the same Python presets operation available to the CLI.</summary>

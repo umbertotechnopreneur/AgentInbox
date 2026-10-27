@@ -1,5 +1,54 @@
 #Requires -Version 7.0
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Build one local MSIX from current source and previously scanned dependency inputs.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
 # SPDX-License-Identifier: MIT
+#
+# VBWR E
+
+<#
+.SYNOPSIS
+Build one local MSIX from current source and previously scanned dependency inputs.
+.PARAMETER Channel
+Debug or Store package channel; installation accepts signed Debug only.
+.PARAMETER Architecture
+Target Windows package architecture, x64 or arm64.
+.PARAMETER Version
+Requested package version; Store wrapper accepts three components and appends .0.
+.PARAMETER PythonArchive
+Previously scanned official Python embeddable archive, retained for hash and extraction checks.
+.PARAMETER PythonDirectory
+Extracted runtime directory whose files must match the supplied archive.
+.PARAMETER PythonSource
+Official HTTPS Python download URL recorded as import provenance.
+.PARAMETER PythonVersion
+Version of the supplied Python runtime, at least 3.11.0.
+.PARAMETER PythonSha256
+Expected SHA-256 of the supplied Python archive.
+.PARAMETER DependencyManifest
+JSON list of previously scanned NuGet archives, official sources and SHA-256 hashes.
+.PARAMETER CertificateThumbprint
+Existing trusted current-user signing certificate; no certificate trust is changed.
+.PARAMETER MakeAppxPath
+Optional existing Windows SDK MakeAppx executable path.
+.PARAMETER SignToolPath
+Optional existing Windows SDK SignTool executable path for a signed Debug package.
+.PARAMETER Unsigned
+Build without signing; required for Store packages and rejected by Debug installation.
+#>
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Store')][string]$Channel = 'Debug',
@@ -38,6 +87,12 @@ $succeeded = $false
 $cleanupFailure = $null
 $originalEnvironment = @{}
 
+<#
+.SYNOPSIS
+Resolve a regular file tree while rejecting links in its ancestors and contents.
+.PARAMETER Path
+Exact input or output path whose regular-file and ancestor constraints must be enforced.
+#>
 function Assert-RegularTree([string]$Path) {
     $resolved = [IO.Path]::GetFullPath($Path)
     $current = Get-Item -LiteralPath $resolved -Force
@@ -59,6 +114,12 @@ function Assert-RegularTree([string]$Path) {
     return $resolved
 }
 
+<#
+.SYNOPSIS
+Require existing output ancestors to be regular directories without redirection.
+.PARAMETER Path
+Exact input or output path whose regular-file and ancestor constraints must be enforced.
+#>
 function Assert-OutputAncestors([string]$Path) {
     $candidate = [IO.Path]::GetFullPath($Path)
     while (-not (Test-Path -LiteralPath $candidate)) {
@@ -74,6 +135,14 @@ function Assert-OutputAncestors([string]$Path) {
     }
 }
 
+<#
+.SYNOPSIS
+Find an existing SDK executable without installing tools or following redirected paths.
+.PARAMETER Name
+Required SDK executable filename.
+.PARAMETER ExplicitPath
+Optional existing SDK tool path; otherwise search the installed SDK.
+#>
 function Resolve-SdkTool([string]$Name, [string]$ExplicitPath) {
     if ($ExplicitPath) {
         if (-not (Test-Path -LiteralPath $ExplicitPath -PathType Leaf)) { throw "Missing Windows SDK tool: $Name" }
@@ -88,6 +157,18 @@ function Resolve-SdkTool([string]$Name, [string]$ExplicitPath) {
     throw "Install the Windows SDK or supply the path of $Name. This script does not install tools."
 }
 
+<#
+.SYNOPSIS
+Verify the official source and archive hash before recording import metadata.
+.PARAMETER Path
+Exact input or output path whose regular-file and ancestor constraints must be enforced.
+.PARAMETER ExpectedHash
+Expected SHA-256 of the supplied archive.
+.PARAMETER Source
+Official HTTPS archive URL on one of the allowed download hosts.
+.PARAMETER Hosts
+Allowlisted official download hostnames for this import.
+#>
 function Confirm-Archive([string]$Path, [string]$ExpectedHash, [string]$Source, [string[]]$Hosts) {
     $uri = [uri]$Source
     if (-not $uri.IsAbsoluteUri -or $uri.Scheme -cne 'https' -or $uri.Host -notin $Hosts -or $uri.UserInfo) {
@@ -101,6 +182,14 @@ function Confirm-Archive([string]$Path, [string]$ExpectedHash, [string]$Source, 
     return $archive
 }
 
+<#
+.SYNOPSIS
+Compare extracted runtime files with the supplied archive without substituting binaries.
+.PARAMETER Archive
+Validated runtime archive whose entries must exactly match the extracted files.
+.PARAMETER Directory
+Extracted runtime directory to compare with archive entries.
+#>
 function Assert-ArchiveMatchesDirectory([string]$Archive, [string]$Directory) {
     $folder = Assert-RegularTree $Directory
     if (-not (Test-Path -LiteralPath $folder -PathType Container)) { throw 'The extracted Python runtime must be a directory.' }
@@ -126,6 +215,16 @@ function Assert-ArchiveMatchesDirectory([string]$Archive, [string]$Directory) {
     } finally { $zip.Dispose() }
 }
 
+<#
+.SYNOPSIS
+Render one package logo and release all owned drawing resources.
+.PARAMETER Source
+Existing source artwork file used to generate the package logo.
+.PARAMETER Destination
+Generated package-asset PNG path inside the owned payload.
+.PARAMETER Size
+Width and height in pixels of the generated package logo.
+#>
 function Write-Logo([string]$Source, [string]$Destination, [int]$Size) {
     $image = [Drawing.Image]::FromFile($Source)
     $bitmap = [Drawing.Bitmap]::new($Size, $Size)
@@ -209,7 +308,7 @@ try {
         }
         $signTool = Resolve-SdkTool 'SignTool.exe' $SignToolPath
     }
-    foreach ($key in @('NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_CLI_HOME', 'TEMP', 'TMP', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DOTNET_GENERATE_ASPNET_CERTIFICATE', 'MSBUILDDISABLENODEREUSE', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE')) {
+    foreach ($key in @('NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_CLI_HOME', 'TEMP', 'TMP', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE', 'DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK', 'DOTNET_GENERATE_ASPNET_CERTIFICATE', 'MSBUILDDISABLENODEREUSE', 'DOTNET_CLI_TELEMETRY_OPTOUT', 'DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE')) {
         $originalEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
     }
     $env:NUGET_PACKAGES = $packages
@@ -219,6 +318,8 @@ try {
     $env:TEMP = Join-Path $taskRoot 'temp'
     $env:TMP = $env:TEMP
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
+    # This WinUI build needs no workload repair or implicit SDK component downloads.
+    $env:DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK = 'true'
     $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
     $env:MSBUILDDISABLENODEREUSE = '1'
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'

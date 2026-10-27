@@ -20,4 +20,5 @@
 *.png binary
 *.jpg binary
 *.ico binary
+*.pdf binary
 docs/licenses/*.txt -whitespace

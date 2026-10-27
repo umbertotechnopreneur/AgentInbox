@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Explicit Microsoft public-client sign-in for IMAP, POP3 and optional SMTP.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Explicit Microsoft public-client sign-in for IMAP, POP3 and optional SMTP."""
 
 import contextlib
@@ -32,22 +52,51 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Never forward an authorization POST to another endpoint."""
 
     def redirect_request(self, request, response, code, message, headers, new_url):
+        """Reject redirects during Microsoft authentication requests.
+
+        Args:
+            request: Original HTTP request; redirects are rejected rather than followed.
+            response: Server response whose shape, status or payload must be checked.
+            code: Status or safe error code associated with the operation.
+            message: Message text or parsed MIME object consumed by this operation.
+            headers: HTTP response headers supplied to the redirect handler.
+            new_url: Redirect target rejected by the handler.
+        """
         raise MailError("microsoft_redirect", "Microsoft returned an unexpected redirect. Sign-in stopped.")
 
 
 def _bounded_string(value, maximum, label):
+    """Require a nonempty bounded Microsoft response string without control characters.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+        maximum: Maximum accepted character count for this response field.
+        label: Safe label used in a validation error instead of echoing the supplied
+            value.
+    """
     if not isinstance(value, str) or not value or len(value) > maximum or any(ord(c) < 33 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value):
         raise MailError("microsoft_response", f"Microsoft returned an invalid {label}.")
     return value
 
 
 def _duration(value, maximum):
+    """Require a positive bounded integer duration from Microsoft.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+        maximum: Maximum accepted positive integer duration in seconds.
+    """
     if type(value) is not int or not 1 <= value <= maximum:
         raise MailError("microsoft_response", "Microsoft returned an invalid expiry or polling interval.")
     return value
 
 
 def _guid(value):
+    """Normalize a Microsoft identifier when it is a valid UUID.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     if not isinstance(value, str):
         raise MailError("microsoft_configuration", "The Microsoft app or organization ID is invalid. Check the app settings.")
     try:
@@ -60,13 +109,22 @@ def _guid(value):
 
 
 def _flow_key(flow_id):
+    """Validate a device-flow identifier and form its protected-storage key.
+
+    Args:
+        flow_id: Opaque ID of the protected Microsoft device flow.
+    """
     if not isinstance(flow_id, str) or not re.fullmatch(r"[a-f0-9]{32}", flow_id):
         raise MailError("invalid_reference", "Invalid Microsoft sign-in reference.")
     return "signin-" + flow_id
 
 
 def _verification_uri(value):
-    """Accept the HTTPS sign-in address returned by Microsoft's verified endpoint."""
+    """Accept the HTTPS sign-in address returned by Microsoft's verified endpoint.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     _bounded_string(value, 2048, "verification address")
     try:
         parsed = urllib.parse.urlsplit(value)
@@ -85,7 +143,13 @@ def _verification_uri(value):
 
 
 def _report(diagnostic, message, *secrets):
-    """Send bounded, redacted details only to an explicitly requested local trace."""
+    """Send bounded, redacted details only to an explicitly requested local trace.
+
+    Args:
+        diagnostic: Optional local-only callback for bounded, redacted sign-in details.
+        message: Message text or parsed MIME object consumed by this operation.
+        secrets: Sensitive values to remove from local diagnostic output.
+    """
     if diagnostic is not None:
         diagnostic(server_response("Microsoft", message, *secrets))
 
@@ -94,10 +158,25 @@ class MicrosoftAuth:
     """Manage explicit device-code flows and protected refresh-token rotation."""
 
     def __init__(self, store, session: SessionState | None = None):
+        """Share the application store and its process-local token cache.
+
+        Args:
+            store: Account store owning settings, protected credentials and cleanup
+                metadata.
+            session: Process-local session that owns ephemeral access-token cache
+                entries.
+        """
         self.store = store
         self.session = session if session is not None else SessionState()
 
     def _account(self, identity, revision=None):
+        """Resolve an unchanged Microsoft account with the required saved authorization state.
+
+        Args:
+            identity: Saved Microsoft account ID, never a token or a sign-in code.
+            revision: Expected account revision, or None when no revision comparison is
+                requested.
+        """
         account = self.store.account(identity)
         authentication = account.get("authentication")
         if not isinstance(authentication, dict) or set(authentication) != {"method", "client_id", "tenant"} or authentication["method"] != "microsoft_oauth":
@@ -117,6 +196,12 @@ class MicrosoftAuth:
 
     @staticmethod
     def _scopes(account):
+        """Build Microsoft mail scopes from the selected protocol and sending permission.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         protocol = account["incoming"]["protocol"]
         scopes = [RESOURCE + ("IMAP.AccessAsUser.All" if protocol == "imap" else "POP.AccessAsUser.All")]
         if account["send_enabled"]:
@@ -125,6 +210,12 @@ class MicrosoftAuth:
 
     @staticmethod
     def _endpoint(account, operation):
+        """Build an allowlisted Microsoft device-code or token endpoint.
+
+        Args:
+            account: Validated Microsoft account containing the explicit tenant configuration.
+            operation: Allowlisted devicecode or token endpoint operation.
+        """
         authentication = account["authentication"]
         tenant = authentication["tenant"]
         if tenant not in {"common", "organizations", "consumers"}:
@@ -134,7 +225,16 @@ class MicrosoftAuth:
         return f"{AUTHORITY}/{tenant}/oauth2/v2.0/{operation}"
 
     def _post(self, account, operation, fields, *, diagnostic=None):
-        """POST bounded JSON requests over verified TLS, without redirects or retries."""
+        """POST bounded JSON requests over verified TLS, without redirects or retries.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+            operation: Allowlisted devicecode or token endpoint operation.
+            fields: Form fields sent only to the verified Microsoft endpoint.
+            diagnostic: Optional local-only callback for bounded, redacted sign-in
+                details.
+        """
         endpoint = self._endpoint(account, operation)
         _report(diagnostic, f"POST {endpoint}")
         request = urllib.request.Request(
@@ -177,7 +277,12 @@ class MicrosoftAuth:
 
     @staticmethod
     def _raise_error(response, *secrets):
-        """Expose Microsoft's bounded explanation locally, without sign-in secrets."""
+        """Expose Microsoft's bounded explanation locally, without sign-in secrets.
+
+        Args:
+            response: Server response whose shape, status or payload must be checked.
+            secrets: Sensitive values to remove from local diagnostic output.
+        """
         error = response.get("error")
         if "error" in response and (not isinstance(error, str) or not error or len(error) > 128):
             raise MailError("microsoft_response", "Microsoft sent a reply I couldn't read. Please try signing in again.")
@@ -217,7 +322,13 @@ class MicrosoftAuth:
 
     @contextlib.contextmanager
     def _lease(self, kind, identity):
-        """Serialize a single flow or refresh without holding the settings lock."""
+        """Serialize a single flow or refresh without holding the settings lock.
+
+        Args:
+            kind: Lease category separating device-flow polling from account-token
+                refresh.
+            identity: Flow or account ID for this lease category; unrelated operations use separate locks.
+        """
         if kind not in {"flow", "account"} or not isinstance(identity, str) or not re.fullmatch(r"[a-f0-9]{32}", identity):
             raise MailError("invalid_reference", "Invalid Microsoft sign-in reference.")
         directory = self.store.root / "microsoft-locks"
@@ -247,6 +358,11 @@ class MicrosoftAuth:
                     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
     def _load_flow(self, flow_id):
+        """Read protected device-flow state and reject consumed or malformed flows.
+
+        Args:
+            flow_id: Opaque ID of the protected Microsoft device flow.
+        """
         try:
             if self.store.cleanup_queued(_flow_key(flow_id)):
                 raise MailError("signin_expired", "This Microsoft sign-in was already used or cancelled. Start again.")
@@ -267,15 +383,33 @@ class MicrosoftAuth:
             raise MailError("signin_invalid", "The protected Microsoft sign-in data is invalid. Start again.") from None
 
     def _save_flow(self, flow_id, state):
+        """Persist protected flow state only while its account revision still matches.
+
+        Args:
+            flow_id: Opaque ID of the protected Microsoft device flow.
+            state: Device-flow metadata protected at rest and bound to an account
+                revision.
+        """
         with self.store.locked():
             self._account(state["account_id"], state["revision"])
             self.store.vault.put(_flow_key(flow_id), json.dumps(state, separators=(",", ":")))
 
     def _discard(self, flow_id):
+        """Durably retire a device flow and report any remaining protected-data cleanup.
+
+        Args:
+            flow_id: Opaque ID of the protected Microsoft device flow.
+        """
         return self.store.retire_protected([_flow_key(flow_id)])
 
     def start(self, account_id, *, diagnostic=None):
-        """Start a user-requested Microsoft device flow without opening a browser."""
+        """Start a user-requested Microsoft device flow without opening a browser.
+
+        Args:
+            account_id: ID of the saved account explicitly selected by the caller.
+            diagnostic: Optional local-only callback for bounded, redacted sign-in
+                details.
+        """
         account = self._account(account_id)
         _report(diagnostic, f"App ID: {account['authentication']['client_id']}; account type: {account['authentication']['tenant']}.")
         _report(diagnostic, f"Requested mail permissions: {self._scopes(account)}")
@@ -304,6 +438,18 @@ class MicrosoftAuth:
                 "expires_in": max(1, math.floor(state["expires"] - time.time())), "interval": interval}
 
     def _token_response(self, response, account, require_refresh, *secrets, diagnostic=None):
+        """Validate tokens, expiry and required mail grants before accepting authorization.
+
+        Args:
+            response: Server response whose shape, status or payload must be checked.
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+            require_refresh: Whether this response must include a protected refresh
+                token for persistent sign-in.
+            diagnostic: Optional local-only callback for bounded, redacted sign-in
+                details.
+            secrets: Sensitive values to remove from local diagnostic output.
+        """
         self._raise_error(response, account["email"], *secrets)
         if not isinstance(response.get("token_type"), str) or response["token_type"].lower() != "bearer":
             raise MailError("microsoft_response", "Microsoft did not finish sign-in. Please try again.")
@@ -312,6 +458,8 @@ class MicrosoftAuth:
         supplied = response.get("scope")
         if not isinstance(supplied, str) or len(supplied) > 2048:
             raise MailError("microsoft_response", "Microsoft did not confirm the granted mail permissions.")
+
+        # Bound diagnostics before comparing grants; tokens never reach local traces.
         sensitive = [account["email"], *secrets]
         for field in ("access_token", "refresh_token", "id_token", "device_code", "user_code"):
             if isinstance(response.get(field), str) and response[field]:
@@ -322,6 +470,8 @@ class MicrosoftAuth:
         _report(diagnostic, f"Required mail permissions: {required_text}")
         _report(diagnostic, f"Returned permissions: {supplied or '(none)'}", *sensitive)
         detail = server_response("Microsoft", f"Required: {required_text}; returned: {supplied or '(none)'}", *sensitive)
+
+        # Normalize only grants for the mail resource, then require the selected capabilities.
         granted = set()
         for scope in supplied.split():
             if scope in {"offline_access", "openid", "profile", "email"}:
@@ -346,6 +496,8 @@ class MicrosoftAuth:
         # enable features or bypass the account's local read/send permissions.
         if granted - required:
             _report(diagnostic, "Other previously granted permissions are not used: " + " ".join(sorted(granted - required)), *sensitive)
+
+        # Persistent authorization must fit the protected credential store without truncation.
         refresh = response.get("refresh_token")
         if refresh is not None:
             _bounded_string(refresh, 2560, "refresh token")
@@ -357,10 +509,22 @@ class MicrosoftAuth:
 
     @staticmethod
     def _cache_key(account):
+        """Bind an access-token cache entry to an account revision and refresh-token reference.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         return account["id"], account["revision"], account.get("oauth_secret")
 
     def poll(self, flow_id, *, diagnostic=None):
-        """Poll once at the persisted interval and consume successful flows once."""
+        """Poll once at the persisted interval and consume successful flows once.
+
+        Args:
+            flow_id: Opaque ID of the protected Microsoft device flow.
+            diagnostic: Optional local-only callback for bounded, redacted sign-in
+                details.
+        """
         _flow_key(flow_id)
         with self._lease("flow", flow_id):
             state = self._load_flow(flow_id)
@@ -422,14 +586,23 @@ class MicrosoftAuth:
                         **{key: connected[key] for key in ("cleanup_pending", "cleanup_pending_count", "cleanup_error")}}
 
     def cancel(self, flow_id):
-        """Forget one local device flow without changing an existing connection."""
+        """Forget one local device flow without changing an existing connection.
+
+        Args:
+            flow_id: Opaque ID of the protected Microsoft device flow.
+        """
         _flow_key(flow_id)
         with self._lease("flow", flow_id):
             cleanup = self._discard(flow_id)
         return {"status": "cancelled", **cleanup}
 
     def access_token(self, account):
-        """Refresh under a per-account lease; never persist access tokens."""
+        """Refresh under a per-account lease; never persist access tokens.
+
+        Args:
+            account: Account settings or saved snapshot used by this operation;
+                credentials remain in protected storage.
+        """
         current = self._account(account["id"], account["revision"])
         key = self._cache_key(current)
         self.session.access_tokens = {stored: value for stored, value in self.session.access_tokens.items() if value[1] > time.time()}

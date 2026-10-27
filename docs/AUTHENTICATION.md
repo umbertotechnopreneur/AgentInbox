@@ -1,6 +1,6 @@
 # Accounts and signing in
 
-Choose your email provider in Windows setup. Outlook.com and Microsoft 365 select **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
+Configure accounts through the [command-line quick start](CLI_SETUP_GUIDE.md) or Windows setup. In Windows setup, choosing Outlook.com or Microsoft 365 selects **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
 
 Earlier synthetic sign-in tests passed with mocked transports and protected stores. The latest provider-persistence and Microsoft-diagnostic cases have not run. Live sign-in and native credential storage remain unvalidated. See [validation](VALIDATION.md).
 
@@ -76,6 +76,6 @@ Unavailable secure storage is an error, with no plain-text fallback. Protection 
 
 ## Account permissions and removal
 
-Assistant read access is separate from saving or authenticating a connection. SMTP starts disabled. Microsoft consent to an SMTP scope does not enable sending by itself. Enable SMTP separately in Windows configuration; Codex can then submit the emails you request without another AgentInbox confirmation.
+Assistant read access is separate from saving or authenticating a connection. SMTP starts disabled. Microsoft consent to an SMTP scope does not enable sending by itself. Enable SMTP separately through local CLI or Windows configuration; Codex can then submit the emails you request without another AgentInbox confirmation.
 
 Removing an account removes local access and stored account credentials, not the mailbox. Revoke a dedicated app password or Microsoft application consent with the provider when no longer needed. Previous profiles are not imported or converted.

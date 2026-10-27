@@ -10,6 +10,8 @@
  * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
  *
  * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * File: Single-instance Windows startup and activation forwarding.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
  * Human guidance: Umberto Giacobbi; requested VibeWare branding.
  *
  * Copyright (c) 2026 Umberto Giacobbi
@@ -28,6 +30,8 @@ namespace MailMeUp.Desktop;
 /// <summary>Registers the desktop instance before any setup window or application services are created.</summary>
 internal static class Program
 {
+    /// <summary>Register a single desktop instance before creating the WinUI application.</summary>
+    /// <param name="args">Arguments supplied by the launch or WinUI event; no mail operation is inferred from them.</param>
     [STAThread]
     private static int Main(string[] args)
     {
@@ -48,6 +52,9 @@ internal static class Program
             App? app = null;
             var activationGate = new object();
             var activationPending = false;
+            // Queue or forward supported activation to the existing setup application.
+            // sender: Native event source; business state is obtained from the model.
+            // arguments: Operation arguments or activation payload passed without shell expansion.
             void OnActivated(object? sender, AppActivationArguments arguments)
             {
                 if (!IsSetupActivation(arguments))
@@ -93,6 +100,8 @@ internal static class Program
         }
     }
 
+    /// <summary>Accept only argument-free setup activation payloads.</summary>
+    /// <param name="activation">Activation payload inspected before creating or reusing the setup window.</param>
     private static bool IsSetupActivation(AppActivationArguments activation)
     {
         try
@@ -126,6 +135,9 @@ internal static class Program
         }
     }
 
+    /// <summary>Forward activation to the registered instance without opening a second window.</summary>
+    /// <param name="instance">Previously registered application instance receiving the activation.</param>
+    /// <param name="arguments">Operation arguments or activation payload passed without shell expansion.</param>
     private static int RedirectToExistingInstance(AppInstance instance, AppActivationArguments arguments)
     {
         AllowSetForegroundWindow(instance.ProcessId);
@@ -163,17 +175,30 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>Wait for native handles while allowing COM dispatch required by activation.</summary>
+    /// <param name="flags">Native COM wait flags supplied by the activation adapter.</param>
+    /// <param name="milliseconds">Native wait timeout in milliseconds.</param>
+    /// <param name="handleCount">Number of handles in the supplied native wait array.</param>
+    /// <param name="handles">Native wait handles owned by the activation adapter.</param>
+    /// <param name="index">Receives the index reported by the native wait call.</param>
     [DllImport("ole32.dll", ExactSpelling = true)]
     private static extern int CoWaitForMultipleObjects(uint flags, uint milliseconds, uint handleCount,
         [In] IntPtr[] handles, out uint index);
 
+    /// <summary>Allow the existing process to bring its setup window to the foreground.</summary>
+    /// <param name="processId">Existing process allowed to request foreground activation.</param>
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AllowSetForegroundWindow(uint processId);
 
+    /// <summary>Parse a Windows activation command line into native argument storage.</summary>
+    /// <param name="commandLine">Windows activation command line to parse without executing it.</param>
+    /// <param name="argumentCount">Receives the number of parsed native arguments.</param>
     [DllImport("shell32.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
 
+    /// <summary>Release memory allocated by a Windows API.</summary>
+    /// <param name="memory">Native allocation released with LocalFree.</param>
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern IntPtr LocalFree(IntPtr memory);
 }

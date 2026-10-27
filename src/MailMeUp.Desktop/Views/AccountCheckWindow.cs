@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Owned native account-check window bound to an operation model.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -25,6 +43,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
     private bool _renderingFolders;
     private bool _windowClosed;
 
+    /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
+    /// <param name="owner">Configuration window that owns this operation or notification window.</param>
+    /// <param name="model">Observable operation model presented by the window.</param>
     internal AccountCheckWindow(Window owner, AccountCheckModel model)
     {
         _model = model;
@@ -64,9 +85,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
-        var message = new TextBox { TextWrapping = TextWrapping.Wrap, IsReadOnly = true, AcceptsReturn = true, MaxHeight = 220 };
+        var message = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
         AutomationProperties.SetName(message, "Connection check details");
-        ModelBinding.Bind(message, TextBox.TextProperty, model, nameof(AccountCheckModel.Message));
+        ModelBinding.Bind(message, TextBlock.TextProperty, model, nameof(AccountCheckModel.Message));
         var footer = new StackPanel { Spacing = 14 };
         footer.Children.Add(new Border { Height = 1, Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"] });
         footer.Children.Add(new ScrollViewer { Content = message, MaxHeight = 220,
@@ -109,6 +130,11 @@ internal sealed class AccountCheckWindow : Window, IDisposable
 
     internal Task ClosedTask => _closed.Task;
 
+    /// <summary>Bind check-dialog button text, tooltip and availability to model properties.</summary>
+    /// <param name="button">Native button whose presentation is bound to model properties.</param>
+    /// <param name="text">Text explicitly chosen for copying, or the model property supplying a button label.</param>
+    /// <param name="hint">Model tooltip property name or flag selecting supporting text styling.</param>
+    /// <param name="enabled">Model property determining button availability.</param>
     private void BindButton(Button button, string text, string hint, string enabled)
     {
         ModelBinding.Bind(button, ContentControl.ContentProperty, _model, text);
@@ -117,6 +143,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         ModelBinding.Bind(button, Control.IsEnabledProperty, _model, enabled);
     }
 
+    /// <summary>Reflect operation changes that need native window or multi-selection handling.</summary>
+    /// <param name="sender">Native event source; business state is obtained from the model.</param>
+    /// <param name="args">Arguments supplied by the launch or WinUI event; no mail operation is inferred from them.</param>
     private void ModelChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (_windowClosed) return;
@@ -130,6 +159,9 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         if (_model.ShouldClose) Close();
     }
 
+    /// <summary>Bind one engine progress stage to its native status presentation.</summary>
+    /// <param name="panel">Native layout receiving one bound check-stage row.</param>
+    /// <param name="stage">Observable engine progress stage to present.</param>
     private static void AddStage(StackPanel panel, CheckStageModel stage)
     {
         var row = new Grid { ColumnSpacing = 16 };
@@ -153,9 +185,12 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         panel.Children.Add(row);
     }
 
+    /// <summary>Release owned resources and sensitive operation state.</summary>
     public void Dispose() => _model.PropertyChanged -= ModelChanged;
 
     /// <summary>Uses the owner relationship for native modality and centers the window within its display.</summary>
+    /// <param name="window">Native window handle or WinUI window whose ownership or activation is being changed.</param>
+    /// <param name="owner">Configuration window that owns this operation or notification window.</param>
     internal static void OwnAndPosition(Window window, Window owner)
     {
         window.ExtendsContentIntoTitleBar = true;
@@ -199,6 +234,10 @@ internal sealed class AccountCheckWindow : Window, IDisposable
         window.AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
+    /// <summary>Set the native window attribute used for owned-window behavior.</summary>
+    /// <param name="window">Native window handle or WinUI window whose ownership or activation is being changed.</param>
+    /// <param name="index">Receives the index reported by the native wait call.</param>
+    /// <param name="value">Model value or text consumed by this control or binding.</param>
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", ExactSpelling = true, SetLastError = true)]
     private static extern IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value);
 }

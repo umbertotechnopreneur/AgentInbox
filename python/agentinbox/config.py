@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Strict configuration for mail protocols and explicitly selected authentication.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Strict configuration for mail protocols and explicitly selected authentication."""
 
 import os
@@ -69,6 +89,8 @@ def windows_package_family() -> str | None:
 
 def data_directory() -> Path:
     """Resolve only the current profile; never migrate or fall back to old data."""
+    if sys.platform not in {"win32", "darwin", "linux"}:
+        raise MailError("unsupported_platform", "AgentInbox supports Windows, macOS and Linux only.")
     if os.environ.get("MAILMEUP_DATA_DIR"):
         raise MailError("unsupported_configuration", "Remove MAILMEUP_DATA_DIR. Configure a new AgentInbox profile.")
     explicit = os.environ.get("AGENTINBOX_DATA_DIR")
@@ -85,7 +107,8 @@ def data_directory() -> Path:
     elif sys.platform == "darwin":
         path = Path.home() / "Library" / "Application Support" / "AgentInbox"
     else:
-        path = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "agentinbox"
+        base = os.environ.get("XDG_DATA_HOME")
+        path = (Path(base) if base else Path.home() / ".local" / "share") / "agentinbox"
     if not path.is_absolute():
         raise MailError("invalid_directory", "The profile base directory must be absolute.")
     path = path.resolve()
@@ -95,7 +118,14 @@ def data_directory() -> Path:
 
 
 def text(value: object, name: str, maximum: int = 255, *, allow_empty: bool = False) -> str:
-    """Validate a bounded single-line string without including it in an error."""
+    """Validate a bounded single-line string without including it in an error.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+        name: Field or protocol name used in validation or dispatch.
+        maximum: Maximum supplied string length in characters, before whitespace is trimmed.
+        allow_empty: Whether a trimmed empty string is accepted.
+    """
     if not isinstance(value, str) or any(ord(c) < 32 or ord(c) == 127 for c in value):
         raise MailError("invalid_configuration", f"Enter {name.lower()} again on one line.")
     if len(value) > maximum:
@@ -107,7 +137,11 @@ def text(value: object, name: str, maximum: int = 255, *, allow_empty: bool = Fa
 
 
 def address(value: object) -> str:
-    """Accept one explicit ASCII mailbox, never a display-name or address list."""
+    """Accept one explicit ASCII mailbox, never a display-name or address list.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     result = text(value, "Email address", 254)
     if not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", result):
         raise MailError("invalid_address", "Enter one email address, such as you@example.com, without a person's name.")
@@ -117,14 +151,25 @@ def address(value: object) -> str:
 
 
 def flag(value: object, name: str) -> bool:
-    """Reject truthy strings and numeric substitutes for a boolean."""
+    """Reject truthy strings and numeric substitutes for a boolean.
+
+    Args:
+        value: Input that must be an actual bool; integers and strings are rejected.
+        name: Field or protocol name used in validation or dispatch.
+    """
     if type(value) is not bool:
         raise MailError("invalid_configuration", f"Choose whether {name.lower()} is on or off.")
     return value
 
 
 def endpoint(value: object, protocol: str) -> ServerSettings:
-    """Validate one server with mandatory transport encryption."""
+    """Validate one server with mandatory transport encryption.
+
+    Args:
+        value: Object with exactly host, port, tls and username fields.
+        protocol: Selected mail protocol, used to validate endpoints or choose
+            credentials.
+    """
     purpose = "sending" if protocol == "smtp" else "reading"
     section = "Send mail" if protocol == "smtp" else "Read mail"
     if not isinstance(value, dict) or set(value) != {"host", "port", "tls", "username"}:
@@ -142,7 +187,11 @@ def endpoint(value: object, protocol: str) -> ServerSettings:
 
 
 def authentication(value: object) -> AuthenticationSettings:
-    """Accept password auth or an explicit Microsoft public-client registration."""
+    """Accept password auth or an explicit Microsoft public-client registration.
+
+    Args:
+        value: Password choice or explicit Microsoft client_id and tenant configuration.
+    """
     if value == {"method": "password"}:
         return dict(value)
     if not isinstance(value, dict) or set(value) != {"method", "client_id", "tenant"} or value["method"] != "microsoft_oauth":
@@ -158,7 +207,11 @@ def authentication(value: object) -> AuthenticationSettings:
 
 
 def account_input(value: object) -> AccountSettings:
-    """Validate connection settings and optional provider-preset metadata."""
+    """Validate connection settings and optional provider-preset metadata.
+
+    Args:
+        value: Account JSON payload without saved revisions or protected credential references.
+    """
     keys = {"id", "label", "email", "incoming", "smtp", "authentication", "read_enabled", "send_enabled", "folders"}
     if not isinstance(value, dict) or set(value) not in (keys, keys | {"preset"}):
         raise MailError("invalid_configuration", "These account settings could not be read. Reload the account and try again.")

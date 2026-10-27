@@ -1,5 +1,7 @@
 # MCP tool contract
 
+One MCP connection exposes all enabled mailboxes from compatible Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. There is no fixed mailbox-count limit. An agent can work across dozens of selected IMAP folders across accounts: use `list_accounts` to discover shared accounts, folders and permissions, then call `search_mail` for each account and folder the user requests. Up to twenty IMAP folders are selected per account; POP3 exposes one INBOX per account. Account settings remain subject to the local profile size limit and provider access requirements.
+
 The Python process communicates with a local MCP client over stdio. Stdout contains protocol messages only. Tool errors must remain errors, not empty successful results.
 
 Current validation limits are recorded in [validation](VALIDATION.md).

@@ -2,6 +2,16 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] When authorized, run the isolated synthetic suite after the 2026-10-27 source-quality refactor, covering IMAP/POP3 plain/HTML bodies, decoding failures, truncation and attachments. Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Compilation and Debug 1.0.24.0 x64 installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also now prevents implicit SDK workload repair.
+
+- [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. New commands are not yet included in an installed package.
+
+- [ ] Resolve blocked PDF task cleanup: `artifacts/work/pdf-cli-setup-20261026/` (about 925 KiB) and `artifacts/docs/cli-setup-20261026/` (about 19 KiB). The definitive PDF and example are already in `docs/`; automatic approval review rejected guarded deletion with `blocked by policy`. See validation; do not bypass the rejection.
+
+- [ ] When requested, compile/check the updated mailbox-and-folder wording in Windows layouts, CLI help, MCP initialization/tool descriptions and an exported source plugin. Confirm copy does not imply an archive importer, unlimited folders per account, POP3 folders, validated provider access or automatic cross-account search. Installation and publication of this wording remain separate tasks.
+
+- [ ] Check the Account-tab Enable receive and Enable send controls in Debug 1.0.23.0: load existing permissions, retain a changed draft across navigation, enable send without existing SMTP, disable SMTP setup, save and reload, and verify missing sending fields focus the Send mail tab. Build and installation passed; UI/model behavior has not been tested.
+
 - [ ] Check the simplified Connect Codex page and two-line VibeWare link in installed Debug 1.0.22.0. Verify missing/mismatched/configured settings, test outcomes, prompt copying, narrow footer layout and keyboard access. A local handshake result must not be presented as verification of an existing Codex chat connection. Windows CI passed 108 synthetic Python tests; WinUI/provider checks remain unrun.
 
 - [ ] Verify the installed Debug 1.0.21.0 toolbar, branded Mica title bar and stage icons. Check title-bar drag/caption controls, narrow toolbar fit, success/failure/warning symbols and retained per-account failure details, including reopening the result by clicking its status symbol. The installed 1.0.20.0 does not retain dismissed account-check diagnostics on disk; its Outlook outcome could not be recovered from the local profile logs or recent Windows Application errors. Capture the next result before claiming a provider cause.

@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Observable assistant detection, setup and local verification state.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Text.Json;
 using MailMeUp.Desktop.Services;
@@ -6,6 +24,8 @@ using MailMeUp.Desktop.Services;
 namespace MailMeUp.Desktop.ViewModels;
 
 /// <summary>Owns Codex configuration snapshots and verification results independently of their controls.</summary>
+/// <param name="engine">Shared adapter for the local Python management contract.</param>
+/// <param name="notice">Observable owner notification used for explicit connection outcomes.</param>
 internal sealed class AssistantConnectionModel(PythonEngine engine, NotificationModel notice) : ObservableModel
 {
     private AssistantSetupService? _service;
@@ -37,6 +57,8 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         : "These are the launch settings this app will add. They are not yet saved as a matching, enabled connection in Codex.";
     public string TryPrompt => "Which email accounts can you access through AgentInbox?";
 
+    /// <summary>Refresh local assistant detection without starting a mail operation.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task DetectAsync(CancellationToken cancellationToken)
     {
         Configuration = engine.CreateClientConfiguration();
@@ -52,6 +74,9 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         Notify();
     }
 
+    /// <summary>Apply the explicitly requested assistant configuration and report its committed outcome.</summary>
+    /// <param name="replaceExisting">Whether the user explicitly confirmed replacing the existing AgentInbox entry.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task ConnectAsync(bool replaceExisting, CancellationToken cancellationToken)
     {
         if (_service is null || _client is null) throw new EngineException("Check Codex before connecting it.");
@@ -65,6 +90,7 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
             result.Message, result.CleanupPending ? 2 : 0);
     }
 
+    /// <summary>Clear transient connection-check state without changing saved settings.</summary>
     private void ResetCheck()
     {
         CheckStatus = IsConfigured ? "Not checked on this PC yet."
@@ -72,6 +98,8 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         CheckTone = 0;
     }
 
+    /// <summary>Check the configured local MCP launcher without reading or sending mail.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task TestAsync(CancellationToken cancellationToken)
     {
         if (_service is null || _client is null) throw new EngineException("Check Codex before testing its connection.");

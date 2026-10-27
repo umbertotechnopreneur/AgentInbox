@@ -1,3 +1,23 @@
+# VBWR B
+#
+# Project: AgentInbox
+# Repository: https://github.com/umbertotechnopreneur/AgentInbox
+# Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+#
+# VibeWare: Human intent, AI execution, and plenty of tokens
+# Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+#
+# File: Bounded IMAP reads and explicit SMTP submission using standard protocols.
+# Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+# Evidence: docs/VALIDATION.md (source review; execution checks pending).
+#
+# Copyright (c) 2026 Umberto Giacobbi
+# License: MIT - see LICENSE
+# SPDX-License-Identifier: MIT
+#
+# VBWR E
+
 """Bounded IMAP reads and explicit SMTP submission using standard protocols."""
 
 import contextlib
@@ -11,10 +31,10 @@ import smtplib
 import socket
 import ssl
 import time
-from html.parser import HTMLParser
 
 from .config import MAX_MESSAGE_BYTES, endpoint
 from .errors import MailError, server_response
+from .message_content import message_body
 
 TIMEOUT = 20
 MAX_CONTROL_BYTES = 65_536
@@ -26,6 +46,14 @@ class _BoundedWire:
     """Bound response bytes, lines and elapsed time before library accumulation."""
 
     def __init__(self, *args, **kwargs):
+        """Initialize response limits before the transport reads its greeting.
+
+        Args:
+            args: Positional arguments forwarded to the standard-library transport
+                constructor.
+            kwargs: Keyword arguments forwarded to the standard-library transport
+                constructor.
+        """
         self._wire_buffer = bytearray()
         self._set_response_limits(MAX_CONTROL_BYTES, lines=256)
         try:
@@ -41,6 +69,16 @@ class _BoundedWire:
 
     def _set_response_limits(self, maximum, *, literal=0, lines=256, deadline=None,
                              line_limit=16_384):
+        """Reset the byte, line and time budgets for the next server response.
+
+        Args:
+            maximum: Shared response-byte budget, including protocol framing.
+            literal: Maximum IMAP literal size accepted before allocation.
+            lines: Maximum response line count allowed for this request.
+            deadline: Absolute time.monotonic deadline, or None to start the default
+                operation budget.
+            line_limit: Maximum bytes permitted in a single response line.
+        """
         self._bytes_left = maximum
         self._literal_limit = literal
         self._lines_left = lines
@@ -48,12 +86,18 @@ class _BoundedWire:
         self._deadline = time.monotonic() + TIMEOUT if deadline is None else deadline
 
     def _remaining_time(self):
+        """Return the remaining socket timeout or fail when the response deadline expires."""
         remaining = self._deadline - time.monotonic()
         if remaining <= 0:
             raise MailError("operation_timeout", "Your mail provider took too long to reply. Check the connection before trying again.")
         return min(TIMEOUT, remaining)
 
     def _receive(self, maximum):
+        """Fill the wire buffer without exceeding the current response budget.
+
+        Args:
+            maximum: Maximum additional bytes requested by the current buffered read.
+        """
         self.sock.settimeout(self._remaining_time())
         capacity = min(4096, maximum, self._bytes_left - len(self._wire_buffer))
         if capacity <= 0:
@@ -64,6 +108,12 @@ class _BoundedWire:
         self._wire_buffer.extend(chunk)
 
     def _take(self, size):
+        """Consume buffered bytes and debit the shared response budget.
+
+        Args:
+            size: Number of bytes to read or consume within the remaining response
+                budget.
+        """
         self._remaining_time()
         if size > self._bytes_left:
             raise MailError("response_too_large", "The mail response exceeds its byte limit.")
@@ -73,7 +123,12 @@ class _BoundedWire:
         return value
 
     def read(self, size):
-        """Reject a server-declared literal before receiving or allocating it."""
+        """Reject a server-declared literal before receiving or allocating it.
+
+        Args:
+            size: Number of bytes to read or consume within the remaining response
+                budget.
+        """
         self._remaining_time()
         if type(size) is not int or not 0 <= size <= min(self._literal_limit, self._bytes_left):
             raise MailError("response_too_large", "The server-declared mail literal exceeds the permitted size.")
@@ -104,6 +159,12 @@ class _BoundedWire:
 
 class _ImapLimits(_BoundedWire):
     def _simple_command(self, name, *arguments):
+        """Reject buffered plaintext after the IMAP STARTTLS response.
+
+        Args:
+            name: Field or protocol name used in validation or dispatch.
+            arguments: Positional arguments forwarded to the IMAP command.
+        """
         result = super()._simple_command(name, *arguments)
         if name == "STARTTLS" and self._wire_buffer:
             raise MailError("invalid_server_response", "Unexpected plaintext followed the IMAP STARTTLS reply.")
@@ -120,6 +181,12 @@ class _IMAP4SSL(_ImapLimits, imaplib.IMAP4_SSL):
 
 class _SmtpLimits(_BoundedWire):
     def docmd(self, command, arguments=""):
+        """Reject buffered plaintext after the SMTP STARTTLS response.
+
+        Args:
+            command: Protocol command whose response is being checked.
+            arguments: SMTP command argument string.
+        """
         result = super().docmd(command, arguments)
         if command.upper() == "STARTTLS" and self._wire_buffer:
             raise smtplib.SMTPServerDisconnected("Unexpected plaintext followed the SMTP STARTTLS reply.")
@@ -159,6 +226,14 @@ class _SMTPSSL(_SmtpLimits, smtplib.SMTP_SSL):
 
 
 def _settings(settings, protocol):
+    """Validate the exact endpoint fields accepted by this transport.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        protocol: Selected mail protocol, used to validate endpoints or choose
+            credentials.
+    """
     keys = {"host", "port", "tls", "username"}
     allowed = (keys, keys | {"protocol"}) if protocol == "imap" else (keys,)
     if (not isinstance(settings, dict) or set(settings) not in allowed
@@ -171,16 +246,42 @@ def _settings(settings, protocol):
 
 def _imap_request(connection, method, *arguments, maximum=MAX_CONTROL_BYTES, literal=0,
                   lines=256, deadline=None, line_limit=16_384, **keywords):
+    """Apply response budgets before invoking one IMAP library operation.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        method: Standard-library protocol method to invoke under the supplied budgets.
+        maximum: Upper size or duration bound enforced by this operation.
+        literal: Maximum IMAP literal size accepted before allocation.
+        lines: Maximum response line count allowed for this request.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+        line_limit: Maximum bytes permitted in a single response line.
+        arguments: Positional arguments forwarded to the IMAP library method.
+        keywords: Keyword arguments forwarded to the underlying protocol operation.
+    """
     connection._set_response_limits(maximum, literal=literal, lines=lines,
                                     deadline=deadline, line_limit=line_limit)
     return getattr(connection, method)(*arguments, **keywords)
 
 
 def _quote(value: str) -> str:
+    """Escape a value as an IMAP quoted string.
+
+    Args:
+        value: Untrusted input to validate before it is used or persisted.
+    """
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _ok(result: tuple, message: str) -> list:
+    """Require an IMAP OK result and retain failed replies only for local redaction.
+
+    Args:
+        result: Protocol or application result being checked or displayed.
+        message: Safe actionable explanation raised if the IMAP command did not return OK.
+    """
     if result[0] != "OK":
         replies = [item.decode("utf-8", errors="replace") if isinstance(item, bytes) else item
                    for item in (result[1] or []) if isinstance(item, (str, bytes))]
@@ -192,6 +293,18 @@ def _ok(result: tuple, message: str) -> list:
 
 
 def _connection_detail(protocol, error, settings, password, access_token):
+    """Redact credentials from a bounded local protocol failure description.
+
+    Args:
+        protocol: IMAP or SMTP label attached to the local redacted diagnostic.
+        error: Failure to reduce to bounded diagnostics or a safe persisted error code.
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+    """
     username = settings.get("username", "")
     secrets = (username, password, access_token or "", f"\0{username}\0{password}",
                f"{username}\0{username}\0{password}",
@@ -211,7 +324,18 @@ def _connection_detail(protocol, error, settings, password, access_token):
 
 @contextlib.contextmanager
 def imap_connection(settings: dict, password: str, *, access_token: str | None = None, progress=None):
-    """Require verified TLS before transmitting credentials."""
+    """Require verified TLS before transmitting credentials.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+        progress: Optional callback receiving a stage and state; it must not receive
+            credentials or mail content.
+    """
     connection = None
     try:
         settings = _settings(settings, "imap")
@@ -262,7 +386,15 @@ def imap_connection(settings: dict, password: str, *, access_token: str | None =
 
 
 def select_folder(connection, folder: str, *, deadline=None) -> str:
-    """Select a folder read-only and return its UID validity."""
+    """Select a folder read-only and return its UID validity.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     _ok(_imap_request(connection, "select", _quote(folder), readonly=True, deadline=deadline), "The selected IMAP folder is unavailable.")
     validity = connection.response("UIDVALIDITY")[1]
     if not validity or not validity[0] or not validity[0].isdigit():
@@ -271,7 +403,11 @@ def select_folder(connection, folder: str, *, deadline=None) -> str:
 
 
 def _folder_name(row) -> str | None:
-    """Extract an exact selectable ASCII mailbox from a bounded IMAP LIST row."""
+    """Extract an exact selectable ASCII mailbox from a bounded IMAP LIST row.
+
+    Args:
+        row: One raw IMAP LIST response row.
+    """
     literal = None
     if isinstance(row, tuple) and len(row) == 2:
         row, literal = row
@@ -301,7 +437,14 @@ def _folder_name(row) -> str | None:
 
 
 def folders(connection, *, deadline=None) -> list[str]:
-    """Return bounded exact selectable folder names, without LIST flags or delimiters."""
+    """Return bounded exact selectable folder names, without LIST flags or delimiters.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     rows = _ok(_imap_request(connection, "list", literal=512, lines=256, deadline=deadline), "The server could not list folders.")
     names = []
     for row in rows:
@@ -316,6 +459,18 @@ def folders(connection, *, deadline=None) -> list[str]:
 
 
 def _fetch(connection, uid: str, parts: str, maximum: int, *, deadline=None) -> tuple[bytes, bytes]:
+    """Fetch one bounded IMAP literal and return its metadata and bytes.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        uid: Stable message identifier from the search snapshot, never a guessed
+            sequence number.
+        parts: IMAP FETCH data items to request.
+        maximum: Upper size or duration bound enforced by this operation.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     rows = _ok(_imap_request(connection, "uid", "FETCH", uid, parts,
                              maximum=maximum + MAX_CONTROL_BYTES, literal=maximum, deadline=deadline), "The message could not be read.")
     for row in rows:
@@ -328,6 +483,11 @@ def _fetch(connection, uid: str, parts: str, maximum: int, *, deadline=None) -> 
 
 
 def _received(metadata: bytes) -> dt.datetime:
+    """Parse the IMAP INTERNALDATE as a UTC timestamp.
+
+    Args:
+        metadata: IMAP FETCH metadata containing the server receipt date.
+    """
     match = re.search(rb'INTERNALDATE "([^"]+)"', metadata)
     if not match:
         raise MailError("invalid_server_response", "The message has no valid received date.")
@@ -338,7 +498,16 @@ def _received(metadata: bytes) -> dt.datetime:
 
 
 def header(connection, uid: str, *, deadline=None) -> dict:
-    """Read a limited header preview without changing the Seen flag."""
+    """Read a limited header preview without changing the Seen flag.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        uid: Stable message identifier from the search snapshot, never a guessed
+            sequence number.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     metadata, raw = _fetch(connection, uid, "(UID FLAGS INTERNALDATE RFC822.SIZE BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO CC DATE MESSAGE-ID CONTENT-TYPE)]<0.16384>)", MAX_HEADER_BYTES, deadline=deadline)
     message = email.message_from_bytes(raw, policy=email.policy.default)
     size = re.search(rb"RFC822.SIZE (\d+)", metadata)
@@ -351,7 +520,24 @@ def header(connection, uid: str, *, deadline=None) -> dict:
 def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
            query: str, unread: bool, limit: int, offset: int = 0,
            candidates: list[str] | None = None, expected_validity: str | None = None) -> dict:
-    """Search a bounded date interval and report any candidate truncation."""
+    """Search a bounded date interval and report any candidate truncation.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        start: Inclusive timezone-aware lower bound of the search interval.
+        end: Exclusive timezone-aware upper bound of the search interval.
+        query: Bounded search text; POP3 matches headers and IMAP uses server text
+            search.
+        unread: Whether to require unread messages; POP3 does not support this filter.
+        limit: Maximum number of message previews in this page.
+        offset: Number of candidates already inspected in the saved search.
+        candidates: Saved bounded candidate identities, or None to obtain the initial
+            candidate set.
+        expected_validity: Folder identity from the preceding page, or None for the
+            initial search.
+    """
     deadline = time.monotonic() + TIMEOUT
     validity = select_folder(connection, folder, deadline=deadline)
     if expected_validity is not None and validity != expected_validity:
@@ -395,31 +581,21 @@ def search(connection, folder: str, start: dt.datetime, end: dt.datetime,
             "candidate_limit_reached": truncated, "uid_validity": validity, "candidates": candidates}
 
 
-class _PlainHtml(HTMLParser):
-    """Extract visible text without executing markup or fetching remote resources."""
-
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.parts = []
-        self.hidden = 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in {"script", "style", "head"}:
-            self.hidden += 1
-        elif tag in {"br", "p", "div", "li"}:
-            self.parts.append("\n")
-
-    def handle_endtag(self, tag):
-        if tag in {"script", "style", "head"}:
-            self.hidden = max(0, self.hidden - 1)
-
-    def handle_data(self, data):
-        if not self.hidden:
-            self.parts.append(data)
-
 
 def read(connection, folder: str, uid: str, validity: str, *, deadline=None) -> dict:
-    """Read one message, refusing an excessive payload before fetching its body."""
+    """Read one message, refusing an excessive payload before fetching its body.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        uid: Stable message identifier from the search snapshot, never a guessed
+            sequence number.
+        validity: Folder identity saved with the message reference; changed identities
+            invalidate it.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     deadline = time.monotonic() + TIMEOUT if deadline is None else deadline
     if select_folder(connection, folder, deadline=deadline) != validity:
         raise MailError("reference_expired", "The folder identity changed. Search again.")
@@ -430,17 +606,7 @@ def read(connection, folder: str, uid: str, validity: str, *, deadline=None) -> 
     if len(raw) > MAX_MESSAGE_BYTES or len(raw) != preview["size"]:
         raise MailError("incomplete_message", "The server did not return the complete bounded message.")
     message = email.message_from_bytes(raw, policy=email.policy.default)
-    part = message.get_body(preferencelist=("plain", "html"))
-    content = ""
-    if part is not None:
-        try:
-            content = part.get_content()
-        except (LookupError, UnicodeError, ValueError) as error:
-            raise MailError("invalid_message", "The message text could not be decoded.") from error
-        if part.get_content_type() == "text/html":
-            parser = _PlainHtml()
-            parser.feed(content)
-            content = "".join(parser.parts)
+    content = message_body(message)
     attachments = [{"name": str(item.get_filename() or "attachment")[:255], "content_type": item.get_content_type()}
                    for item in message.iter_attachments()][:100]
     return {**preview, "body": content[:30_000], "body_truncated": len(content) > 30_000,
@@ -448,7 +614,17 @@ def read(connection, folder: str, uid: str, validity: str, *, deadline=None) -> 
 
 
 def check_read(settings: dict, password: str, folder: str, *, access_token: str | None = None) -> dict:
-    """Verify a real bounded read, distinguishing an empty folder from a read sample."""
+    """Verify a real bounded read, distinguishing an empty folder from a read sample.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+    """
     with imap_connection(settings, password, access_token=access_token) as connection:
         deadline = time.monotonic() + TIMEOUT
         available = folders(connection, deadline=deadline)
@@ -456,7 +632,15 @@ def check_read(settings: dict, password: str, folder: str, *, access_token: str 
 
 
 def check_connection_read(connection, folder: str, *, deadline=None) -> dict:
-    """Check one bounded non-marking read on an already authenticated IMAP connection."""
+    """Check one bounded non-marking read on an already authenticated IMAP connection.
+
+    Args:
+        connection: Protocol connection used for this request; search and reads do not
+            enable writes.
+        folder: Exact shared server folder name; POP3 accepts only INBOX.
+        deadline: Absolute time.monotonic deadline, or None to start the default
+            operation budget.
+    """
     deadline = time.monotonic() + TIMEOUT if deadline is None else deadline
     validity = select_folder(connection, folder, deadline=deadline)
     counts = connection.response("EXISTS")[1]
@@ -478,7 +662,18 @@ def check_connection_read(connection, folder: str, *, deadline=None) -> dict:
 
 @contextlib.contextmanager
 def smtp_connection(settings: dict, password: str, *, access_token: str | None = None, progress=None):
-    """Connect over verified TLS and report each completed connection and sign-in stage."""
+    """Connect over verified TLS and report each completed connection and sign-in stage.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+        progress: Optional callback receiving a stage and state; it must not receive
+            credentials or mail content.
+    """
     connection = None
     try:
         settings = _settings(settings, "smtp")
@@ -521,7 +716,22 @@ def smtp_connection(settings: dict, password: str, *, access_token: str | None =
 
 
 def submit(settings: dict, password: str, sender: str, recipients: list[str], content: bytes, before_data, *, access_token: str | None = None) -> str:
-    """Submit once; reject any recipient failure before transmitting message DATA."""
+    """Submit once; reject any recipient failure before transmitting message DATA.
+
+    Args:
+        settings: Mail endpoint fields; the connection requires TLS or mandatory
+            STARTTLS.
+        password: Password or app password; OAuth callers supply an access token
+            instead.
+        sender: Validated sender mailbox used for the SMTP envelope.
+        recipients: Validated, deduplicated SMTP envelope recipients.
+        content: Complete snapshotted MIME message bytes submitted in one SMTP DATA
+            transaction.
+        before_data: Callback rechecking account permission and revision immediately
+            before SMTP DATA.
+        access_token: Optional short-lived Microsoft bearer token; no password fallback
+            follows failure.
+    """
     with smtp_connection(settings, password, access_token=access_token) as connection:
         if connection.mail(sender)[0] != 250:
             return "rejected"

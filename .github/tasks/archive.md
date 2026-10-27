@@ -2,6 +2,30 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-27 — installed Debug 1.0.24.0
+
+- Built and installed the documented/refactored source as signed x64 MSIX, status Ok. Corrected local-function XML comments and isolated packaging from implicit workload repair. Verified installed-file hashes and unchanged account settings. Retained only the current Debug installer and minimal evidence; runtime/UI/provider checks remain pending. See validation.
+
+## 2026-10-27 — source documentation and maintainability
+
+- Added purpose/provenance headers, method and parameter documentation, and phase comments across maintained product sources and packaging commands. Split the configuration-window pages and controls, introduced focused account-tab builders, and removed duplicated MIME body conversion. Updated the architecture map and maintenance convention. Execution checks remain pending; see validation and todo.
+
+## 2026-10-26 — isolated CLI configuration tests
+
+- Ran the complete Python suite at `92a8a94` on Windows/Python 3.13.15: 129 passed, two POSIX-only cases skipped, no failures or errors. Test profiles and credentials were synthetic; task-only write guards and blocked network/native-library access recorded zero violations. No owner configuration or mailbox was used. Cleaned this run's temporary output and retained only its summary and log; see validation for scope and evidence.
+
+## 2026-10-26 — command-line account configuration
+
+- Added human-facing CLI commands for the full local account-configuration workflow, keeping the existing JSON automation adapter and shared application behavior. Added a settings-only Gmail/Microsoft example and a six-page PDF quick start linked prominently from the README. Provider guidance uses official links and distinguishes Microsoft passwords from persisted protected refresh tokens. The later synthetic run is recorded above; document verification is recorded separately in validation.
+
+## 2026-10-26 — consistent mailbox and folder positioning
+
+- Made multiple compatible mailboxes, providers and selected folders the lead message in README/guides, app/package descriptions, CLI help, plugin metadata/export copy and MCP tool/server instructions. Added the same wording rule to repository instructions. Kept per-account permissions, folder limits and explicit sending unchanged. No build, installation, automated tests, UI checks, provider operations or publication ran for this copy follow-up.
+
+## 2026-10-25 — visible account permissions
+
+- Moved Enable receive and Enable send to Account, directly below How to connect, while retaining server configuration in the mail tabs. Enabling send prepares SMTP in the draft. Built source `74537b7` and installed Debug 1.0.23.0 x64, status Ok. No automated tests, UI checks or provider operations ran. See validation for the package, matching recovered inputs and verified cleanup.
+
 ## 2026-10-23 — Codex page and two-line manifesto link
 
 - Removed the duplicate Codex heading and configured-state explanation. Kept setup status, local verification and a copyable chat request distinct, including the limit that a local handshake does not verify the current Codex chat. Stacked This is VibeWare above Manifesto to the left of the unchanged footer logo. Published the nineteen local commits through PR #36 and built/installed Debug 1.0.22.0 x64, status Ok. Windows CI passed 108 synthetic Python tests; no live UI/provider checks ran. See validation for recovered imports and package evidence. Merge was not requested.

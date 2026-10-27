@@ -1,6 +1,18 @@
 # Changelog
 
+## 2026-10-27
+
+- Build and install Debug 1.0.24.0 x64 from source `d9ed6a0`, status Ok, with unchanged saved account settings and matching installed-file hashes. Fix invalid XML documentation on local C# functions and prevent implicit SDK workload repair during offline packaging. New .NET 10.0.14 runtime inputs passed targeted first-import scanning. Tests and UI/provider checks remain unrun; see [validation](docs/VALIDATION.md).
+
+- Document named Python product functions, C# methods and constructors, and maintained PowerShell command/helper parameters. Apply VibeWare source headers with file responsibilities and factual review provenance. Split Windows page composition and reusable controls into focused partial files, extract account-tab builders, share MIME body decoding across IMAP and POP3, and clarify intermediate values and operation phases. Source review only; tests, builds, UI, provider access and Store validation remain pending. See [validation](docs/VALIDATION.md).
+
 ## Unreleased
+
+- Make command-line account configuration a first-class workflow: add explicit profile, provider, account add/update/list/show/remove, folder discovery, connection-check and guided Microsoft sign-in commands. Keep passwords in hidden terminal prompts and retain the shared application contracts. Include a two-mailbox Gmail/Microsoft settings template and a PDF quick start linked at the top of the README. The isolated Windows suite passed 129 cases with two POSIX-only cases skipped; native terminal/provider execution remains unverified. See [validation](docs/VALIDATION.md#isolated-cli-and-platform-regression-run--windows).
+
+- Lead product wording across README/setup guides, Windows UI and package metadata, Python/PowerShell CLI help, exported plugin copy and MCP instructions with all compatible mailboxes and selected folders through one MCP connection. Name Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Explain dozens of IMAP folders across accounts, the twenty-folder selection limit per account and POP3's single INBOX. This changes copy and agent guidance, not account permissions or mail behavior. New wording has not been built, installed or runtime-tested.
+
+- Move Enable receive and Enable send into Account immediately below How to connect. Keep server/folder configuration in Read mail and Send mail. Enabling send prepares SMTP configuration in the draft, so the visible permission is not silently discarded on save. Saved permissions and defaults stay unchanged until the owner edits and saves them. Built and installed as Debug 1.0.23.0 x64, status Ok; tests, UI and provider checks remain unrun.
 
 - Simplify Connect Codex into a setup status, a local check and a copyable request for a new chat. Remove repeated configured-state explanations and clarify that a local check does not verify the connection inside Codex. Stack This is VibeWare above Manifesto, to the left of the unchanged footer logo. Built and installed as Debug 1.0.22.0 x64, status Ok. PR #36 publishes the nineteen local configuration/sign-in commits; Windows CI passed 108 synthetic Python tests. UI/provider checks remain unrun.
 
@@ -29,3 +41,7 @@
 - Keep Windows distribution MSIX-only, with local Debug and explicit Store Release workflows. Authorized installs may force-close AgentInbox. New dependency imports are scanned once; builds do not trigger scans. Windows CI excludes execution aliases when finding Python.
 
 Debug 1.0.19.0 x64 is installed from source checkpoint `e0c7789`, with package status `Ok`. No automated tests, app launch, UI or provider checks ran for this installation. Local checkpoint commits are preauthorized at coherent steps. Build records, checksums and historical test results are in [validation](docs/VALIDATION.md); completed milestones are in [archive](.github/tasks/archive.md).
+
+## 2026-10-26 — Cross-platform source setup
+
+Preserve virtual-environment interpreter paths in source plugin exports and reject unusable interpreter/profile paths before export. Handle empty Linux XDG data paths, reject unsupported operating systems explicitly, and harden native credential boundaries. Added setup guidance and unexecuted regression cases. See [validation](docs/VALIDATION.md#linuxmacos-source-hardening--not-executed) for the source-only evidence and remaining native checks.

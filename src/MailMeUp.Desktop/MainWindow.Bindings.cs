@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Native account-control bindings to the retained observable draft.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using MailMeUp.Desktop.ViewModels;
 using MailMeUp.Desktop.Views;
@@ -14,6 +32,7 @@ public sealed partial class MainWindow
     private readonly Dictionary<string, Control> _accountFields = [];
     private bool _renderingFolders;
 
+    /// <summary>Bind navigation and action availability to observable configuration state.</summary>
     private void BindApplicationState()
     {
         ModelBinding.Bind(Navigation, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
@@ -22,6 +41,7 @@ public sealed partial class MainWindow
         _configuration.PropertyChanged += (_, _) => UpdateAccountLayout();
     }
 
+    /// <summary>Bind account controls to the existing editor draft and forward native selection events.</summary>
     private void BindAccountControls()
     {
         _accountFields.Clear();
@@ -120,6 +140,7 @@ public sealed partial class MainWindow
         RenderFolderSelection();
     }
 
+    /// <summary>Reflect the model selection in the native multi-select folder list.</summary>
     private void RenderFolderSelection()
     {
         _renderingFolders = true;

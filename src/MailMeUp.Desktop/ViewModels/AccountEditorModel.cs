@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Retained account draft, provider defaults and field validation.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
@@ -8,6 +26,7 @@ using MailMeUp.Desktop.Services;
 namespace MailMeUp.Desktop.ViewModels;
 
 /// <summary>Owns an editable account, provider defaults and validation independently of its view.</summary>
+/// <param name="defaultMicrosoftClientId">Public-client ID shipped with the app, never entered as a user credential.</param>
 internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : ObservableModel
 {
     private readonly string _defaultMicrosoftClientId = defaultMicrosoftClientId;
@@ -31,6 +50,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public IReadOnlyList<AccountFieldError> Errors => _errors;
     private string PresetId => PresetIndex is >= 0 and < 5 ? PresetIds[PresetIndex] : "";
 
+    /// <summary>Load the shared engine provider catalog before applying preset choices.</summary>
+    /// <param name="presets">Typed provider catalog returned by the shared Python preset operation.</param>
     internal void SetPresets(IReadOnlyDictionary<string, ProviderPreset> presets)
     {
         if (presets.Count != PresetIds.Length || PresetIds.Any(key => !presets.ContainsKey(key)))
@@ -114,7 +135,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public string IncomingServerPlaceholder => IsPop ? "pop.example.com" : "imap.example.com";
     public string FolderHint => IsPop
         ? "POP3 has one inbox, shown as INBOX. It has no other folders and can't tell which messages are unread. Your emails stay with your mail provider."
-        : "Check the connection, then choose up to twenty folders for Codex to read. Folder names currently need basic English letters, numbers or punctuation.";
+        : "Choose up to twenty IMAP folders for this account. Add more mailboxes to let your AI agent work across dozens of selected folders. Folder names currently need basic English letters, numbers or punctuation.";
     public string ReadCheckHint => IsPop ? "Check saved POP3 settings by reading mail without deleting messages."
         : "Check saved IMAP settings by reading mail without marking messages as read.";
     public string Tenant => TenantIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => OrganizationId.Trim() };
@@ -138,7 +159,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                     "Sending help for your IT team", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
                 _ when UsesMicrosoftServers(includeSmtp: false) => (microsoftHint, "Help connecting Microsoft mail",
                     "https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth"),
-                _ => ("Choose your email provider to fill in its settings. Some providers need a separate password for mail apps. Check their help page if your usual password doesn't work.", "", "")
+                _ => ("Connect GoDaddy or another provider that allows compatible IMAP or POP3 access. Enter your provider's mail server settings; choose Microsoft 365 above for Microsoft-hosted accounts. Some providers require a separate app password.", "", "")
             };
                 return (message, linkText, address);
         }
@@ -149,6 +170,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public bool HasProviderHelp => ProviderGuidance.Address.Length > 0;
 
     /// <summary>Loads a fresh draft without retaining passwords from a previous selection.</summary>
+    /// <param name="account">Public saved-account snapshot; null starts an empty editor draft.</param>
     internal void Load(SavedAccount? account)
     {
         Batch(() =>
@@ -188,12 +210,16 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         });
     }
 
+    /// <summary>Fill empty endpoint sign-in names from the account email.</summary>
     internal void FillSignInEmails()
     {
         if (string.IsNullOrWhiteSpace(IncomingEmail)) IncomingEmail = Email.Trim();
         if (string.IsNullOrWhiteSpace(SendingEmail)) SendingEmail = Email.Trim();
     }
 
+    /// <summary>Replace available and selected folder collections without marking a loading draft dirty.</summary>
+    /// <param name="available">Exact selectable server folder names.</param>
+    /// <param name="selected">Folder names to retain when present in the available set.</param>
     internal void SetFolderChoices(IEnumerable<string> available, IEnumerable<string> selected)
     {
         var choices = available.ToArray();
@@ -211,6 +237,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         Notify(nameof(SelectedFolders));
     }
 
+    /// <summary>Forward an explicit folder selection into operation or editor state.</summary>
+    /// <param name="folders">Exact folder names returned by the server or explicitly selected by the user.</param>
     internal void SelectFolders(IEnumerable<string> folders)
     {
         if (_loading) return;
@@ -219,12 +247,17 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         Changed(nameof(SelectedFolders));
     }
 
+    /// <summary>Apply checked server folders to the editor and mark the draft changed.</summary>
+    /// <param name="available">Exact selectable server folder names.</param>
+    /// <param name="selected">Folder names to retain when present in the available set.</param>
     internal void ApplyFolderChoices(string[] available, string[] selected)
     {
         SetFolderChoices(available, selected);
         Changed(nameof(SelectedFolders));
     }
 
+    /// <summary>React to a model property change while preserving batched update behavior.</summary>
+    /// <param name="property">Observable property name or native dependency property being updated.</param>
     protected override void Changed(string property)
     {
         if (_loading) return;
@@ -238,6 +271,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                 if (PresetIndex > 0) ApplyPreset();
             }
             if (property == nameof(ConfigureSending) && !ConfigureSending) SendEnabled = false;
+            if (property == nameof(SendEnabled) && SendEnabled) ConfigureSending = true;
             UpdateAuthenticationChoices();
             if (property == nameof(AuthenticationIndex) && IsMicrosoft) ClearPasswords();
             if (IsPop) SetFolderChoices(["INBOX"], ["INBOX"]);
@@ -246,6 +280,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         });
     }
 
+    /// <summary>Suppress nested change handling and notify observers after the outer update.</summary>
+    /// <param name="action">Action callback or native action control placed with the content.</param>
     private void Batch(Action action)
     {
         var wasLoading = _loading;
@@ -255,6 +291,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         if (!wasLoading) Notify();
     }
 
+    /// <summary>Apply the selected provider defaults and explicit authentication choice.</summary>
     private void ApplyPreset()
     {
         if (PresetIndex is <= 0 or > 4) return;
@@ -275,6 +312,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         }
     }
 
+    /// <summary>Fill SMTP defaults when the selected provider supplies them.</summary>
     private void FillSendingPreset()
     {
         if (PresetIndex == 0) return;
@@ -286,6 +324,7 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         if (string.IsNullOrWhiteSpace(SendingEmail)) SendingEmail = Email.Trim();
     }
 
+    /// <summary>Offer Microsoft sign-in only for compatible server settings.</summary>
     private void UpdateAuthenticationChoices()
     {
         if (CanUseMicrosoft && AuthenticationChoices.Count == 1) AuthenticationChoices.Add("Sign in with Microsoft");
@@ -297,6 +336,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         }
     }
 
+    /// <summary>Check incoming and optional sending hosts against the supported Microsoft endpoints.</summary>
+    /// <param name="includeSmtp">Whether configured SMTP hosts must also match supported Microsoft endpoints.</param>
     internal bool UsesMicrosoftServers(bool includeSmtp = true)
     {
         var host = IncomingHost.Trim();
@@ -307,9 +348,12 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
             || SendingHost.Trim().Equals("smtp-mail.outlook.com", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Release password values held by this draft or operation snapshot.</summary>
     internal void ClearPasswords() { IncomingPassword = ""; SendingPassword = ""; }
 
     /// <summary>Captures model data, never control values, for the common management contract.</summary>
+    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     internal AccountSnapshot Snapshot(bool checking = false, bool smtpOnly = false)
     {
         FillSignInEmails();
@@ -338,26 +382,50 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         }, Revision);
     }
 
+    /// <summary>Capture normalized incoming settings from the editor model.</summary>
     private MailEndpoint IncomingEndpoint() => new() { Protocol = IsPop ? "pop3" : "imap", Host = IncomingHost.Trim().TrimEnd('.').ToLowerInvariant(),
         Port = int.Parse(IncomingPort), Tls = IncomingSecurityIndex == 1 ? "starttls" : "tls", Username = IncomingEmail.Trim() };
+    /// <summary>Capture normalized SMTP settings from the editor model.</summary>
     private MailEndpoint SendingEndpoint() => new() { Host = SendingHost.Trim().TrimEnd('.').ToLowerInvariant(), Port = int.Parse(SendingPort),
         Tls = SendingSecurityIndex == 1 ? "starttls" : "tls", Username = SendingEmail.Trim() };
 
+    /// <summary>Require unchanged password-based endpoint settings before reusing saved credentials.</summary>
+    /// <param name="current">Normalized draft endpoint being compared for safe credential reuse.</param>
+    /// <param name="saved">Saved endpoint or committed account result used to refresh model state.</param>
     private bool CanKeepPassword(MailEndpoint? current, MailEndpoint? saved) =>
         _saved?.Authentication.Method == "password" && current == saved;
 
+    /// <summary>Collect actionable field errors for the requested save or connection check.</summary>
+    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     private void Validate(bool checking, bool smtpOnly)
     {
         _checking = checking;
         _smtpOnly = smtpOnly;
         var errors = new List<AccountFieldError>();
+        // Append one field error when its validation predicate fails.
+        // property: Observable property name or native dependency property being updated.
+        // valid: Result of the field predicate; false appends an actionable error.
+        // message: Safe user-facing outcome or guidance; never raw credentials or mail content.
+        // tab: Account tab index containing the invalid field.
         void Check(string property, bool valid, string message, int tab)
         {
             if (!valid) errors.Add(new(property, message, tab));
         }
-        static bool Host(string host) => host.Trim().TrimEnd('.').Length is > 0 and <= 255
-            && Regex.IsMatch(host.Trim().TrimEnd('.'), @"^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$") && !host.Contains("..");
+        // Check the supported hostname shape without changing the draft.
+        // host: Draft hostname to validate without a network request.
+        static bool Host(string host)
+        {
+            var normalized = host.Trim().TrimEnd('.');
+            return normalized.Length is > 0 and <= 255
+                && Regex.IsMatch(normalized, @"^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
+                && !host.Contains("..");
+        }
+        // Require a numeric TCP port in the supported range.
+        // port: Draft TCP port text to validate without a network request.
         static bool Port(string port) => int.TryParse(port, out var number) && number is >= 1 and <= 65535;
+
+        // Identity and authentication errors belong to the Account tab.
         Check(nameof(Label), Label.Trim().Length is > 0 and <= 100, "Enter a connection name with 100 characters or fewer.", 0);
         Check(nameof(PresetIndex), PresetIndex is >= 0 and <= 4, "Choose your email provider.", 0);
         var email = Email.Trim();
@@ -367,6 +435,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         Check(nameof(AuthenticationIndex), AuthenticationIndex is 0 or 1, "Choose how to connect to these mail servers.", 0);
         Check(nameof(TenantIndex), !IsMicrosoft || TenantIndex is >= 0 and <= 3, "Choose your Microsoft account type.", 0);
         Check(nameof(OrganizationId), !UsesOrganizationId || Guid.TryParse(OrganizationId.Trim(), out _), "Enter the organization ID from your IT team.", 0);
+
+        // Incoming credentials may be reused only for an unchanged saved endpoint.
         Check(nameof(IncomingHost), Host(IncomingHost), "Enter your reading server, such as imap.example.com.", 1);
         Check(nameof(ProtocolIndex), ProtocolIndex is 0 or 1, "Choose how to read mail.", 1);
         Check(nameof(IncomingSecurityIndex), IncomingSecurityIndex is 0 or 1, "Choose a secure connection for reading mail.", 1);
@@ -378,6 +448,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         if (IsPassword && !smtpOnly)
             Check(nameof(IncomingPassword), IncomingPassword.Length > 0 || (incomingPortValid && CanKeepPassword(IncomingEndpoint(), _saved?.Incoming)),
                 "Enter your mail password or app password. Changed server settings need it again.", 1);
+
+        // Sending remains optional, but configured endpoints must be complete.
         if (ConfigureSending)
         {
             Check(nameof(SendingHost), Host(SendingHost), "Enter your sending server, such as smtp.example.com.", 2);
@@ -391,6 +463,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                 Check(nameof(SendingPassword), SendingPassword.Length > 0 || (sendingPortValid && CanKeepPassword(SendingEndpoint(), _saved?.Smtp)),
                     "Enter the password or app password for sending. Changed server settings need it again.", 2);
         }
+
+        // Folder limits are per account; POP3 always keeps its single INBOX.
         string[] folders = IsPop ? ["INBOX"] : SelectedFolders.ToArray();
         Check(nameof(SelectedFolders), (checking && folders.Length == 0) || folders.Length is >= 1 and <= 20,
             "Choose between one and twenty mail folders under Read mail.", 1);
