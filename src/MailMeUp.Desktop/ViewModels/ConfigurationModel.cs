@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Saved snapshots, draft selection, operation lifetime and notifications.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -20,6 +38,9 @@ internal sealed class ConfigurationModel : ObservableModel
     private int _editorTab;
     private bool _updatingAccounts;
 
+    /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
+    /// <param name="engine">Shared adapter for the local Python management contract.</param>
+    /// <param name="microsoftClientId">Public-client ID loaded from shipped desktop settings.</param>
     internal ConfigurationModel(PythonEngine engine, string microsoftClientId)
     {
         _engine = engine;
@@ -69,6 +90,11 @@ internal sealed class ConfigurationModel : ObservableModel
     public bool CanCheckReading => IsIdle && Editor.CanCheckReading;
     public bool CanCheckSending => IsIdle && Editor.ConfigureSending;
     public bool CanChooseAccountFolders => IsIdle && Editor.CanSelectFolders;
+    /// <summary>Create a check model from an explicit validated account snapshot.</summary>
+    /// <param name="snapshot">Validated account settings, transient passwords and expected revision for this operation.</param>
+    /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
+    /// <param name="savedCheck">Whether this is a saved-account check that skips editing and folder-choice steps.</param>
     internal AccountCheckModel CreateCheck(AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false) =>
         new(_engine, this, snapshot, saveAccount, smtpOnly, savedCheck);
     public string SaveText => CreatingAccount ? "Create account" : "Save changes";
@@ -91,6 +117,7 @@ internal sealed class ConfigurationModel : ObservableModel
         }
     }
 
+    /// <summary>Start an explicit new draft and focus its connection name.</summary>
     internal void StartNewAccount()
     {
         if (IsBusy) return;
@@ -103,6 +130,7 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Discard the new-account draft and restore selection focus.</summary>
     internal void CancelNewAccount()
     {
         if (IsBusy) return;
@@ -112,6 +140,8 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Reload saved-account snapshots within the configuration window lifetime.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task LoadAccountsAsync(CancellationToken cancellationToken)
     {
         var selected = Editor.Id;
@@ -135,6 +165,9 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Commit the validated account snapshot through the Python settings operation.</summary>
+    /// <param name="snapshot">Validated account settings, transient passwords and expected revision for this operation.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task<JsonElement> SaveAsync(AccountSnapshot snapshot, CancellationToken cancellationToken)
     {
         var saved = await _engine.ManageAsync("save_account", new
@@ -158,6 +191,8 @@ internal sealed class ConfigurationModel : ObservableModel
         return saved;
     }
 
+    /// <summary>Apply a committed account result to saved snapshots and the current draft.</summary>
+    /// <param name="saved">Saved endpoint or committed account result used to refresh model state.</param>
     internal void ApplySavedAccount(JsonElement saved)
     {
         var account = SavedAccount.Read(saved);
@@ -175,6 +210,8 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Confirm removal of the selected local account before revoking its settings.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task RemoveAccountAsync(CancellationToken cancellationToken)
     {
         RequireSavedAccount();
@@ -189,11 +226,14 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Reject operations that require an existing saved account.</summary>
     internal void RequireSavedAccount()
     {
         if (!Editor.HasSavedAccount) throw new EngineException("Save an account before using this action.");
     }
 
+    /// <summary>Check one sample read through the shared application using saved settings.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task TestReadingAsync(CancellationToken cancellationToken)
     {
         RequireSavedAccount();
@@ -204,6 +244,8 @@ internal sealed class ConfigurationModel : ObservableModel
         Notice.Show(sampleRead ? $"{protocol} reading succeeded" : $"{protocol} connection succeeded", message, sampleRead ? 1 : 0);
     }
 
+    /// <summary>Retry retired-credential cleanup separately from the completed save or sign-in.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task RetryCleanupAsync(CancellationToken cancellationToken)
     {
         var result = await _engine.ManageAsync("retry_cleanup", new { }, cancellationToken);
@@ -212,6 +254,9 @@ internal sealed class ConfigurationModel : ObservableModel
             Notice.Show("Local cleanup completed", "The engine reports no remaining queued cleanup.", 1);
     }
 
+    /// <summary>Run the model operation and present its outcome and pending cleanup separately.</summary>
+    /// <param name="operation">Explicit operation name or asynchronous action forwarded to the shared model.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task RunAsync(Func<Task> operation, CancellationToken cancellationToken)
     {
         if (IsBusy || cancellationToken.IsCancellationRequested) return;
@@ -236,6 +281,9 @@ internal sealed class ConfigurationModel : ObservableModel
         finally { IsBusy = false; }
     }
 
+    /// <summary>Display cleanup metadata without undoing a committed operation.</summary>
+    /// <param name="result">Committed engine result containing cleanup metadata independent of its primary outcome.</param>
+    /// <param name="clearWhenComplete">Whether a completed cleanup should dismiss an earlier cleanup notice.</param>
     internal void ApplyCleanup(JsonElement result, bool clearWhenComplete = false)
     {
         if (!result.TryGetProperty("cleanup_pending", out var pending)) return;
@@ -250,6 +298,9 @@ internal sealed class ConfigurationModel : ObservableModel
         Cleanup.Show("Local cleanup is pending", message, 2);
     }
 
+    /// <summary>Run the explicit Microsoft sign-in workflow for the current account.</summary>
+    /// <param name="showDialog">View adapter that presents sign-in state without owning account policy.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task SignInMicrosoftAsync(Func<MicrosoftSignInModel, CancellationToken, Task> showDialog, CancellationToken cancellationToken)
     {
         SignIn.Clear();
@@ -302,6 +353,10 @@ internal sealed class NotificationModel : ObservableModel
     public string Message { get => _message; set => Set(ref _message, value); }
     public int Severity { get => _severity; set => Set(ref _severity, value); }
     public bool IsOpen { get => _isOpen; set => Set(ref _isOpen, value); }
+    /// <summary>Publish a notification title, message and severity to observers.</summary>
+    /// <param name="title">User-facing heading for this page, dialog or notification.</param>
+    /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
+    /// <param name="severity">Notification severity used for presentation.</param>
     internal void Show(string title, string message, int severity)
     {
         Title = title; Message = message; Severity = severity; IsOpen = true;

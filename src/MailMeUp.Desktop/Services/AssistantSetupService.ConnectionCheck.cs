@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Bounded local MCP initialization and tool-list verification.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.ComponentModel;
 using System.Diagnostics;
@@ -10,6 +28,8 @@ namespace MailMeUp.Desktop.Services;
 internal sealed partial class AssistantSetupService
 {
     /// <summary>Checks saved settings and the actual local MCP launcher without calling any mail tool.</summary>
+    /// <param name="detected">Detection snapshot to compare with current assistant settings before acting.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task<int> TestConnectionAsync(AssistantClientStatus detected, CancellationToken cancellationToken)
     {
         if (!detected.IsConfigured)
@@ -41,6 +61,8 @@ internal sealed partial class AssistantSetupService
             using var cancellation = timeout.Token.Register(() => Stop(process));
             errors = ReadBoundedAsync(process.StandardError, timeout.Token, retain: false);
             process.StandardInput.NewLine = "\n";
+
+            // Negotiate MCP before asking for tool definitions; never invoke a mail tool.
             var initialize = JsonSerializer.Serialize(new
             {
                 jsonrpc = "2.0", id = 1, method = "initialize",
@@ -60,6 +82,8 @@ internal sealed partial class AssistantSetupService
                 || protocol.GetString() != "2025-06-18")
                 throw new InvalidOperationException("The saved command did not start the expected AgentInbox connection. Update the connection and try again.");
 
+
+            // A valid handshake is followed by an exact tool-name check.
             await process.StandardInput.WriteLineAsync("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}".AsMemory(), timeout.Token);
             await process.StandardInput.WriteLineAsync("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}".AsMemory(), timeout.Token);
             await process.StandardInput.FlushAsync(timeout.Token);
@@ -116,6 +140,9 @@ internal sealed partial class AssistantSetupService
     }
 
     /// <summary>Reads one bounded JSON-RPC result without exposing child output or diagnostics.</summary>
+    /// <param name="process">Owned child process whose protocol streams or lifetime are being handled.</param>
+    /// <param name="expectedId">JSON-RPC request ID that must match the reply.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     private static async Task<JsonElement> ReadConnectionReplyAsync(Process process, int expectedId, CancellationToken cancellationToken)
     {
         const int maximumCharacters = 64 * 1024;

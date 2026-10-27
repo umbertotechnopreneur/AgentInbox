@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Observable device-code flow, redacted trace and sign-in outcomes.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Diagnostics;
 using System.Text.Json;
@@ -7,6 +25,7 @@ using MailMeUp.Desktop.Services;
 namespace MailMeUp.Desktop.ViewModels;
 
 /// <summary>Owns one Microsoft sign-in lifecycle and its bounded, redacted diagnostic trace.</summary>
+/// <param name="engine">Shared adapter for the local Python management contract.</param>
 internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableModel
 {
     private readonly Stopwatch _clock = new();
@@ -29,6 +48,7 @@ internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableMode
     public string? Failure { get; private set; }
     public string ExpiryHint => $"This code expires at {_deadline.ToLocalTime():t}. You can check reading and sending after signing in.";
 
+    /// <summary>Reset transient sign-in presentation without changing saved account authorization.</summary>
     internal void Clear()
     {
         _clock.Reset();
@@ -45,9 +65,13 @@ internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableMode
         Notify();
     }
 
+    /// <summary>Start timing the explicit sign-in operation and record its first stage.</summary>
     internal void StartLog() { _clock.Restart(); Append("Checking the account settings."); }
+    /// <summary>Stop timing the current sign-in operation.</summary>
     internal void StopLog() => _clock.Stop();
 
+    /// <summary>Append bounded local sign-in guidance to the operation log.</summary>
+    /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
     internal void Append(string message)
     {
         const int maximum = 12000;
@@ -61,8 +85,13 @@ internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableMode
         Notify(nameof(Log));
     }
 
+    /// <summary>Record the result of an explicit device-code clipboard action.</summary>
     internal void CodeCopied() => Status = "Code copied. Paste it on Microsoft's page.";
+    /// <summary>Show a safe explanation when a requested clipboard action fails.</summary>
+    /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
     internal void ClipboardFailed(string message) => Status = message;
+    /// <summary>Record whether Windows opened the requested Microsoft sign-in address.</summary>
+    /// <param name="opened">Whether Windows accepted the requested browser launch.</param>
     internal void BrowserOpened(bool opened)
     {
         Append(opened ? "Microsoft's page opened in the browser." : "Windows could not open the browser.");
@@ -71,6 +100,9 @@ internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableMode
     }
 
     /// <summary>Runs the shared engine flow; the caller supplies only the native interaction surface.</summary>
+    /// <param name="accountId">Saved account ID selected for the explicit Microsoft sign-in.</param>
+    /// <param name="showDialog">View adapter that presents sign-in state without owning account policy.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task RunAsync(string accountId, Func<MicrosoftSignInModel, CancellationToken, Task> showDialog,
         CancellationToken cancellationToken)
     {
@@ -134,6 +166,8 @@ internal sealed class MicrosoftSignInModel(PythonEngine engine) : ObservableMode
         }
     }
 
+    /// <summary>Poll the protected Microsoft flow at its returned interval until completion.</summary>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     private async Task PollAsync(CancellationToken cancellationToken)
     {
         try

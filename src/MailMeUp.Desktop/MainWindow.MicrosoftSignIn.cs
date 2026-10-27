@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Owned device-code sign-in presentation and explicit native actions.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.ComponentModel;
 using MailMeUp.Desktop.Services;
@@ -14,6 +32,7 @@ namespace MailMeUp.Desktop;
 
 public sealed partial class MainWindow
 {
+    /// <summary>Run the explicit Microsoft sign-in workflow for the current account.</summary>
     private async Task SignInMicrosoftAsync()
     {
         try { await _configuration.SignInMicrosoftAsync(ShowMicrosoftSignInAsync, _lifetime.Token); }
@@ -21,6 +40,8 @@ public sealed partial class MainWindow
     }
 
     /// <summary>Shows native browser and clipboard actions; the model owns the sign-in lifecycle.</summary>
+    /// <param name="model">Observable operation model presented by the window.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     private async Task ShowMicrosoftSignInAsync(MicrosoftSignInModel model, CancellationToken cancellationToken)
     {
         var status = Text("");
@@ -75,6 +96,7 @@ public sealed partial class MainWindow
         finally { model.PropertyChanged -= ModelChanged; }
     }
 
+    /// <summary>Create the selectable, read-only sign-in diagnostic field.</summary>
     private static TextBox SignInLogBox()
     {
         var box = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 180 };
@@ -83,6 +105,8 @@ public sealed partial class MainWindow
         return box;
     }
 
+    /// <summary>Wrap optional sign-in details in a native expander.</summary>
+    /// <param name="content">Native content placed in the section, tab, dialog or expander.</param>
     private Expander SignInDetails(params UIElement[] content)
     {
         var expander = new Expander

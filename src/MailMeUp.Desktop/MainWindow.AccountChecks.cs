@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Owned account checks and sequential saved-account verification.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using MailMeUp.Desktop.Models;
 using MailMeUp.Desktop.Services;
@@ -8,6 +26,9 @@ namespace MailMeUp.Desktop;
 
 public sealed partial class MainWindow
 {
+    /// <summary>Show the retained session result for the selected account check.</summary>
+    /// <param name="sender">Native event source; business state is obtained from the model.</param>
+    /// <param name="args">Arguments supplied by the launch or WinUI event; no mail operation is inferred from them.</param>
     private async void AccountCheckDetails_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs args)
     {
         if (sender is Microsoft.UI.Xaml.Controls.Button { DataContext: MailMeUp.Desktop.ViewModels.AccountListItemModel row }
@@ -19,6 +40,7 @@ public sealed partial class MainWindow
             });
     }
 
+    /// <summary>Check saved snapshots sequentially, stopping at cancellation or the first failure.</summary>
     private async Task TestAllAccountsAsync()
     {
         var accounts = _configuration.AccountItems.ToArray();
@@ -39,12 +61,16 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Capture a validated editor snapshot without reading control values.</summary>
+    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     private AccountSnapshot CaptureAccount(bool checking = false, bool smtpOnly = false)
     {
         try { return _configuration.Editor.Snapshot(checking, smtpOnly); }
         catch (EngineException) { FocusAccountError(); throw; }
     }
 
+    /// <summary>Save the current draft through the shared configuration model.</summary>
     private async Task SaveAccountAsync()
     {
         if (_configuration.Editor.NeedsCheckBeforeSave)
@@ -57,9 +83,15 @@ public sealed partial class MainWindow
         finally { snapshot.ClearPasswords(); }
     }
 
+    /// <summary>Check the current sending configuration without submitting mail.</summary>
     private Task TestSmtpAsync() => ShowAccountCheckAsync(saveAccount: false, smtpOnly: true);
+    /// <summary>Open an account check for the current draft.</summary>
+    /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
     private Task CheckAccountAsync(bool saveAccount) => ShowAccountCheckAsync(saveAccount, smtpOnly: false);
 
+    /// <summary>Own the check window until its operation and close handling complete.</summary>
+    /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
+    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     private async Task ShowAccountCheckAsync(bool saveAccount, bool smtpOnly)
     {
         var snapshot = CaptureAccount(checking: true, smtpOnly: smtpOnly);

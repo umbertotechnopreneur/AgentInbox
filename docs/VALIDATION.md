@@ -1,5 +1,17 @@
 # Validation
 
+## 2026-10-27 — source documentation and maintainability review
+
+Reviewed the maintained Python engine and entry points, WinUI application sources, and project-owned packaging/export scripts. Added VibeWare purpose/provenance headers, Python method/parameter docstrings, C# method/constructor XML documentation, and PowerShell command/helper parameter help. Existing header provenance and license notices were preserved. Header adaptation followed the VibeWare source template; no claim is made about the original creation of pre-existing files. Shared tooling under `scripts/common/`, generated output and the test suite were outside this documentation pass.
+
+Split the former configuration-window source into lifetime/navigation, account-page, assistant-page and reusable-control partial files. Account identity, incoming and outgoing tabs now have separate builders, called in the original sequence before bindings are attached. IMAP and POP3 now share only MIME body decoding and the visible-HTML-text parser in `message_content.py`; their protocol bounds, identities, attachment handling and output limits remain local. Added descriptive MIME-composition variables, a normalized hostname intermediate, whitespace and constraint-focused phase comments.
+
+Source inspection used Python syntax trees and C# token comparisons without importing or executing the application. Ignoring documentation, existing Python implementation differences were confined to `application.py` (local variable names), `mail.py` and `pop.py` (the shared body-decoding extraction). Existing C# implementation differences were confined to `MainWindow.xaml.cs` (the page/control extraction) and `AccountEditorModel.cs` (the hostname intermediate). The extracted code and call order were reviewed against the original source. `git diff --check` reported no whitespace errors. These are source-review observations, not runtime or compiler evidence.
+
+No tests, builds, formatters, linters, smoke checks, application launch, live desktop interaction, provider operations, installation, external dependency imports, Defender scans, CI, pushes or Store publication ran. Earlier test/package results do not validate this refactor. [Open work](../.github/tasks/todo.md) tracks the requested checks to run when authorized. The local edit helpers were task-owned scratch files; no package or test output was created.
+
+Removed the exact task-owned `artifacts/work/code-quality-20261027/` directory (87,280 bytes of edit/cleanup helpers) after checking its resolved location and rejecting reparse points. Verified the directory was absent afterward. Retained only source and documentation changes; unrelated artifacts and existing packages were preserved.
+
 Last updated: 2026-10-26.
 
 ## Isolated CLI and platform regression run — Windows

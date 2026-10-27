@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27
+
+- Document named Python product functions, C# methods and constructors, and maintained PowerShell command/helper parameters. Apply VibeWare source headers with file responsibilities and factual review provenance. Split Windows page composition and reusable controls into focused partial files, extract account-tab builders, share MIME body decoding across IMAP and POP3, and clarify intermediate values and operation phases. Source review only; tests, builds, UI, provider access and Store validation remain pending. See [validation](docs/VALIDATION.md).
+
 ## Unreleased
 
 - Make command-line account configuration a first-class workflow: add explicit profile, provider, account add/update/list/show/remove, folder discovery, connection-check and guided Microsoft sign-in commands. Keep passwords in hidden terminal prompts and retain the shared application contracts. Include a two-mailbox Gmail/Microsoft settings template and a PDF quick start linked at the top of the README. The isolated Windows suite passed 129 cases with two POSIX-only cases skipped; native terminal/provider execution remains unverified. See [validation](docs/VALIDATION.md#isolated-cli-and-platform-regression-run--windows).

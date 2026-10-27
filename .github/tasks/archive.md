@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-10-27 — source documentation and maintainability
+
+- Added purpose/provenance headers, method and parameter documentation, and phase comments across maintained product sources and packaging commands. Split the configuration-window pages and controls, introduced focused account-tab builders, and removed duplicated MIME body conversion. Updated the architecture map and maintenance convention. Execution checks remain pending; see validation and todo.
+
 ## 2026-10-26 — isolated CLI configuration tests
 
 - Ran the complete Python suite at `92a8a94` on Windows/Python 3.13.15: 129 passed, two POSIX-only cases skipped, no failures or errors. Test profiles and credentials were synthetic; task-only write guards and blocked network/native-library access recorded zero violations. No owner configuration or mailbox was used. Cleaned this run's temporary output and retained only its summary and log; see validation for scope and evidence.

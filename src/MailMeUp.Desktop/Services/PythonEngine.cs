@@ -1,4 +1,22 @@
-// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: AgentInbox
+ * Repository: https://github.com/umbertotechnopreneur/AgentInbox
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * File: Bounded Python management-process adapter and stable MCP launcher settings.
+ * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
+ * Evidence: docs/VALIDATION.md (source review; execution checks pending).
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ * SPDX-License-Identifier: MIT
+ *
+ * VBWR E */
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -14,6 +32,11 @@ internal sealed class PythonEngine
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
 
     /// <summary>Runs one local operation, optionally forwarding real account-check progress records.</summary>
+    /// <param name="operation">Explicit operation name or asynchronous action forwarded to the shared model.</param>
+    /// <param name="arguments">Operation arguments or activation payload passed without shell expansion.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
+    /// <param name="progress">Optional account-check progress callback or one completed engine stage update.</param>
+    /// <param name="diagnostic">Optional callback for bounded, redacted local sign-in details.</param>
     internal async Task<JsonElement> ManageAsync(string operation, object arguments, CancellationToken cancellationToken,
         Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
@@ -36,6 +59,7 @@ internal sealed class PythonEngine
         finally { Stop(process); }
     }
 
+    /// <summary>Describe the local MCP launcher using a stable packaged alias when available.</summary>
     internal string CreateClientConfiguration()
     {
         var packaged = HasPackageIdentity();
@@ -71,6 +95,8 @@ internal sealed class PythonEngine
         }, IndentedJson);
     }
 
+    /// <summary>Start the Python management adapter with redirected streams and no command-line secrets.</summary>
+    /// <param name="arguments">Operation arguments or activation payload passed without shell expansion.</param>
     private static Process Start(params string[] arguments)
     {
         var info = new ProcessStartInfo(ResolvePython())
@@ -104,6 +130,8 @@ internal sealed class PythonEngine
         }
     }
 
+    /// <summary>Drain child stderr in bounded chunks without retaining private diagnostics.</summary>
+    /// <param name="reader">Redirected child stream read in bounded chunks.</param>
     private static async Task DiscardDiagnosticsAsync(StreamReader reader)
     {
         // Discard bounded chunks; do not retain even one potentially unlimited stderr line.
@@ -113,6 +141,7 @@ internal sealed class PythonEngine
         catch (ObjectDisposedException) { }
     }
 
+    /// <summary>Find the Python source entry point shipped with the desktop application.</summary>
     private static string ResolveEntryPoint()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Python", "run.py");
@@ -120,6 +149,7 @@ internal sealed class PythonEngine
         return path;
     }
 
+    /// <summary>Resolve the explicit, bundled or available Python executable without installer aliases.</summary>
     private static string ResolvePython()
     {
         var configured = Environment.GetEnvironmentVariable("AGENTINBOX_PYTHON");
@@ -142,6 +172,8 @@ internal sealed class PythonEngine
         throw new EngineException("Python 3.11 or later is required. Set AGENTINBOX_PYTHON to the absolute path of an installed runtime.");
     }
 
+    /// <summary>Resolve the selected profile consistently for packaged and source launchers.</summary>
+    /// <param name="packaged">Explicit package-identity result; null resolves current process identity.</param>
     private static string ResolveDataDirectory(bool? packaged = null)
     {
         var configured = Environment.GetEnvironmentVariable("AGENTINBOX_DATA_DIR");
@@ -156,6 +188,7 @@ internal sealed class PythonEngine
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AgentInbox");
     }
 
+    /// <summary>Distinguish packaged execution from the explicit unpackaged Windows result.</summary>
     private static bool HasPackageIdentity()
     {
         uint nameLength = 0;
@@ -167,10 +200,15 @@ internal sealed class PythonEngine
         return false;
     }
 
+    /// <summary>Read Windows package identity using a caller-owned native buffer.</summary>
+    /// <param name="packageFullNameLength">In/out character capacity required by the Windows package-name API.</param>
+    /// <param name="packageFullName">Native output buffer, or a null pointer when querying required capacity.</param>
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern int GetCurrentPackageFullName(ref uint packageFullNameLength, IntPtr packageFullName);
 
     /// <summary>Reads one bounded protocol line without retaining child diagnostics or unlimited output.</summary>
+    /// <param name="process">Owned child process whose protocol streams or lifetime are being handled.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     private static async Task<string> ReadRecordAsync(Process process, CancellationToken cancellationToken)
     {
         // Read a bounded line instead of allocating an unlimited response from a child process.
@@ -189,6 +227,10 @@ internal sealed class PythonEngine
     }
 
     /// <summary>Accepts a bounded sequence of opt-in progress records before the final operation result.</summary>
+    /// <param name="process">Owned child process whose protocol streams or lifetime are being handled.</param>
+    /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
+    /// <param name="progress">Optional account-check progress callback or one completed engine stage update.</param>
+    /// <param name="diagnostic">Optional callback for bounded, redacted local sign-in details.</param>
     private static async Task<JsonElement> ReadResponseAsync(Process process, CancellationToken cancellationToken,
         Action<AccountCheckProgress>? progress = null, Action<string>? diagnostic = null)
     {
@@ -237,6 +279,8 @@ internal sealed class PythonEngine
         catch (KeyNotFoundException) { throw new EngineException("The Python engine returned an incomplete response."); }
     }
 
+    /// <summary>Stop the owned child process when it has not already exited.</summary>
+    /// <param name="process">Owned child process whose protocol streams or lifetime are being handled.</param>
     private static void Stop(Process process)
     {
         try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
@@ -246,7 +290,10 @@ internal sealed class PythonEngine
 }
 
 /// <summary>Describes a completed or active account-check stage without credentials or server content.</summary>
+/// <param name="Stage">Engine progress-stage key.</param>
+/// <param name="State">Engine progress state, such as started or passed.</param>
 internal readonly record struct AccountCheckProgress(string Stage, string State);
 
 /// <summary>A safe, actionable error returned by the local mail engine.</summary>
+/// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
 internal sealed class EngineException(string message) : Exception(message);
