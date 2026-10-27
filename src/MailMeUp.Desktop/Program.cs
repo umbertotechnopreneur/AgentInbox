@@ -52,9 +52,9 @@ internal static class Program
             App? app = null;
             var activationGate = new object();
             var activationPending = false;
-            /// <summary>Queue or forward supported activation to the existing setup application.</summary>
-            /// <param name="sender">Native event source; business state is obtained from the model.</param>
-            /// <param name="arguments">Operation arguments or activation payload passed without shell expansion.</param>
+            // Queue or forward supported activation to the existing setup application.
+            // sender: Native event source; business state is obtained from the model.
+            // arguments: Operation arguments or activation payload passed without shell expansion.
             void OnActivated(object? sender, AppActivationArguments arguments)
             {
                 if (!IsSetupActivation(arguments))

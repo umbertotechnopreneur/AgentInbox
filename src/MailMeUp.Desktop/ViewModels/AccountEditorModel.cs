@@ -403,17 +403,17 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         _checking = checking;
         _smtpOnly = smtpOnly;
         var errors = new List<AccountFieldError>();
-        /// <summary>Append one field error when its validation predicate fails.</summary>
-        /// <param name="property">Observable property name or native dependency property being updated.</param>
-        /// <param name="valid">Result of the field predicate; false appends an actionable error.</param>
-        /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
-        /// <param name="tab">Account tab index containing the invalid field.</param>
+        // Append one field error when its validation predicate fails.
+        // property: Observable property name or native dependency property being updated.
+        // valid: Result of the field predicate; false appends an actionable error.
+        // message: Safe user-facing outcome or guidance; never raw credentials or mail content.
+        // tab: Account tab index containing the invalid field.
         void Check(string property, bool valid, string message, int tab)
         {
             if (!valid) errors.Add(new(property, message, tab));
         }
-        /// <summary>Check the supported hostname shape without changing the draft.</summary>
-        /// <param name="host">Draft hostname to validate without a network request.</param>
+        // Check the supported hostname shape without changing the draft.
+        // host: Draft hostname to validate without a network request.
         static bool Host(string host)
         {
             var normalized = host.Trim().TrimEnd('.');
@@ -421,8 +421,8 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
                 && Regex.IsMatch(normalized, @"^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
                 && !host.Contains("..");
         }
-        /// <summary>Require a numeric TCP port in the supported range.</summary>
-        /// <param name="port">Draft TCP port text to validate without a network request.</param>
+        // Require a numeric TCP port in the supported range.
+        // port: Draft TCP port text to validate without a network request.
         static bool Port(string port) => int.TryParse(port, out var number) && number is >= 1 and <= 65535;
 
         // Identity and authentication errors belong to the Account tab.

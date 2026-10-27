@@ -52,20 +52,20 @@ public sealed partial class MainWindow
         Page.Children.Add(PageHeading("Connect Codex", "One connection for all enabled mailboxes and their selected folders. Use your AI agent across accounts and providers.",
             IconAction("Check Codex again", "\uE72C", 0x2477C8, () => _ = RunAsync(BuildAssistantPageAsync),
                 "Look for Codex and check its saved AgentInbox connection.")));
-        /// <summary>Create text bound to one assistant-connection presentation property.</summary>
-        /// <param name="property">Observable property name or native dependency property being updated.</param>
-        /// <param name="hint">Model tooltip property name or flag selecting supporting text styling.</param>
-        /// <param name="size">Requested text size in logical pixels.</param>
+        // Create text bound to one assistant-connection presentation property.
+        // property: Observable property name or native dependency property being updated.
+        // hint: Model tooltip property name or flag selecting supporting text styling.
+        // size: Requested text size in logical pixels.
         TextBlock Label(string property, bool hint = false, double size = 0)
         {
             var label = hint ? Hint("") : Text("", size > 0 ? size : 14);
             ModelBinding.Bind(label, TextBlock.TextProperty, model, property);
             return label;
         }
-        /// <summary>Create a read-only field bound to assistant-connection details.</summary>
-        /// <param name="header">Visible header of the read-only assistant details field.</param>
-        /// <param name="property">Observable property name or native dependency property being updated.</param>
-        /// <param name="multiline">Whether the read-only field accepts multiline presentation.</param>
+        // Create a read-only field bound to assistant-connection details.
+        // header: Visible header of the read-only assistant details field.
+        // property: Observable property name or native dependency property being updated.
+        // multiline: Whether the read-only field accepts multiline presentation.
         TextBox FieldFor(string header, string property, bool multiline = false)
         {
             var box = new TextBox { Header = header, IsReadOnly = true, AcceptsReturn = multiline,
