@@ -16,7 +16,7 @@ The name joins an AI agent with the inboxes it can read. Envelopes and a shared 
 
 Write as if you're helping a friend try the app. Start with what they want to do, then explain the next step. Use short sentences, everyday words and natural contractions.
 
-The first README headline must explain what AgentInbox does in one short sentence. Local MCP clients are connection options, not proof of tested compatibility. Keep the current implementation's unvalidated status nearby. Multiple accounts does not imply unlimited or tested capacity.
+The first README headline must explain what AgentInbox does in one short sentence. Describe current capabilities and relevant limits without adding test-status recaps to product copy.
 
 Use "I", "me", and "my" when speaking as Umberto, the solo maintainer with help from a few contributors. Speak to the reader as "you". Avoid company-style "we", slogans that replace an explanation, hype, and formulaic AI wording. Apply this voice to all original documentation, including setup, support, and contributor guides.
 
@@ -26,11 +26,11 @@ In setup, say **Sign in with Microsoft**, **Open Microsoft**, and **Enter this c
 
 Use **Email address for reading** and **Email address for sending**, including in validation messages. Tell the reader which field or tab needs attention. Keep `username` as an internal protocol key; do not rename stored settings or change accepted sign-in values just to update the wording.
 
-Be clear about what works, what's still being tried and what hasn't been tested. Keep privacy information close to the action it affects. Put build history and implementation details in the developer references. Label concept artwork and keep its source prompts and creation notes.
+Describe current behavior, instructions and known limitations. Keep privacy information close to the action it affects. Do not add build histories or test recaps. Label concept artwork and preserve necessary source attribution.
 
 ## Visual vocabulary
 
-Use the [shared MeUp style](assets/meup/README.md) for the current README presentation: ink navy, ivory forms, and a mint accent. That guide contains the current illustration and its exact generation prompt. The earlier artwork and palette below remain part of the asset history.
+Use the [shared MeUp style](assets/meup/README.md) for the README presentation: ink navy, ivory forms, and a mint accent.
 
 | Role | Color |
 | --- | --- |
@@ -44,13 +44,9 @@ Use restrained dimensional envelopes, generous empty space and clear connection 
 
 ## Assets
 
-- `resources/wizard/hero.png` and `resources/wizard/rail.png`: generated cutouts for the approved Mica wizard. [Final prompts and provenance](../resources/wizard/GENERATION.md).
-- `resources/agentinbox-about-banner.png`: 2172 by 724 pixel banner for the Windows app's About & Support dialog, generated with the built-in image generation tool on September 6, 2026. Its calm left area is reserved for accessible native title text; the illustration contains no embedded text or vendor marks.
-- `assets/branding/agentinbox-icon.svg`: editable vector envelope mark.
-- `assets/branding/agentinbox-app-icon-source.png`: large raster app-icon artwork.
-- `assets/branding/agentinbox-app-icon-256.png`: compact app-icon variant.
-- `assets/branding/agentinbox-chat-search.png`: historical conversation screenshot; not used to claim current behavior.
-- `assets/branding/agentinbox-task-manager-lightweight.png`: historical Task Manager screenshot; not evidence of current runtime memory use.
+- `resources/agentinbox-logo-512-safe.png`: Windows application logo.
+- `resources/vibeware/vibeware-logo.png`: approved VibeWare participation mark.
+- [Screenshot assets and attribution](assets/screenshots/README.md): Accounts and Connect Codex illustrations.
 
 Keep the concept caption whenever an image could be mistaken for a shipping UI. Do not promise offline processing, tested providers or validated credential protection without evidence. Product names do not imply endorsement or ownership of another company's marks.
 
@@ -60,40 +56,10 @@ Project-authored assets are distributed with the repository under MIT. This does
 
 AgentInbox participates in **VibeWare**, the open initiative created by Umberto Giacobbi for software built with AI under human direction and responsibility. VibeWare is not a separate author, publisher, development team, license or quality certification. Keep AgentInbox's own name, application icon and authorship visible.
 
-Use the exact tagline: **Human intent, AI execution, and plenty of tokens**. Do not claim that Umberto coined the term, or that the mark proves every change has been tested or reviewed. The project's [validation record](VALIDATION.md) describes its actual checks.
+Use the exact tagline: **Human intent, AI execution, and plenty of tokens**. Do not claim that Umberto coined the term, or that the mark proves every change has been tested or reviewed.
 
 The approved logo is [resources/vibeware/vibeware-logo.png](../resources/vibeware/vibeware-logo.png), copied unchanged from `Branding/vibeware-logo.png` in the [VibeWare repository](https://github.com/umbertotechnopreneur/VibeWare). It is a 1254 × 1254 transparent PNG, SHA-256 `84321fe9f77ccc083813e02c02ff3716ad50a45ed000b8663c5a2d416e2ba5af`. Preserve the original pixels, dimensions, denim blue, cream, aspect ratio and transparent canvas. Do not crop, stretch, recolor, add effects or substitute a stock floppy icon. The [original MIT notice](../resources/vibeware/LICENSE) accompanies the asset and is included in the desktop output.
 
-For AgentInbox's configuration window, the owner requested the initiative mark on the right of the footer, with the personal website, Terms and Privacy on the left. Use the approved image on the right of a keyboard-accessible link with **This is VibeWare** on the first line and **Manifesto** on the second. Its tooltip explains human direction and responsibility. Keep links available and put the mark on a second row on narrow windows. This placement follows the owner's app-specific request; do not add the central template's timed fading or About window as incidental branding work.
+In the configuration window, place the initiative mark on the right of the footer, with the personal website, Terms and Privacy on the left. The approved image is a keyboard-accessible link without adjacent manifesto text. Its tooltip explains human direction and responsibility. Keep links available and put the mark on a second row on narrow windows.
 
 The canonical destination is the [VibeWare manifesto](https://umbertogiacobbi.biz/vibeware/manifesto). The source guidance is the initiative's [press kit](https://github.com/umbertotechnopreneur/VibeWare/blob/main/PRESS-KIT.md) and [app publication template](https://github.com/umbertotechnopreneur/VibeWare/blob/main/templates/APP-PUBLICATION.md). MIT reuse does not imply trademark rights, endorsement or certification.
-
-## Historical About & Support banner provenance
-
-Tool mode: built-in image generation. Original standalone artwork; no reference image was supplied. The existing application icon was inspected for context and remains unchanged.
-
-```text
-Use case: stylized-concept
-Asset type: wide product banner for the English-only AgentInbox Windows desktop app About & Support dialog.
-Primary request: Create a polished premium digital illustration that expresses multiple email inboxes and calendars coming together in one helpful AI conversation.
-Scene/backdrop: deep midnight navy #071525, smooth subtle atmospheric gradient, no frame, a quiet refined desktop-app aesthetic.
-Subject: on the center-right, three small dimensional ivory envelopes and one minimal ivory calendar card flowing along delicate mint connection curves into one larger rounded mint conversation bubble, with a subtle small coral accent. The cards should feel clean, friendly and tactile, like softly beveled paper objects, with crisp edge highlights and restrained natural shadows. Calendar has only a small grid of blank rounded cells, no dates or letters. Conversation bubble has three ivory dots, no robot face. Avoid arrows implying email sending; flowing undirected lines express reading and gathering.
-Composition/framing: panoramic 3:1 landscape image, ideally 1536 by 512. Left 38 percent remains calm midnight negative space for a native title overlay, while illustration occupies center-right. Keep all objects comfortably inside image safe margins. Sophisticated spacious composition, readable at 600 by 200 pixels.
-Lighting/mood: soft studio illumination, subtle mint glow, welcoming trustworthy calm, high quality dimensional illustration.
-Color palette: midnight #071525, mint #71DEB7, warm ivory #F5EADB, coral #FF8F79, quiet slate #6E879E.
-Constraints: original standalone artwork. No text, letters, words, logos, vendor marks, GitHub marks, watermark, borders, screenshots, button shapes, padlocks or shields. No busy particles, no people. The image must look finished without text.
-```
-
-## Historical screenshot provenance
-
-For the current Accounts and Connect Codex README presentations, see [screenshot provenance and prompts](assets/screenshots/README.md). Those October 27, 2026 assets use owner-supplied app captures with a coordinated background and synthetic account identifiers. The older images below remain historical materials.
-
-The two README screenshots were edited with the built-in image generation tool on September 22, 2026. Their previous MailMeUp versions were the edit targets. The edits changed only the product, process and executable names; account data remains synthetic or hidden. Both results were visually reviewed before use.
-
-```text
-Use case: text-localization. Edit the supplied conversation screenshot by replacing only “MailMeUp 0.1.1” with “AgentInbox 0.1.1”. Preserve the original composition, perspective, typography, colors, UI content, synthetic addresses and all other text. Do not add a logo, watermark or decoration.
-```
-
-```text
-Use case: text-localization. Edit the supplied Task Manager screenshot by replacing “MailMeUp CLI (10)” with “AgentInbox CLI (10)”, every visible process name “mailmeup” with “agentinbox”, and every visible “mailmeup.exe” with “agentinbox.exe”. Preserve the Italian UI, row count, PIDs, memory values, highlighting, privacy blur and all other content. Do not add a logo, watermark or decoration.
-```

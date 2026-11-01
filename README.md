@@ -71,7 +71,7 @@ Windows 11 supports x64 and ARM64. Linux and macOS use the Python source only, w
 
 On Linux, start with the [terminal setup guide](docs/LINUX_SETUP.md): check your keyring, add mailboxes with guided prompts and generate your MCP connection.
 
-[Accounts and passwords](docs/AUTHENTICATION.md) · [Troubleshooting](docs/RECOVERY.md) · [What has been checked](docs/VALIDATION.md) · [Build and contribute](docs/DEVELOPMENT.md) · [How it works](docs/ARCHITECTURE.md)
+[Accounts and passwords](docs/AUTHENTICATION.md) · [Troubleshooting](docs/RECOVERY.md) · [Build and contribute](docs/DEVELOPMENT.md) · [How it works](docs/ARCHITECTURE.md)
 
 [MIT license](LICENSE) · [Contribute](CONTRIBUTING.md) · [Report a security issue](SECURITY.md) · [Terms](docs/TERMS.md)
 

@@ -25,8 +25,6 @@ For each approved MSIX build, collect the actual runtime and dependency inventor
 
 Targeted Microsoft Windows Defender scans are required before importing or running new external packages and their extracted dependencies. See the [README policy](README.md#external-binary-security-policy).
 
-See [validation](docs/VALIDATION.md) for first-import scan and build evidence tied to the current dependency versions.
-
 ## VibeWare artwork
 
 The approved `resources/vibeware/vibeware-logo.png` is copied unchanged from `Branding/vibeware-logo.png` in [VibeWare](https://github.com/umbertotechnopreneur/VibeWare). Copyright (c) 2026 Umberto Giacobbi, MIT License. The original notice is kept in [resources/vibeware/LICENSE](resources/vibeware/LICENSE) and copied to `Assets/VibeWare-LICENSE.txt` in desktop builds. See the [brand guide](docs/BRAND.md#vibeware-participation) for provenance and display rules. Participation in the initiative does not imply independent review or certification.

@@ -1,6 +1,6 @@
 # Release requirements
 
-GitHub releases distribute portable Release ZIPs for Windows 11 x64 and ARM64. Microsoft Store distribution uses separate Release MSIX packages. Debug MSIX packages are local development builds, not release assets. Linux and macOS are source-only; do not publish compiled binaries or installers for them. See [validation](VALIDATION.md) for evidence and limits of each build.
+GitHub releases distribute portable Release ZIPs for Windows 11 x64 and ARM64. Microsoft Store distribution uses separate Release MSIX packages. Debug MSIX packages are local development builds, not release assets. Linux and macOS are source-only; do not publish compiled binaries or installers for them.
 
 Obtain explicit authorization for the requested build and channel. Generic builds default to local Debug and do not authorize Store work, publication or tags.
 
@@ -18,7 +18,7 @@ pwsh -NoProfile -File scripts/AgentInbox.ps1 -Command build-portable -Version X.
 
 The shared Windows build engine restores only from staged inputs, compiles self-contained Release x64 and ARM64 sequentially, bundles Python, source, licenses, a terminal launcher and a short README, and creates ZIPs under `artifacts/portable/X.Y.Z.0/<architecture>/`. It omits MSIX manifests, installer registration and Debug symbols. The ZIP is unsigned; its checksum is recorded beside it. Settings and credentials stay in the Windows user profile, and moving the application folder requires updating an existing assistant launcher path.
 
-Publish only the version-matched ZIPs and checksums, with factual validation notes. Create the annotated `vX.Y.Z` tag after the matching source reaches `main`. Do not upload local profiles, signing credentials, import archives or raw build logs. Public release notes must distinguish compilation/archive checks from native UI, architecture-host and live-provider validation. Store submission is a separate authorization.
+Publish only the version-matched ZIPs and checksums. Create the annotated `vX.Y.Z` tag after the matching source reaches `main`. Do not upload local profiles, signing credentials, import archives or raw build logs. Public release notes describe current features, supported platforms and known limitations. Store submission is a separate authorization.
 
 ## Microsoft Store packages
 
@@ -34,8 +34,8 @@ The `Manual Windows MSIX` workflow is for Debug artifacts only. Store packages a
 
 When authorized, validate packaged entry points, architecture, Windows configuration and installation separately. Local `install-debug-msix -Version <four-part-version>` uses an existing current-user certificate, installs immediately and checks the installed package. It does not authorize UI or live-mail checks.
 
-No historical test result validates this engine. SMTP acceptance is not recipient delivery.
+SMTP acceptance is not recipient delivery.
 
 Retain only requested current packages, checksums and small verification records. Preserve pending uploads and requested rollback material until no longer needed. Follow cleanup rules for other output.
 
-See [validation](VALIDATION.md) and [working agreement](../AGENTS.md).
+See the [working agreement](../AGENTS.md).

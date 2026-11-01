@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-23.
 
-AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 to read mail and optional SMTP to send messages you request through your assistant. This policy describes the current source implementation; see [validation](VALIDATION.md) for the checks performed.
+AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 to read mail and optional SMTP to send messages you request through your assistant. This policy describes the current implementation.
 
 [Product page](https://umbertogiacobbi.biz/agentinbox/) · [Privacy policy](https://umbertogiacobbi.biz/agentinbox/privacy/) · [Terms](https://umbertogiacobbi.biz/agentinbox/terms/)
 

@@ -10,4 +10,4 @@ Choose the accounts your assistant can read. Sending starts disabled. When enabl
 
 The engine is Python. Windows setup uses WinUI 3. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64; Linux and macOS are source-only and unverified. Contributor pull requests improving the native Keychain and Secret Service paths are welcome.
 
-This implementation is in development. Validation evidence belongs to the source snapshot actually checked. See [getting started](GETTING_STARTED.md), [privacy](PRIVACY.md) and [validation](VALIDATION.md).
+See [getting started](GETTING_STARTED.md) and [privacy](PRIVACY.md).

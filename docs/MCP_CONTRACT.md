@@ -4,8 +4,6 @@ One MCP connection exposes all enabled mailboxes from compatible Gmail, Microsof
 
 The Python process communicates with a local MCP client over stdio. Stdout contains protocol messages only. Tool errors must remain errors, not empty successful results.
 
-Current validation limits are recorded in [validation](VALIDATION.md).
-
 | Tool | Purpose |
 | --- | --- |
 | `list_accounts` | List accounts and their permitted mail capabilities |

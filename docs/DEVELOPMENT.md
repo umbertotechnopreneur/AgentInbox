@@ -25,7 +25,7 @@ Preserve POP3's INBOX-only, no-unread-flags and header/date-search boundaries. R
 
 On first introducing a new external library or binary, follow the [first-import scan requirement](../README.md#external-binary-security-policy). Scan its archive and extracted dependencies once, and keep factual evidence for unchanged inputs. Builds and tests never start antivirus scans. A clean import scan is not authorization to execute, install, build, test or publish.
 
-Run builds, tests, formatters, linters, smoke checks and CI only when the owner explicitly requests them. Useful checks are listed in [validation](VALIDATION.md).
+Run builds, tests, formatters, linters, smoke checks and CI only when the owner explicitly requests them. Choose checks for the current change and keep unfinished work in [todo](../.github/tasks/todo.md).
 
 Put all generated output in task-specific ignored `artifacts/` directories. After authorized checks, follow mandatory cleanup, retaining requested deliverables and essential failure evidence. Preserve unrelated work and shared caches.
 

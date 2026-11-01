@@ -2,8 +2,6 @@
 
 Configure accounts through the [command-line quick start](CLI_SETUP_GUIDE.md) or Windows setup. In Windows setup, choosing Outlook.com or Microsoft 365 selects **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
 
-Earlier synthetic sign-in tests passed with mocked transports and protected stores. The latest provider-persistence and Microsoft-diagnostic cases have not run. Live sign-in and native credential storage remain unvalidated. See [validation](VALIDATION.md).
-
 ## Passwords and app passwords
 
 Enter the host, port, TLS mode and username for each connection. Use TLS from the start or require STARTTLS before authentication. Certificate validation must succeed; there is no unencrypted fallback.
@@ -35,7 +33,7 @@ Press **Sign in with Microsoft**, then **Open Microsoft**. The sign-in button st
 
 **Sign-in details** opens a collapsed expander with elapsed time, the public app ID, account type, requested and returned permissions, request endpoint, HTTP status, waiting and cleanup steps. The same trace appears in the sign-in window and remains on the account page after an error; **Copy sign-in details** copies it. The centered sign-in code has its own Copy icon; that action copies only the code. The trace is bounded and stays in memory. It excludes passwords, sign-in codes, tokens, email addresses and response bodies. The browser uses the HTTPS address returned by Microsoft's verified endpoint, without a hard-coded domain or path list. Only its origin appears in the trace; paths, queries and fragments are hidden because they may contain codes. A page-refresh problem after successful sign-in does not undo the saved sign-in.
 
-If Microsoft refuses, the Windows app shows a simple explanation followed by **Server reply** when available. That reply is bounded and hides known sign-in secrets and email addresses, including secrets echoed from a request. It stays out of ordinary MCP errors. The previous generic registration message did not establish the actual cause; the recovered registration still needs a real sign-in check when authorized.
+If Microsoft refuses, the Windows app shows a simple explanation followed by **Server reply** when available. That reply is bounded and hides known sign-in secrets and email addresses, including secrets echoed from a request. It stays out of ordinary MCP errors.
 
 The requested scopes are:
 
