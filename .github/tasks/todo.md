@@ -2,6 +2,8 @@
 
 Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
 
+- [ ] Complete cleanup of the task-owned `artifacts/verification/linux-cli-20261102/transient/` directory in the Linux CLI worktree. NTFS directory reads and unlink remain blocked. Remaining synthetic metadata is estimated below 2 MiB from the bounded profile files; an exact inventory is blocked. Current source development and the Linux setup guide do not depend on this output.
+
 - [ ] When authorized, check portable Release 2.0.0 startup and configuration on clean Windows x64 and native ARM64 hosts, bundled CLI/MCP entry points with isolated profiles, retained settings, and reconnecting after a folder move. Release compilation and archive inspection passed; native UI, packaged-entry-point execution and provider access were not exercised. The shared MSIX adapters were refactored but were not rebuilt or installed again in this portable-release task.
 
 - [ ] Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Windows synthetic CI passed on PR #37 after the source-quality refactor, and Debug 1.0.24.0 x64 compilation/installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also prevents implicit SDK workload repair.

@@ -9,6 +9,7 @@
 #
 # File: Strict configuration for mail protocols and explicitly selected authentication.
 # Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Modified with AI: OpenAI Codex; reject file paths used as profiles, 2026-11-02.
 # Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
 # Evidence: docs/VALIDATION.md (source review; execution checks pending).
 #
@@ -112,6 +113,8 @@ def data_directory() -> Path:
     if not path.is_absolute():
         raise MailError("invalid_directory", "The profile base directory must be absolute.")
     path = path.resolve()
+    if path.exists() and not path.is_dir():
+        raise MailError("invalid_directory", "The profile path must be a directory, not an existing file.")
     if (path / "accounts.db").exists() or (path / "provider-settings.json").exists():
         raise MailError("unsupported_configuration", "This directory contains an incompatible profile. Choose a new directory and configure your mail servers.")
     return path

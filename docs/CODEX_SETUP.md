@@ -43,7 +43,7 @@ Use Python 3.11 or newer on the machine running the MCP client. Configure accoun
 
 Without an explicit `AGENTINBOX_DATA_DIR`, Linux uses `$XDG_DATA_HOME/agentinbox`, or `~/.local/share/agentinbox` when `XDG_DATA_HOME` is unset or empty. A relative value is rejected. macOS uses `~/Library/Application Support/AgentInbox`. To avoid selecting a different profile, pass the same absolute `AGENTINBOX_DATA_DIR` to management commands and the MCP client.
 
-These are source setup requirements, not evidence of native execution. Linux/macOS credentials, provider access and Codex integration remain unverified; see [validation](VALIDATION.md).
+On Linux, the [terminal guide](LINUX_SETUP.md) covers guided `accounts add`, `doctor --check-storage` and `mcp-config`. The latter prints a stdio JSON entry with absolute interpreter, source and profile paths without editing your client's settings. Register the entry in your client, then start a new session and request the account list.
 
 ## Use the same profile
 
@@ -51,7 +51,7 @@ Configure accounts locally first. The MCP process must use the same profile; an 
 
 Start a new client session after changing its configuration. List accounts, search one account in a short date range, then read a selected message. Process startup does not prove client integration or mailbox access works.
 
-Sending requires SMTP to be enabled in Windows setup. Codex submits an explicitly requested message immediately through `send_email`; AgentInbox does not open another approval window. Keep the request ID to check unresolved outcomes, and never retry them automatically.
+Sending requires SMTP and sending permission to be enabled in local setup, using the Windows app or CLI. Your MCP client submits an explicitly requested message immediately through `send_email`; AgentInbox does not open another approval window. Keep the request ID to check unresolved outcomes, and never retry them automatically.
 
 See [MCP tools](MCP_CONTRACT.md) and [privacy](PRIVACY.md).
 
