@@ -1,5 +1,27 @@
 # Validation
 
+## 2026-11-02 — troubleshooting, NuGet updates and Debug 2.0.3.0
+
+Built and signed x64 Debug MSIX 2.0.3.0 locally from source checkpoint `4db5430`, including main checkpoint `2d80e14`, with .NET SDK 10.0.403. `install-debug-msix -Version 2.0.3.0` used the existing current-user certificate and the staged official Python 3.13.15 runtime/offline NuGet inputs. Installation reports version 2.0.3.0, architecture X64 and status `Ok`. Source versions are 2.0.3; the Windows manifest version is 2.0.3.0.
+
+The source adds Troubleshooting, two prompts with adjacent copy icons and native confirmations, first-account selection without replacing a retained draft, explicit local MCP startup wording and a 20% larger VibeWare footer logo without adjacent manifesto text. Direct NuGet references are [Windows App SDK 2.6.4](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.6.4) and [Windows SDK BuildTools 10.0.28000.2957](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2957).
+
+Thirteen new official NuGet archives and their extracted contents passed one targeted `MpCmdRun.exe -Scan -ScanType 3 -File <task-owned scan-staged directory>` scan, exit code 0, with no threats. Eight unchanged inputs reused retained SHA-256/clean-scan evidence. The final rebuild reused those same inputs without another scan. Official source URLs, versions, SHA-256 values, command, timestamps and result are retained in `first-import-evidence.json`, prior evidence and `package-record.json` beside the current installer. Unused framework-specific download staging was not imported into the build.
+
+Retained current installer: `artifacts/msix/debug/x64/2.0.3.0/agentinbox-2.0.3.0-win-x64.msix` (108,897,956 bytes), SHA-256 `82b2c738cc334ac5f07c2cf6d9c7b32a11a45fd2e64118c89e35b9e2409f1fb5`. Installation, validation and cleanup records are alongside it. An initial 2.0.2.0 build preceded main alignment; 2.0.3.0 is the final installed build.
+
+Both source builds completed their matching `dotnet clean`; the builder reported no cleanup warning and both generated `artifacts/work/msix-<task-id>/` directories are absent. Automatic approval review separately rejected guarded removal of the following remaining output with `blocked by policy`, without a more specific reason. No alternative deletion was attempted:
+
+| Remaining path | Approximate size |
+| --- | ---: |
+| `artifacts/work/troubleshooting-2.0.2-20261102/` | 2914.9 MiB |
+| `artifacts/work/install-debug-2.0.1-20261030/` | 479.4 MiB |
+| `artifacts/msix/debug/x64/1.0.24.0/` | 100.6 MiB |
+| `artifacts/msix/debug/x64/2.0.1.0/` | 100.6 MiB |
+| `artifacts/msix/debug/x64/2.0.2.0/` | 103.9 MiB |
+
+No local tests, application launch, live UI control, clipboard exercise, account sign-in or provider/MCP-chat operation ran. Installation and compilation do not establish runtime UI or mailbox behavior. No Store or portable Release package was built for this change. Existing unrelated working-tree changes were excluded from commits. See [todo](../.github/tasks/todo.md) for runtime checks and blocked cleanup.
+
 ## 2026-10-27 — portable Release 2.0.0 x64 and ARM64
 
 Built locally from source checkpoint `056ffdf` with SDK 10.0.403, using the shared offline Windows build engine. Both artifacts use self-contained **Release**, version `2.0.0.0`, with .NET/Windows App SDK dependencies, Python 3.13.15, a terminal launcher, a setup README and license notices. The ZIPs are unsigned and contain no MSIX registration manifest or Debug symbols. They are distinct from installed Debug 1.0.24.0; no Store MSIX was built or submitted in this task.

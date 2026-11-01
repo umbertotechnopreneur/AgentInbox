@@ -2,7 +2,7 @@
 
 Windows distributions contain the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. GitHub uses portable Release ZIPs for Windows 11 x64 and ARM64; the Microsoft Store uses separate Release MSIX packages. Debug MSIX packages are local development builds. In MSIX installations, the stable `AgentInbox.exe` execution alias points to bundled Python: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-Debug MSIX 1.0.24.0 was built and signed locally from source checkpoint `d9ed6a0` and installed on Windows x64 with package status `Ok`. Installed file hashes match the package, all sixteen packaged engine modules match the current source, and saved account settings are unchanged. No automated tests, app launch, live UI or provider checks, or CI/CD ran. Eighteen unchanged input archives reused earlier scan evidence; three new .NET 10.0.14 runtime archives and their extracted files passed one targeted Defender scan. See [validation](../../docs/VALIDATION.md) for evidence, limits and cleanup.
+Debug MSIX 2.0.3.0 was built and signed locally from source checkpoint `4db5430`, including the current main branch, and installed on Windows x64 with package status `Ok`. Thirteen new NuGet archives and their extracted contents passed a targeted Defender scan; unchanged inputs reused earlier evidence. No local tests, app launch, live UI or provider checks ran. Builder intermediates were cleaned; automatic approval review blocked removal of download staging and superseded installers. See [validation](../../docs/VALIDATION.md) for evidence, limits and remaining paths.
 
 ## Prerequisites and inputs
 
