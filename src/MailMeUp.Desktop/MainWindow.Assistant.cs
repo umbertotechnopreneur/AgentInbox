@@ -9,7 +9,7 @@
  *
  * File: Assistant connection page, confirmation and explicit clipboard actions.
  * Created with AI: OpenAI Codex; extracted assistant-page composition, 2026-10-27.
- * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
  * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
@@ -90,27 +90,16 @@ public sealed partial class MainWindow
         Page.Children.Add(Section("", status, setupMessage, connect));
         var path = FieldFor("Codex settings file", nameof(AssistantConnectionModel.ConfigurationPath));
 
-        // Local launch verification and a request for a new chat are separate steps.
+        // Describe the exact local check independently of the active Codex chat.
         var checkStatus = Label(nameof(AssistantConnectionModel.CheckStatus), hint: true);
         ModelBinding.Bind(checkStatus, TextBlock.ForegroundProperty, model, nameof(AssistantConnectionModel.CheckTone), converter: ModelBinding.ToneConverter.Instance);
-        var test = Action("Test connection", () => _ = RunAsync(() => model.TestAsync(_lifetime.Token)),
+        var test = Action("Test local MCP startup", () => _ = RunAsync(() => model.TestAsync(_lifetime.Token)),
             tooltip: "Check the saved Codex settings, start AgentInbox and ask for its tool list. No email is read or sent.");
         ModelBinding.Bind(test, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanTestAssistant));
-        Page.Children.Add(Section("1. Check AgentInbox on this PC",
-            Hint("This checks that AgentInbox can start and reply. It does not read or send email."),
+        Page.Children.Add(Section("Check AgentInbox on this PC",
+            Hint("This checks that the saved Codex entry matches this installation, starts a separate AgentInbox process, completes MCP initialization and verifies these five tools: list_accounts, search_mail, read_mail, send_email and get_send_status."),
+            Hint("It does not call those tools, check passwords or Microsoft sign-in, connect to a mail provider, or read or send email. A pass means the local MCP server can start; your Codex chat may still have a connection problem. Use Troubleshooting to check access from a chat."),
             test, checkStatus));
-        var prompt = FieldFor("", nameof(AssistantConnectionModel.TryPrompt), multiline: true);
-        AutomationProperties.SetName(prompt, "Request to paste into Codex");
-        var tryChat = Section("2. Try it in Codex", Hint("Open a new Codex chat and paste this request:"), prompt,
-            Action("Copy this prompt", () => _ = RunAsync(() =>
-            {
-                CopyText(model.TryPrompt);
-                ShowNotice("Prompt copied", "Paste it into a new Codex chat to check the connection.", InfoBarSeverity.Informational);
-                return Task.CompletedTask;
-            }), tooltip: "Copy the first request to try in a new Codex chat."),
-            Hint("If Codex cannot connect, restart Codex and open a new chat. A successful local check does not verify the connection inside your chat."));
-        ModelBinding.Visible(tryChat, model, nameof(AssistantConnectionModel.IsConfigured));
-        Page.Children.Add(tryChat);
         var afterConnecting = Hint("After connecting, open a new chat in Codex to start using AgentInbox.");
         ModelBinding.Visible(afterConnecting, model, nameof(AssistantConnectionModel.IsConfigured), invert: true);
         Page.Children.Add(afterConnecting);
@@ -143,6 +132,60 @@ public sealed partial class MainWindow
         };
         ModelBinding.Bind(details, Expander.IsExpandedProperty, model, nameof(AssistantConnectionModel.DetailsExpanded), BindingMode.TwoWay);
         Page.Children.Add(details);
+    }
+
+    /// <summary>Show copyable access and diagnostic prompts without resetting the last local check.</summary>
+    private async Task BuildTroubleshootingPageAsync()
+    {
+        var model = _configuration.Assistant;
+        if (string.IsNullOrEmpty(model.Command)) await model.DetectAsync(_lifetime.Token);
+        Page.Children.Clear();
+        Page.Children.Add(Heading("Troubleshooting", "Open a new Codex chat and paste one of these prompts."));
+        Page.Children.Add(Section("Try it in Codex",
+            Hint("Ask which accounts AgentInbox makes available to this chat."),
+            PromptWithCopy(model.TryPrompt, "Account access prompt"),
+            Hint("If Codex cannot connect, restart Codex and open a new chat. A successful local check does not verify the connection inside your chat.")));
+        Page.Children.Add(Section("Troubleshooting prompt",
+            Hint("This prompt gives Codex the saved connection status, the last local check result and launch details so it can investigate and fix connection problems on its side. It contains no passwords or tokens."),
+            PromptWithCopy(model.TroubleshootingPrompt, "Troubleshooting prompt")));
+    }
+
+    /// <summary>Place an accessible copy icon to the right of selectable, read-only prompt text.</summary>
+    /// <param name="prompt">Exact non-secret prompt copied when the user presses its icon.</param>
+    /// <param name="name">Accessible field name and descriptive copy action label.</param>
+    private Grid PromptWithCopy(string prompt, string name)
+    {
+        var row = new Grid { ColumnSpacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var box = new TextBox
+        {
+            Text = prompt, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Stretch, MaxHeight = 320
+        };
+        AutomationProperties.SetName(box, name);
+        ScrollViewer.SetVerticalScrollBarVisibility(box, ScrollBarVisibility.Auto);
+        var copy = IconAction($"Copy {name.ToLowerInvariant()}", "\uE8C8", 0x2477C8,
+            () => _ = RunAsync(() => CopyPromptAsync(prompt)), $"Copy the {name.ToLowerInvariant()} to paste into Codex.");
+        copy.VerticalAlignment = VerticalAlignment.Top;
+        Grid.SetColumn(copy, 1);
+        row.Children.Add(box);
+        row.Children.Add(copy);
+        return row;
+    }
+
+    /// <summary>Copy the chosen prompt and confirm completion in a native modal dialog.</summary>
+    /// <param name="prompt">Exact prompt explicitly selected for copying; no account credentials.</param>
+    private async Task CopyPromptAsync(string prompt)
+    {
+        CopyText(prompt);
+        var confirmation = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot, Title = "Copied", Content = "Okay, copied. Paste it into your Codex chat.",
+            CloseButtonText = "OK", DefaultButton = ContentDialogButton.Close,
+            CloseButtonStyle = DialogButtonStyle("Close the copied confirmation.")
+        };
+        await confirmation.ShowAsync();
     }
     /// <summary>Copies only text the user explicitly chooses to put on the clipboard.</summary>
     /// <param name="text">Text explicitly chosen for copying, or the model property supplying a button label.</param>

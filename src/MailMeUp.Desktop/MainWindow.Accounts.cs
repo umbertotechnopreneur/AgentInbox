@@ -9,7 +9,7 @@
  *
  * File: Account workspace, identity and mail tabs, and responsive layout.
  * Created with AI: OpenAI Codex; extracted account-page composition, 2026-10-27.
- * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
  * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
@@ -42,10 +42,10 @@ public sealed partial class MainWindow
         PageActions.Children.Add(_save);
         PageActions.Children.Add(_cancelAccount);
         PageActions.Children.Add(_saveStatus);
-        _createFirstAccount = Action("Create your first account", StartNewAccount, accent: true,
+        _createFirstAccount = Action("Create a new account", StartNewAccount, accent: true,
             tooltip: "Open the setup form for your first email account.");
-        _accountEmptyState = AccountPlaceholder("Add your first mailbox",
-            "Start with Gmail, Microsoft, iCloud, GoDaddy or another compatible IMAP/POP3 provider. Add more mailboxes and choose the accounts and folders your AI agent can use.",
+        _accountEmptyState = AccountPlaceholder("Create a new account",
+            "You have no saved accounts. Choose Create a new account to connect Gmail, Microsoft, iCloud, GoDaddy or another compatible IMAP/POP3 mailbox.",
             _createFirstAccount);
         Page.Children.Add(_accountEmptyState);
 
@@ -110,8 +110,8 @@ public sealed partial class MainWindow
         UpdateAccountTabHeaders();
         _newAccountHeading = Text("New account", 22);
         _accountEditor = Stack(_newAccountHeading, _label, _accountTabs);
-        _accountSelectionState = AccountPlaceholder("Select or add a mailbox",
-            "Select a mailbox from the list to edit its name and settings.\nUse the + button to add another mailbox.");
+        _accountSelectionState = AccountPlaceholder("Please select an account",
+            "Click an account in the list to edit its settings, or use Add to create a new account.");
         _accountWorkspace.Children.Add(_accountEditor);
         _accountWorkspace.Children.Add(_accountSelectionState);
         BindAccountControls();
