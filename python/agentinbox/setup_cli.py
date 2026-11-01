@@ -9,6 +9,7 @@
 #
 # File: Human-facing account setup commands backed by the shared mail application.
 # Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Modified with AI: OpenAI Codex; guided setup, diagnostics and MCP configuration, 2026-11-02.
 # Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
 # Evidence: docs/VALIDATION.md (source review; execution checks pending).
 #
@@ -29,6 +30,7 @@ from pathlib import Path
 
 from .config import account_input
 from .errors import MailError
+from . import terminal_setup
 
 
 def add_commands(commands):
@@ -37,6 +39,11 @@ def add_commands(commands):
     Args:
         commands: argparse subparser collection receiving the local setup commands.
     """
+    doctor = commands.add_parser("doctor", help="Check local prerequisites without contacting mail providers.")
+    doctor.add_argument("--check-storage", action="store_true", help="Write, read and remove one disposable protected value; the keyring may ask to unlock.")
+    doctor.add_argument("--json", action="store_true", help="Write one JSON diagnostic result; failures exit with status 1.")
+    connection = commands.add_parser("mcp-config", help="Print a local stdio MCP configuration with absolute interpreter, source and profile paths.")
+    connection.add_argument("--json", action="store_true", help="Wrap the configuration in the standard ok/result JSON response.")
     profile = commands.add_parser("profile", help="Show profile paths or retry pending credential cleanup.")
     actions = profile.add_subparsers(dest="action", required=True)
     for name, description in (("show", "Show where settings and protected credentials are stored."),
@@ -47,12 +54,12 @@ def add_commands(commands):
     presets.add_argument("--json", action="store_true", help="Write one JSON result for automation.")
     accounts = commands.add_parser("accounts", help="Add, inspect, update, sign in and check existing mailboxes.",
         description="Connect existing mailboxes. This does not create Gmail or Microsoft accounts at the provider.",
-        epilog="Start with accounts add --help. Setup files contain settings only; passwords are requested with hidden input.")
+        epilog="Start with accounts add for guided setup. Setup files contain settings only; passwords are requested with hidden input.")
     actions = accounts.add_subparsers(dest="action", required=True)
     descriptions = {
         "list": "List every saved connection, including disabled accounts.",
         "show": "Show one account's settings, revision and Microsoft sign-in status.",
-        "add": "Create one local connection from a named entry in a setup JSON file.",
+        "add": "Create one connection with guided terminal setup or a named setup-file entry.",
         "update": "Save replacement settings for an account at an explicit revision.",
         "signin": "Sign in with Microsoft in your browser and wait for the result.",
         "folders": "Connect to the provider and list exact selectable folder names.",
@@ -66,8 +73,10 @@ def add_commands(commands):
         if name not in {"list", "add"}:
             command.add_argument("account_id", help="The ID printed by accounts add or accounts list.")
         if name in {"add", "update"}:
-            command.add_argument("--file", required=True, type=Path, help="UTF-8 setup JSON with an accounts object; never the saved accounts.json.")
-            command.add_argument("--entry", required=True, help="Named entry inside accounts, for example gmail or microsoft.")
+            command.add_argument("--file", required=name == "update", type=Path, help="UTF-8 setup JSON with an accounts object; supply with --entry. Omit both for guided add.")
+            command.add_argument("--entry", required=name == "update", help="Named entry inside accounts, for example gmail or microsoft; requires --file.")
+        if name == "add":
+            command.add_argument("--client-id", help="Public Microsoft application ID for guided Microsoft setup; never a client secret.")
         if name == "update":
             command.add_argument("--revision", required=True, type=int, help="Current revision from accounts show; stale edits fail.")
             command.add_argument("--replace-passwords", action="store_true", help="Prompt for replacement passwords; required when password-based server settings change.")
@@ -204,6 +213,10 @@ def run(application, options):
             connection.
         options: Parsed command-line options for the selected setup action.
     """
+    if options.command == "doctor":
+        return terminal_setup.diagnose(application, options.check_storage)
+    if options.command == "mcp-config":
+        return terminal_setup.mcp_configuration(application.store.root)
     if options.command == "presets":
         return application.manage("presets", {})
     if options.command == "profile":
@@ -211,7 +224,14 @@ def run(application, options):
     if options.action == "list":
         return application.manage("list_accounts", {})
     if options.action in {"add", "update"}:
-        account = load_entry(options.file, options.entry)
+        if bool(options.file) != bool(options.entry):
+            raise MailError("invalid_arguments", "Supply --file and --entry together, or omit both for guided accounts add.")
+        if options.file:
+            if getattr(options, "client_id", None):
+                raise MailError("invalid_arguments", "Put the public client ID in the setup file, or use --client-id with guided accounts add.")
+            account = load_entry(options.file, options.entry)
+        else:
+            account = terminal_setup.account_draft(application, getattr(options, "client_id", None))
         revision = None
         if options.action == "update":
             current = _saved_account(application, options.account_id)
@@ -247,9 +267,13 @@ def display(options, result):
         options: Parsed command-line options for the selected setup action.
         result: Protocol or application result being checked or displayed.
     """
-    if options.command == "accounts" and options.action == "list":
+    if options.command == "doctor":
+        for check in result["checks"]:
+            print(f"{check['status'].upper()}: {check['name']}: {check['message']}")
+        print("No mailbox connection was attempted.")
+    elif options.command == "accounts" and options.action == "list":
         if not result:
-            print("No accounts configured. Start with: accounts add --help")
+            print("No accounts configured. Start with: accounts add")
         for account in result:
             print(f"{account['label']} <{account['email']}>\n  ID: {account['id']}  Revision: {account['revision']}\n"
                   f"  Read: {account['read_enabled']}  Send: {account['send_enabled']}")

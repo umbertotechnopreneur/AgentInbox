@@ -32,7 +32,7 @@ python -B python/run.py profile show
 
 Copy the template once. Edit that copy before adding accounts. Do not overwrite an existing edited file. The variable assignments apply to this terminal; set the same absolute profile path in each new terminal and in your MCP client's environment.
 
-Windows uses Credential Manager. macOS needs an accessible Keychain. Linux needs libsecret and an unlocked Secret Service keyring in the user session running the process. Linux/macOS execution remains unverified. These new CLI commands are source changes and are not in the currently installed MSIX.
+Windows uses Credential Manager. macOS needs an accessible Keychain. Linux needs libsecret and an unlocked Secret Service keyring in the user session running the process. For guided setup without editing JSON, diagnostics and generated MCP configuration, use the [Linux guide](LINUX_SETUP.md). New source commands do not change already distributed Windows packages.
 
 <!-- pagebreak -->
 
@@ -135,7 +135,7 @@ Checks authenticate and inspect configured connections. They do not send email. 
 
 Configure your MCP client to start an absolute Python executable with separate arguments `-B`, the absolute path to `python/run.py`, and `mcp`. Set its `AGENTINBOX_DATA_DIR` to the same absolute profile directory. Both enabled accounts are then exposed through that process.
 
-Starting MCP or saving an account does not prove a mailbox works. The new CLI flows, provider access and cross-platform behavior still require runtime verification. The PDF's visual review is not an application test.
+Starting MCP or saving an account does not prove a mailbox works. Use the explicit account checks to verify provider access. The PDF covers the settings-file setup workflow; the [Linux guide](LINUX_SETUP.md) also covers guided setup.
 
 <!-- pagebreak -->
 

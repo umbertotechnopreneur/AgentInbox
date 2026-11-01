@@ -105,8 +105,10 @@ class MemorySocket:
 def imap_reader(payload, *, maximum=65_536, literal=0, lines=256, line_limit=16_384,
                 chunk_size=4096, seconds_per_read=0):
     """Initialize only the parser fields needed for in-memory wire responses."""
-    connection = mail._IMAP4.__new__(mail._IMAP4)
-    connection._wire_buffer = bytearray()
+    # Run the real parser initialization, including fields added by newer Python.
+    # Replace only connection establishment so no socket can be opened.
+    with mock.patch.object(mail._IMAP4, "open"), mock.patch.object(mail._IMAP4, "_connect"):
+        connection = mail._IMAP4()
     connection.sock = MemorySocket(payload, chunk_size=chunk_size, seconds_per_read=seconds_per_read)
     connection._set_response_limits(maximum, literal=literal, lines=lines, deadline=20, line_limit=line_limit)
     connection._mode_ascii()

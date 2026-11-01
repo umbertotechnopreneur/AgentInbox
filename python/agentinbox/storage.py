@@ -9,6 +9,7 @@
 #
 # File: Atomic account settings and durable protected-credential cleanup.
 # Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Modified with AI: OpenAI Codex; queue probe cleanup without deleting other values, 2026-11-02.
 # Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
 # Evidence: docs/VALIDATION.md (source review; execution checks pending).
 #
@@ -303,6 +304,16 @@ class Store:
         with self.locked():
             self._queue_cleanup_locked(references)
             return self._retry_cleanup_locked()
+
+    def queue_protected_cleanup(self, references) -> None:
+        """Durably queue protected references without attempting any credential deletion.
+
+        Args:
+            references: Protected-storage keys requiring a later explicit cleanup retry;
+                existing queued entries and live credentials are preserved.
+        """
+        with self.locked():
+            self._queue_cleanup_locked(references)
 
     def cleanup_protected(self, references) -> dict:
         """Queue consumed protected values and report cleanup separately from committed work.
