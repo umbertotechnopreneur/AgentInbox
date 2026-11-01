@@ -4,6 +4,8 @@ Keep reusable findings here. Rules belong in [AGENTS.md](../../AGENTS.md).
 
 - NuGet manifests can list several framework-specific dependency groups. Select the group compatible with the desktop target before staging the offline dependency closure.
 
+- NuGet manifests can list several framework-specific dependency groups. Walking every group stages many obsolete dependencies that the .NET 10 desktop build does not use. The matching compatible group produced the complete twenty-package offline closure for Debug 2.0.3.0; the unused downloads were not imported.
+
 - The product benefit is one AI agent working with many compatible mailboxes and their selected folders through one MCP connection. A generic email/Codex tagline loses that benefit. Keep the message aligned across README, setup guides, app, CLI, plugin/MCP descriptions and localized website/SEO copy, while stating the implemented per-account folder and protocol boundaries.
 
 - Keep an editable draft separate from saved engine snapshots and native controls. Publish collection/selection changes coherently so two-way selection bindings cannot overwrite an account while it is loading. Recreating a page should rebind its model, not reconstruct or discard its draft.
