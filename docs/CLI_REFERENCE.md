@@ -2,7 +2,7 @@
 
 I wanted my agent to work across all my mailboxes and their folders. The CLI configures as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. Run one MCP process for all enabled accounts, or use a management session. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account. Each search targets one account and folder, so repeat it for the mailboxes and folders you want your agent to use.
 
-The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. The current isolated Windows suite passed 129 cases, including the new setup commands, with two POSIX-only cases skipped. Native terminal interaction, provider access, installed-package behavior and Linux/macOS execution remain unverified. See [validation](VALIDATION.md).
+The engine requires Python 3.11+. Use `-B` to avoid bytecode beside source files. Linux has [guided terminal setup](LINUX_SETUP.md), local diagnostics and MCP configuration output.
 
 ## Configure your mailboxes from the command line
 
@@ -12,10 +12,15 @@ Prefix each command below with `python -B python/run.py` from the source checkou
 
 | Command | What it does |
 | --- | --- |
+| `doctor` | Check local settings, TLS initialization and Linux storage prerequisites without contacting providers |
+| `doctor --check-storage` | Also store, read and remove a disposable protected value; report pending cleanup separately |
+| `mcp-config` | Print local MCP JSON with absolute interpreter, source and profile paths; do not edit client settings |
 | `profile show` | Show the selected profile and protected-storage locations |
 | `presets` | Show supported providers and connection requirements |
 | `accounts list` | List all saved connections, including disabled ones |
 | `accounts show ID` | Show settings, current revision and Microsoft sign-in status |
+| `accounts add` | Guide you through provider, mailbox, folders and optional sending in an interactive terminal |
+| `accounts add --client-id GUID` | Supply a public application ID when choosing a Microsoft preset in guided setup |
 | `accounts add --file FILE --entry gmail` | Create one connection from a named settings entry; prompt for a password if needed |
 | `accounts update ID --revision N --file FILE --entry gmail` | Update that connection using its current revision |
 | `accounts update ID --revision N --file FILE --entry gmail --replace-passwords` | Also prompt for replacement passwords |
@@ -30,6 +35,10 @@ Prefix each command below with `python -B python/run.py` from the source checkou
 All these commands accept `--json` for one `ok`/`result` or `ok`/`error` response. Password prompts, sign-in instructions and connection progress go to stderr. Hidden password input requires an interactive terminal; the CLI refuses an input method that would echo a password. No password option or plaintext credential file is provided. Save, Microsoft authorization and provider connection checks are separate outcomes. Pending cleanup is reported separately from an already committed save or sign-in.
 
 The setup file is UTF-8 JSON, optionally with a BOM, at most 256 KB, with one top-level `accounts` object. Its keys are entry names; each value is the existing account input contract described below. Duplicate JSON keys are rejected. Leave each account's `id` empty. `add` creates a new ID; `update ID` supplies the selected saved ID and requires the explicit revision. Only the chosen entry is validated and saved; no bulk import or implicit overwrite occurs. Passwords and tokens are not allowed in entries. New password-based accounts prompt for incoming and, when configured, SMTP credentials separately. Microsoft OAuth never prompts for a password. Updates reuse existing protected credentials unless `--replace-passwords` is requested; changed server settings can require that option. Changing Microsoft scopes/settings can require another `accounts signin`.
+
+Guided `accounts add` requires an interactive terminal. Omit both `--file` and `--entry` to use it, or supply both for the settings-file workflow. Microsoft presets select OAuth and require `--client-id` only in guided source setup. Prompts use stderr even with `--json`; passwords still require hidden terminal input.
+
+`doctor` returns exit status 1 if any diagnostic fails. With `--json`, inspect `result.ready` separately from `ok`, which reports whether diagnosis completed. Storage is tested only with `--check-storage`; default checks do not prove the keyring is unlocked. `mcp-config` prints the raw MCP configuration by default; `--json` wraps it in `ok`/`result`. It does not edit client settings or verify a client connection.
 
 ## Windows installation
 

@@ -17,6 +17,15 @@ from tests._support import MailApplicationCase
 class PlatformProfileTests(MailApplicationCase):
     """Keep profile selection explicit and independent of the host environment."""
 
+    def test_existing_file_is_not_a_profile_directory(self):
+        path = self.root / "profile-file"
+        path.write_text("Synthetic file; do not overwrite.", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"AGENTINBOX_DATA_DIR": str(path)}, clear=True):
+            with self.assertRaises(MailError) as raised:
+                config.data_directory()
+        self.assertEqual("invalid_directory", raised.exception.code)
+        self.assertEqual("Synthetic file; do not overwrite.", path.read_text(encoding="utf-8"))
+
     def test_linux_empty_and_unset_xdg_use_the_user_data_directory(self):
         for environment in ({}, {"XDG_DATA_HOME": ""}):
             with self.subTest(environment=environment), \

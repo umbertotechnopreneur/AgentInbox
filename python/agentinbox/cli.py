@@ -9,6 +9,7 @@
 #
 # File: Executable entry point for MCP, JSON automation and local terminal setup.
 # Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+# Modified with AI: OpenAI Codex; Linux terminal setup and diagnostics, 2026-11-02.
 # Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
 # Evidence: docs/VALIDATION.md (source review; execution checks pending).
 #
@@ -95,7 +96,7 @@ def main(arguments=None):
     """
     parser = argparse.ArgumentParser(prog="agentinbox",
         description="Connect as many compatible mailboxes as you need to your AI agent through one local MCP connection.",
-        epilog="Start with: agentinbox accounts add --help. Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Choose up to twenty IMAP folders per account; POP3 exposes one INBOX. Setup never creates a mailbox at the provider.")
+        epilog="Start with: agentinbox doctor, then agentinbox accounts add. Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3 providers. Choose up to twenty IMAP folders per account; POP3 exposes one INBOX. Setup never creates a mailbox at the provider.")
     commands = parser.add_subparsers(dest="command", required=True)
     setup_cli.add_commands(commands)
     commands.add_parser("mcp", help="Expose all enabled mailboxes and their selected folders to your AI agent over stdio MCP.",
@@ -116,7 +117,7 @@ def main(arguments=None):
             write({"ok": True, "result": result})
         else:
             setup_cli.display(options, result)
-        return 0
+        return 1 if options.command == "doctor" and not result["ready"] else 0
     except MailError as error:
         if options.command == "mcp":
             sys.stderr.write(f"AgentInbox startup failed: {error.code}. {error}\n")

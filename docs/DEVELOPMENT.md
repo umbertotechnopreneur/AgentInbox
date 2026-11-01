@@ -19,7 +19,7 @@ Reject unknown schemas and unsupported connections. Do not add compatibility shi
 
 Schema 3 stores `incoming.protocol` as `imap` or `pop3` and an explicit `authentication` object. Password is the default; Microsoft web authorization requires user selection and public-client registration settings. The engine never changes the sign-in method after a failure. Web authorization for Google accounts is outside scope.
 
-Preserve POP3's INBOX-only, no-unread-flags and header/date-search boundaries. Require implicit TLS or required STARTTLS with certificate and hostname validation, without plaintext or custom-CA controls. Windows credentials use Credential Manager; DPAPI protects temporary sign-in state. Native macOS Keychain and Linux Secret Service paths remain untested; contributor improvements are welcome.
+Preserve POP3's INBOX-only, no-unread-flags and header/date-search boundaries. Require implicit TLS or required STARTTLS with certificate and hostname validation, without plaintext or custom-CA controls. Windows credentials use Credential Manager; DPAPI protects temporary sign-in state. Linux uses libsecret and an unlocked Secret Service keyring in the user's session; macOS uses Keychain. See the [Linux guide](LINUX_SETUP.md) for terminal setup.
 
 ## Dependencies and checks
 
