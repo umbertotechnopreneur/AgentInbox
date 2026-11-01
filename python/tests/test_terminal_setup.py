@@ -4,6 +4,7 @@ import contextlib
 import copy
 import io
 import json
+from pathlib import Path
 from unittest import mock
 
 from agentinbox import cli, setup_cli, terminal_setup
@@ -104,7 +105,9 @@ class TerminalSetupTests(MailApplicationCase):
         server = result["mcpServers"]["agentinbox"]
         self.assertEqual(interpreter, server["command"])
         self.assertEqual("-B", server["args"][0])
-        self.assertTrue(server["args"][1].endswith("/python/run.py"))
+        launcher = Path(server["args"][1])
+        self.assertTrue(launcher.is_absolute())
+        self.assertEqual(("python", "run.py"), launcher.parts[-2:])
         self.assertEqual("mcp", server["args"][-1])
         self.assertEqual(str(self.root), server["env"]["AGENTINBOX_DATA_DIR"])
         self.assertNotIn("password", json.dumps(result))
