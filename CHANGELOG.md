@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-02
+
+- Add Troubleshooting to the Windows navigation with account-access and diagnostic prompts, adjacent copy icons and native copy confirmations. Select the first saved account when no account or draft is selected, and clarify empty/selection guidance. Remove the footer manifesto text and enlarge the unchanged VibeWare logo by 20%.
+- Rename the local test to Test local MCP startup and explain its saved-settings, initialization and five-tool checks. A pass does not establish Codex chat access, passwords, Microsoft sign-in or provider access. Update Windows App SDK to 2.6.4 and Windows SDK BuildTools to 10.0.28000.2957. Align source/package versions at 2.0.3 / 2.0.3.0 and include the current main branch. See [validation](docs/VALIDATION.md) for the Debug installation and remaining checks.
+
 ## 2026-10-27
 
 - Add local self-contained Release portable ZIP builds for GitHub on Windows x64 and ARM64, separate from Store Release MSIX and local Debug installation. Share offline input validation, source publishing, notices and cleanup across distribution formats; include a terminal launcher and extraction/setup guide in each ZIP. See [validation](docs/VALIDATION.md) for build and publication evidence.
