@@ -2,8 +2,6 @@
 
 Windows distributions contain the WinUI 3 setup app, Python mail engine and a matching embedded Python runtime. GitHub uses portable Release ZIPs for Windows 11 x64 and ARM64; the Microsoft Store uses separate Release MSIX packages. Debug MSIX packages are local development builds. In MSIX installations, the stable `AgentInbox.exe` execution alias points to bundled Python: use `AgentInbox.exe -B -m agentinbox mcp` or `AgentInbox.exe -B -m agentinbox manage --session`. Start-menu launch opens the native app.
 
-Debug MSIX 2.0.3.0 was built and signed locally from source checkpoint `4db5430`, including the current main branch, and installed on Windows x64 with package status `Ok`. Thirteen new NuGet archives and their extracted contents passed a targeted Defender scan; unchanged inputs reused earlier evidence. No local tests, app launch, live UI or provider checks ran. Builder intermediates were cleaned; automatic approval review blocked removal of download staging and superseded installers. See [validation](../../docs/VALIDATION.md) for evidence, limits and remaining paths.
-
 ## Prerequisites and inputs
 
 After explicit owner authorization, use Windows with PowerShell 7, the required .NET SDK and Windows SDK tools. The scripts do not install these tools or start antivirus scans.
@@ -129,4 +127,4 @@ The cleaner rejects paths outside the exact task naming and ownership rules, plu
 
 Preserve requested installers, pending uploads, rollback packages and essential failure evidence. Remove superseded task-owned output only when its retention reason has ended, following the [repository working agreement](../../AGENTS.md).
 
-See [validation](../../docs/VALIDATION.md), [dependencies](../../docs/DEPENDENCIES.md) and [client setup](../../docs/CODEX_SETUP.md). The separate [source-plugin exporter](../../scripts/README.md#export-a-source-plugin) is not a Windows binary distribution.
+See [dependencies](../../docs/DEPENDENCIES.md) and [client setup](../../docs/CODEX_SETUP.md). The separate [source-plugin exporter](../../scripts/README.md#export-a-source-plugin) is not a Windows binary distribution.

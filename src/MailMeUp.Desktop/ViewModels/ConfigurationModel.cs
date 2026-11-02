@@ -10,7 +10,6 @@
  * File: Saved snapshots, draft selection, operation lifetime and notifications.
  * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
- * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
  * Copyright (c) 2026 Umberto Giacobbi
  * License: MIT - see LICENSE

@@ -11,7 +11,6 @@
 # Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
 # Modified with AI: OpenAI Codex; Linux terminal setup and diagnostics, 2026-11-02.
 # Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
-# Evidence: docs/VALIDATION.md (source review; execution checks pending).
 #
 # Copyright (c) 2026 Umberto Giacobbi
 # License: MIT - see LICENSE
