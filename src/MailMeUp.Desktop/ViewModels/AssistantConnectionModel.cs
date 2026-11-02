@@ -8,7 +8,7 @@
  * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
  *
  * File: Observable assistant detection, setup and local verification state.
- * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
  * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
@@ -55,7 +55,19 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
     public string DetailsHint => IsConfigured
         ? "These launch settings match the enabled AgentInbox entry saved in Codex. The folder below contains the email accounts you configure in this app. Passwords are kept separately by Windows."
         : "These are the launch settings this app will add. They are not yet saved as a matching, enabled connection in Codex.";
-    public string TryPrompt => "Which email accounts can you access through AgentInbox?";
+    public string TryPrompt => "@AgentInbox Which email accounts can you access through AgentInbox?";
+    public string TroubleshootingPrompt => $"""
+        @AgentInbox Help me troubleshoot the AgentInbox connection in Codex.
+        Saved connection status: {StatusText}
+        Last local MCP check: {CheckStatus}
+        Launcher: {Command}
+        Startup options: {Arguments}
+        AgentInbox settings folder: {DataDirectory}
+
+        Check whether AgentInbox and its mail tools are available in this chat. If they are available, use list_accounts to check which accounts are shared; do not read or send email.
+        A successful local check only starts a separate process, completes MCP initialization and verifies the five tool definitions. It does not test Codex's active connection, mailbox passwords, Microsoft sign-in or provider access.
+        Investigate the Codex-side connection, disabled tools, stale sessions and launch errors. Explain the evidence and any Codex-side fix you can make. If a restart or a new chat is needed, tell me clearly. Do not change mailbox settings or permissions, expose secrets or claim success without verifying it.
+        """;
 
     /// <summary>Refresh local assistant detection without starting a mail operation.</summary>
     /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
@@ -109,9 +121,9 @@ internal sealed class AssistantConnectionModel(PythonEngine engine, Notification
         try
         {
             var count = await _service.TestConnectionAsync(_client, cancellationToken);
-            CheckStatus = $"Local check passed. AgentInbox replied with {count} mail tools.";
+            CheckStatus = $"Local MCP startup passed: initialization completed and all {count} expected tool definitions were found. Codex chat access and mailbox sign-in have not been tested.";
             CheckTone = 1;
-            notice.Show("Local connection passed", "Now try AgentInbox in a new Codex chat. This check did not open a mailbox.", 1);
+            notice.Show("Local MCP startup passed", "AgentInbox started in a separate local process, completed MCP initialization and returned list_accounts, search_mail, read_mail, send_email and get_send_status. No mail tool was called. This does not test passwords, Microsoft sign-in, provider access or the connection used by your Codex chat. Open Troubleshooting and copy the account-access prompt into a new Codex chat to check that connection.", 1);
         }
         catch (InvalidOperationException exception)
         {

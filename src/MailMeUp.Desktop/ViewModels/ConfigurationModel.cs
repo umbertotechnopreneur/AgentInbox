@@ -8,7 +8,7 @@
  * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
  *
  * File: Saved snapshots, draft selection, operation lifetime and notifications.
- * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
  * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
@@ -140,6 +140,13 @@ internal sealed class ConfigurationModel : ObservableModel
         Notify();
     }
 
+    /// <summary>Select the first saved account when no selection or unsaved draft exists.</summary>
+    internal void SelectFirstAccountIfNeeded()
+    {
+        if (!CreatingAccount && !Editor.HasSavedAccount && SelectedAccount is null)
+            SelectedAccount = Accounts.FirstOrDefault();
+    }
+
     /// <summary>Reload saved-account snapshots within the configuration window lifetime.</summary>
     /// <param name="cancellationToken">Cancellation for the requested operation and any owned child process.</param>
     internal async Task LoadAccountsAsync(CancellationToken cancellationToken)
@@ -158,7 +165,7 @@ internal sealed class ConfigurationModel : ObservableModel
             foreach (var account in accounts) Accounts.Add(account);
             _accountsLoaded = true;
             _creatingAccount = false;
-            _selectedAccount = Accounts.FirstOrDefault(account => account.Id == selected);
+            _selectedAccount = Accounts.FirstOrDefault(account => account.Id == selected) ?? Accounts.FirstOrDefault();
             Editor.Load(_selectedAccount);
         }
         finally { _updatingAccounts = false; }

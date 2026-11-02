@@ -8,7 +8,7 @@
  * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
  *
  * File: Configuration-window lifetime, navigation and operation notifications.
- * Modified with AI: OpenAI Codex; code readability and documentation, 2026-10-27.
+ * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
  * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
@@ -168,7 +168,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Build the requested setup page and clear incomplete content on failure.</summary>
-    /// <param name="page">Known navigation page key, accounts or assistant.</param>
+    /// <param name="page">Known navigation page key: accounts, assistant or troubleshooting.</param>
     private async Task OpenPageAsync(string page)
     {
         await RunAsync(async () =>
@@ -184,8 +184,10 @@ public sealed partial class MainWindow : Window
                     case "accounts":
                         BuildAccountsPage();
                         if (!_configuration.AccountsLoaded) await LoadAccountsAsync();
+                        _configuration.SelectFirstAccountIfNeeded();
                         break;
                     case "assistant": await BuildAssistantPageAsync(); break;
+                    case "troubleshooting": await BuildTroubleshootingPageAsync(); break;
                     default: throw new InvalidOperationException("Unknown setup page.");
                 }
             }

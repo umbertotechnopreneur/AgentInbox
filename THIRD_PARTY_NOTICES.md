@@ -12,8 +12,8 @@ The WinUI 3 setup project has two direct package references, with versions decla
 
 | Package | Referenced version | Role |
 | --- | --- | --- |
-| [Microsoft.WindowsAppSDK](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.4.0) | 2.4.0 | Windows UI and platform components |
-| [Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.26100.9169) | 10.0.26100.9169 | Build tools; `PrivateAssets="all"` |
+| [Microsoft.WindowsAppSDK](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.6.4) | 2.6.4 | Windows UI and platform components |
+| [Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2957) | 10.0.28000.2957 | Build tools; `PrivateAssets="all"` |
 
 This is the direct source inventory, not a restored transitive dependency graph or a list of files certified for distribution. The packages' supplied terms and notices govern their contents; do not assume every included binary uses the repository's MIT license.
 
@@ -25,7 +25,7 @@ For each approved MSIX build, collect the actual runtime and dependency inventor
 
 Targeted Microsoft Windows Defender scans are required before importing or running new external packages and their extracted dependencies. See the [README policy](README.md#external-binary-security-policy).
 
-No new runtime has been downloaded for this documentation update. No package restore, scan, build or distribution-license completeness check is claimed.
+See [validation](docs/VALIDATION.md) for first-import scan and build evidence tied to the current dependency versions.
 
 ## VibeWare artwork
 

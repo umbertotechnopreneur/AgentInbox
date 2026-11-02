@@ -8,7 +8,7 @@ The macOS and Linux paths remain untested. Contributor pull requests with platfo
 
 The Python engine has no GUI dependency. Native configuration is provided only by the Windows WinUI 3 app.
 
-WinUI 3 setup targets `net10.0-windows10.0.19041.0`. Its direct references are `Microsoft.WindowsAppSDK` 2.4.0 and `Microsoft.Windows.SDK.BuildTools` 10.0.26100.9169; the latter uses `PrivateAssets="all"`. Versions come from `Directory.Packages.props`. This is a source inventory, not a restored transitive graph. Linux and macOS do not use the Windows UI.
+WinUI 3 setup targets `net10.0-windows10.0.19041.0`. Its direct references are `Microsoft.WindowsAppSDK` 2.6.4 and `Microsoft.Windows.SDK.BuildTools` 10.0.28000.2957; the latter uses `PrivateAssets="all"`. Versions come from `Directory.Packages.props`. This is a source inventory, not a restored transitive graph. Linux and macOS do not use the Windows UI.
 
 A bundled Python interpreter and Windows runtime components are external binaries. Follow the [first-import scan rule](../README.md#external-binary-security-policy) when introducing new packages or changed third-party content. Record source, version or hash, command and clean result once; unchanged inputs are not rescanned during builds.
 

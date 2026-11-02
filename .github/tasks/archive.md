@@ -2,6 +2,10 @@
 
 Implementation history is in [CHANGELOG](../../CHANGELOG.md), evidence in [validation](../../docs/VALIDATION.md), and remaining work in [todo](todo.md).
 
+## 2026-11-02 — troubleshooting navigation
+
+- Add native Troubleshooting navigation, access/diagnostic prompt copy confirmations, first-account selection and clearer local MCP check wording. Keep the footer links and enlarge the VibeWare logo without its adjacent text. Update direct NuGet dependencies and align source versions with Debug 2.0.3.0 after integrating the current main branch. New imports passed targeted Defender scanning. UI/provider checks remain open; see validation for installation evidence and todo for remaining work.
+
 ## 2026-10-27 — portable Release 2.0.0 distribution
 
 - Added shared source-build/distribution helpers with thin Store/MSIX and portable adapters. Built Release x64 and ARM64 ZIPs with bundled runtimes, launcher, notices and a setup guide. Checked archive contents, architecture and source bytes; targeted first-import scans covered five new ARM64 inputs. Matching clean completed for both builds. GitHub publication uses matching source on main and an annotated version tag; UI/provider and native ARM64 execution remain unverified. See validation for exact artifacts and limits.
