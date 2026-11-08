@@ -62,7 +62,8 @@ VBWR E -->
         </Grid>
         <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Auto" IsBackButtonVisible="Collapsed"
                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-                        OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged">
+                        OpenPaneLength="208" IsSettingsVisible="False" SelectionChanged="Navigation_SelectionChanged"
+                        ItemInvoked="Navigation_ItemInvoked">
             <NavigationView.Resources>
                 <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
                 <Thickness x:Key="NavigationViewContentGridBorderThickness">0</Thickness>
@@ -78,6 +79,12 @@ VBWR E -->
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Help" Foreground="#2477C8" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem x:Name="AboutItem" Content="About" SelectsOnInvoked="False"
+                                    AutomationProperties.Name="About AgentInbox" ToolTipService.ToolTip="Show AgentInbox version and project information.">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"

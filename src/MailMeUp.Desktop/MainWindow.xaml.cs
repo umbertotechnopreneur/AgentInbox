@@ -166,6 +166,25 @@ public sealed partial class MainWindow : Window
         if (item.Tag is string page) await OpenPageAsync(page);
     }
 
+    /// <summary>Opens the read-only About dialog over the current configuration page.</summary>
+    /// <param name="sender">The configuration navigation control.</param>
+    /// <param name="args">The item the user invoked without changing the selected page.</param>
+    private async void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItemContainer != AboutItem || !AboutItem.IsEnabled || _lifetime.IsCancellationRequested) return;
+
+        AboutItem.IsEnabled = false;
+        try
+        {
+            var dialog = new AboutDialog { XamlRoot = Root.XamlRoot };
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            AboutItem.IsEnabled = true;
+        }
+    }
+
     /// <summary>Build the requested setup page and clear incomplete content on failure.</summary>
     /// <param name="page">Known navigation page key: accounts, assistant or troubleshooting.</param>
     private async Task OpenPageAsync(string page)
