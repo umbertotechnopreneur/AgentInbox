@@ -295,10 +295,8 @@ internal sealed class PythonEngine
 /// <param name="State">Engine progress state, such as started or passed.</param>
 internal readonly record struct AccountCheckProgress(string Stage, string State);
 
-/// <summary>A safe, actionable error returned by the local mail engine.</summary>
-/// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
 /// <summary>A safe engine error or a local input conversion error.</summary>
-/// <param name="message">Safe text displayed to the user.</param>
+/// <param name="message">Safe text displayed to the user, without credentials or mail content.</param>
 /// <param name="code">Stable engine error code, when present.</param>
 /// <param name="field">Stable configuration field path, when present.</param>
 internal sealed class EngineException(string message, string? code = null, string? field = null) : Exception(message)
