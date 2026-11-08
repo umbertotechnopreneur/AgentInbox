@@ -26,7 +26,7 @@ VBWR E -->
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap5 uap10 desktop6 rescap">
   <!-- Keep the owner-assigned Store identity. -->
-  <Identity Name="UmbertoGiacobbiDotBiz.AgentInbox" Publisher="CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510" Version="2.0.3.0" ProcessorArchitecture="x64" />
+  <Identity Name="UmbertoGiacobbiDotBiz.AgentInbox" Publisher="CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510" Version="2.0.4.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>AgentInbox</DisplayName>
     <PublisherDisplayName>UmbertoGiacobbiDotBiz</PublisherDisplayName>

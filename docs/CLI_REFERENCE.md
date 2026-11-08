@@ -69,7 +69,9 @@ Schema 3 account input uses `incoming` with `protocol: "imap"` or `"pop3"` and r
 
 Requests and responses are JSON. A request contains `operation` and `arguments`.
 
-For an SMTP check, `check_smtp` accepts `account`, `passwords` and `expected_revision`, like `check_account`. It validates the account form but connects only to SMTP, does not require an incoming password or enabled sending, and never saves or sends. Blank SMTP passwords reuse protected credentials only for unchanged saved settings; Microsoft authorization must already cover the saved configuration. The previous `account_id` shortcut is not supported.
+For an SMTP check, `check_smtp` accepts `account`, `passwords` and `expected_revision`, like `check_account`. A password-based check needs `id`, `smtp` and `authentication` from the account and the `smtp` password field. Microsoft checks also require `email`, `incoming` and `send_enabled` to verify the context bound to saved authorization. A blank SMTP password reuses a protected password only for an unchanged saved endpoint. The check opens an SMTP connection to verify sign-in without saving settings or sending mail.
+
+Local management validation errors include a stable `code` and an optional `field` path, such as `smtp.port`. The desktop retrieves provider choices, supported Microsoft hosts and the folder limit through `account_editor`.
 
 For example, list saved accounts:
 

@@ -21,6 +21,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using MailMeUp.Desktop.Services;
 
 namespace MailMeUp.Desktop;
 
@@ -50,6 +51,14 @@ public sealed partial class MainWindow
             if (field is PasswordBox passwordBox) passwordBox.Description = description;
             AutomationProperties.SetHelpText(field, error.Message);
         }
+    }
+
+    /// <summary>Record a configuration error and focus the associated field when possible.</summary>
+    /// <param name="error">Engine validation failure or local input conversion error.</param>
+    private void ShowAccountError(EngineException error)
+    {
+        _configuration.Editor.ShowError(error);
+        FocusAccountError();
     }
 
     /// <summary>Select the tab and focus the first invalid editor field.</summary>

@@ -51,7 +51,7 @@ def server_response(protocol: str, reply: str | bytes, *secrets: str) -> str:
 class MailError(Exception):
     """Keep public errors separate from redacted, opt-in local server diagnostics."""
 
-    def __init__(self, code: str, message: str, *, server_response: str = ""):
+    def __init__(self, code: str, message: str, *, server_response: str = "", field: str | None = None):
         """Capture a safe public error and optional private local diagnostics.
 
         Args:
@@ -60,10 +60,12 @@ class MailError(Exception):
                 message content.
             server_response: Optional bounded, redacted provider explanation for local
                 setup only.
+            field: Stable configuration field path for local setup, when applicable.
         """
         super().__init__(message)
         self.code = code
         self.server_response = server_response
+        self.field = field
 
     def result(self, *, include_server_response: bool = False) -> dict:
         """Return public errors, adding server diagnostics only for local setup.
@@ -75,4 +77,6 @@ class MailError(Exception):
         result = {"code": self.code, "message": str(self)}
         if include_server_response and self.server_response:
             result["server_response"] = self.server_response
+        if include_server_response and self.field:
+            result["field"] = self.field
         return result

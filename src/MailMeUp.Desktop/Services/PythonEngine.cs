@@ -267,7 +267,9 @@ internal sealed class PythonEngine
                     message = message is { Length: > 0 and <= 2048 } ? message : "The Python engine rejected this operation.";
                     if (error.TryGetProperty("server_response", out var response) && response.GetString() is { Length: > 0 and <= 2200 } detail)
                         message += "\n\nServer reply (sign-in details hidden):\n" + detail;
-                    throw new EngineException(message);
+                    var code = error.TryGetProperty("code", out var codeValue) ? codeValue.GetString() : null;
+                    var field = error.TryGetProperty("field", out var fieldValue) ? fieldValue.GetString() : null;
+                    throw new EngineException(message, code, field);
                 }
                 return root.GetProperty("result").Clone();
             }
@@ -295,4 +297,12 @@ internal readonly record struct AccountCheckProgress(string Stage, string State)
 
 /// <summary>A safe, actionable error returned by the local mail engine.</summary>
 /// <param name="message">Safe user-facing outcome or guidance; never raw credentials or mail content.</param>
-internal sealed class EngineException(string message) : Exception(message);
+/// <summary>A safe engine error or a local input conversion error.</summary>
+/// <param name="message">Safe text displayed to the user.</param>
+/// <param name="code">Stable engine error code, when present.</param>
+/// <param name="field">Stable configuration field path, when present.</param>
+internal sealed class EngineException(string message, string? code = null, string? field = null) : Exception(message)
+{
+    public string? Code { get; } = code;
+    public string? Field { get; } = field;
+}

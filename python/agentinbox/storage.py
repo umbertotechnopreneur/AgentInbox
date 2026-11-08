@@ -27,7 +27,10 @@ import time
 import uuid
 from pathlib import Path
 
-from .config import SCHEMA_VERSION, account_input
+from .config import (
+    SCHEMA_VERSION, account_input, password_required, same_microsoft_context,
+    saved_password_reference, validate_passwords,
+)
 from .errors import MailError
 from .vault import Vault
 from .models import SavedAccount
@@ -341,8 +344,7 @@ class Store:
         account = account_input(value)
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
-        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
-            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
+        validate_passwords(passwords)
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
             raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
@@ -370,16 +372,14 @@ class Store:
                         self._queue_cleanup_locked([reference])
                         self.vault.put(reference, passwords[protocol])
                         account[field] = reference
-                    elif previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol] and previous[field]:
-                        account[field] = previous[field]
+                    elif reference := saved_password_reference(previous, account, protocol):
+                        account[field] = reference
                     else:
-                        purpose = "reading" if protocol == "incoming" else "sending"
-                        section = "Read mail" if protocol == "incoming" else "Send mail"
-                        raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
+                        raise password_required(protocol)
                     if previous and previous[field] and previous[field] != account[field]:
                         obsolete.append(previous[field])
                 account["oauth_secret"] = None
-                if oauth and previous and all(previous[key] == account[key] for key in ("authentication", "incoming", "smtp", "email")) and (not account["send_enabled"] or previous["send_enabled"]):
+                if oauth and previous and same_microsoft_context(previous, account):
                     account["oauth_secret"] = previous["oauth_secret"]
                 if previous and previous["oauth_secret"] and previous["oauth_secret"] != account["oauth_secret"]:
                     obsolete.append(previous["oauth_secret"])

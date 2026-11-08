@@ -29,7 +29,8 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
 {
     private readonly PythonEngine _engine;
     private readonly ConfigurationModel _configuration;
-    private AccountSnapshot _snapshot;
+    private readonly AccountSnapshot? _snapshot;
+    private readonly SmtpCheckSnapshot? _smtpSnapshot;
     private readonly CancellationTokenSource _stop = new();
     private readonly TaskCompletionSource<string[]?> _selection = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private string? _activeStage;
@@ -43,23 +44,47 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     private string _message = "Please wait while I check the connection and sign-in.";
     private readonly bool _savedCheck;
 
-    /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
+    /// <summary>Initialize an account check using the saved account or editor draft.</summary>
     /// <param name="engine">Shared adapter for the local Python management contract.</param>
     /// <param name="configuration">Owner of saved snapshots, notifications and the current editor draft.</param>
-    /// <param name="snapshot">Validated account settings, transient passwords and expected revision for this operation.</param>
+    /// <param name="snapshot">Account settings, transient passwords and expected revision for this operation.</param>
     /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     /// <param name="savedCheck">Whether this is a saved-account check that skips editing and folder-choice steps.</param>
-    internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false)
+    internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot snapshot, bool saveAccount, bool savedCheck = false)
+        : this(engine, configuration, snapshot, null, saveAccount, savedCheck)
     {
-        _engine = engine; _configuration = configuration; _snapshot = snapshot;
-        SaveAccount = saveAccount; SmtpOnly = smtpOnly;
+    }
+
+    /// <summary>Initialize a sending check without a full account snapshot.</summary>
+    /// <param name="engine">Shared adapter for the local Python management contract.</param>
+    /// <param name="configuration">Owner of the editor that can display a field error.</param>
+    /// <param name="snapshot">Sending settings and credentials for the check.</param>
+    internal AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, SmtpCheckSnapshot snapshot)
+        : this(engine, configuration, null, snapshot, false, false)
+    {
+    }
+
+    /// <summary>Prepare progress stages for the supplied check operation.</summary>
+    /// <param name="engine">Shared adapter for the local Python management contract.</param>
+    /// <param name="configuration">Owner of saved snapshots and the current editor draft.</param>
+    /// <param name="snapshot">Account snapshot for a full connection check, or null for SMTP.</param>
+    /// <param name="smtpSnapshot">Sending check snapshot, or null for a full connection check.</param>
+    /// <param name="saveAccount">Whether to save after the user chooses folders.</param>
+    /// <param name="savedCheck">Whether to check saved settings without editing.</param>
+    private AccountCheckModel(PythonEngine engine, ConfigurationModel configuration, AccountSnapshot? snapshot,
+        SmtpCheckSnapshot? smtpSnapshot, bool saveAccount, bool savedCheck)
+    {
+        _engine = engine;
+        _configuration = configuration;
+        _snapshot = snapshot;
+        _smtpSnapshot = smtpSnapshot;
+        SaveAccount = saveAccount;
         _savedCheck = savedCheck;
-        _heading = savedCheck ? $"Checking {snapshot.Account.Label}" : smtpOnly ? "Checking sending connection" : "Checking your account";
-        Stages.Add(new("settings", smtpOnly ? "Sending settings" : "Account settings"));
+        _heading = savedCheck ? $"Checking {snapshot!.Account.Label}" : SmtpOnly ? "Checking sending connection" : "Checking your account";
+        Stages.Add(new("settings", SmtpOnly ? "Sending settings" : "Account settings"));
         Stages.Add(new("connection", "Secure connection"));
         Stages.Add(new("authentication", "Sign-in"));
-        if (!smtpOnly)
+        if (snapshot is not null)
         {
             Stages.Add(new("folders", "Server folders"));
             if (!savedCheck) Stages.Add(new("reading", "Read one message (optional)", "Not requested"));
@@ -73,7 +98,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     public ObservableCollection<string> SelectedFolders { get; } = [];
     public bool UpdatingFolders { get; private set; }
     public bool SaveAccount { get; }
-    public bool SmtpOnly { get; }
+    public bool SmtpOnly => _smtpSnapshot is not null;
     public bool Succeeded { get; private set; }
     public bool Cancelled { get; private set; }
     public bool IsWorking => _phase is CheckPhase.Checking or CheckPhase.Reading or CheckPhase.Saving;
@@ -82,7 +107,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
     public bool ShowFolders => AvailableFolders.Count > 0;
     public bool ShowPrimary => _phase == CheckPhase.SelectingFolders;
     public bool CanSelectFolders => ShowPrimary && !_pop;
-    public bool CanChooseFolders => ShowPrimary && SelectedFolders.Count is >= 1 and <= 20;
+    public bool CanChooseFolders => ShowPrimary && SelectedFolders.Count >= 1 && SelectedFolders.Count <= _configuration.Editor.MaxFolders;
     public bool CanClose => !IsSaving && !_stop.IsCancellationRequested;
     public string Heading => _heading;
     public string Message => _message;
@@ -145,18 +170,19 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
 
     /// <summary>Expose selectable server folders while retaining valid snapshot selections.</summary>
     /// <param name="folders">Exact folder names returned by the server or explicitly selected by the user.</param>
-    private void ShowFolderChoices(string[] folders)
+    /// <param name="account">Captured account settings with the protocol and initial folder choices.</param>
+    private void ShowFolderChoices(string[] folders, AccountSettings account)
     {
-        _pop = _snapshot.Account.Incoming.Protocol == "pop3";
+        _pop = account.Incoming.Protocol == "pop3";
         _phase = CheckPhase.SelectingFolders;
         _heading = "Connection verified";
         _message = _pop ? "POP3 provides one mailbox: INBOX. No message was read or sent."
-            : $"Found {folders.Length} selectable folders. Choose between one and twenty. No message was read or sent.";
+            : $"Found {folders.Length} selectable folders. Choose between one and {_configuration.Editor.MaxFolders}. No message was read or sent.";
         UpdatingFolders = true;
         try
         {
             foreach (var folder in folders) AvailableFolders.Add(folder);
-            foreach (var folder in _snapshot.Account.Folders.Where(folders.Contains)) SelectedFolders.Add(folder);
+            foreach (var folder in account.Folders.Where(folders.Contains)) SelectedFolders.Add(folder);
         }
         finally { UpdatingFolders = false; }
         Notify();
@@ -176,7 +202,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         _phase = CheckPhase.Finished;
         _heading = SmtpOnly ? succeeded ? "Sending check complete" : "Sending check stopped"
             : succeeded ? SaveAccount ? "Account added" : "Account check complete" : "Account check stopped";
-        if (_savedCheck && !succeeded) _heading = $"Check stopped: {_snapshot.Account.Label}";
+        if (_savedCheck && !succeeded) _heading = $"Check stopped: {_snapshot!.Account.Label}";
         _message = message;
         Notify();
     }
@@ -191,21 +217,27 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         try
         {
             Report(new("settings", "started"));
-            var result = await _engine.ManageAsync(SmtpOnly ? "check_smtp" : "check_account", new
+            if (_smtpSnapshot is { } smtp)
             {
-                account = _snapshot.Account, passwords = _snapshot.Passwords, expected_revision = _snapshot.Revision
-            }, cancellation.Token, Report);
-            if (SmtpOnly)
-            {
+                await _engine.ManageAsync("check_smtp", new
+                {
+                    account = smtp.Settings, passwords = smtp.Passwords, expected_revision = smtp.Revision
+                }, cancellation.Token, Report);
                 Complete(true, "The secure connection and sign-in passed. No email was sent and no settings were saved.");
                 return;
             }
+
+            var snapshot = _snapshot!;
+            var result = await _engine.ManageAsync("check_account", new
+            {
+                account = snapshot.Account, passwords = snapshot.Passwords, expected_revision = snapshot.Revision
+            }, cancellation.Token, Report);
             cancellation.Token.ThrowIfCancellationRequested();
             var available = result.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString()!).ToArray();
             if (available.Length == 0) throw new EngineException("The server returned no selectable folders. No account was saved.");
             if (_savedCheck)
             {
-                var missing = _snapshot.Account.Folders.Where(folder => !available.Contains(folder)).ToArray();
+                var missing = snapshot.Account.Folders.Where(folder => !available.Contains(folder)).ToArray();
                 if (missing.Length > 0) throw new EngineException("One or more saved folders are no longer available. Check this account's folder settings.");
                 Complete(true, "Connection and sign-in passed. No message was read or sent and no settings were changed.");
                 _closeWhenReady = true;
@@ -214,10 +246,10 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
             }
 
             // Unsaved checks pause for an explicit folder choice before any sample read.
-            ShowFolderChoices(available);
+            ShowFolderChoices(available, snapshot.Account);
             var chosen = await _selection.Task.WaitAsync(cancellation.Token);
             if (chosen is null) return;
-            _snapshot = _snapshot with { Account = _snapshot.Account with { Folders = chosen } };
+            snapshot = snapshot with { Account = snapshot.Account with { Folders = chosen } };
             var readingSummary = "No message was read and no email was sent.";
             if (ReadMessageRequested)
             {
@@ -227,7 +259,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
                 Notify();
                 var reading = await _engine.ManageAsync("check_account", new
                 {
-                    account = _snapshot.Account, passwords = _snapshot.Passwords, expected_revision = _snapshot.Revision, read_message = true
+                    account = snapshot.Account, passwords = snapshot.Passwords, expected_revision = snapshot.Revision, read_message = true
                 }, cancellation.Token, Report);
                 cancellation.Token.ThrowIfCancellationRequested();
                 available = reading.GetProperty("folders").EnumerateArray().Select(folder => folder.GetString()!).ToArray();
@@ -246,7 +278,7 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
                 Report(new("save", "started"));
                 Notify();
                 // A save is one commit; closing its view cannot cancel it halfway through.
-                committed = await _configuration.SaveAsync(_snapshot, lifetime);
+                committed = await _configuration.SaveAsync(snapshot, lifetime);
                 Report(new("save", "passed"));
             }
             Complete(true, (SaveAccount ? "Your account was added with the selected folders. "
@@ -261,17 +293,24 @@ internal sealed class AccountCheckModel : ObservableModel, IDisposable
         }
         catch (Exception exception)
         {
+            if (!_savedCheck && exception is EngineException error) _configuration.Editor.ShowError(error);
             var failure = exception is EngineException ? exception.Message : "The account check could not finish. No success is assumed.";
-            if (saving && committed is null) failure += " Reload your accounts before trying to save again.";
+            if (saving && committed is null && exception is not EngineException { Field: not null })
+                failure += " Reload your accounts before trying to save again.";
             Complete(committed is not null, committed is not null ? "Your account was saved. Reload your accounts to update the form." : failure);
         }
-        finally { _snapshot.ClearPasswords(); }
+        finally
+        {
+            _snapshot?.ClearPasswords();
+            _smtpSnapshot?.ClearPasswords();
+        }
     }
 
     /// <summary>Release owned resources and sensitive operation state.</summary>
     public void Dispose()
     {
-        _snapshot.ClearPasswords();
+        _snapshot?.ClearPasswords();
+        _smtpSnapshot?.ClearPasswords();
         _stop.Dispose();
     }
 }

@@ -53,8 +53,7 @@ internal sealed record SavedAccount : AccountSettings
         var account = value.Deserialize<SavedAccount>() ?? throw new JsonException("The engine returned no account.");
         if (string.IsNullOrEmpty(account.Id) || account.Revision < 1 || account.Authentication is null || account.Incoming is null
             || account.Authentication.Method is not ("password" or "microsoft_oauth")
-            || account.Incoming.Protocol is not ("imap" or "pop3")
-            || account.Preset is not (null or "custom" or "gmail" or "icloud" or "outlook" or "microsoft365"))
+            || account.Incoming.Protocol is not ("imap" or "pop3"))
             throw new JsonException("The engine returned an invalid account contract.");
         return account;
     }
@@ -79,12 +78,33 @@ internal sealed record AccountAuthentication
 }
 
 /// <summary>One captured edit operation; temporary passwords are cleared after use.</summary>
-/// <param name="Account">Validated non-secret account payload for the engine contract.</param>
+/// <param name="Account">Non-secret account payload to be validated by the engine.</param>
 /// <param name="Passwords">Transient endpoint passwords cleared after the operation.</param>
 /// <param name="Revision">Expected saved-account revision, or null for a new account.</param>
 internal sealed record AccountSnapshot(AccountSettings Account, Dictionary<string, string> Passwords, int? Revision)
 {
     /// <summary>Release password values held by this draft or operation snapshot.</summary>
+    internal void ClearPasswords() => Passwords.Clear();
+}
+
+/// <summary>SMTP settings and, for Microsoft only, the context bound to the saved authorization.</summary>
+internal sealed record SmtpCheckSettings
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = "";
+    [JsonPropertyName("authentication")] public AccountAuthentication Authentication { get; init; } = new();
+    [JsonPropertyName("smtp")] public MailEndpoint? Smtp { get; init; }
+    [JsonPropertyName("email"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Email { get; init; }
+    [JsonPropertyName("incoming"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public MailEndpoint? Incoming { get; init; }
+    [JsonPropertyName("send_enabled"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SendEnabled { get; init; }
+}
+
+/// <summary>A sending connection check with its own minimal payload and transient password.</summary>
+/// <param name="Settings">SMTP settings and required authorization context for the engine.</param>
+/// <param name="Passwords">Transient SMTP password, cleared when the operation finishes.</param>
+/// <param name="Revision">Expected saved-account revision, or null for a new account.</param>
+internal sealed record SmtpCheckSnapshot(SmtpCheckSettings Settings, Dictionary<string, string> Passwords, int? Revision)
+{
+    /// <summary>Release password values held by this check snapshot.</summary>
     internal void ClearPasswords() => Passwords.Clear();
 }
 
@@ -101,6 +121,15 @@ internal sealed record ProviderPreset
     [JsonPropertyName("incoming"), JsonRequired] public Dictionary<string, EndpointPreset> Incoming { get; init; } = [];
     [JsonPropertyName("smtp")] public EndpointPreset? Smtp { get; init; }
     [JsonPropertyName("authentication_methods"), JsonRequired] public string[] AuthenticationMethods { get; init; } = [];
+    [JsonPropertyName("microsoft_tenant")] public string? MicrosoftTenant { get; init; }
+}
+
+/// <summary>Shared engine policy needed to present account choices without contacting the engine on each edit.</summary>
+internal sealed record AccountEditorPolicy
+{
+    [JsonPropertyName("presets"), JsonRequired] public Dictionary<string, ProviderPreset> Presets { get; init; } = [];
+    [JsonPropertyName("microsoft_incoming_hosts"), JsonRequired] public Dictionary<string, string[]> MicrosoftIncomingHosts { get; init; } = [];
+    [JsonPropertyName("max_folders"), JsonRequired] public int MaxFolders { get; init; }
 }
 
 /// <summary>A server preset contains no user's email address or credentials.</summary>

@@ -19,6 +19,7 @@
 
 using MailMeUp.Desktop.Models;
 using MailMeUp.Desktop.Services;
+using MailMeUp.Desktop.ViewModels;
 using MailMeUp.Desktop.Views;
 
 namespace MailMeUp.Desktop;
@@ -30,7 +31,7 @@ public sealed partial class MainWindow
     /// <param name="args">Arguments supplied by the launch or WinUI event; no mail operation is inferred from them.</param>
     private async void AccountCheckDetails_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs args)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.Button { DataContext: MailMeUp.Desktop.ViewModels.AccountListItemModel row }
+        if (sender is Microsoft.UI.Xaml.Controls.Button { DataContext: AccountListItemModel row }
             && row.HasCheckResult)
             await RunAsync(() =>
             {
@@ -48,7 +49,7 @@ public sealed partial class MainWindow
         {
             _lifetime.Token.ThrowIfCancellationRequested();
             var snapshot = new AccountSnapshot(row.Account, new() { ["incoming"] = "", ["smtp"] = "" }, row.Account.Revision);
-            using var model = _configuration.CreateCheck(snapshot, saveAccount: false, smtpOnly: false, savedCheck: true);
+            using var model = _configuration.CreateCheck(snapshot, saveAccount: false, savedCheck: true);
             using var window = new AccountCheckWindow(this, model);
             using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
             window.Activate();
@@ -60,15 +61,6 @@ public sealed partial class MainWindow
         }
     }
 
-    /// <summary>Capture a validated editor snapshot without reading control values.</summary>
-    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
-    private AccountSnapshot CaptureAccount(bool checking = false, bool smtpOnly = false)
-    {
-        try { return _configuration.Editor.Snapshot(checking, smtpOnly); }
-        catch (EngineException) { FocusAccountError(); throw; }
-    }
-
     /// <summary>Save the current draft through the shared configuration model.</summary>
     private async Task SaveAccountAsync()
     {
@@ -77,28 +69,40 @@ public sealed partial class MainWindow
             await CheckAccountAsync(saveAccount: true);
             return;
         }
-        var snapshot = CaptureAccount();
-        try { await _configuration.SaveAsync(snapshot, _lifetime.Token); }
-        finally { snapshot.ClearPasswords(); }
+        try
+        {
+            var snapshot = _configuration.Editor.Snapshot();
+            try { await _configuration.SaveAsync(snapshot, _lifetime.Token); }
+            finally { snapshot.ClearPasswords(); }
+        }
+        catch (EngineException error) { ShowAccountError(error); throw; }
     }
 
     /// <summary>Check the current sending configuration without submitting mail.</summary>
-    private Task TestSmtpAsync() => ShowAccountCheckAsync(saveAccount: false, smtpOnly: true);
+    private async Task TestSmtpAsync()
+    {
+        try { await ShowAccountCheckAsync(_configuration.CreateSmtpCheck(_configuration.Editor.CaptureSmtpCheck())); }
+        catch (EngineException error) { ShowAccountError(error); throw; }
+    }
+
     /// <summary>Open an account check for the current draft.</summary>
     /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
-    private Task CheckAccountAsync(bool saveAccount) => ShowAccountCheckAsync(saveAccount, smtpOnly: false);
+    private async Task CheckAccountAsync(bool saveAccount)
+    {
+        try { await ShowAccountCheckAsync(_configuration.CreateCheck(_configuration.Editor.Snapshot(), saveAccount)); }
+        catch (EngineException error) { ShowAccountError(error); throw; }
+    }
 
     /// <summary>Own the check window until its operation and close handling complete.</summary>
-    /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
-    private async Task ShowAccountCheckAsync(bool saveAccount, bool smtpOnly)
+    /// <param name="model">Owned progress and outcome model for the requested connection check.</param>
+    private async Task ShowAccountCheckAsync(AccountCheckModel model)
     {
-        var snapshot = CaptureAccount(checking: true, smtpOnly: smtpOnly);
-        using var model = _configuration.CreateCheck(snapshot, saveAccount, smtpOnly);
+        using var check = model;
         using var window = new AccountCheckWindow(this, model);
         using var lifetime = _lifetime.Token.Register(() => window.DispatcherQueue.TryEnqueue(window.Close));
         window.Activate();
         await model.RunAsync(_lifetime.Token);
         await window.ClosedTask;
+        if (!model.Succeeded) FocusAccountError();
     }
 }
