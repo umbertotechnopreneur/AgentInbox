@@ -1,12 +1,12 @@
 # Windows configuration
 
-I wanted one assistant conversation for all my mailboxes and their folders. In Windows setup, connect as many compatible Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 accounts as you need. Your AI agent uses the enabled accounts and selected folders through one local MCP connection. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account. See [validation](VALIDATION.md) for the source, package and provider checks actually performed.
+I wanted one assistant conversation for all my mailboxes and their folders. In Windows setup, connect as many compatible Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 accounts as you need. Your AI agent uses the enabled accounts and selected folders through one local MCP connection. Choose up to twenty IMAP folders per account to work across dozens of folders across mailboxes; POP3 exposes one INBOX per account.
 
 ## Connections
 
-Choose **Add** for each mailbox, or select a saved connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. No account form appears until you create or select one.
+Open **Accounts** to edit your saved connections. The first saved account is selected when you have no selection or draft. Choose **Add** to create another mailbox, or select a connection by its name and email address. The list sits beside the editor on wide windows and above it on narrower windows. Navigating between pages preserves your draft.
 
-When no mailbox is selected, a centered mail icon, heading and short guide explain how to select one or add another with the **+** button. An empty account list uses the same layout with a button to create your first account.
+If no account is selected, the page asks you to select one or choose **Add**. If you have no saved accounts, choose **Create a new account**.
 
 **Connection name** stays above the native **Account**, **Read mail** and **Send mail** tabs. Edit it and press **Save changes** to rename the connection. Tab icons are colored; the selected label is bold. Save and Cancel stay below the form with the current save status. The window uses Acrylic and adapts to display scaling and available space.
 
@@ -41,9 +41,9 @@ Choose between one and twenty exact server folder names. Current support require
 
 ## Connect Codex
 
-Open **Connect Codex**, headed **Connect Your Codex Assistant**, and choose **Connect to Codex**. Existing matching settings show **Settings saved in Codex**. If a different entry exists, **Update connection** asks before replacing it. The page explains the direct local MCP connection and shows the Codex settings file.
+Open **Connect Codex** and choose **Connect to Codex**. Existing matching settings show **AgentInbox is enabled in Codex settings**. If a different entry exists, **Update connection** asks before replacing it. The page explains the direct local MCP connection and shows the Codex settings file.
 
-Press **Test connection** to check the saved configuration, start AgentInbox and request its mail-tool list. This uses the local connection without calling a mail tool or opening a mailbox. A successful result is separate from saved settings and from access inside a Codex chat. Start a new chat and try the provided account-list request afterward.
+Press **Test local MCP startup** to check the saved configuration, start a separate AgentInbox process and request its mail-tool list. This does not call a mail tool, open a mailbox or test your current Codex chat. Open **Troubleshooting** to copy an account-access or diagnostic prompt into a new Codex chat. Each prompt has a copy icon on its right and confirms when copied.
 
 **Connection details** shows the app command, startup options, account-settings folder and a full multiline JSON preview. The JSON is for manual setup in another MCP app; Codex saves its own TOML entry in the file shown above. See [Codex setup](CODEX_SETUP.md).
 

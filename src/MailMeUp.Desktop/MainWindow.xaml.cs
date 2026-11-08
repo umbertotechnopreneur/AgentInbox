@@ -10,7 +10,6 @@
  * File: Configuration-window lifetime, navigation and operation notifications.
  * Modified with AI: OpenAI Codex; account selection and troubleshooting navigation, 2026-11-02.
  * Human guidance: Umberto Giacobbi; document parameters and simplify maintenance.
- * Evidence: docs/VALIDATION.md (source review; execution checks pending).
  *
  * Copyright (c) 2026 Umberto Giacobbi
  * License: MIT - see LICENSE
@@ -165,6 +164,25 @@ public sealed partial class MainWindow : Window
     {
         if (!_loaded || args.SelectedItem is not NavigationViewItem item) return;
         if (item.Tag is string page) await OpenPageAsync(page);
+    }
+
+    /// <summary>Opens the read-only About dialog over the current configuration page.</summary>
+    /// <param name="sender">The configuration navigation control.</param>
+    /// <param name="args">The item the user invoked without changing the selected page.</param>
+    private async void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItemContainer != AboutItem || !AboutItem.IsEnabled || _lifetime.IsCancellationRequested) return;
+
+        AboutItem.IsEnabled = false;
+        try
+        {
+            var dialog = new AboutDialog { XamlRoot = Root.XamlRoot };
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            AboutItem.IsEnabled = true;
+        }
     }
 
     /// <summary>Build the requested setup page and clear incomplete content on failure.</summary>

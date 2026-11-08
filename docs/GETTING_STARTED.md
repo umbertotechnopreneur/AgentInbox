@@ -1,6 +1,6 @@
 # Connect your mailboxes to your AI assistant
 
-I wanted to use all my mailboxes in one conversation instead of connecting one at a time. Connect as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. One local MCP connection lets your AI agent work across enabled mailboxes and their selected folders, including dozens of IMAP folders across accounts. You choose reading and sending access separately for each account. See [validation](VALIDATION.md) for what has actually been checked.
+I wanted to use all my mailboxes in one conversation instead of connecting one at a time. Connect as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. One local MCP connection lets your AI agent work across enabled mailboxes and their selected folders, including dozens of IMAP folders across accounts. You choose reading and sending access separately for each account.
 
 ## 1. Check your provider
 
