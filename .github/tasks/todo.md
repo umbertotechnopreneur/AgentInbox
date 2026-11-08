@@ -1,39 +1,24 @@
 # Open work
 
-Keep only unfinished technical work here. [Validation](../../docs/VALIDATION.md) records what ran; [archive](archive.md) records completed changes.
+Keep only current unfinished work here. Replace completed items instead of archiving them.
 
-- [ ] Complete cleanup of the task-owned `artifacts/verification/linux-cli-20261102/transient/` directory in the Linux CLI worktree. NTFS directory reads and unlink remain blocked. Remaining synthetic metadata is estimated below 2 MiB from the bounded profile files; an exact inventory is blocked. Current source development and the Linux setup guide do not depend on this output.
+- [ ] Check account selection, account creation, receive/send permissions, preset loading, folder bindings, field errors and saved/new draft retention across navigation. Include cancellation, cleanup retry and committed save/sign-in outcomes.
+- [ ] Check Troubleshooting prompt copying and confirmations, keyboard access, narrow layouts, footer sizing, native tabs, progress/result dialogs and per-account check details.
+- [ ] Exercise local MCP startup failures and actual Codex-chat tool access separately from mailbox sign-in. Check missing/stale settings, launcher failure, timeout, unexpected replies and reconnecting after an update.
+- [ ] Check Test All with successful accounts, first/later failures, cancellation, unavailable folders, configured SMTP and an unsaved editor draft.
+- [ ] Check current mail/session behavior with synthetic accounts: permission changes, session isolation and expiry, duplicate send IDs, unresolved submissions, Unicode/BCC/attachments, metadata failures and unsupported-schema rejection.
+- [ ] Check packaged CLI/MCP entry points, portable startup, configuration, retained settings and moving the extracted folder on clean Windows x64 and native ARM64 hosts. Exercise the bundled runtime, not a system interpreter.
+- [ ] Check guided terminal setup and native credential stores on Linux and macOS. Exercise actual Credential Manager/DPAPI access on Windows.
+- [ ] Check provider reading, Microsoft sign-in and requested SMTP sends only with separately authorized accounts. Verify server acceptance and recipient delivery separately.
+- [ ] Publish the updated product Terms/Privacy when authorized. Public pages still need the current sending flow.
+- [ ] Check Store Release packages on x64 and ARM64 before an authorized submission.
+- [ ] Remove leftover task output and superseded Debug installers when the filesystem/deletion restrictions are resolved. Preserve current deliverables, pending uploads and required first-import scan records. Current paths are listed below; do not bypass a rejected deletion.
 
-- [ ] Check Debug 2.0.3.0 on Windows: first-account selection, no-account guidance, saved/new draft retention across all three navigation pages, both prompt copy icons and confirmations, keyboard/narrow layout and the enlarged footer logo. Exercise local startup failures and actual Codex-chat tool access separately from provider sign-in. No local tests, live UI or provider operations ran for this task; see validation for source build and installation status.
+## Pending cleanup
 
-- [ ] Complete blocked troubleshooting-task cleanup. Automatic approval review rejected guarded removal of `artifacts/work/troubleshooting-2.0.2-20261102/` (2914.9 MiB), `artifacts/work/install-debug-2.0.1-20261030/` (479.4 MiB) and superseded Debug installer directories `artifacts/msix/debug/x64/1.0.24.0/`, `artifacts/msix/debug/x64/2.0.1.0/` (100.6 MiB each) and `artifacts/msix/debug/x64/2.0.2.0/` (103.9 MiB), with `blocked by policy`. No alternative deletion was attempted. See validation.
-
-- [ ] When authorized, check portable Release 2.0.0 startup and configuration on clean Windows x64 and native ARM64 hosts, bundled CLI/MCP entry points with isolated profiles, retained settings, and reconnecting after a folder move. Release compilation and archive inspection passed; native UI, packaged-entry-point execution and provider access were not exercised. The shared MSIX adapters were refactored but were not rebuilt or installed again in this portable-release task.
-
-- [ ] Check account-page creation, retained drafts, folder bindings and assistant navigation after the partial-file/tab-builder split. Windows synthetic CI passed on PR #37 after the source-quality refactor, and Debug 1.0.24.0 x64 compilation/installation passed; application/UI/provider behavior and Store validation remain unverified. Packaging also prevents implicit SDK workload repair.
-
-- [ ] Validate the complete quick-start workflow on Windows, Linux and macOS with real terminal interaction, native credential stores and separately authorized provider accounts. The isolated Windows suite passed 129 cases, with two POSIX-only cases skipped; run those two cases on a native POSIX host when available. The commands are included in Debug 1.0.24.0 and portable Release 2.0.0; packaged interactive/provider workflows remain unverified.
-
-- [ ] Resolve blocked PDF task cleanup: `artifacts/work/pdf-cli-setup-20261026/` (about 925 KiB) and `artifacts/docs/cli-setup-20261026/` (about 19 KiB). The definitive PDF and example are already in `docs/`; automatic approval review rejected guarded deletion with `blocked by policy`. See validation; do not bypass the rejection.
-
-- [ ] When requested, compile/check the updated mailbox-and-folder wording in Windows layouts, CLI help, MCP initialization/tool descriptions and an exported source plugin. Confirm copy does not imply an archive importer, unlimited folders per account, POP3 folders, validated provider access or automatic cross-account search. Installation and publication of this wording remain separate tasks.
-
-- [ ] Check the Account-tab Enable receive and Enable send controls in Debug 1.0.23.0: load existing permissions, retain a changed draft across navigation, enable send without existing SMTP, disable SMTP setup, save and reload, and verify missing sending fields focus the Send mail tab. Build and installation passed; UI/model behavior has not been tested.
-
-- [ ] Check the simplified Connect Codex page and two-line VibeWare link in installed Debug 1.0.22.0. Verify missing/mismatched/configured settings, test outcomes, prompt copying, narrow footer layout and keyboard access. A local handshake result must not be presented as verification of an existing Codex chat connection. Windows CI passed 108 synthetic Python tests; WinUI/provider checks remain unrun.
-
-- [ ] Verify the installed Debug 1.0.21.0 toolbar, branded Mica title bar and stage icons. Check title-bar drag/caption controls, narrow toolbar fit, success/failure/warning symbols and retained per-account failure details, including reopening the result by clicking its status symbol. The installed 1.0.20.0 does not retain dismissed account-check diagnostics on disk; its Outlook outcome could not be recovered from the local profile logs or recent Windows Application errors. Capture the next result before claiming a provider cause.
-
-- [ ] Check Test all with successful accounts, first-account and later-account errors, cancellation, unavailable saved folders, configured SMTP and an unsaved editor draft. Check session success marks, provider favicon loading/offline fallback, Mica result details/cleanup retry, keyboard focus, narrow footer and simplified Connect Codex. No automated or live-provider checks have run for these changes.
-
-- [ ] Verify binding updates, retained unsaved drafts across navigation, preset loading, account selection during refresh/save, field errors, folder selection and cancellation/committed outcomes in both check and sign-in windows. The configuration-model refactor is compiled and installed in Debug 1.0.19.0; runtime checks remain unrun. Run the synthetic session-isolation/expiry/privacy cases only when tests are requested.
-- [ ] Check the collapsed Microsoft log expanders, centered sign-in code and adjacent Copy icon in installed Debug 1.0.18.0, including narrow layouts and clipboard failure. Verify returned/required mail permissions, extra prior grants and missing permissions using the redacted details.
-- [ ] Try field borders/focus, Microsoft sign-in before saving, local sign-in details, the expanded Codex connection details and Test connection in installed Debug 1.0.18.0. Check cancellation, saved sign-in with refresh failure, missing/stale settings, startup failure, timeout and unexpected replies. A local MCP handshake must not call mailbox tools. Automated UI checks and real Microsoft sign-in require separate authorization.
-- [ ] Check provider persistence, outgoing Microsoft sign-in, simple guidance, Connect Codex and the approved VibeWare footer in installed Debug 1.0.18.0. Check keyboard/scaling behavior. The owner is trying the app directly; automated tests were excluded from this installation. Separately validate the recovered Microsoft registration's device flow and mail scopes using the new local server diagnostics when authorized.
-- [ ] When requested, run the synthetic suite for the current direct-send contract, duplicate IDs, unresolved outcomes, permission changes, current-form checks, provider persistence and private Microsoft diagnostics. Earlier approval-model results do not validate these changes.
-- [ ] Check the connection list, renaming, save bar, Acrylic, colored tabs, narrow layout and common IMAP/SMTP dialog in installed Debug 1.0.18.0. Live UI interaction needs explicit authorization; building and installation passed, but visual behavior remains unchecked.
-- [ ] Validate actual Credential Manager/DPAPI access, keyboard navigation, light/high-contrast themes, the installed MCP alias and configuration after a package update when authorized.
-- [ ] Validate real-provider reading, explicit Microsoft sign-in and direct SMTP acceptance/delivery only when separately authorized. The completed unauthenticated SMTP handshake is not that evidence.
-- [ ] Publish the locally updated product Terms/Privacy only when authorized; public pages still describe the previous sending flow.
-- [ ] Resolve blocked cleanup of `artifacts/inputs/debug-1.0.18.0-20261022/` (about 479.4 MiB) (the former superseded `artifacts/msix/debug/x64/1.0.18.0/` directory is now absent). Automatic approval review rejected removal. Earlier package/input paths were already absent before the 1.0.18.0 build; the earlier source `bin`/`obj` cleanup status has not been refreshed. Do not bypass a blocked cleanup through another deletion method.
-- [ ] Validate requested Store Release packages on x64 and ARM64 before submission. Linux/macOS execution and native credential stores remain untested.
+- `artifacts/work/troubleshooting-2.0.2-20261102/`
+- `artifacts/work/install-debug-2.0.1-20261030/`
+- `artifacts/msix/debug/x64/1.0.24.0/`, `2.0.1.0/` and `2.0.2.0/`
+- `artifacts/work/pdf-cli-setup-20261026/` and `artifacts/docs/cli-setup-20261026/`
+- `artifacts/inputs/debug-1.0.18.0-20261022/`
+- `artifacts/verification/linux-cli-20261102/transient/` in the Linux CLI worktree

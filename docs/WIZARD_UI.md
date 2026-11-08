@@ -8,4 +8,4 @@ IMAP and SMTP checks share `AccountCheckWindow`, actual progress stages, cancell
 
 Use clear English, tooltips, accessible names and keyboard navigation. Keep advanced Codex configuration collapsed. The footer links to the product policies and shows VibeWare with its floppy symbol.
 
-[Windows setup](WINDOWS_SETUP.md) describes the user flow. [Validation](VALIDATION.md) records runtime evidence; source edits and old screenshots do not establish current visual correctness. Artwork provenance remains in [brand](BRAND.md).
+[Windows setup](WINDOWS_SETUP.md) describes the user flow. Artwork provenance remains in [brand](BRAND.md).

@@ -6,4 +6,4 @@ Windows setup uses WinUI 3; the mail engine is Python. Windows distribution is M
 
 Use provider settings and an eligible password or app password. Microsoft presets select **Sign in with Microsoft**; Windows setup supplies the public client ID. Provider and organization rules still apply. Enable receive and optional sending separately for each account in Windows setup. Sending through your assistant requires your explicit request and has no second AgentInbox confirmation window. Guided connection setup is available for Codex; other local MCP clients are configured manually.
 
-See [getting started](GETTING_STARTED.md), [privacy](PRIVACY.md) and [validation](VALIDATION.md).
+See [getting started](GETTING_STARTED.md) and [privacy](PRIVACY.md).
