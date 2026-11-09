@@ -224,6 +224,7 @@ class Configuration(GObject.Object):
     accounts = GObject.Property(type=object)
     draft = GObject.Property(type=object)
     flow = GObject.Property(type=object)
+    signin_cancelling = GObject.Property(type=bool, default=False)
     busy = GObject.Property(type=bool, default=False)
     can_stop = GObject.Property(type=bool, default=False)
     notice = GObject.Property(type=str, default="")
@@ -252,6 +253,7 @@ class Configuration(GObject.Object):
         self.checked = frozenset()
         self.stop = Event()
         self._poll_source = 0
+        self._queued_signin_cancel = None
         self.connect("notify::draft", self._update_folder_summary)
 
     def new_account(self):
@@ -492,14 +494,32 @@ class Configuration(GObject.Object):
                 result: Pending interval or committed Microsoft account response.
             """
             if result["status"] == "pending":
-                self.notice = "Waiting for Microsoft sign-in…"
-                self._schedule_poll(result["interval"])
+                if self._queued_signin_cancel is not None:
+                    notice, done = self._queued_signin_cancel
+                    self.cancel_signin(notice, done=done)
+                else:
+                    self.notice = "Waiting for Microsoft sign-in…"
+                    self._schedule_poll(result["interval"])
                 return
+            self._queued_signin_cancel = None
+            self.signin_cancelling = False
             self.flow = None
             self._accept_account(result["account"], "Microsoft sign-in completed.")
 
         self.run("Checking Microsoft sign-in…", lambda: self.manage("poll_microsoft_signin", {"flow_id": flow_id}),
-                 polled, failed=lambda detail: self.cancel_signin(detail))
+                 polled, failed=self._signin_poll_failed)
+
+    def _signin_poll_failed(self, detail):
+        """Dispose of a failed flow while honoring a queued cancellation.
+
+        Args:
+            detail: Safe failure message from the finished Microsoft check.
+        """
+        if self._queued_signin_cancel is None:
+            self.cancel_signin(detail)
+        else:
+            notice, done = self._queued_signin_cancel
+            self.cancel_signin(notice, done=done)
 
     def cancel_signin(self, notice="Microsoft sign-in cancelled.", *, done=None):
         """Stop polling and remove the temporary protected flow.
@@ -508,6 +528,16 @@ class Configuration(GObject.Object):
             notice: Final notice, preserving a preceding sign-in failure when present.
             done: Optional no-argument callback after cancellation, such as closing setup.
         """
+        if self.flow is None:
+            return
+        if self.busy:
+            if not self.signin_cancelling:
+                self.signin_cancelling = True
+                self._queued_signin_cancel = (notice, done)
+                self.notice = "Cancelling after the current Microsoft check…"
+            return
+        self._queued_signin_cancel = None
+        self.signin_cancelling = True
         if self._poll_source:
             GLib.source_remove(self._poll_source)
             self._poll_source = 0
@@ -520,13 +550,23 @@ class Configuration(GObject.Object):
                 result: Engine cancellation response and separate cleanup status.
             """
             self.flow = None
+            self.signin_cancelling = False
             self.apply_cleanup(result)
             self.notice = notice
             if done:
                 done()
 
+        def cancellation_failed(detail):
+            """Allow the user to retry failed cleanup of the active flow.
+
+            Args:
+                detail: Safe failure message from the local cancellation operation.
+            """
+            self.signin_cancelling = False
+            self.notice = notice + "\n" + detail
+
         self.run("Closing Microsoft sign-in…", lambda: self.manage("cancel_microsoft_signin", {"flow_id": flow_id}),
-                 cancelled, failed=lambda detail: self.set_property("notice", notice + "\n" + detail))
+                 cancelled, failed=cancellation_failed)
 
     def remove(self):
         """Revoke the selected saved account after the view confirms the action."""

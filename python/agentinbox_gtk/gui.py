@@ -29,7 +29,7 @@ from uuid import UUID
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gio, GLib, GObject, Gtk, Pango
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from agentinbox import __version__
 from agentinbox.application import MailApplication
@@ -38,6 +38,28 @@ from agentinbox.errors import MailError
 from .model import Configuration
 from .tray import APP_ID, Tray
 from agentinbox.terminal_setup import PROVIDER_HELP
+
+SIGNIN_STYLE = b"""
+.agentinbox-signin-background { filter: blur(6px); }
+.agentinbox-signin-shade { background-color: rgba(0, 0, 0, 0.68); }
+.agentinbox-signin-card {
+    background-color: @theme_bg_color;
+    color: @theme_fg_color;
+    border: 1px solid alpha(@theme_fg_color, 0.20);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.38);
+}
+.agentinbox-signin-code {
+    background-color: alpha(@theme_fg_color, 0.08);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: monospace;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+"""
 
 SYNC = GObject.BindingFlags.SYNC_CREATE
 TWO_WAY = SYNC | GObject.BindingFlags.BIDIRECTIONAL
@@ -235,7 +257,18 @@ class SetupWindow(Gtk.ApplicationWindow):
         root = column(14)
         for side in ("top", "bottom", "start", "end"):
             root.set_property(f"margin-{side}", 18)
-        self.set_child(root)
+        self.settings_view = root
+        style = Gtk.CssProvider()
+        style.load_from_data(SIGNIN_STYLE)
+        Gtk.StyleContext.add_provider_for_display(self.get_display(), style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        overlay = Gtk.Overlay(child=root)
+        self.signin = Gtk.Box(visible=False)
+        self.signin.add_css_class("agentinbox-signin-shade")
+        overlay.add_overlay(self.signin)
+        self.set_child(overlay)
+        keys = Gtk.EventControllerKey()
+        keys.connect("key-pressed", self.signin_key)
+        self.add_controller(keys)
         self.pages = Gtk.Stack(vexpand=True, vhomogeneous=False)
         nav = Gtk.StackSwitcher(stack=self.pages, halign=Gtk.Align.START, hexpand=True)
         navigation = Gtk.Box(spacing=8)
@@ -311,18 +344,15 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.pages.add_titled(content, name, title)
 
     def accounts_page(self):
-        """Build saved-account controls and slots for the draft and device flow."""
+        """Build saved-account controls and the draft editor slot."""
         page = column(12)
         self.account_actions = column(14)
         self.account_actions.set_vexpand(True)
         self.account_list = column(8)
         self.editor = column(12)
         self.editor.set_vexpand(True)
-        self.signin = column()
-        self.signin_actions = None
         self.account_actions.append(self.account_list)
         self.account_actions.append(self.editor)
-        page.append(self.signin)
         page.append(self.account_actions)
         self.add_page(page, "accounts", "Accounts")
 
@@ -622,25 +652,71 @@ class SetupWindow(Gtk.ApplicationWindow):
             widget.grab_focus()
 
     def render_signin(self, _model, _property):
-        """Show the current Microsoft device code and native actions.
+        """Present the model's active device flow in a centered overlay.
 
         Args:
             _model: Model emitting the active-flow change.
             _property: Active-flow property metadata.
         """
         self.clear(self.signin)
-        self.signin_actions = None
-        if flow := self.model.flow:
-            self.signin.append(label("Sign in with Microsoft", heading=True))
-            self.signin.append(label(f"Enter this code on Microsoft's page: {flow['user_code']}", selectable=True))
-            actions = Gtk.Box(spacing=8)
-            actions.append(link("Open Microsoft sign-in", flow["verification_uri"]))
-            actions.append(button("Copy code", "Copy the current Microsoft device code.",
-                                  lambda: self.copy(flow["user_code"])))
-            actions.append(button("Cancel sign-in", "Stop checking and remove temporary sign-in data.",
-                                  self.model.cancel_signin))
-            self.signin_actions = actions
-            self.signin.append(actions)
+        flow = self.model.flow
+        self.signin.set_visible(flow is not None)
+        self.settings_view.set_sensitive(flow is None)
+        if flow is None:
+            self.settings_view.remove_css_class("agentinbox-signin-background")
+            return
+        self.settings_view.add_css_class("agentinbox-signin-background")
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14,
+                       halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER, hexpand=True,
+                       accessible_role=Gtk.AccessibleRole.DIALOG)
+        card.add_css_class("agentinbox-signin-card")
+        card.update_property([Gtk.AccessibleProperty.LABEL, Gtk.AccessibleProperty.MODAL],
+                             ["Sign in with Microsoft", True])
+        heading = Gtk.Label(label="Sign in with Microsoft")
+        heading.add_css_class("title-1")
+        card.append(heading)
+        card.append(Gtk.Label(label="Copy the code, then open Microsoft to sign in."))
+        code = Gtk.Label(label=flow["user_code"], selectable=True, halign=Gtk.Align.CENTER)
+        code.add_css_class("agentinbox-signin-code")
+        card.append(code)
+        card.append(Gtk.Label(label="After signing in, return here. AgentInbox will finish automatically."))
+
+        actions = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
+        actions.append(button("Copy code", "Copy the current Microsoft device code.",
+                              lambda: self.copy(self.model.flow["user_code"])))
+        open_signin = link("OK · Open Microsoft", flow["verification_uri"])
+        open_signin.add_css_class("suggested-action")
+        open_signin.set_tooltip_text("Open Microsoft's sign-in page in your browser.")
+        actions.append(open_signin)
+        actions.append(button("Cancel", "Cancel Microsoft sign-in and return to account settings.",
+                              self.model.cancel_signin))
+        self.model.bind_property("signin-cancelling", actions, "sensitive",
+                                 SYNC | GObject.BindingFlags.INVERT_BOOLEAN)
+        card.append(actions)
+
+        status = Gtk.Label(wrap=True, justify=Gtk.Justification.CENTER, max_width_chars=58)
+        status.set_lines(3)
+        status.set_ellipsize(Pango.EllipsizeMode.END)
+        status.add_css_class("dim-label")
+        self.model.bind_property("notice", status, "label", SYNC)
+        card.append(status)
+        self.signin.append(card)
+        open_signin.grab_focus()
+
+    def signin_key(self, _controller, keyval, _keycode, _state):
+        """Forward Escape to the active sign-in's cancel command.
+
+        Args:
+            _controller: GTK key controller for the setup window.
+            keyval: Symbolic key value from the native event.
+            _keycode: Hardware key code supplied by GTK.
+            _state: Active keyboard modifiers.
+        """
+        if self.model.flow is not None and keyval == Gdk.KEY_Escape:
+            self.model.cancel_signin()
+            return True
+        return False
 
     def update_activity(self, _model, _property, cleanup):
         """Disable conflicting controls while an operation or sign-in is active.
@@ -653,8 +729,6 @@ class SetupWindow(Gtk.ApplicationWindow):
         idle = not self.model.busy and self.model.flow is None
         for group in (self.account_actions, self.assistant_actions, self.diagnostic_actions, cleanup):
             group.set_sensitive(idle)
-        if self.signin_actions is not None:
-            self.signin_actions.set_sensitive(not self.model.busy)
 
     def close_requested(self, _window):
         """Wait for active work or cancel an open sign-in before closing setup.
@@ -681,7 +755,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             page: GTK stack page key associated with the tray item.
         """
-        self.model.page = page
+        if self.model.flow is None:
+            self.model.page = page
         self.present()
 
     def quit_from_tray(self):
@@ -768,6 +843,9 @@ class SetupWindow(Gtk.ApplicationWindow):
 
     def show_about(self):
         """Open or focus the dedicated About window from setup or the tray."""
+        if self.model.flow is not None:
+            self.present()
+            return
         if self.about_window is None:
             window = Gtk.Window(title="About AgentInbox", transient_for=self,
                                 destroy_with_parent=True, hide_on_close=True, resizable=False,
