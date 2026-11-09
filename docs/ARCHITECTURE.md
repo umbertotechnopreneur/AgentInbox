@@ -42,6 +42,10 @@ Current-form `check_account` discovers folders and checks configured SMTP. Optio
 
 Source Windows profiles default to `%LOCALAPPDATA%\AgentInbox`; packaged processes share `%LOCALAPPDATA%\Packages\<package-family>\LocalState\AgentInbox`. An absolute `AGENTINBOX_DATA_DIR` overrides either. Account changes and sign-in can leave retired credential references in a cleanup queue. Cleanup failure is reported separately and never repeats the completed operation.
 
+The desktop trays read the same local activity snapshot. Each initialized stdio MCP process holds a profile-scoped OS lease. Closing or terminating the process releases the lease. The local startup probe does not publish a lease. Tray notifications track the presence of a live session and whether the profile has configured mailboxes. They do not contact providers.
+
+The local CLI can export an authenticated, encrypted snapshot of the current account schema and saved passwords. Import validates the snapshot, stages passwords in the native credential store, and commits account metadata together into an empty profile. Microsoft accounts require a new sign-in.
+
 ## Sending
 
 `send_email` validates account permission and input, snapshots attachment bytes into in-memory MIME content, claims a caller-supplied request ID in SQLite and submits once. It checks the account revision again immediately before SMTP DATA. It does not store message content or create an approval queue.

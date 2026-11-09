@@ -22,6 +22,12 @@ fakeroot python3 -B scripts/build-linux-deb.py
 
 The build writes both packages and their SHA-256 checksums to `artifacts/linux-deb/<version>/`. They use the system Python. To run GTK directly from source, install `python3-gi` and `gir1.2-gtk-4.0`, then run `PYTHONPATH=python /usr/bin/python3 -B -m agentinbox_gtk.gui` from the checkout.
 
+## Use the tray
+
+If your desktop supports StatusNotifierItem or AppIndicator icons, open AgentInbox once to add it to the tray. The icon opens setup and its menu links to **Accounts**, **Connect Codex**, **Troubleshooting**, **About** and **Exit AgentInbox**. Closing setup leaves the icon available while the tray host is active.
+
+Notifications show when the first live MCP session connects, when the last one disconnects, or when the profile has no configured mailboxes. Use **Exit AgentInbox** to close the setup app. See the [command reference](CLI_REFERENCE.md#back-up-and-restore-accounts) for encrypted backups.
+
 ## Run only the engine
 
 On the Debian-based computer that will run the MCP process, install the engine package by itself:
