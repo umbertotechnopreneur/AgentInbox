@@ -30,6 +30,7 @@ import tomllib
 
 from gi.repository import GLib, GObject
 
+from agentinbox.activity import PROBE_ENV
 from agentinbox.errors import MailError
 from agentinbox.mcp import TOOLS
 from agentinbox.terminal_setup import diagnose, mcp_configuration
@@ -215,6 +216,7 @@ class AccountDraft(GObject.Object):
 class Configuration(GObject.Object):
     """Own the active draft, public account snapshots and serialized local work."""
 
+    activity = GObject.Property(type=object)
     accounts = GObject.Property(type=object)
     draft = GObject.Property(type=object)
     flow = GObject.Property(type=object)
@@ -246,6 +248,17 @@ class Configuration(GObject.Object):
         self.checked = frozenset()
         self.stop = Event()
         self._poll_source = 0
+
+    def refresh_activity(self):
+        """Read status without taking over the editor's operation state."""
+        try:
+            result = self.manage("activity_status")
+            status = (result["mcp_connected"], result["has_mailboxes"])
+        except (MailError, OSError):
+            status = None
+        if status != self.activity:
+            self.activity = status
+        return GLib.SOURCE_CONTINUE
 
     def manage(self, operation, arguments=None, *, progress=None):
         """Forward one explicit local configuration operation to the shared engine.
@@ -669,7 +682,8 @@ class Configuration(GObject.Object):
             try:
                 result = subprocess.run(command, input=lines, encoding="utf-8",
                                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                        env={**os.environ, **environment}, timeout=30, check=True)
+                                        env={**os.environ, **environment, PROBE_ENV: "1"},
+                                        timeout=30, check=True)
                 initialized, listed = [json.loads(line) for line in result.stdout.splitlines()]
                 names = {tool["name"] for tool in listed["result"]["tools"]}
                 if (initialized["id"] != 1 or initialized["result"]["serverInfo"]["name"] != "agentinbox"

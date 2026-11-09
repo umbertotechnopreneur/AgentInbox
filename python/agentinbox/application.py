@@ -29,7 +29,7 @@ import time
 from email.message import EmailMessage
 from pathlib import Path
 
-from . import mail, pop
+from . import activity, mail, pop
 from .config import (
     MAX_ATTACHMENT_BYTES, MAX_BODY_CHARS, MAX_FOLDERS, MAX_RECIPIENTS, MICROSOFT_INCOMING_HOSTS,
     PRESETS, SCHEMA_VERSION, account_input, address, flag, password_required, same_microsoft_context,
@@ -514,6 +514,11 @@ class MailApplication:
         if operation == "account_editor" and not arguments:
             return {"presets": PRESETS, "microsoft_incoming_hosts": MICROSOFT_INCOMING_HOSTS,
                     "max_folders": MAX_FOLDERS}
+        if operation == "activity_status" and not arguments:
+            # Serialize probes so a second desktop cannot mistake a probe lock for a live session.
+            with self.store.locked():
+                return {"mcp_connected": activity.is_connected(self.store.root),
+                        "has_mailboxes": bool(self.store.accounts())}
         if operation == "profile_info" and not arguments:
             protection = "Windows Credential Manager" if sys.platform == "win32" else "macOS Keychain" if sys.platform == "darwin" else "Linux Secret Service"
             return {"schema_version": SCHEMA_VERSION, "data_directory": str(self.store.root),

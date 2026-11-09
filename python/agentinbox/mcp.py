@@ -23,6 +23,7 @@ import json
 import sys
 
 from . import __version__
+from .activity import ConnectionLease
 from .errors import MailError
 
 TEXT = {"type": "string"}
@@ -101,6 +102,17 @@ def serve(application):
         application: Shared MailApplication instance whose session owns this adapter
             connection.
     """
+    with ConnectionLease(application.store.root) as activity:
+        return _serve(application, activity)
+
+
+def _serve(application, activity):
+    """Process stdio requests for one MCP connection.
+
+    Args:
+        application: Engine owning this connection's temporary MCP state.
+        activity: Profile lease published after the initialized notification.
+    """
     initialized = False
     negotiated = False
     definitions = {item["name"]: item for item in TOOLS}
@@ -121,8 +133,9 @@ def serve(application):
                 raise ValueError()
             method = request["method"]
             if "id" not in request:
-                if method == "notifications/initialized" and negotiated:
+                if method == "notifications/initialized" and negotiated and not initialized:
                     initialized = True
+                    activity.start()
                 continue
             parameters = request.get("params", {})
             if not isinstance(parameters, dict):

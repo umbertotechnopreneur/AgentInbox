@@ -36,6 +36,8 @@ internal sealed class ConfigurationModel : ObservableModel
     private string _page = "accounts";
     private int _editorTab;
     private bool _updatingAccounts;
+    private bool _refreshingActivity;
+    private TrayActivity? _activity;
 
     /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
     /// <param name="engine">Shared adapter for the local Python management contract.</param>
@@ -55,6 +57,27 @@ internal sealed class ConfigurationModel : ObservableModel
         SignIn = new MicrosoftSignInModel(engine);
         Assistant = new AssistantConnectionModel(engine, Notice);
         Assistant.PropertyChanged += (_, _) => Notify();
+    }
+
+    internal TrayActivity? Activity { get => _activity; private set => Set(ref _activity, value); }
+
+    /// <summary>Refresh live MCP status without changing account editor state.</summary>
+    /// <param name="cancellationToken">Configuration application lifetime token.</param>
+    internal async Task RefreshActivityAsync(CancellationToken cancellationToken)
+    {
+        if (_refreshingActivity || cancellationToken.IsCancellationRequested) return;
+        _refreshingActivity = true;
+        try
+        {
+            var result = await _engine.ManageAsync("activity_status", new { }, cancellationToken);
+            Activity = new TrayActivity(result.GetProperty("mcp_connected").GetBoolean(),
+                result.GetProperty("has_mailboxes").GetBoolean());
+        }
+        catch (Exception)
+        {
+            if (!cancellationToken.IsCancellationRequested) Activity = null;
+        }
+        finally { _refreshingActivity = false; }
     }
 
     public AccountEditorModel Editor { get; }
@@ -371,3 +394,6 @@ internal sealed class NotificationModel : ObservableModel
         Title = title; Message = message; Severity = severity; IsOpen = true;
     }
 }
+
+/// <summary>A local MCP connection and mailbox presence snapshot.</summary>
+internal readonly record struct TrayActivity(bool Connected, bool HasMailboxes);

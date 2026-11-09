@@ -21,6 +21,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 from uuid import UUID
@@ -28,13 +29,14 @@ from uuid import UUID
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gio, GObject, Gtk, Pango
+from gi.repository import Gio, GLib, GObject, Gtk, Pango
 
 from agentinbox import __version__
 from agentinbox.application import MailApplication
 from agentinbox.config import data_directory
 from agentinbox.errors import MailError
 from .model import AccountDraft, Configuration
+from .tray import APP_ID, Tray
 from agentinbox.terminal_setup import PROVIDER_HELP
 
 SYNC = GObject.BindingFlags.SYNC_CREATE
@@ -160,6 +162,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         """
         super().__init__(application=app, title="AgentInbox", default_width=850, default_height=750)
         self.model = model
+        self.tray = None
+        self.quitting = False
         self.fields = {}
         root = column()
         for side in ("top", "bottom", "start", "end"):
@@ -566,13 +570,32 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             _window: Window requesting closure.
         """
+        if not self.quitting and self.tray and self.tray.available:
+            self.set_visible(False)
+            return True
         if self.model.busy:
+            self.quitting = False
+            self.present()
             self.model.notice = "Wait for the current operation to finish before closing AgentInbox."
             return True
         if self.model.flow:
             self.model.cancel_signin(done=self.close)
             return True
         return False
+
+    def present_page(self, page):
+        """Reopen the window at an explicitly requested setup page.
+
+        Args:
+            page: GTK stack page key associated with the tray item.
+        """
+        self.pages.set_visible_child_name(page)
+        self.present()
+
+    def quit_from_tray(self):
+        """Close setup explicitly, preserving an active save or sign-in cleanup."""
+        self.quitting = True
+        self.close()
 
     def assistant_page(self):
         """Show the registration and separate Codex and MCP check results."""
@@ -716,8 +739,9 @@ def main(argv=None):
         model = Configuration(MailApplication(data_directory()), client_id)
     except MailError as error:
         parser.error(str(error))
-    app = Gtk.Application(application_id="io.github.umbertotechnopreneur.AgentInbox",
-                          flags=Gio.ApplicationFlags.NON_UNIQUE)
+    # A custom profile can run independently of the normal desktop instance.
+    flags = Gio.ApplicationFlags.NON_UNIQUE if os.environ.get("AGENTINBOX_DATA_DIR") else Gio.ApplicationFlags(0)
+    app = Gtk.Application(application_id=APP_ID, flags=flags)
 
     def activate(application):
         """Present the configuration window for this application instance.
@@ -725,9 +749,39 @@ def main(argv=None):
         Args:
             application: GTK application emitting activation.
         """
-        window = application.get_active_window() or SetupWindow(application, model)
+        windows = application.get_windows()
+        if windows:
+            windows[0].present()
+            return
+        window = SetupWindow(application, model)
+        theme = Gtk.IconTheme.get_for_display(window.get_display())
+        icon = APP_ID if theme.has_icon(APP_ID) else "mail-unread"
+        window.tray = Tray(application, model, icon, {
+            "Open AgentInbox": window.present,
+            "Accounts": lambda: window.present_page("accounts"),
+            "Connect Codex": lambda: window.present_page("assistant"),
+            "Troubleshooting": lambda: window.present_page("troubleshooting"),
+            "About": lambda: window.present_page("about"),
+            "Exit AgentInbox": window.quit_from_tray,
+        })
+        model.refresh_activity()
+        poll = GLib.timeout_add_seconds(5, model.refresh_activity)
+
+        def shutdown(_application):
+            """Release the poll and native registration when the desktop app exits.
+
+            Args:
+                _application: GTK application finishing its shutdown.
+            """
+            GLib.source_remove(poll)
+            window.tray.close()
+
+        application.connect("shutdown", shutdown)
         window.present()
 
+    show = Gio.SimpleAction.new("open", None)
+    show.connect("activate", lambda *_args: app.activate())
+    app.add_action(show)
     app.connect("activate", activate)
     return app.run([])
 
