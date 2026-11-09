@@ -1,7 +1,6 @@
 # Latest update
 
-## 2.0.7
+## 2.0.8
 
-- Fit Linux account setup, connection controls and troubleshooting in a desktop layout with horizontal actions.
-- Open About, folder selection and detailed output in dedicated windows.
-- Keep Linux editor navigation and account selection in the observable configuration model.
+- Show color provider images in the Linux provider picker, saved account picker and account editor.
+- Enable SMTP configuration for new Linux accounts and keep sending permission off until you turn it on.

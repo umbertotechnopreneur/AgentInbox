@@ -101,6 +101,9 @@ def setup_files(stage):
           "Categories=Network;Email;\n")
     write(stage, f"usr/share/icons/hicolor/512x512/apps/{APP_ID}.png",
           ROOT / "resources/agentinbox-logo-512-safe.png")
+    for image in sorted((ROOT / "resources/providers").glob("*.svg")):
+        write(stage, f"{LIB}/providers/{image.name}", image)
+    write(stage, "usr/share/doc/agentinbox/provider-logos.md", ROOT / "resources/providers/README.md")
     write(stage, f"{LIB}/vibeware/vibeware-logo.png", ROOT / "resources/vibeware/vibeware-logo.png")
     write(stage, "usr/share/doc/agentinbox/vibeware-LICENSE", ROOT / "resources/vibeware/LICENSE")
 

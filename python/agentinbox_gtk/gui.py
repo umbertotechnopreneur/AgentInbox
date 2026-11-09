@@ -43,6 +43,11 @@ SYNC = GObject.BindingFlags.SYNC_CREATE
 TWO_WAY = SYNC | GObject.BindingFlags.BIDIRECTIONAL
 SECURITY = {"tls": "TLS", "starttls": "STARTTLS"}
 REPOSITORY = "https://github.com/umbertotechnopreneur/AgentInbox"
+PROVIDER_LOGOS = {"custom": "custom", "gmail": "google", "icloud": "icloud",
+                  "outlook": "outlook", "microsoft365": "microsoft"}
+PROVIDER_ASSETS = Path(__file__).resolve().parents[1] / "providers"
+if not PROVIDER_ASSETS.is_dir():
+    PROVIDER_ASSETS = Path(__file__).resolve().parents[2] / "resources/providers"
 ACCOUNT_PROMPT = "@AgentInbox Which email accounts and selected folders can you access through AgentInbox?"
 TROUBLESHOOTING_PROMPT = (
     "@AgentInbox Check whether the local AgentInbox MCP connection is loaded and its tools are available. "
@@ -113,7 +118,16 @@ def link(text, url):
     return widget
 
 
-def choice(options, selected, name, change, *, compact=False):
+def provider_image_path(preset):
+    """Resolve a local image for the model's provider ID.
+
+    Args:
+        preset: Stable provider ID from the shared catalog or saved account.
+    """
+    return str(PROVIDER_ASSETS / f"{PROVIDER_LOGOS.get(preset, 'custom')}.svg")
+
+
+def choice(options, selected, name, change, *, compact=False, providers=None):
     """Render a native dropdown and forward the selected key.
 
     Args:
@@ -122,36 +136,54 @@ def choice(options, selected, name, change, *, compact=False):
         name: Accessible name and tooltip.
         change: Callback accepting a selected key.
         compact: Ellipsize long names while retaining the full search text and tooltip.
+        providers: Mapping from choice keys to provider IDs for the leading images.
     """
     keys = list(options)
     widget = describe(Gtk.DropDown.new_from_strings(list(options.values())), name)
     widget.set_selected(keys.index(selected) if selected in options else Gtk.INVALID_LIST_POSITION)
-    if compact:
+    if providers is not None:
+        items = widget.get_model()
+        images = {items.get_item(index): provider_image_path(providers[key])
+                  for index, key in enumerate(keys) if key in providers}
         factory = Gtk.SignalListItemFactory()
 
         def setup(_factory, item):
-            """Create a bounded label for each recycled dropdown item.
+            """Create a native row for a provider or account choice.
 
             Args:
                 _factory: Native list-item factory emitting setup.
-                item: Reusable dropdown item to equip with a label.
+                item: Reusable dropdown item to equip with a row.
             """
-            item.set_child(Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END, max_width_chars=36))
+            row = Gtk.Box(spacing=8)
+            row.append(Gtk.Image(pixel_size=20))
+            caption = Gtk.Label(xalign=0)
+            if compact:
+                caption.set_ellipsize(Pango.EllipsizeMode.END)
+                caption.set_max_width_chars(36)
+            row.append(caption)
+            item.set_child(row)
 
         def bind(_factory, item):
-            """Render the full saved account caption and its tooltip.
+            """Display the caption and image of the bound model item.
 
             Args:
                 _factory: Native list-item factory emitting bind.
-                item: Dropdown item currently associated with a saved account caption.
+                item: Dropdown item associated with a provider or account.
             """
-            text = item.get_item().get_string()
-            item.get_child().set_label(text)
-            item.get_child().set_tooltip_text(text)
+            entry = item.get_item()
+            row = item.get_child()
+            image = row.get_first_child()
+            path = images.get(entry)
+            image.set_from_file(path)
+            image.set_visible(path is not None)
+            caption = row.get_last_child()
+            caption.set_label(entry.get_string())
+            caption.set_tooltip_text(entry.get_string())
 
         factory.connect("setup", setup)
         factory.connect("bind", bind)
         widget.set_factory(factory)
+        widget.set_list_factory(factory)
 
     def changed(dropdown, _property):
         """Forward only a valid selection.
@@ -305,13 +337,15 @@ class SetupWindow(Gtk.ApplicationWindow):
         actions = Gtk.Box(spacing=8)
         if accounts:
             options = {"": "Select a saved account"}
+            providers = {}
             for account in accounts:
                 checked = " ✓" if account["id"] in self.model.checked else ""
                 options[account["id"]] = f"{account['label']} · {account['email']}{checked}"
+                providers[account["id"]] = account.get("preset", "custom")
             draft = self.model.draft
             selection = draft.identity if draft else ""
             picker = choice(options, selection, "Choose a saved account to edit",
-                            self.model.select_account, compact=True)
+                            self.model.select_account, compact=True, providers=providers)
             picker.set_enable_search(True)
             actions.append(picker)
         add = button("Add account", "Open a new connection form.", self.model.new_account)
@@ -347,6 +381,10 @@ class SetupWindow(Gtk.ApplicationWindow):
         sections = Gtk.Stack(vexpand=True, vhomogeneous=False)
         tabs = Gtk.StackSwitcher(stack=sections)
         header = Gtk.Box(spacing=12)
+        provider_name = self.model.presets[draft.preset]["label"]
+        logo = Gtk.Image.new_from_file(provider_image_path(draft.preset))
+        logo.set_pixel_size(28)
+        header.append(describe(logo, provider_name))
         heading = label("Edit connection" if draft.identity else "New connection", heading=True)
         heading.set_hexpand(True)
         header.append(heading)
@@ -390,7 +428,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         content = column()
         providers = {key: preset["label"] for key, preset in self.model.presets.items()}
 
-        provider = choice(providers, draft.preset, "Email provider", self.model.select_provider)
+        provider = choice(providers, draft.preset, "Email provider", self.model.select_provider,
+                          providers={key: key for key in providers})
         self.fields["preset"] = ("account", provider)
         grid = Gtk.Grid(column_spacing=12, row_spacing=8)
         grid.attach(Gtk.Label(label="Provider", xalign=0), 0, 0, 1, 1)
