@@ -81,7 +81,7 @@ class AccountDraft(GObject.Object):
     email = GObject.Property(type=str, default="")
     read_enabled = GObject.Property(type=bool, default=True)
     send_enabled = GObject.Property(type=bool, default=False)
-    configure_smtp = GObject.Property(type=bool, default=False)
+    configure_smtp = GObject.Property(type=bool, default=True)
 
     def __init__(self, account=None):
         """Start a new draft or edit a public saved snapshot.
@@ -90,6 +90,7 @@ class AccountDraft(GObject.Object):
             account: Public saved account, or None for a new custom connection.
         """
         super().__init__()
+        is_new = account is None
         account = account or {}
         self.identity = account.get("id", "")
         self.revision = account.get("revision")
@@ -101,7 +102,7 @@ class AccountDraft(GObject.Object):
         self.email = account.get("email", "")
         self.read_enabled = account.get("read_enabled", True)
         self.send_enabled = account.get("send_enabled", False)
-        self.configure_smtp = account.get("smtp") is not None
+        self.configure_smtp = is_new or account.get("smtp") is not None
         self.incoming = EndpointDraft()
         incoming = account.get("incoming", {"port": 993})
         self.incoming.load(incoming)
