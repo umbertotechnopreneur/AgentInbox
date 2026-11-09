@@ -31,6 +31,7 @@ import tomllib
 from gi.repository import GLib, GObject
 
 from agentinbox.activity import PROBE_ENV
+from agentinbox.backup import export_backup, import_backup
 from agentinbox.errors import MailError
 from agentinbox.mcp import TOOLS
 from agentinbox.terminal_setup import diagnose, mcp_configuration
@@ -214,6 +215,29 @@ class AccountDraft(GObject.Object):
         return {"account": account, "passwords": passwords, "expected_revision": self.revision}
 
 
+class BackupRequest(GObject.Object):
+    """Hold the selected local file and transient passphrase for one backup operation."""
+
+    passphrase = GObject.Property(type=str, default="")
+    confirmation = GObject.Property(type=str, default="")
+    message = GObject.Property(type=str, default="")
+
+    def __init__(self, path, *, exporting):
+        """Start a backup request without touching disk.
+
+        Args:
+            path: Absolute path chosen through the native file chooser.
+            exporting: Whether to create a backup instead of restoring it.
+        """
+        super().__init__()
+        self.path = Path(path)
+        self.exporting = exporting
+
+    def clear_passphrase(self):
+        """Remove typed secrets from the observable request."""
+        self.passphrase = self.confirmation = ""
+
+
 class Configuration(GObject.Object):
     """Own the active draft, public account snapshots and serialized local work."""
 
@@ -224,6 +248,7 @@ class Configuration(GObject.Object):
     accounts = GObject.Property(type=object)
     draft = GObject.Property(type=object)
     flow = GObject.Property(type=object)
+    backup = GObject.Property(type=object)
     signin_cancelling = GObject.Property(type=bool, default=False)
     busy = GObject.Property(type=bool, default=False)
     can_stop = GObject.Property(type=bool, default=False)
@@ -316,6 +341,89 @@ class Configuration(GObject.Object):
         """
         self.folder_summary = (f"{len(self.draft.folders)} of {self.max_folders} folders selected"
                                if self.draft else "")
+
+    def begin_backup(self, path, *, exporting):
+        """Request a passphrase for a selected local backup file.
+
+        Args:
+            path: Local file path supplied by the file chooser, or None for a remote file.
+            exporting: Whether the user selected export instead of import.
+        """
+        if self.busy or self.flow is not None or self.backup is not None:
+            return
+        if not path:
+            self.notice = "Choose a local file for the account backup."
+        elif not exporting and self.accounts:
+            self.notice = "Import requires an empty AgentInbox profile. Use a separate profile to keep these accounts."
+        else:
+            self.backup = BackupRequest(path, exporting=exporting)
+
+    def close_backup(self):
+        """Dismiss the backup prompt when no backup operation is running."""
+        if not self.busy and self.backup is not None:
+            self.backup.clear_passphrase()
+            self.backup = None
+
+    def run_backup(self):
+        """Export or restore through the same encrypted backup code as the CLI."""
+        request = self.backup
+        if self.busy or request is None:
+            return
+        if not request.passphrase:
+            request.message = "Enter the backup passphrase."
+            return
+        if request.exporting and request.passphrase != request.confirmation:
+            request.message = "The passphrases do not match."
+            return
+        passphrase = request.passphrase
+        request.clear_passphrase()
+        progress = "Encrypting the account backup…" if request.exporting else "Restoring accounts…"
+        request.message = progress
+
+        def operation():
+            """Run encryption or restore off the UI thread and refresh restored accounts."""
+            store = self.application.store
+            if request.exporting:
+                return export_backup(store, request.path, passphrase), None
+            result = import_backup(store, request.path, passphrase)
+            try:
+                accounts = self.manage("list_accounts")
+            except (MailError, OSError):
+                accounts = None
+            return result, accounts
+
+        def completed(outcome):
+            """Publish a committed operation and report any separate follow-up.
+
+            Args:
+                outcome: Backup result and fresh account snapshots when available.
+            """
+            result, accounts = outcome
+            self.close_backup()
+            count = result["accounts"]
+            if request.exporting:
+                self.notice = f"Encrypted backup saved with {count} account(s)."
+                if result["temporary_cleanup_pending"]:
+                    self.notice += " A temporary encrypted copy remains in the destination folder."
+                return
+            self.apply_cleanup(result)
+            self.notice = f"Restored {count} account(s)."
+            if accounts is None:
+                self.notice += " Refresh to show the restored accounts."
+            else:
+                self.accounts = tuple(accounts)
+            if result["microsoft_signin_required"]:
+                self.notice += " Sign in again to your Microsoft accounts."
+
+        def failed(detail):
+            """Keep the prompt available for another explicitly requested attempt.
+
+            Args:
+                detail: Safe error text from the backup implementation.
+            """
+            request.message = detail
+
+        self.run(progress, operation, completed, failed=failed)
 
     def refresh_activity(self):
         """Read status without taking over the editor's operation state."""

@@ -251,6 +251,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.model = model
         self.tray = None
         self.about_window = None
+        self.backup_window = None
+        self.backup_chooser = None
         self.quitting = False
         self.fields = {}
         self.section_binding = None
@@ -327,6 +329,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         model.connect("notify::checked", self.render_accounts)
         model.connect("notify::draft", self.render_editor)
         model.connect("notify::flow", self.render_signin)
+        model.connect("notify::backup", self.render_backup)
         model.connect("notify::error-field", self.focus_error)
         self.connect("close-request", self.close_requested)
         self.render_accounts()
@@ -386,6 +389,14 @@ class SetupWindow(Gtk.ApplicationWindow):
         if accounts:
             actions.append(button("Test all", "Check saved connections and sign-in in order. No mail is read or sent.",
                                   self.model.check_all))
+        menu = Gtk.Popover()
+        backup_actions = Gtk.Box(spacing=8, margin_top=8, margin_bottom=8, margin_start=8, margin_end=8)
+        for title, exporting in (("Export accounts", True), ("Import accounts", False)):
+            backup_actions.append(button(title, f"{title} using an encrypted backup file.",
+                                         lambda exporting=exporting: self.choose_backup_file(menu, exporting)))
+        menu.set_child(backup_actions)
+        actions.append(describe(Gtk.MenuButton(label="Backups", popover=menu),
+                                "Backups", "Export or import configured mailboxes using an encrypted file."))
         self.account_list.append(actions)
 
         if not accounts and not self.model.draft:
@@ -840,6 +851,95 @@ class SetupWindow(Gtk.ApplicationWindow):
                               lambda: self.show_text("Codex prompts", ACCOUNT_PROMPT + "\n\n" + TROUBLESHOOTING_PROMPT)))
         page.append(actions)
         self.add_page(page, "troubleshooting", "Troubleshooting")
+
+    def choose_backup_file(self, menu, exporting):
+        """Open a native file chooser for an explicitly requested backup.
+
+        Args:
+            menu: Native Backups popover to dismiss before the chooser opens.
+            exporting: Whether to choose a new output file or an existing backup.
+        """
+        menu.popdown()
+        if self.backup_chooser is not None:
+            return
+        title = "Export accounts" if exporting else "Import accounts"
+        action = Gtk.FileChooserAction.SAVE if exporting else Gtk.FileChooserAction.OPEN
+        chooser = Gtk.FileChooserNative.new(title, self, action, "Continue", "Cancel")
+        chooser.set_modal(True)
+        self.backup_chooser = chooser
+        if exporting:
+            chooser.set_current_name("agentinbox.backup")
+
+        def selected(dialog, response):
+            """Forward the chosen local path and dismiss the native chooser.
+
+            Args:
+                dialog: Native chooser emitting its final response.
+                response: GTK response ID from the user's action.
+            """
+            file = dialog.get_file() if response == Gtk.ResponseType.ACCEPT else None
+            dialog.destroy()
+            self.backup_chooser = None
+            if file is not None:
+                self.model.begin_backup(file.get_path(), exporting=exporting)
+
+        chooser.connect("response", selected)
+        chooser.show()
+
+    def render_backup(self, model, _property):
+        """Show a masked passphrase form bound to the current backup request.
+
+        Args:
+            model: Configuration model holding the active backup request.
+            _property: Metadata for the changed request property.
+        """
+        if self.backup_window is not None:
+            self.backup_window.destroy()
+            self.backup_window = None
+        request = model.backup
+        if request is None:
+            return
+        action = "Export accounts" if request.exporting else "Import accounts"
+        window, body = self.detail_window(action, 500)
+        self.backup_window = window
+        body.append(label(request.path.name, heading=True))
+        body.append(label("Choose a backup passphrase of at least 12 characters." if request.exporting
+                          else "Enter the backup passphrase. Restored Microsoft accounts need a new sign-in."))
+        fields = column(8)
+        for name, caption in (("passphrase", "Backup passphrase"), ("confirmation", "Confirm passphrase")):
+            entry = describe(Gtk.PasswordEntry(placeholder_text=caption), caption)
+            entry.get_delegate().set_max_length(1024)
+            request.bind_property(name, entry, "text", TWO_WAY)
+            fields.append(entry)
+            if not request.exporting:
+                break
+        body.append(fields)
+        actions = Gtk.Box(spacing=8)
+        submit = button(action, "Run the selected account backup operation.", model.run_backup)
+        submit.add_css_class("suggested-action")
+        actions.append(submit)
+        actions.append(button("Cancel", "Close the backup prompt and discard the passphrase.", model.close_backup))
+        body.append(actions)
+        for group in (fields, actions):
+            model.bind_property("busy", group, "sensitive", SYNC | GObject.BindingFlags.INVERT_BOOLEAN)
+
+        status = label()
+        request.bind_property("message", status, "label", SYNC)
+        body.append(status)
+
+        def close_requested(_window):
+            """Forward the title bar close button to the model.
+
+            Args:
+                _window: Owned backup passphrase window being closed.
+            """
+            model.close_backup()
+            return True
+
+        window.connect("close-request", close_requested)
+        window.set_default_widget(submit)
+        window.present()
+        fields.get_first_child().grab_focus()
 
     def show_about(self):
         """Open or focus the dedicated About window from setup or the tray."""

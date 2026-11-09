@@ -12,7 +12,7 @@ On a Debian-based desktop with Python 3.11 or newer and GTK 4.8 or newer, instal
 sudo apt install ./agentinbox-engine_*_all.deb ./agentinbox_*_all.deb
 ```
 
-Open **AgentInbox** from the application menu or run `agentinbox-setup` as your desktop user. Choose **Add account**, pick a provider and enter your email address. In **Read mail**, enter your sign-in details and check the connection to discover folders. Use **Sign in with Microsoft** for Outlook.com or Microsoft 365. For a new account, **Configure a sending server** starts checked in **Send mail**. Fill in the sending server details or clear **Configure a sending server** to skip SMTP. Turn on **Allow sending** only if you want your assistant to send when you ask. Use **Connect Codex** to register the local MCP entry or copy the connection settings.
+Open **AgentInbox** from the application menu or run `agentinbox-setup` as your desktop user. Choose **Add account**, pick a provider and enter your email address. In **Read mail**, enter your sign-in details and check the connection to discover folders. For Outlook.com or Microsoft 365, choose **Sign in with Microsoft**. In the centered prompt, copy the code and choose **OK · Open Microsoft**. Enter the code on Microsoft's page, then return to AgentInbox. Use **Cancel** to return to settings without completing the sign-in. For a new account, **Configure a sending server** starts checked in **Send mail**. Fill in the sending server details or clear **Configure a sending server** to skip SMTP. Turn on **Allow sending** only if you want your assistant to send when you ask. Use **Connect Codex** to register the local MCP entry or copy the connection settings.
 
 To build the packages from a checkout, install `fakeroot` and `desktop-file-utils`. From the repository root, run:
 
@@ -21,6 +21,12 @@ fakeroot python3 -B scripts/build-linux-deb.py
 ```
 
 The build writes both packages and their SHA-256 checksums to `artifacts/linux-deb/<version>/`. They use the system Python. To run GTK directly from source, install `python3-gi` and `gir1.2-gtk-4.0`, then run `PYTHONPATH=python /usr/bin/python3 -B -m agentinbox_gtk.gui` from the checkout.
+
+## Back up your accounts
+
+Open **Accounts → Backups → Export accounts**. Choose a new backup filename, then enter and confirm a passphrase. The file contains your account settings, folder selections, permissions and saved server passwords in encrypted form.
+
+In an empty AgentInbox profile, choose **Accounts → Backups → Import accounts**, select the file and enter its passphrase. Sign in again to any restored Microsoft accounts. See the [backup command reference](CLI_REFERENCE.md#back-up-and-restore-accounts) for using a separate profile or the terminal.
 
 ## Use the tray
 

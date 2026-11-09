@@ -1,6 +1,6 @@
 # Latest update
 
-## 2.0.8
+## 2.0.9
 
-- Show color provider images in the Linux provider picker, saved account picker and account editor.
-- Enable SMTP configuration for new Linux accounts and keep sending permission off until you turn it on.
+- Show Microsoft sign-in in a centered Linux dialog with a larger code and a blurred backdrop.
+- Export encrypted backups and restore accounts from the Linux settings window.
