@@ -90,7 +90,7 @@ def button(text, tooltip, action):
         tooltip: Explanation of the action.
         action: No-argument callback.
     """
-    widget = describe(Gtk.Button(label=text), text, tooltip)
+    widget = describe(Gtk.Button(label=text, halign=Gtk.Align.START), text, tooltip)
     widget.connect("clicked", lambda _button: action())
     return widget
 
@@ -163,6 +163,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         super().__init__(application=app, title="AgentInbox", default_width=850, default_height=750)
         self.model = model
         self.tray = None
+        self.about_window = None
         self.quitting = False
         self.fields = {}
         root = column()
@@ -173,8 +174,12 @@ class SetupWindow(Gtk.ApplicationWindow):
         root.append(label("Connect your mailboxes and selected folders to your AI assistant through one MCP connection."))
 
         self.pages = Gtk.Stack(vexpand=True)
-        nav = Gtk.StackSwitcher(stack=self.pages, halign=Gtk.Align.START)
-        root.append(nav)
+        nav = Gtk.StackSwitcher(stack=self.pages, halign=Gtk.Align.START, hexpand=True)
+        navigation = Gtk.Box(spacing=8)
+        navigation.append(nav)
+        navigation.append(button("About", "Open information about AgentInbox in a separate window.",
+                                 self.show_about))
+        root.append(navigation)
         root.append(self.pages)
         notice = label(selectable=True)
         model.bind_property("notice", notice, "label", SYNC)
@@ -191,9 +196,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.accounts_page()
         self.assistant_page()
         self.troubleshooting_page()
-        self.about_page()
         tab = nav.get_first_child()
-        for tab_name in ("Accounts", "Connect Codex", "Troubleshooting", "About"):
+        for tab_name in ("Accounts", "Connect Codex", "Troubleshooting"):
             describe(tab, tab_name, f"Open the {tab_name} page")
             tab = tab.get_next_sibling()
 
@@ -602,7 +606,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         page = column()
         page.append(label("Connect your assistant", heading=True))
         page.append(label("Register AgentInbox once. Your assistant can then use all enabled accounts and selected folders in this profile."))
-        self.assistant_actions = column()
+        self.assistant_actions = Gtk.Box(spacing=8)
         self.assistant_actions.append(button("Check Codex settings", "Inspect the user-level AgentInbox MCP entry.",
                                              self.model.check_codex))
         self.assistant_actions.append(button("Connect or update Codex", "Use the local Codex CLI to register this profile.",
@@ -633,7 +637,7 @@ class SetupWindow(Gtk.ApplicationWindow):
                                     "@AgentInbox Check whether the local AgentInbox MCP connection is loaded and its tools are available. "
                                     "If available, list the shared accounts and selected folders. If it fails, report the exact safe error and the next check. "
                                     "Do not read or send email, or request any passwords or sign-in codes."))
-        self.diagnostic_actions = column()
+        self.diagnostic_actions = Gtk.Box(spacing=8)
         self.diagnostic_actions.append(button("Check local setup", "Check local profile settings, TLS and keyring prerequisites.",
                                               self.model.check_profile))
         self.diagnostic_actions.append(button("Check keyring access", "Store, read and remove one disposable protected value.",
@@ -644,16 +648,27 @@ class SetupWindow(Gtk.ApplicationWindow):
         page.append(result)
         self.add_page(page, "troubleshooting", "Troubleshooting")
 
-    def about_page(self):
-        """Display product attribution and maintained documentation links."""
-        page = column()
-        page.append(label(f"AgentInbox {__version__}", heading=True))
-        page.append(label("I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contributors."))
-        page.append(link("AgentInbox source", REPOSITORY))
-        page.append(link("Linux setup guide", f"{REPOSITORY}/blob/main/docs/LINUX_SETUP.md"))
-        page.append(link("Privacy", f"{REPOSITORY}/blob/main/docs/PRIVACY.md"))
-        page.append(link("Terms", f"{REPOSITORY}/blob/main/docs/TERMS.md"))
-        self.add_page(page, "about", "About")
+    def show_about(self):
+        """Open or focus the dedicated About window from setup or the tray."""
+        if self.about_window is None:
+            window = Gtk.Window(title="About AgentInbox", transient_for=self,
+                                destroy_with_parent=True, hide_on_close=True, resizable=False,
+                                default_width=480)
+            body = column()
+            for side in ("top", "bottom", "start", "end"):
+                body.set_property(f"margin-{side}", 20)
+            body.append(label(f"AgentInbox {__version__}", heading=True))
+            body.append(label("I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contributors."))
+
+            links = Gtk.Box(spacing=8)
+            links.append(link("Source code", REPOSITORY))
+            links.append(link("Linux setup guide", f"{REPOSITORY}/blob/main/docs/LINUX_SETUP.md"))
+            links.append(link("Privacy", f"{REPOSITORY}/blob/main/docs/PRIVACY.md"))
+            links.append(link("Terms", f"{REPOSITORY}/blob/main/docs/TERMS.md"))
+            body.append(links)
+            window.set_child(body)
+            self.about_window = window
+        self.about_window.present()
 
     def copy_block(self, title, text):
         """Show selectable plain text and an explicit clipboard action.
@@ -663,10 +678,14 @@ class SetupWindow(Gtk.ApplicationWindow):
             text: Exact text shown and copied on request.
         """
         block = column(5)
-        block.append(label(title, heading=True))
-        block.append(label(text, selectable=True))
+        header = Gtk.Box(spacing=8)
+        heading = label(title, heading=True)
+        heading.set_hexpand(True)
+        header.append(heading)
         action = f"Copy {title.lower()}"
-        block.append(button(action, f"Copy the {title.lower()} to the clipboard.", lambda: self.copy(text)))
+        header.append(button(action, f"Copy the {title.lower()} to the clipboard.", lambda: self.copy(text)))
+        block.append(header)
+        block.append(label(text, selectable=True))
         return block
 
     def copy(self, text):
@@ -749,9 +768,9 @@ def main(argv=None):
         Args:
             application: GTK application emitting activation.
         """
-        windows = application.get_windows()
-        if windows:
-            windows[0].present()
+        existing = next((window for window in application.get_windows() if isinstance(window, SetupWindow)), None)
+        if existing is not None:
+            existing.present()
             return
         window = SetupWindow(application, model)
         theme = Gtk.IconTheme.get_for_display(window.get_display())
@@ -761,7 +780,7 @@ def main(argv=None):
             "Accounts": lambda: window.present_page("accounts"),
             "Connect Codex": lambda: window.present_page("assistant"),
             "Troubleshooting": lambda: window.present_page("troubleshooting"),
-            "About": lambda: window.present_page("about"),
+            "About": window.show_about,
             "Exit AgentInbox": window.quit_from_tray,
         })
         model.refresh_activity()
