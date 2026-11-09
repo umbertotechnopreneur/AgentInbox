@@ -216,6 +216,9 @@ class AccountDraft(GObject.Object):
 class Configuration(GObject.Object):
     """Own the active draft, public account snapshots and serialized local work."""
 
+    page = GObject.Property(type=str, default="accounts")
+    editor_section = GObject.Property(type=str, default="account")
+    folder_summary = GObject.Property(type=str, default="")
     activity = GObject.Property(type=object)
     accounts = GObject.Property(type=object)
     draft = GObject.Property(type=object)
@@ -248,6 +251,68 @@ class Configuration(GObject.Object):
         self.checked = frozenset()
         self.stop = Event()
         self._poll_source = 0
+        self.connect("notify::draft", self._update_folder_summary)
+
+    def new_account(self):
+        """Start a fresh account draft on its identity section."""
+        self.editor_section = "account"
+        self.draft = AccountDraft()
+
+    def select_account(self, identity):
+        """Start editing a saved public snapshot.
+
+        Args:
+            identity: Saved connection ID, or an empty string to clear the selection.
+        """
+        if not identity:
+            self.close_editor()
+            return
+        account = next(item for item in self.accounts if item["id"] == identity)
+        self.editor_section = "account"
+        self.draft = AccountDraft(account)
+
+    def close_editor(self):
+        """Discard the active draft after an explicit close action."""
+        self.draft = None
+
+    def select_provider(self, identity):
+        """Apply the requested provider and publish the resulting draft.
+
+        Args:
+            identity: Provider ID from the shared preset catalog.
+        """
+        self.draft.select_provider(identity, self.presets, self.client_id)
+        self.notify("draft")
+
+    def select_protocol(self, protocol):
+        """Apply a protocol and publish the resulting draft.
+
+        Args:
+            protocol: Incoming IMAP or POP3 protocol chosen by the user.
+        """
+        self.draft.select_protocol(protocol, self.presets)
+        self.notify("draft")
+
+    def choose_folder(self, name, selected):
+        """Apply a folder selection and publish its current value.
+
+        Args:
+            name: Exact folder name reported by the engine.
+            selected: Requested sharing state from the folder control.
+        """
+        if not self.draft.choose_folder(name, selected, self.max_folders):
+            self.notice = f"Choose up to {self.max_folders} folders for this account."
+        self._update_folder_summary()
+        return name in self.draft.folders
+
+    def _update_folder_summary(self, *_change):
+        """Publish the selected count as a projection of the current draft.
+
+        Args:
+            *_change: Optional notification arguments after draft replacement.
+        """
+        self.folder_summary = (f"{len(self.draft.folders)} of {self.max_folders} folders selected"
+                               if self.draft else "")
 
     def refresh_activity(self):
         """Read status without taking over the editor's operation state."""

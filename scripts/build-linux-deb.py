@@ -77,7 +77,7 @@ def engine_files(stage):
 
 
 def setup_files(stage):
-    """Stage the GTK adapter, desktop entry and existing application icon.
+    """Stage the GTK adapter, desktop entry and approved brand assets.
 
     Args:
         stage: Graphical setup package staging directory.
@@ -101,6 +101,8 @@ def setup_files(stage):
           "Categories=Network;Email;\n")
     write(stage, f"usr/share/icons/hicolor/512x512/apps/{APP_ID}.png",
           ROOT / "resources/agentinbox-logo-512-safe.png")
+    write(stage, f"{LIB}/vibeware/vibeware-logo.png", ROOT / "resources/vibeware/vibeware-logo.png")
+    write(stage, "usr/share/doc/agentinbox/vibeware-LICENSE", ROOT / "resources/vibeware/LICENSE")
 
 
 def package(work, name, version, dependencies, description, stage_files):

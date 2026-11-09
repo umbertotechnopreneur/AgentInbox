@@ -35,7 +35,7 @@ from agentinbox import __version__
 from agentinbox.application import MailApplication
 from agentinbox.config import data_directory
 from agentinbox.errors import MailError
-from .model import AccountDraft, Configuration
+from .model import Configuration
 from .tray import APP_ID, Tray
 from agentinbox.terminal_setup import PROVIDER_HELP
 
@@ -43,6 +43,12 @@ SYNC = GObject.BindingFlags.SYNC_CREATE
 TWO_WAY = SYNC | GObject.BindingFlags.BIDIRECTIONAL
 SECURITY = {"tls": "TLS", "starttls": "STARTTLS"}
 REPOSITORY = "https://github.com/umbertotechnopreneur/AgentInbox"
+ACCOUNT_PROMPT = "@AgentInbox Which email accounts and selected folders can you access through AgentInbox?"
+TROUBLESHOOTING_PROMPT = (
+    "@AgentInbox Check whether the local AgentInbox MCP connection is loaded and its tools are available. "
+    "If available, list the shared accounts and selected folders. If it fails, report the exact safe error and the next check. "
+    "Do not read or send email, or request any passwords or sign-in codes."
+)
 
 
 def column(spacing=10):
@@ -107,7 +113,7 @@ def link(text, url):
     return widget
 
 
-def choice(options, selected, name, change):
+def choice(options, selected, name, change, *, compact=False):
     """Render a native dropdown and forward the selected key.
 
     Args:
@@ -115,10 +121,37 @@ def choice(options, selected, name, change):
         selected: Current key, or None to leave the dropdown unselected.
         name: Accessible name and tooltip.
         change: Callback accepting a selected key.
+        compact: Ellipsize long names while retaining the full search text and tooltip.
     """
     keys = list(options)
     widget = describe(Gtk.DropDown.new_from_strings(list(options.values())), name)
     widget.set_selected(keys.index(selected) if selected in options else Gtk.INVALID_LIST_POSITION)
+    if compact:
+        factory = Gtk.SignalListItemFactory()
+
+        def setup(_factory, item):
+            """Create a bounded label for each recycled dropdown item.
+
+            Args:
+                _factory: Native list-item factory emitting setup.
+                item: Reusable dropdown item to equip with a label.
+            """
+            item.set_child(Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END, max_width_chars=36))
+
+        def bind(_factory, item):
+            """Render the full saved account caption and its tooltip.
+
+            Args:
+                _factory: Native list-item factory emitting bind.
+                item: Dropdown item currently associated with a saved account caption.
+            """
+            text = item.get_item().get_string()
+            item.get_child().set_label(text)
+            item.get_child().set_tooltip_text(text)
+
+        factory.connect("setup", setup)
+        factory.connect("bind", bind)
+        widget.set_factory(factory)
 
     def changed(dropdown, _property):
         """Forward only a valid selection.
@@ -160,42 +193,64 @@ class SetupWindow(Gtk.ApplicationWindow):
             app: Owning GTK application instance.
             model: Observable configuration state for the selected profile.
         """
-        super().__init__(application=app, title="AgentInbox", default_width=850, default_height=750)
+        super().__init__(application=app, title="AgentInbox", default_width=880, default_height=590)
         self.model = model
         self.tray = None
         self.about_window = None
         self.quitting = False
         self.fields = {}
-        root = column()
+        self.section_binding = None
+        root = column(14)
         for side in ("top", "bottom", "start", "end"):
             root.set_property(f"margin-{side}", 18)
         self.set_child(root)
-        root.append(label("AgentInbox", heading=True))
-        root.append(label("Connect your mailboxes and selected folders to your AI assistant through one MCP connection."))
-
-        self.pages = Gtk.Stack(vexpand=True)
+        self.pages = Gtk.Stack(vexpand=True, vhomogeneous=False)
         nav = Gtk.StackSwitcher(stack=self.pages, halign=Gtk.Align.START, hexpand=True)
         navigation = Gtk.Box(spacing=8)
         navigation.append(nav)
         navigation.append(button("About", "Open information about AgentInbox in a separate window.",
                                  self.show_about))
         root.append(navigation)
+        root.append(Gtk.Separator())
         root.append(self.pages)
-        notice = label(selectable=True)
+        status = Gtk.Box(spacing=8)
+        notice = label()
+        notice.set_lines(2)
+        notice.set_ellipsize(Pango.EllipsizeMode.END)
+        notice.set_hexpand(True)
         model.bind_property("notice", notice, "label", SYNC)
-        root.append(notice)
+        status.append(notice)
+        details = button("Details", "Read the complete status message.",
+                         lambda: self.show_text("Operation details", self.model.notice))
+        status.append(details)
+        root.append(status)
         cleanup = button("Retry protected-data cleanup", "Retry removing retired credentials from your keyring.",
                          model.retry_cleanup)
         model.bind_property("cleanup-pending", cleanup, "visible", SYNC)
-        root.append(cleanup)
+        status.append(cleanup)
         stop = button("Stop after this account", "Finish the current connection check, then stop checking saved accounts.",
                       model.stop.set)
         model.bind_property("can-stop", stop, "visible", SYNC)
-        root.append(stop)
+        status.append(stop)
+
+        def update_notice(_model, _property):
+            """Show the status row only while the model has something to display.
+
+            Args:
+                _model: Configuration model emitting the status change.
+                _property: Metadata for the changed status property.
+            """
+            details.set_visible(bool(model.notice))
+            status.set_visible(bool(model.notice or model.cleanup_pending or model.can_stop))
+
+        for field in ("notice", "cleanup-pending", "can-stop"):
+            model.connect(f"notify::{field}", update_notice)
+        update_notice(model, None)
 
         self.accounts_page()
         self.assistant_page()
         self.troubleshooting_page()
+        model.bind_property("page", self.pages, "visible-child-name", TWO_WAY)
         tab = nav.get_first_child()
         for tab_name in ("Accounts", "Connect Codex", "Troubleshooting"):
             describe(tab, tab_name, f"Open the {tab_name} page")
@@ -214,25 +269,23 @@ class SetupWindow(Gtk.ApplicationWindow):
         model.reload()
 
     def add_page(self, content, name, title):
-        """Add one scrollable page with its content anchored to the top.
+        """Add one settings page directly to the navigation stack.
 
         Args:
             content: Page's native vertical layout.
             name: Stable navigation ID.
             title: Visible navigation tab label.
         """
-        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=content)
-        content.set_valign(Gtk.Align.START)
-        content.set_margin_top(10)
-        content.set_margin_end(10)
-        self.pages.add_titled(scroller, name, title)
+        self.pages.add_titled(content, name, title)
 
     def accounts_page(self):
         """Build saved-account controls and slots for the draft and device flow."""
-        page = column()
-        self.account_actions = column()
-        self.account_list = column(5)
-        self.editor = column()
+        page = column(12)
+        self.account_actions = column(14)
+        self.account_actions.set_vexpand(True)
+        self.account_list = column(8)
+        self.editor = column(12)
+        self.editor.set_vexpand(True)
         self.signin = column()
         self.signin_actions = None
         self.account_actions.append(self.account_list)
@@ -249,40 +302,32 @@ class SetupWindow(Gtk.ApplicationWindow):
         """
         self.clear(self.account_list)
         accounts = self.model.accounts
+        actions = Gtk.Box(spacing=8)
         if accounts:
-            options = {}
+            options = {"": "Select a saved account"}
             for account in accounts:
                 checked = " ✓" if account["id"] in self.model.checked else ""
                 options[account["id"]] = f"{account['label']} · {account['email']}{checked}"
             draft = self.model.draft
-            selection = draft.identity if draft else None
-            self.account_list.append(label("Saved connections", heading=True))
-            picker = choice(options, selection, "Choose a saved account to edit", self.select_account)
+            selection = draft.identity if draft else ""
+            picker = choice(options, selection, "Choose a saved account to edit",
+                            self.model.select_account, compact=True)
             picker.set_enable_search(True)
-            self.account_list.append(picker)
-        else:
-            self.account_list.append(label("Add your first mailbox from Gmail, Microsoft, iCloud, GoDaddy or another compatible provider."))
-
-        actions = Gtk.Box(spacing=8)
-        actions.append(button("Add account", "Open a new connection form.", self.new_account))
+            actions.append(picker)
+        add = button("Add account", "Open a new connection form.", self.model.new_account)
+        if not self.model.draft:
+            add.add_css_class("suggested-action")
+        actions.append(add)
         actions.append(button("Refresh", "Reload saved accounts and close the current editor.", self.model.reload))
         if accounts:
             actions.append(button("Test all", "Check saved connections and sign-in in order. No mail is read or sent.",
                                   self.model.check_all))
         self.account_list.append(actions)
 
-    def select_account(self, identity):
-        """Start an editor from an explicitly selected public snapshot.
-
-        Args:
-            identity: Saved account ID chosen in the selector.
-        """
-        account = next(item for item in self.model.accounts if item["id"] == identity)
-        self.model.draft = AccountDraft(account)
-
-    def new_account(self):
-        """Open an empty editor only after the user asks to add an account."""
-        self.model.draft = AccountDraft()
+        if not accounts and not self.model.draft:
+            self.account_list.append(label("Connect your first mailbox", heading=True))
+            self.account_list.append(label("Add Gmail, Microsoft, iCloud, GoDaddy or another compatible mailbox. "
+                                           "Choose which folders to share through one MCP connection."))
 
     def render_editor(self, *_change):
         """Bind the active draft to the three native editor tabs.
@@ -291,39 +336,44 @@ class SetupWindow(Gtk.ApplicationWindow):
             *_change: Optional model notification arguments.
         """
         draft = self.model.draft
-        previous_tab = getattr(self, "tabs", None)
-        tab_index = previous_tab.get_current_page() if previous_tab and self.bound_draft is draft else 0
-        if draft is not getattr(self, "bound_draft", None):
-            self.render_accounts()
-        self.bound_draft = draft
+        self.render_accounts()
+        if self.section_binding:
+            self.section_binding.unbind()
+            self.section_binding = None
         self.clear(self.editor)
         self.fields.clear()
         if not draft:
-            self.tabs = None
             return
-        self.editor.append(label("Edit connection" if draft.identity else "New connection", heading=True))
-        self.tabs = Gtk.Notebook()
-        for title, content in (
-            ("Account", self.identity_fields(draft)),
-            ("Read mail", self.incoming_fields(draft)),
-            ("Send mail", self.sending_fields(draft)),
+        sections = Gtk.Stack(vexpand=True, vhomogeneous=False)
+        tabs = Gtk.StackSwitcher(stack=sections)
+        header = Gtk.Box(spacing=12)
+        heading = label("Edit connection" if draft.identity else "New connection", heading=True)
+        heading.set_hexpand(True)
+        header.append(heading)
+        header.append(tabs)
+        self.editor.append(header)
+
+        for name, title, content in (
+            ("account", "Account", self.identity_fields(draft)),
+            ("incoming", "Read mail", self.incoming_fields(draft)),
+            ("smtp", "Send mail", self.sending_fields(draft)),
         ):
-            content.set_margin_top(12)
-            content.set_margin_bottom(12)
-            content.set_margin_start(12)
-            content.set_margin_end(12)
-            tab = label(title)
+            content.set_valign(Gtk.Align.START)
+            sections.add_titled(content, name, title)
+        tab = tabs.get_first_child()
+        for title in ("Account", "Read mail", "Send mail"):
             describe(tab, title, f"Open the {title} settings")
-            self.tabs.append_page(content, tab)
-        self.editor.append(self.tabs)
-        self.tabs.set_current_page(tab_index)
+            tab = tab.get_next_sibling()
+        self.section_binding = self.model.bind_property("editor-section", sections, "visible-child-name", TWO_WAY)
+        self.editor.append(sections)
+        self.editor.append(Gtk.Separator())
 
         actions = Gtk.Box(spacing=8)
         save = button("Save changes", "Save the current account and its sharing permissions.", self.model.save)
         save.add_css_class("suggested-action")
         actions.append(save)
         actions.append(button("Close editor", "Discard unsaved changes and close the account form.",
-                              lambda: self.model.set_property("draft", None)))
+                              self.model.close_editor))
         if draft.identity:
             actions.append(button("Remove account", "Remove local access and the saved sign-in for this account.",
                                   lambda: self.confirm("Remove this account?",
@@ -340,18 +390,16 @@ class SetupWindow(Gtk.ApplicationWindow):
         content = column()
         providers = {key: preset["label"] for key, preset in self.model.presets.items()}
 
-        def provider_changed(identity):
-            """Apply an explicitly chosen preset and refresh its visible fields.
+        provider = choice(providers, draft.preset, "Email provider", self.model.select_provider)
+        self.fields["preset"] = ("account", provider)
+        grid = Gtk.Grid(column_spacing=12, row_spacing=8)
+        grid.attach(Gtk.Label(label="Provider", xalign=0), 0, 0, 1, 1)
+        grid.attach(provider, 1, 0, 1, 1)
+        self.entry(grid, 1, "Email address", draft, "email", "email", "account", 254)
+        self.entry(grid, 2, "Connection name", draft, "label", "label", "account", 100,
+                   placeholder="Defaults to your email address")
+        content.append(grid)
 
-            Args:
-                identity: Provider ID from the shared engine catalog.
-            """
-            draft.select_provider(identity, self.model.presets, self.model.client_id)
-            self.render_editor()
-
-        provider = choice(providers, draft.preset, "Email provider", provider_changed)
-        self.fields["preset"] = (0, provider)
-        content.append(provider)
         preset = self.model.presets[draft.preset]
         if draft.microsoft and not preset.get("microsoft_tenant"):
             content.append(label("Sign in on Microsoft's website to authorize this mailbox."))
@@ -362,18 +410,14 @@ class SetupWindow(Gtk.ApplicationWindow):
         if draft.preset in PROVIDER_HELP:
             content.append(link(f"{preset['label']} sign-in help", PROVIDER_HELP[draft.preset]))
 
-        grid = Gtk.Grid(column_spacing=12, row_spacing=8)
-        self.entry(grid, 0, "Email address", draft, "email", "email", 0, 254)
-        self.entry(grid, 1, "Connection name", draft, "label", "label", 0, 100,
-                   placeholder="Defaults to your email address")
-        content.append(grid)
-        content.append(toggle(draft, "read-enabled", "Allow reading",
+        actions = Gtk.Box(spacing=8)
+        actions.append(toggle(draft, "read-enabled", "Allow reading",
                               "Let your assistant search and read in the folders you choose."))
         if draft.microsoft:
-            content.append(label("Microsoft sign-in is saved." if draft.microsoft_connected
-                                 else "Sign in to authorize reading and any enabled sending."))
-            content.append(button("Sign in with Microsoft", "Save these settings and request a code for Microsoft's website.",
+            actions.append(button("Sign in with Microsoft", "Save these settings and request a code for Microsoft's website.",
                                   lambda: self.model.save(sign_in=True)))
+            actions.append(label("Sign-in saved" if draft.microsoft_connected else "Sign-in required"))
+        content.append(actions)
         return content
 
     def incoming_fields(self, draft):
@@ -383,57 +427,48 @@ class SetupWindow(Gtk.ApplicationWindow):
             draft: Current observable account editor.
         """
         content = column()
-        protocols = {protocol: protocol.upper() for protocol in draft.protocols(self.model.presets)}
-
-        def protocol_changed(protocol):
-            """Switch protocol and show its fresh endpoint defaults.
-
-            Args:
-                protocol: Incoming IMAP or POP3 protocol.
-            """
-            draft.select_protocol(protocol, self.model.presets)
-            self.render_editor()
-
-        protocol = choice(protocols, draft.protocol, "Incoming mail protocol", protocol_changed)
-        self.fields["incoming.protocol"] = (1, protocol)
-        content.append(protocol)
-        content.append(self.endpoint_fields(draft.incoming, "incoming", 1, draft.microsoft))
-        content.append(button("Check connection and get folders", "Check this draft and discover folders without saving or sending.",
+        content.append(self.endpoint_fields(draft.incoming, "incoming", draft))
+        actions = Gtk.Box(spacing=8)
+        actions.append(button("Check connection", "Check this draft and discover folders without saving or sending.",
                               self.model.check_draft))
-        content.append(self.folder_controls(draft))
         if draft.identity:
-            content.append(button("Check reading", "Use saved settings to check a bounded sample read.",
+            actions.append(button("Check reading", "Use saved settings to check a bounded sample read.",
                                   self.model.check_read))
+        if draft.protocol == "imap":
+            folders = button("Choose folders", "Select the IMAP folders to share.", self.show_folders)
+            self.fields["folders"] = ("incoming", folders)
+            actions.append(folders)
+        content.append(actions)
+        if draft.protocol == "pop3":
+            content.append(label("POP3 shares INBOX."))
+        else:
+            summary = label()
+            self.model.bind_property("folder-summary", summary, "label", SYNC)
+            content.append(summary)
+            if draft.available_folders is None:
+                content.append(label("Check the connection to discover folders on the server."))
         return content
 
-    def folder_controls(self, draft):
-        """Display POP3 INBOX or selectable IMAP folders.
-
-        Args:
-            draft: Current account draft and its engine-supplied folder choices.
-        """
-        content = column(5)
-        if draft.protocol == "pop3":
-            content.append(label("POP3 shares INBOX. The server does not expose other folders."))
-            return content
-        maximum = self.model.max_folders
-        count = label(f"{len(draft.folders)} of {maximum} folders selected")
-        content.append(count)
-        if draft.available_folders is None:
-            content.append(label("Check the connection to list the folders available on the server."))
+    def show_folders(self):
+        """Render folder choices in a dedicated dialog for the active draft."""
+        draft = self.model.draft
+        dialog, body = self.detail_window("Choose folders", 540)
+        summary = label()
+        self.model.bind_property("folder-summary", summary, "label", SYNC)
+        body.append(summary)
         choices = column(4)
 
         def selected(widget, name):
-            """Forward one selection and show the shared limit.
+            """Forward a checkbox gesture and reflect the model's accepted value.
 
             Args:
-                widget: Native checkbox emitting the selection.
+                widget: Native checkbox emitting the gesture.
                 name: Exact engine folder name.
             """
-            if not draft.choose_folder(name, widget.get_active(), maximum):
-                widget.set_active(False)
-                self.model.notice = f"Choose up to {maximum} folders for this account."
-            count.set_label(f"{len(draft.folders)} of {maximum} folders selected")
+            active = widget.get_active()
+            accepted = self.model.choose_folder(name, active)
+            if active != accepted:
+                widget.set_active(accepted)
 
         for name in draft.folder_choices():
             missing = draft.available_folders is not None and name not in draft.available_folders
@@ -443,11 +478,10 @@ class SetupWindow(Gtk.ApplicationWindow):
             check.set_child(label(caption))
             check.connect("toggled", selected, name)
             choices.append(check)
-        viewport = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, max_content_height=185,
-                                      propagate_natural_height=True, child=choices)
-        self.fields["folders"] = (1, viewport)
-        content.append(viewport)
-        return content
+        body.append(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, max_content_height=300,
+                                       propagate_natural_height=True, child=choices))
+        body.append(button("Done", "Return to the account editor with the selected folders.", dialog.close))
+        dialog.present()
 
     def sending_fields(self, draft):
         """Build optional SMTP configuration separately from permission to send.
@@ -458,43 +492,52 @@ class SetupWindow(Gtk.ApplicationWindow):
         content = column()
         configure = toggle(draft, "configure-smtp", "Configure a sending server",
                            "Add SMTP settings so you can check the sending connection.")
-        self.fields["smtp.configured"] = (2, configure)
+        self.fields["smtp.configured"] = ("smtp", configure)
         content.append(configure)
         settings = column()
-        settings.append(self.endpoint_fields(draft.smtp, "smtp", 2, draft.microsoft))
-        settings.append(toggle(draft, "send-enabled", "Allow sending",
-                               "Let your assistant send through MCP when you explicitly request it."))
-        settings.append(button("Check sending connection", "Check SMTP sign-in without submitting email or saving changes.",
-                               lambda: self.model.check_draft(smtp_only=True)))
+        settings.append(self.endpoint_fields(draft.smtp, "smtp", draft))
+        actions = Gtk.Box(spacing=8)
+        actions.append(toggle(draft, "send-enabled", "Allow sending",
+                              "Let your assistant send through MCP when you explicitly request it."))
+        actions.append(button("Check sending connection", "Check SMTP sign-in without submitting email or saving changes.",
+                              lambda: self.model.check_draft(smtp_only=True)))
+        settings.append(actions)
         draft.bind_property("configure-smtp", settings, "visible", SYNC)
         content.append(settings)
         return content
 
-    def endpoint_fields(self, endpoint, prefix, tab, microsoft):
-        """Bind native controls to one incoming or outgoing endpoint.
+    def endpoint_fields(self, endpoint, prefix, draft):
+        """Bind a compact desktop grid to an incoming or outgoing endpoint.
 
         Args:
             endpoint: Observable endpoint draft.
-            prefix: Engine field prefix, either incoming or smtp.
-            tab: Zero-based editor tab index for field error navigation.
-            microsoft: Whether the provider uses OAuth instead of a password.
+            prefix: Engine field prefix and editor section, either incoming or smtp.
+            draft: Active account draft supplying protocol and authentication.
         """
         grid = Gtk.Grid(column_spacing=12, row_spacing=8)
-        self.entry(grid, 0, "Server", endpoint, "host", f"{prefix}.host", tab, 255)
-        self.entry(grid, 1, "Port", endpoint, "port", f"{prefix}.port", tab, 5)
+        self.entry(grid, 0, "Server", endpoint, "host", f"{prefix}.host", prefix, 255)
+        self.entry(grid, 0, "Port", endpoint, "port", f"{prefix}.port", prefix, 5, column_index=2)
         security = choice(SECURITY, endpoint.tls, "Connection security",
                           lambda selected: endpoint.set_property("tls", selected))
-        self.fields[f"{prefix}.tls"] = (tab, security)
-        grid.attach(label("Connection security"), 0, 2, 1, 1)
-        grid.attach(security, 1, 2, 1, 1)
-        self.entry(grid, 3, "Sign-in username", endpoint, "username", f"{prefix}.username", tab, 255,
-                   placeholder="Defaults to your email address")
-        if not microsoft:
-            self.entry(grid, 4, "Password or app password", endpoint, "password", f"passwords.{prefix}", tab,
-                       4096, password=True)
+        security.set_halign(Gtk.Align.START)
+        self.fields[f"{prefix}.tls"] = (prefix, security)
+        grid.attach(Gtk.Label(label="Connection security", xalign=0), 0, 1, 1, 1)
+        grid.attach(security, 1, 1, 1, 1)
+        if prefix == "incoming":
+            protocols = {protocol: protocol.upper() for protocol in draft.protocols(self.model.presets)}
+            protocol = choice(protocols, draft.protocol, "Incoming mail protocol", self.model.select_protocol)
+            protocol.set_hexpand(False)
+            self.fields["incoming.protocol"] = (prefix, protocol)
+            grid.attach(Gtk.Label(label="Protocol", xalign=0), 2, 1, 1, 1)
+            grid.attach(protocol, 3, 1, 1, 1)
+        self.entry(grid, 2, "Sign-in username", endpoint, "username", f"{prefix}.username", prefix, 255,
+                   placeholder="Defaults to your email address", span=3)
+        if not draft.microsoft:
+            self.entry(grid, 3, "Password or app password", endpoint, "password", f"passwords.{prefix}", prefix,
+                       4096, password=True, span=3)
         return grid
 
-    def entry(self, grid, row, text, model, field, engine_field, tab, maximum, *, placeholder="", password=False):
+    def entry(self, grid, row, text, model, field, engine_field, tab, maximum, *, placeholder="", password=False, column_index=0, span=1):
         """Attach a labeled, bounded entry bound to an observable field.
 
         Args:
@@ -504,10 +547,12 @@ class SetupWindow(Gtk.ApplicationWindow):
             model: Observable account or endpoint draft.
             field: Model property bound to the entry text.
             engine_field: Validation field path reported by the engine.
-            tab: Zero-based editor tab for the field.
+            tab: Stable editor section name for the field.
             maximum: Maximum number of editable characters.
             placeholder: Optional native hint for a blank entry.
             password: Use the native masked entry when True.
+            column_index: Zero-based grid column for the field label.
+            span: Number of grid columns occupied by the entry.
         """
         if password:
             widget = Gtk.PasswordEntry(show_peek_icon=True, hexpand=True)
@@ -517,8 +562,12 @@ class SetupWindow(Gtk.ApplicationWindow):
         describe(widget, text)
         model.bind_property(field, widget, "text", TWO_WAY)
         self.fields[engine_field] = (tab, widget)
-        grid.attach(label(text), 0, row, 1, 1)
-        grid.attach(widget, 1, row, 1, 1)
+        if column_index:
+            widget.set_width_chars(maximum)
+            widget.set_max_width_chars(maximum)
+            widget.set_hexpand(False)
+        grid.attach(Gtk.Label(label=text, xalign=0), column_index, row, 1, 1)
+        grid.attach(widget, column_index + 1, row, span, 1)
 
     def focus_error(self, _model, _property):
         """Navigate to the field associated with the current safe engine error.
@@ -529,8 +578,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         """
         if target := self.fields.get(self.model.error_field):
             tab, widget = target
-            self.pages.set_visible_child_name("accounts")
-            self.tabs.set_current_page(tab)
+            self.model.page = "accounts"
+            self.model.editor_section = tab
             widget.grab_focus()
 
     def render_signin(self, _model, _property):
@@ -593,7 +642,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             page: GTK stack page key associated with the tray item.
         """
-        self.pages.set_visible_child_name(page)
+        self.model.page = page
         self.present()
 
     def quit_from_tray(self):
@@ -603,9 +652,9 @@ class SetupWindow(Gtk.ApplicationWindow):
 
     def assistant_page(self):
         """Show the registration and separate Codex and MCP check results."""
-        page = column()
-        page.append(label("Connect your assistant", heading=True))
-        page.append(label("Register AgentInbox once. Your assistant can then use all enabled accounts and selected folders in this profile."))
+        page = column(12)
+        page.append(label("Connect Codex", heading=True))
+        page.append(label("One connection gives Codex access to the mailboxes and folders you choose."))
         self.assistant_actions = Gtk.Box(spacing=8)
         self.assistant_actions.append(button("Check Codex settings", "Inspect the user-level AgentInbox MCP entry.",
                                              self.model.check_codex))
@@ -617,35 +666,65 @@ class SetupWindow(Gtk.ApplicationWindow):
                                              self.model.test_startup))
         page.append(self.assistant_actions)
 
-        for field in ("codex-status", "startup-status"):
+        results = Gtk.Grid(column_spacing=12, row_spacing=6)
+        for row, (caption, field) in enumerate((("Codex", "codex-status"), ("Local MCP", "startup-status"))):
             status = label(selectable=True)
             self.model.bind_property(field, status, "label", SYNC)
-            page.append(status)
-        page.append(label("Local startup checks the AgentInbox launcher and its tool definitions. Open a new Codex chat to verify the connection there."))
-        page.append(link("Codex MCP setup guide", "https://learn.chatgpt.com/docs/extend/mcp?surface=cli"))
-        page.append(self.copy_block("Codex command", self.model.codex_command()))
-        page.append(self.copy_block("MCP settings", json.dumps(self.model.connection, indent=2)))
+            results.attach(Gtk.Label(label=caption, xalign=0), 0, row, 1, 1)
+            results.attach(status, 1, row, 1, 1)
+        page.append(results)
+        page.append(label("After connecting, open a new Codex chat to check access."))
+        page.append(Gtk.Separator())
+        page.append(label("Manual setup", heading=True))
+        actions = Gtk.Box(spacing=8)
+        actions.append(button("Copy Codex command", "Copy the command for the selected profile.",
+                              lambda: self.copy(self.model.codex_command())))
+        actions.append(button("Copy MCP settings", "Copy the MCP configuration for the selected profile.",
+                              lambda: self.copy(json.dumps(self.model.connection, indent=2))))
+        actions.append(button("View details", "Read the command and complete MCP configuration.",
+                              lambda: self.show_text("Connection details", self.model.codex_command() + "\n\n"
+                                                     + json.dumps(self.model.connection, indent=2), monospace=True)))
+        actions.append(link("Setup guide", "https://learn.chatgpt.com/docs/extend/mcp?surface=cli"))
+        page.append(actions)
         self.add_page(page, "assistant", "Connect Codex")
 
     def troubleshooting_page(self):
         """Offer safe Codex prompts and the existing local profile diagnostics."""
-        page = column()
+        page = column(12)
         page.append(label("Troubleshooting", heading=True))
-        page.append(self.copy_block("Account access prompt",
-                                    "@AgentInbox Which email accounts and selected folders can you access through AgentInbox?"))
-        page.append(self.copy_block("Troubleshooting prompt",
-                                    "@AgentInbox Check whether the local AgentInbox MCP connection is loaded and its tools are available. "
-                                    "If available, list the shared accounts and selected folders. If it fails, report the exact safe error and the next check. "
-                                    "Do not read or send email, or request any passwords or sign-in codes."))
+        page.append(label("Check the local profile, TLS and access to your keyring."))
         self.diagnostic_actions = Gtk.Box(spacing=8)
         self.diagnostic_actions.append(button("Check local setup", "Check local profile settings, TLS and keyring prerequisites.",
                                               self.model.check_profile))
         self.diagnostic_actions.append(button("Check keyring access", "Store, read and remove one disposable protected value.",
                                               lambda: self.model.check_profile(check_storage=True)))
+        result = button("View diagnostic details", "Read the complete local diagnostic result.",
+                        lambda: self.show_text("Diagnostic details", self.model.diagnosis, monospace=True))
+        self.diagnostic_actions.append(result)
+
+        def update_result(model, _property):
+            """Enable the detail action when the model has diagnostic output.
+
+            Args:
+                model: Configuration model emitting a diagnostic result.
+                _property: Metadata for the changed diagnosis property.
+            """
+            result.set_sensitive(bool(model.diagnosis))
+
+        self.model.connect("notify::diagnosis", update_result)
+        result.set_sensitive(bool(self.model.diagnosis))
         page.append(self.diagnostic_actions)
-        result = label(selectable=True)
-        self.model.bind_property("diagnosis", result, "label", SYNC)
-        page.append(result)
+        page.append(Gtk.Separator())
+        page.append(label("Ask Codex", heading=True))
+        page.append(label("Copy a prompt to check which mailboxes Codex can access or investigate a connection problem."))
+        actions = Gtk.Box(spacing=8)
+        actions.append(button("Copy access prompt", "Copy the prompt that lists the accessible mailboxes.",
+                              lambda: self.copy(ACCOUNT_PROMPT)))
+        actions.append(button("Copy troubleshooting prompt", "Copy the prompt that checks the MCP connection.",
+                              lambda: self.copy(TROUBLESHOOTING_PROMPT)))
+        actions.append(button("View prompts", "Read both prompts before copying.",
+                              lambda: self.show_text("Codex prompts", ACCOUNT_PROMPT + "\n\n" + TROUBLESHOOTING_PROMPT)))
+        page.append(actions)
         self.add_page(page, "troubleshooting", "Troubleshooting")
 
     def show_about(self):
@@ -653,40 +732,86 @@ class SetupWindow(Gtk.ApplicationWindow):
         if self.about_window is None:
             window = Gtk.Window(title="About AgentInbox", transient_for=self,
                                 destroy_with_parent=True, hide_on_close=True, resizable=False,
-                                default_width=480)
-            body = column()
+                                default_width=560, default_height=450)
+            body = column(10)
             for side in ("top", "bottom", "start", "end"):
-                body.set_property(f"margin-{side}", 20)
-            body.append(label(f"AgentInbox {__version__}", heading=True))
-            body.append(label("I’m Umberto Giacobbi. I built and maintain AgentInbox, with help from contributors."))
+                body.set_property(f"margin-{side}", 24)
 
-            links = Gtk.Box(spacing=8)
+            package = Path(__file__).resolve().parents[1]
+            resources = package.parent / "resources"
+            theme = Gtk.IconTheme.get_for_display(self.get_display())
+            logo = (Gtk.Image.new_from_icon_name(APP_ID) if theme.has_icon(APP_ID)
+                    else Gtk.Image.new_from_file(str(resources / "agentinbox-logo-512-safe.png")))
+            logo.set_pixel_size(72)
+            body.append(logo)
+            title = Gtk.Label(label="AgentInbox")
+            title.add_css_class("title-1")
+            body.append(title)
+            version = Gtk.Label(label=f"Version {__version__}")
+            version.add_css_class("dim-label")
+            body.append(version)
+            description = Gtk.Label(
+                label="I built AgentInbox so you can connect your mailboxes and share selected folders "
+                      "with your AI assistant through one MCP connection.",
+                wrap=True, justify=Gtk.Justification.CENTER)
+            body.append(description)
+            body.append(Gtk.Label(label="I’m Umberto Giacobbi. I maintain AgentInbox with help from contributors."))
+            body.append(Gtk.Separator())
+
+            mark_path = package / "vibeware/vibeware-logo.png"
+            if not mark_path.is_file():
+                mark_path = resources / "vibeware/vibeware-logo.png"
+            mark = Gtk.Image.new_from_file(str(mark_path))
+            mark.set_pixel_size(68)
+            initiative = link("VibeWare", "https://umbertogiacobbi.biz/vibeware/manifesto")
+            initiative.set_child(mark)
+            initiative.set_tooltip_text("VibeWare · Software built with AI under human direction and responsibility")
+            initiative.set_halign(Gtk.Align.CENTER)
+            body.append(initiative)
+
+            links = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
+            links.append(link("Website", "https://umbertogiacobbi.biz"))
             links.append(link("Source code", REPOSITORY))
-            links.append(link("Linux setup guide", f"{REPOSITORY}/blob/main/docs/LINUX_SETUP.md"))
-            links.append(link("Privacy", f"{REPOSITORY}/blob/main/docs/PRIVACY.md"))
+            links.append(link("Linux setup", f"{REPOSITORY}/blob/main/docs/LINUX_SETUP.md"))
             links.append(link("Terms", f"{REPOSITORY}/blob/main/docs/TERMS.md"))
+            links.append(link("Privacy", f"{REPOSITORY}/blob/main/docs/PRIVACY.md"))
             body.append(links)
             window.set_child(body)
             self.about_window = window
         self.about_window.present()
 
-    def copy_block(self, title, text):
-        """Show selectable plain text and an explicit clipboard action.
+    def detail_window(self, title, width):
+        """Create an owned dialog for optional details.
 
         Args:
-            title: Name of the command, settings, or prompt.
-            text: Exact text shown and copied on request.
+            title: Window title describing the detail or selection.
+            width: Initial width in GTK logical pixels.
         """
-        block = column(5)
-        header = Gtk.Box(spacing=8)
-        heading = label(title, heading=True)
-        heading.set_hexpand(True)
-        header.append(heading)
-        action = f"Copy {title.lower()}"
-        header.append(button(action, f"Copy the {title.lower()} to the clipboard.", lambda: self.copy(text)))
-        block.append(header)
-        block.append(label(text, selectable=True))
-        return block
+        window = Gtk.Window(title=title, transient_for=self, destroy_with_parent=True,
+                            modal=True, default_width=width)
+        body = column(10)
+        for side in ("top", "bottom", "start", "end"):
+            body.set_property(f"margin-{side}", 16)
+        window.set_child(body)
+        return window, body
+
+    def show_text(self, title, text, *, monospace=False):
+        """Display a selectable snapshot in its own detail window.
+
+        Args:
+            title: Window title for the optional details.
+            text: Exact plain text displayed to the user.
+            monospace: Whether to use fixed-width text for technical output.
+        """
+        window, body = self.detail_window(title, 660)
+        viewer = Gtk.TextView(editable=False, cursor_visible=False, monospace=monospace,
+                              wrap_mode=Gtk.WrapMode.WORD_CHAR)
+        viewer.get_buffer().set_text(text)
+        body.append(Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=viewer,
+                                       min_content_height=160, max_content_height=360,
+                                       propagate_natural_height=True, vexpand=True))
+        body.append(button("Close", "Close the details and return to settings.", window.close))
+        window.present()
 
     def copy(self, text):
         """Copy only text explicitly chosen by the user.
