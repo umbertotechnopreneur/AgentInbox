@@ -1,7 +1,7 @@
 # Latest update
 
-## 2.0.4
+## 2.0.5
 
-- Use the Python engine to validate account settings and identify the field that needs attention in Windows setup.
-- Use stable provider IDs and shared preset defaults for Windows and guided terminal setup.
-- Check password-based SMTP settings while incoming settings are still incomplete.
+- Configure accounts, folders, permissions and Microsoft sign-in from the Linux GTK 4 app.
+- Check local MCP startup and connect AgentInbox to Codex from Linux setup.
+- Build local Debian packages for the graphical setup app and the standalone Python engine.

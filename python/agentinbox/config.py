@@ -61,14 +61,14 @@ PRESETS: dict[str, ProviderPreset] = {
                 "smtp": {"host": "smtp-mail.outlook.com", "port": 587, "tls": "starttls"},
                 "authentication_methods": ["password", "microsoft_oauth"],
                 "microsoft_tenant": "consumers",
-                "notice": "Sign in with Microsoft. Windows setup selects this for you when you choose Outlook.com."},
+                "notice": "Sign in with Microsoft using your personal Microsoft account."},
     "microsoft365": {"label": "Microsoft 365", "incoming": {
                          "imap": {"host": "outlook.office365.com", "port": 993, "tls": "tls"},
                          "pop3": {"host": "outlook.office365.com", "port": 995, "tls": "tls"}},
                      "smtp": {"host": "smtp.office365.com", "port": 587, "tls": "starttls"},
                      "authentication_methods": ["password", "microsoft_oauth"],
                      "microsoft_tenant": "organizations",
-                     "notice": "Sign in with Microsoft. Windows setup selects this for you. Your work or school may need to allow mail apps and sending."},
+                     "notice": "Sign in with Microsoft using your work or school account. Your organization may need to allow mail apps and sending."},
 }
 
 

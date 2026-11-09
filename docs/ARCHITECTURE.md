@@ -1,11 +1,11 @@
 # Architecture
 
-AgentInbox has one Python 3.11+ standard-library engine. `MailApplication` owns account policy and mail behavior; MCP, local management and the Windows WinUI 3 configuration app are adapters.
+AgentInbox has one Python 3.11+ standard-library engine. `MailApplication` owns account policy and mail behavior; MCP, local management, WinUI 3 setup on Windows and GTK 4 setup on Linux are adapters.
 
 ```mermaid
 flowchart LR
     Codex <-->|MCP over stdio| Engine[Python MailApplication]
-    Setup[WinUI views] <-->|binding and native events| Model[Observable configuration models]
+    Setup[WinUI and GTK views] <-->|binding and native events| Model[Observable configuration models]
     Model <-->|account and preset JSON contracts| Engine
     Engine --> Settings[Account settings]
     Engine --> Credentials[OS credential store]
@@ -16,10 +16,10 @@ flowchart LR
 
 ## Boundaries
 
-- Windows setup configures accounts, read/send permissions and the Codex connection. It checks connections and optionally one sample read; it does not send mail.
+- The Windows and Linux setup apps configure accounts, read/send permissions and the Codex connection. It checks connections and optionally one sample read; it does not send mail.
 - MCP lists shared accounts, searches and reads mail, sends explicitly requested email and reads its status. It cannot configure accounts, retrieve credentials or enable sending. The client is responsible for interpreting the user's sending instruction; no second AgentInbox approval is required.
 - IMAP selects folders read-only and uses non-marking reads. POP3 exposes one INBOX, no unread flags and header/date filtering; it sends no delete commands. Provider content is untrusted data.
-- Windows presets select passwords/app passwords for Gmail and iCloud, and OAuth2 for Outlook.com and Microsoft 365. The desktop app loads the public Microsoft client ID from shipped `appsettings.json`; saved accounts keep the registration tied to their tokens. No Google OAuth, authentication fallback after failure, old command aliases or schema conversion.
+- Desktop presets select passwords or app passwords for Gmail and iCloud, and OAuth2 for Outlook.com and Microsoft 365. Both apps load the public Microsoft client ID from shipped `appsettings.json`; saved accounts keep the registration tied to their tokens. No Google OAuth, authentication fallback after failure, old command aliases or schema conversion.
 - TLS or mandatory STARTTLS validates certificates and hostnames. Unsupported configuration fails without plaintext or weaker fallback.
 
 ## Configuration and checks
@@ -33,6 +33,8 @@ Views use native bindings for fields, choices, buttons, visibility, status and d
 `MainWindow.xaml.cs` owns window lifetime, navigation and operation notifications. Its partial files separate account-page composition (`MainWindow.Accounts.cs`), assistant setup (`MainWindow.Assistant.cs`) and shared native controls (`MainWindow.Controls.cs`), alongside the existing bindings, validation, sign-in and check adapters. Account identity, incoming and outgoing tabs each have a focused builder; all controls exist before editor bindings are attached.
 
 IMAP and POP3 call `message_content.message_body` after their own bounded message reads. That helper selects the plain-text body or extracts visible HTML text without executing markup or loading resources. Protocol identities, response budgets, attachment metadata and result truncation remain in each transport.
+
+GTK binds the Linux account and endpoint drafts through GObject properties. Its configuration model runs local operations on a worker and publishes safe progress and committed results on the GTK main loop. The draft stays open when you switch pages. GTK is confined to the setup adapter.
 
 Schema 3 JSON contains non-secret settings, including optional `preset` metadata (`custom`, `gmail`, `icloud`, `outlook` or `microsoft365`). The desktop writes the chosen provider on save; readers neither infer nor backfill missing metadata. An unsupported preset fails validation. Windows Credential Manager holds passwords and Microsoft refresh tokens; current-user DPAPI protects temporary sign-in state. Source-only macOS uses Keychain; Linux uses libsecret with an unlocked Secret Service keyring in the user's session.
 
@@ -63,10 +65,10 @@ Each `MailApplication` owns one `SessionState`; its Microsoft service uses that 
 | Active Microsoft device flow | Python Microsoft service and protected temporary store | Bound to account revision and expiry; accessible across management calls |
 | Send outcomes and duplicate request IDs | Python `SendLedger` | Persistent SQLite metadata |
 | Message references, search continuations and access-token cache | `SessionState` | One Python process |
-| Unsaved Windows draft, selection, validation and operation presentation | Observable Windows models | One configuration window; never the source of saved engine permissions |
+| Unsaved desktop draft, selection, validation and operation presentation | Observable setup models | One configuration window; never the source of saved engine permissions |
 
 MCP requests are individual operations on a long-lived local process, so their temporary references survive between calls. Ordinary `manage` starts a fresh application and session for one request; `manage --session` reuses them for its input loop. Neither adapter introduces a global singleton or an extra background service. Persistent account revisions and request IDs still enforce concurrency and duplicate prevention across processes.
 
-The MSIX bundles Python and registers the stable `AgentInbox.exe` alias. Installed clients use `-B -m agentinbox mcp`, with an explicit profile and no versioned package paths. The native executable opens configuration only. Linux and macOS have Python source, without a configuration GUI or commercial binaries. The terminal adapter offers guided `accounts add`, local `doctor` checks with an optional disposable protected-value round trip, and `mcp-config` JSON output. Guided drafts use the shared provider catalog and account validation, then the same `MailApplication.manage` save operation as settings-file setup. None of these commands edits an MCP client's configuration.
+The MSIX bundles Python and registers the stable `AgentInbox.exe` alias. Installed clients use `-B -m agentinbox mcp`, with an explicit profile and no versioned package paths. The native executable opens configuration only. On Linux, the local GTK package depends on the separately installable engine package. Both use the system Python. The engine package provides `agentinbox` for CLI and stdio MCP. macOS uses the Python source. The terminal adapter offers guided `accounts add`, local `doctor` checks with an optional disposable protected-value round trip, and `mcp-config` JSON output. Guided drafts use the shared provider catalog and account validation, then the same `MailApplication.manage` save operation as settings-file setup. None of these commands edits an MCP client's configuration.
 
 See [tool contract](MCP_CONTRACT.md), [management CLI](CLI_REFERENCE.md), [Windows setup](WINDOWS_SETUP.md) and [packaging](../packaging/windows/README.md).
