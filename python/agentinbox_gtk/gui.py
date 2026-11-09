@@ -29,6 +29,7 @@ from uuid import UUID
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from agentinbox import __version__
@@ -697,6 +698,8 @@ class SetupWindow(Gtk.ApplicationWindow):
         actions.append(button("Copy code", "Copy the current Microsoft device code.",
                               lambda: self.copy(self.model.flow["user_code"])))
         open_signin = link("OK · Open Microsoft", flow["verification_uri"])
+        open_signin.remove_css_class("link")
+        open_signin.set_has_frame(True)
         open_signin.add_css_class("suggested-action")
         open_signin.set_tooltip_text("Open Microsoft's sign-in page in your browser.")
         actions.append(open_signin)
