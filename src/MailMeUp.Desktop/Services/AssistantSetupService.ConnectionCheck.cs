@@ -52,6 +52,7 @@ internal sealed partial class AssistantSetupService
         };
         foreach (var argument in _connection.Arguments) start.ArgumentList.Add(argument);
         foreach (var variable in _connection.Environment) start.Environment[variable.Key] = variable.Value;
+        start.Environment["AGENTINBOX_MCP_STARTUP_CHECK"] = "1";
         using var process = new Process { StartInfo = start };
         Task<string?>? errors = null;
         try

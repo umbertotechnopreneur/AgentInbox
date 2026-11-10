@@ -8,6 +8,8 @@ Keep only current unfinished work here. Replace completed items instead of archi
 - [ ] Check Test All with successful accounts, first/later failures, cancellation, unavailable folders, configured SMTP and an unsaved editor draft.
 - [ ] Check current mail/session behavior with synthetic accounts: permission changes, session isolation and expiry, duplicate send IDs, unresolved submissions, Unicode/BCC/attachments, metadata failures and unsupported-schema rejection.
 - [ ] Check packaged CLI/MCP entry points, portable startup, configuration, retained settings and moving the extracted folder on clean Windows x64 and native ARM64 hosts. Exercise the bundled runtime, not a system interpreter.
+- [ ] Verify the Windows notification area menu and activity notifications, and run encrypted backup and restore against native credential stores on Windows and macOS.
+- [ ] Validate installation and configuration of the Linux GTK package, then verify the standalone engine and stdio MCP in the intended Dot execution environment.
 - [ ] Check guided terminal setup and native credential stores on Linux and macOS. Exercise actual Credential Manager/DPAPI access on Windows.
 - [ ] Check provider reading, Microsoft sign-in and requested SMTP sends only with separately authorized accounts. Verify server acceptance and recipient delivery separately.
 - [ ] Publish the updated product Terms/Privacy when authorized. Public pages still need the current sending flow.

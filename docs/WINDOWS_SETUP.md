@@ -49,6 +49,12 @@ Press **Test local MCP startup** to check the saved configuration, start a separ
 
 The footer links to umbertogiacobbi.biz and the AgentInbox Terms and Privacy pages. On the right, the approved rendered VibeWare logo links to the manifesto. Its tooltip explains AI assistance under Umberto's direction and responsibility. See the [brand guide](BRAND.md#vibeware-participation).
 
+## Use the notification area
+
+Open AgentInbox to add its icon to the Windows notification area. The icon opens setup and its menu links to **Accounts**, **Connect Codex**, **Troubleshooting**, **About** and **Exit AgentInbox**. Closing the window keeps the icon available.
+
+Notifications show when the first live MCP session connects, when the last one disconnects, or when the profile has no configured mailboxes. Use **Exit AgentInbox** to close the setup app. See the [command reference](CLI_REFERENCE.md#back-up-and-restore-accounts) for encrypted backups.
+
 ## Local data and installation
 
 The app and engine share the same profile. Passwords and Microsoft refresh tokens use Windows Credential Manager; temporary sign-in state uses current-user DPAPI. Account settings use schema 3; send metadata uses schema 4. Unsupported older formats fail without migration or deletion.

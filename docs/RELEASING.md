@@ -1,6 +1,6 @@
 # Release requirements
 
-GitHub releases distribute portable Release ZIPs for Windows 11 x64 and ARM64. Microsoft Store distribution uses separate Release MSIX packages. Debug MSIX packages are local development builds, not release assets. Linux and macOS are source-only; do not publish compiled binaries or installers for them.
+GitHub releases distribute portable Release ZIPs for Windows 11 x64 and ARM64. Microsoft Store distribution uses separate Release MSIX packages. Debug MSIX packages are local development builds, not release assets. The [Linux Debian packages](LINUX_SETUP.md) are local builds. macOS uses the Python source.
 
 Obtain explicit authorization for the requested build and channel. Generic builds default to local Debug and do not authorize Store work, publication or tags.
 

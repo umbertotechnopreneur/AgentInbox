@@ -27,7 +27,10 @@ import time
 import uuid
 from pathlib import Path
 
-from .config import SCHEMA_VERSION, account_input
+from .config import (
+    SCHEMA_VERSION, account_input, password_required, same_microsoft_context,
+    saved_password_reference, validate_passwords,
+)
 from .errors import MailError
 from .vault import Vault
 from .models import SavedAccount
@@ -341,8 +344,7 @@ class Store:
         account = account_input(value)
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
-        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
-            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
+        validate_passwords(passwords)
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
             raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
@@ -358,33 +360,9 @@ class Store:
             account["id"] = previous["id"] if previous else uuid.uuid4().hex
             account["revision"] = previous["revision"] + 1 if previous else 1
 
-            # Queue new references before writing secrets so failed saves remain recoverable.
-            obsolete = []
             try:
-                for protocol in ("incoming", "smtp"):
-                    field = protocol + "_secret"
-                    if oauth or account[protocol] is None:
-                        account[field] = None
-                    elif passwords[protocol]:
-                        reference = protocol + "-" + uuid.uuid4().hex
-                        self._queue_cleanup_locked([reference])
-                        self.vault.put(reference, passwords[protocol])
-                        account[field] = reference
-                    elif previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol] and previous[field]:
-                        account[field] = previous[field]
-                    else:
-                        purpose = "reading" if protocol == "incoming" else "sending"
-                        section = "Read mail" if protocol == "incoming" else "Send mail"
-                        raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
-                    if previous and previous[field] and previous[field] != account[field]:
-                        obsolete.append(previous[field])
-                account["oauth_secret"] = None
-                if oauth and previous and all(previous[key] == account[key] for key in ("authentication", "incoming", "smtp", "email")) and (not account["send_enabled"] or previous["send_enabled"]):
-                    account["oauth_secret"] = previous["oauth_secret"]
-                if previous and previous["oauth_secret"] and previous["oauth_secret"] != account["oauth_secret"]:
-                    obsolete.append(previous["oauth_secret"])
-
-                # The atomic settings replacement is the commit point. Cleanup follows it.
+                credentials, obsolete = self._credential_plan(account, passwords, previous)
+                self._put_credentials_locked(credentials)
                 self._queue_cleanup_locked(obsolete)
                 self._write([item for item in accounts if item["id"] != account["id"]] + [account])
             except Exception:
@@ -396,6 +374,113 @@ class Store:
             # A cleanup failure must not turn a committed save into a retryable save error.
             cleanup = self._retry_cleanup_locked()
         return {**self.public(account), **cleanup}
+
+    @staticmethod
+    def _credential_plan(account, passwords, previous):
+        """Bind a validated account to saved or newly allocated credential references.
+
+        Args:
+            account: Validated account metadata to update with protected references.
+            passwords: Validated incoming and SMTP password values, or empty for reuse.
+            previous: Prior saved snapshot, or None when creating or restoring an account.
+        """
+        oauth = account["authentication"]["method"] == "microsoft_oauth"
+        credentials = {}
+        obsolete = []
+        for protocol in ("incoming", "smtp"):
+            field = protocol + "_secret"
+            if oauth or account[protocol] is None:
+                account[field] = None
+            elif passwords[protocol]:
+                reference = protocol + "-" + uuid.uuid4().hex
+                credentials[reference] = passwords[protocol]
+                account[field] = reference
+            elif reference := saved_password_reference(previous, account, protocol):
+                account[field] = reference
+            else:
+                raise password_required(protocol)
+            if previous and previous[field] and previous[field] != account[field]:
+                obsolete.append(previous[field])
+        account["oauth_secret"] = None
+        if oauth and previous and same_microsoft_context(previous, account):
+            account["oauth_secret"] = previous["oauth_secret"]
+        if previous and previous["oauth_secret"] and previous["oauth_secret"] != account["oauth_secret"]:
+            obsolete.append(previous["oauth_secret"])
+        return credentials, obsolete
+
+    def _put_credentials_locked(self, credentials):
+        """Queue new protected references before writing any passwords.
+
+        Args:
+            credentials: Mapping from new protected references to transient passwords.
+        """
+        self._queue_cleanup_locked(credentials)
+        for reference, password in credentials.items():
+            self.vault.put(reference, password)
+
+    def backup_snapshot(self):
+        """Read current settings and passwords for local, in-memory encryption."""
+        with self.locked():
+            entries = []
+            for saved in self.accounts():
+                account = {key: value for key, value in saved.items()
+                           if key != "revision" and not key.endswith("_secret")}
+                passwords = {}
+                for protocol in ("incoming", "smtp"):
+                    reference = saved[protocol + "_secret"]
+                    passwords[protocol] = self.vault.get(reference) if reference else ""
+                validate_passwords(passwords)
+                for protocol in ("incoming", "smtp"):
+                    if saved[protocol + "_secret"] and not passwords[protocol]:
+                        raise password_required(protocol)
+                entries.append({"account": account, "passwords": passwords})
+            return entries
+
+    def restore_backup(self, entries):
+        """Restore a validated snapshot into an empty profile with one metadata commit.
+
+        Args:
+            entries: Authenticated backup records containing settings and endpoint passwords.
+        """
+        accounts = []
+        credentials = {}
+        identities = set()
+        for entry in entries:
+            if not isinstance(entry, dict) or set(entry) != {"account", "passwords"}:
+                raise MailError("invalid_backup", "The backup contains an invalid account record.")
+            account = account_input(entry["account"])
+            identity = account["id"]
+            if not identity or identity in identities:
+                raise MailError("invalid_backup", "The backup contains a missing or duplicate account ID.")
+            identities.add(identity)
+            passwords = entry["passwords"]
+            validate_passwords(passwords)
+            oauth = account["authentication"]["method"] == "microsoft_oauth"
+            if any(passwords[protocol] and (oauth or account[protocol] is None)
+                   for protocol in ("incoming", "smtp")):
+                raise MailError("invalid_backup", "The backup contains a password for an unused endpoint.")
+            account["revision"] = 1
+            fresh, _obsolete = self._credential_plan(account, passwords, None)
+            credentials.update(fresh)
+            accounts.append(account)
+
+        with self.locked():
+            if self.accounts():
+                raise MailError("profile_not_empty", "Choose an empty AgentInbox profile before importing a backup.")
+            try:
+                self._put_credentials_locked(credentials)
+                self._write(accounts)
+            except Exception:
+                cleanup = self._retry_cleanup_locked()
+                if cleanup["cleanup_pending"]:
+                    raise MailError("restore_failed_cleanup_pending",
+                                    "Accounts were not imported. Retry pending protected-data cleanup locally.") from None
+                raise
+            cleanup = self._retry_cleanup_locked()
+        return {"accounts": len(accounts),
+                "microsoft_signin_required": sum(account["authentication"]["method"] == "microsoft_oauth"
+                                                 for account in accounts),
+                **cleanup}
 
     def connect_oauth(self, identity: str, expected_revision: int, refresh_token: str, *, consumed_references=()) -> dict:
         """Attach a completed Microsoft sign-in only to its unchanged account.

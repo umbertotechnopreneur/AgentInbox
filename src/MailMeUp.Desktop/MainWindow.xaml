@@ -25,6 +25,13 @@ VBWR E -->
     Title="AgentInbox">
     <Grid x:Name="Root" Background="{ThemeResource SetupSurfaceBrush}" Loaded="Root_Loaded">
         <Grid.Resources>
+            <DataTemplate x:Key="ProviderChoiceTemplate">
+                <StackPanel Orientation="Horizontal" Spacing="10" AutomationProperties.Name="{Binding Label}">
+                    <FontIcon Glyph="{Binding Glyph}" Foreground="{Binding Accent}" FontSize="16"
+                              AutomationProperties.AccessibilityView="Raw" />
+                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                </StackPanel>
+            </DataTemplate>
             <DataTemplate x:Key="AccountListTemplate">
                 <Grid ColumnSpacing="10" Padding="0,4">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

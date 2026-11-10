@@ -18,7 +18,7 @@
  * VBWR E */
 
 using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
+using System.Globalization;
 using MailMeUp.Desktop.Models;
 using MailMeUp.Desktop.Services;
 
@@ -30,13 +30,9 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
 {
     private readonly string _defaultMicrosoftClientId = defaultMicrosoftClientId;
     private bool _loading;
-    private bool _validationShown;
-    private bool _checking;
-    private bool _smtpOnly;
     private SavedAccount? _saved;
     private IReadOnlyList<AccountFieldError> _errors = [];
-    private IReadOnlyDictionary<string, ProviderPreset> _presets = new Dictionary<string, ProviderPreset>();
-    private static readonly string[] PresetIds = ["custom", "gmail", "icloud", "outlook", "microsoft365"];
+    private AccountEditorPolicy _policy = new();
 
     public string Id { get; private set; } = "";
     public int? Revision { get; private set; }
@@ -47,19 +43,33 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public ObservableCollection<string> AvailableFolders { get; } = [];
     public ObservableCollection<string> SelectedFolders { get; } = [];
     public IReadOnlyList<AccountFieldError> Errors => _errors;
-    private string PresetId => PresetIndex is >= 0 and < 5 ? PresetIds[PresetIndex] : "";
+    public IReadOnlyList<ProviderChoice> Providers { get; private set; } = [];
+    internal int MaxFolders => _policy.MaxFolders;
+    private string Protocol => ProtocolIndex switch { 0 => "imap", 1 => "pop3", _ => "" };
+    private ProviderPreset? Preset => _policy.Presets.GetValueOrDefault(PresetId);
 
-    /// <summary>Load the shared engine provider catalog before applying preset choices.</summary>
-    /// <param name="presets">Typed provider catalog returned by the shared Python preset operation.</param>
-    internal void SetPresets(IReadOnlyDictionary<string, ProviderPreset> presets)
+    /// <summary>Load the provider choices and presentation constraints returned by the engine.</summary>
+    /// <param name="policy">Current engine catalog, supported Microsoft hosts and folder limit.</param>
+    internal void SetPolicy(AccountEditorPolicy policy)
     {
-        if (presets.Count != PresetIds.Length || PresetIds.Any(key => !presets.ContainsKey(key)))
-            throw new EngineException("The engine returned unsupported email providers.");
-        _presets = presets;
+        if (!policy.Presets.ContainsKey("custom") || policy.MaxFolders < 1)
+            throw new EngineException("The engine returned an invalid account editor catalog.");
+        _policy = policy;
+        var providers = policy.Presets.Select(entry => new ProviderChoice(entry.Key,
+            entry.Key == "custom" ? "Other mail provider" : entry.Value.Label)).ToArray();
+        if (!Providers.SequenceEqual(providers)) Providers = providers;
     }
 
-    private int _presetIndex = 0;
-    public int PresetIndex { get => _presetIndex; set => Set(ref _presetIndex, value); }
+    private string _presetId = "custom";
+    public string PresetId
+    {
+        get => _presetId;
+        set
+        {
+            // The picker can briefly clear its selection while binding the catalog.
+            if (value is not null) Set(ref _presetId, value);
+        }
+    }
 
     private string _label = "";
     public string Label { get => _label; set => Set(ref _label, value); }
@@ -127,17 +137,19 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     public bool HasSavedAccount => Id.Length > 0;
     public bool CanCheckReading => HasSavedAccount && !HasChanges;
     public bool NeedsCheckBeforeSave => !HasSavedAccount && IsPassword;
-    public bool CanUseMicrosoft => PresetIndex is not (1 or 2) && UsesMicrosoftServers(includeSmtp: false);
+    public bool CanUseMicrosoft => (PresetId == "custom" || Preset?.AuthenticationMethods.Contains("microsoft_oauth") == true)
+        && _policy.MicrosoftIncomingHosts.TryGetValue(Protocol, out var hosts)
+        && hosts.Contains(IncomingHost.Trim().TrimEnd('.'), StringComparer.OrdinalIgnoreCase);
     public string IncomingPasswordPlaceholder => _saved is null ? "Required for a new account" : "Leave blank to keep the saved password";
     public string SendingPasswordPlaceholder => _saved?.Smtp is null ? "Enter the password for sending" : "Leave blank to keep the saved password";
     public string IncomingServerLabel => IsPop ? "Reading server (POP3)" : "Reading server (IMAP)";
     public string IncomingServerPlaceholder => IsPop ? "pop.example.com" : "imap.example.com";
     public string FolderHint => IsPop
         ? "POP3 has one inbox, shown as INBOX. It has no other folders and can't tell which messages are unread. Your emails stay with your mail provider."
-        : "Choose up to twenty IMAP folders for this account. Add more mailboxes to let your AI agent work across dozens of selected folders. Folder names currently need basic English letters, numbers or punctuation.";
+        : $"Choose up to {MaxFolders} IMAP folders for this account. Add more mailboxes to let your AI agent work across dozens of selected folders. Folder names currently need basic English letters, numbers or punctuation.";
     public string ReadCheckHint => IsPop ? "Check saved POP3 settings by reading mail without deleting messages."
         : "Check saved IMAP settings by reading mail without marking messages as read.";
-    public string Tenant => TenantIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", _ => OrganizationId.Trim() };
+    public string Tenant => TenantIndex switch { 0 => "common", 1 => "organizations", 2 => "consumers", 3 => OrganizationId, _ => "" };
 
     public (string Message, string LinkText, string Address) ProviderGuidance
     {
@@ -146,21 +158,21 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
             var microsoftHint = AuthenticationIndex == 1
                 ? "Don't enter your email password here. Sign in with Microsoft is already selected below. Press the sign-in button to continue."
                 : "Don't enter your email password here. Choose Sign in with Microsoft below, then press the sign-in button.";
-            var (message, linkText, address) = PresetIndex switch
+            var (message, linkText, address) = PresetId switch
             {
-                1 => ("Your usual Gmail password won't work here. Google calls the special password you need an app password. Open the link below to create one, then use it for both reading and sending. Google may ask you to turn on 2-Step Verification first. If the option is missing, your account or work settings may not allow it.",
+                "gmail" => ("Your usual Gmail password won't work here. Google calls the special password you need an app password. Open the link below to create one, then use it for both reading and sending. Google may ask you to turn on 2-Step Verification first. If the option is missing, your account or work settings may not allow it.",
                     "Create a password for this app", "https://myaccount.google.com/apppasswords"),
-                2 => ("Your usual Apple password won't work here. Create a separate password for AgentInbox using the link below. Apple calls it an app-specific password. Use it for both reading and sending. Apple requires an extra sign-in check, such as a code on your phone. Keep IMAP selected for iCloud mail.",
+                "icloud" => ("Your usual Apple password won't work here. Create a separate password for AgentInbox using the link below. Apple calls it an app-specific password. Use it for both reading and sending. Apple requires an extra sign-in check, such as a code on your phone. Keep IMAP selected for iCloud mail.",
                     "Create an Apple password for this app", "https://support.apple.com/en-us/102654"),
-                3 => ($"{microsoftHint} Outlook may also need you to allow mail apps in its settings. The guide below shows where.",
+                "outlook" => ($"{microsoftHint} Outlook may also need you to allow mail apps in its settings. The guide below shows where.",
                     "Help connecting Outlook", "https://support.microsoft.com/en-us/outlook/pop-imap-and-smtp-settings-for-outlook-com"),
-                4 => ($"{microsoftHint} Your work or school may block mail apps or sending. If that happens, ask your IT team to allow AgentInbox.",
+                "microsoft365" => ($"{microsoftHint} Your work or school may block mail apps or sending. If that happens, ask your IT team to allow AgentInbox.",
                     "Sending help for your IT team", "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"),
-                _ when UsesMicrosoftServers(includeSmtp: false) => (microsoftHint, "Help connecting Microsoft mail",
+                _ when CanUseMicrosoft => (microsoftHint, "Help connecting Microsoft mail",
                     "https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth"),
                 _ => ("Connect GoDaddy or another provider that allows compatible IMAP or POP3 access. Enter your provider's mail server settings; choose Microsoft 365 above for Microsoft-hosted accounts. Some providers require a separate app password.", "", "")
             };
-                return (message, linkText, address);
+            return (message, linkText, address);
         }
     }
     public string ProviderHint => ProviderGuidance.Message;
@@ -177,14 +189,12 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
             _saved = account;
             Id = account?.Id ?? "";
             Revision = account?.Revision;
-            PresetIndex = account?.Preset switch { "gmail" => 1, "icloud" => 2, "outlook" => 3, "microsoft365" => 4, _ => 0 };
+            PresetId = account?.Preset ?? "custom";
             Label = account?.Label ?? "";
             Email = account?.Email ?? "";
             var auth = account?.Authentication;
             MicrosoftClientId = auth?.Method == "microsoft_oauth" ? auth.ClientId! : _defaultMicrosoftClientId;
-            var tenant = auth?.Tenant ?? "common";
-            TenantIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
-            OrganizationId = TenantIndex == 3 ? tenant : "";
+            LoadTenant(auth?.Tenant ?? "common");
             ProtocolIndex = account?.Incoming.Protocol == "pop3" ? 1 : 0;
             IncomingHost = account?.Incoming.Host ?? "";
             IncomingPort = account?.Incoming.Port.ToString() ?? "993";
@@ -203,7 +213,6 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
             UpdateAuthenticationChoices();
             AuthenticationIndex = auth?.Method == "microsoft_oauth" ? 1 : 0;
             SetFolderChoices(account?.Folders ?? ["INBOX"], account?.Folders ?? ["INBOX"]);
-            _validationShown = false;
             _errors = [];
             HasChanges = false;
         });
@@ -256,31 +265,34 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     }
 
     /// <summary>React to a model property change while preserving batched update behavior.</summary>
-    /// <param name="property">Observable property name or native dependency property being updated.</param>
+    /// <param name="property">Name of the edited draft property.</param>
     protected override void Changed(string property)
     {
         if (_loading) return;
         Batch(() =>
         {
-            if (property == nameof(PresetIndex)) ApplyPreset();
+            if (property == nameof(PresetId)) ApplyPreset();
             if (property == nameof(ProtocolIndex))
             {
                 IncomingPort = IsPop ? "995" : "993";
                 IncomingSecurityIndex = 0;
-                if (PresetIndex > 0) ApplyPreset();
+                ApplyPreset();
             }
             if (property == nameof(ConfigureSending) && !ConfigureSending) SendEnabled = false;
             if (property == nameof(SendEnabled) && SendEnabled) ConfigureSending = true;
-            UpdateAuthenticationChoices();
+            if (property is nameof(PresetId) or nameof(ProtocolIndex) or nameof(IncomingHost))
+            {
+                UpdateAuthenticationChoices();
+                if (IsPop && property != nameof(IncomingHost)) SetFolderChoices(["INBOX"], ["INBOX"]);
+            }
             if (property == nameof(AuthenticationIndex) && IsMicrosoft) ClearPasswords();
-            if (IsPop) SetFolderChoices(["INBOX"], ["INBOX"]);
             HasChanges = true;
-            if (_validationShown) Validate(_checking, _smtpOnly);
+            _errors = [];
         });
     }
 
     /// <summary>Suppress nested change handling and notify observers after the outer update.</summary>
-    /// <param name="action">Action callback or native action control placed with the content.</param>
+    /// <param name="action">Group of draft updates whose notifications are batched.</param>
     private void Batch(Action action)
     {
         var wasLoading = _loading;
@@ -293,20 +305,23 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     /// <summary>Apply the selected provider defaults and explicit authentication choice.</summary>
     private void ApplyPreset()
     {
-        if (PresetIndex is <= 0 or > 4) return;
-        var preset = _presets[PresetId];
-        if (!preset.Incoming.ContainsKey(IsPop ? "pop3" : "imap")) ProtocolIndex = 0;
-        var incoming = preset.Incoming[IsPop ? "pop3" : "imap"];
+        if (Preset is not { } preset || preset.Incoming.Count == 0) return;
+        if (!preset.Incoming.TryGetValue(Protocol, out var incoming))
+        {
+            var fallback = preset.Incoming.First();
+            ProtocolIndex = fallback.Key == "pop3" ? 1 : 0;
+            incoming = fallback.Value;
+        }
         IncomingHost = incoming.Host;
         IncomingPort = incoming.Port.ToString();
         IncomingSecurityIndex = incoming.Tls == "starttls" ? 1 : 0;
         FillSendingPreset();
         UpdateAuthenticationChoices();
-        AuthenticationIndex = preset.AuthenticationMethods.Contains("microsoft_oauth") ? 1 : 0;
+        AuthenticationIndex = preset.MicrosoftTenant is null ? 0 : 1;
         if (IsMicrosoft)
         {
             MicrosoftClientId = _defaultMicrosoftClientId;
-            TenantIndex = PresetIndex == 3 ? 2 : 1;
+            LoadTenant(preset.MicrosoftTenant!);
             ClearPasswords();
         }
     }
@@ -314,13 +329,20 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
     /// <summary>Fill SMTP defaults when the selected provider supplies them.</summary>
     private void FillSendingPreset()
     {
-        if (PresetIndex == 0) return;
-        var sending = _presets[PresetId].Smtp;
+        var sending = Preset?.Smtp;
         if (sending is null) return;
         SendingHost = sending.Host;
         SendingPort = sending.Port.ToString();
         SendingSecurityIndex = sending.Tls == "starttls" ? 1 : 0;
         if (string.IsNullOrWhiteSpace(SendingEmail)) SendingEmail = Email.Trim();
+    }
+
+    /// <summary>Project an engine tenant identifier onto the desktop account-type choices.</summary>
+    /// <param name="tenant">Built-in Microsoft tenant name or an organization ID.</param>
+    private void LoadTenant(string tenant)
+    {
+        TenantIndex = tenant switch { "common" => 0, "organizations" => 1, "consumers" => 2, _ => 3 };
+        OrganizationId = TenantIndex == 3 ? tenant : "";
     }
 
     /// <summary>Offer Microsoft sign-in only for compatible server settings.</summary>
@@ -335,140 +357,132 @@ internal sealed class AccountEditorModel(string defaultMicrosoftClientId) : Obse
         }
     }
 
-    /// <summary>Check incoming and optional sending hosts against the supported Microsoft endpoints.</summary>
-    /// <param name="includeSmtp">Whether configured SMTP hosts must also match supported Microsoft endpoints.</param>
-    internal bool UsesMicrosoftServers(bool includeSmtp = true)
-    {
-        var host = IncomingHost.Trim();
-        var incomingMatches = host.Equals("outlook.office365.com", StringComparison.OrdinalIgnoreCase)
-            || host.Equals(IsPop ? "pop-mail.outlook.com" : "imap-mail.outlook.com", StringComparison.OrdinalIgnoreCase);
-        return incomingMatches && (!includeSmtp || !ConfigureSending
-            || SendingHost.Trim().Equals("smtp.office365.com", StringComparison.OrdinalIgnoreCase)
-            || SendingHost.Trim().Equals("smtp-mail.outlook.com", StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>Release password values held by this draft or operation snapshot.</summary>
+    /// <summary>Release password values held by the current draft.</summary>
     internal void ClearPasswords() { IncomingPassword = ""; SendingPassword = ""; }
 
-    /// <summary>Captures model data, never control values, for the common management contract.</summary>
-    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
-    internal AccountSnapshot Snapshot(bool checking = false, bool smtpOnly = false)
+    /// <summary>Capture the account draft for saving or discovering folders.</summary>
+    internal AccountSnapshot Snapshot()
     {
+        ClearErrors();
         FillSignInEmails();
-        _validationShown = true;
-        Validate(checking, smtpOnly);
-        Notify();
-        if (Errors.Count > 0) throw new EngineException("Check the fields marked in red.\n" + string.Join("\n", Errors.Select(error => error.Message).Distinct()));
-        if (IsMicrosoft && !Guid.TryParse(MicrosoftClientId, out _))
-            throw new EngineException("This app's Microsoft settings need fixing. The saved app ID is invalid.");
-        var authentication = IsMicrosoft
-            ? new AccountAuthentication { Method = "microsoft_oauth", ClientId = Guid.Parse(MicrosoftClientId).ToString(), Tenant = Tenant }
-            : new AccountAuthentication();
-        string[] folders = IsPop ? ["INBOX"] : SelectedFolders.ToArray();
-        if (checking && folders.Length == 0) folders = ["INBOX"];
-        var settings = new AccountSettings
+        var account = new AccountSettings
         {
-            Id = Id, Label = Label.Trim(), Email = Email.Trim(),
-            Preset = PresetId,
-            Authentication = authentication, Incoming = IncomingEndpoint(),
-            Smtp = ConfigureSending ? SendingEndpoint() : null, ReadEnabled = ReadEnabled,
-            SendEnabled = ConfigureSending && SendEnabled, Folders = folders
+            Id = Id, Label = Label, Email = Email, Preset = PresetId,
+            Authentication = CaptureAuthentication(), Incoming = CaptureIncoming(),
+            Smtp = ConfigureSending ? CaptureSending() : null, ReadEnabled = ReadEnabled,
+            SendEnabled = ConfigureSending && SendEnabled, Folders = SelectedFolders.ToArray()
         };
-        return new AccountSnapshot(settings, new()
+        return new AccountSnapshot(account, new()
         {
-            ["incoming"] = IsPassword ? IncomingPassword : "", ["smtp"] = IsPassword && ConfigureSending ? SendingPassword : ""
+            ["incoming"] = IsPassword ? IncomingPassword : "",
+            ["smtp"] = IsPassword && ConfigureSending ? SendingPassword : ""
         }, Revision);
     }
 
-    /// <summary>Capture normalized incoming settings from the editor model.</summary>
-    private MailEndpoint IncomingEndpoint() => new() { Protocol = IsPop ? "pop3" : "imap", Host = IncomingHost.Trim().TrimEnd('.').ToLowerInvariant(),
-        Port = int.Parse(IncomingPort), Tls = IncomingSecurityIndex == 1 ? "starttls" : "tls", Username = IncomingEmail.Trim() };
-    /// <summary>Capture normalized SMTP settings from the editor model.</summary>
-    private MailEndpoint SendingEndpoint() => new() { Host = SendingHost.Trim().TrimEnd('.').ToLowerInvariant(), Port = int.Parse(SendingPort),
-        Tls = SendingSecurityIndex == 1 ? "starttls" : "tls", Username = SendingEmail.Trim() };
-
-    /// <summary>Require unchanged password-based endpoint settings before reusing saved credentials.</summary>
-    /// <param name="current">Normalized draft endpoint being compared for safe credential reuse.</param>
-    /// <param name="saved">Saved endpoint or committed account result used to refresh model state.</param>
-    private bool CanKeepPassword(MailEndpoint? current, MailEndpoint? saved) =>
-        _saved?.Authentication.Method == "password" && current == saved;
-
-    /// <summary>Collect actionable field errors for the requested save or connection check.</summary>
-    /// <param name="checking">Whether to validate a connection check rather than a settings save.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
-    private void Validate(bool checking, bool smtpOnly)
+    /// <summary>Capture sending settings and include incoming settings only when bound to Microsoft authorization.</summary>
+    internal SmtpCheckSnapshot CaptureSmtpCheck()
     {
-        _checking = checking;
-        _smtpOnly = smtpOnly;
-        var errors = new List<AccountFieldError>();
-        // Append one field error when its validation predicate fails.
-        // property: Observable property name or native dependency property being updated.
-        // valid: Result of the field predicate; false appends an actionable error.
-        // message: Safe user-facing outcome or guidance; never raw credentials or mail content.
-        // tab: Account tab index containing the invalid field.
-        void Check(string property, bool valid, string message, int tab)
+        ClearErrors();
+        if (IsMicrosoft) FillSignInEmails();
+        else if (string.IsNullOrWhiteSpace(SendingEmail)) SendingEmail = Email.Trim();
+
+        var settings = new SmtpCheckSettings
         {
-            if (!valid) errors.Add(new(property, message, tab));
-        }
-        // Check the supported hostname shape without changing the draft.
-        // host: Draft hostname to validate without a network request.
-        static bool Host(string host)
-        {
-            var normalized = host.Trim().TrimEnd('.');
-            return normalized.Length is > 0 and <= 255
-                && Regex.IsMatch(normalized, @"^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
-                && !host.Contains("..");
-        }
-        // Require a numeric TCP port in the supported range.
-        // port: Draft TCP port text to validate without a network request.
-        static bool Port(string port) => int.TryParse(port, out var number) && number is >= 1 and <= 65535;
-
-        // Identity and authentication errors belong to the Account tab.
-        Check(nameof(Label), Label.Trim().Length is > 0 and <= 100, "Enter a connection name with 100 characters or fewer.", 0);
-        Check(nameof(PresetIndex), PresetIndex is >= 0 and <= 4, "Choose your email provider.", 0);
-        var email = Email.Trim();
-        Check(nameof(Email), email.Length is > 0 and <= 254
-            && Regex.IsMatch(email, @"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$")
-            && !email.Contains("..") && !email.StartsWith('.') && !email.Contains(".@"), "Enter your email address, such as you@example.com.", 0);
-        Check(nameof(AuthenticationIndex), AuthenticationIndex is 0 or 1, "Choose how to connect to these mail servers.", 0);
-        Check(nameof(TenantIndex), !IsMicrosoft || TenantIndex is >= 0 and <= 3, "Choose your Microsoft account type.", 0);
-        Check(nameof(OrganizationId), !UsesOrganizationId || Guid.TryParse(OrganizationId.Trim(), out _), "Enter the organization ID from your IT team.", 0);
-
-        // Incoming credentials may be reused only for an unchanged saved endpoint.
-        Check(nameof(IncomingHost), Host(IncomingHost), "Enter your reading server, such as imap.example.com.", 1);
-        Check(nameof(ProtocolIndex), ProtocolIndex is 0 or 1, "Choose how to read mail.", 1);
-        Check(nameof(IncomingSecurityIndex), IncomingSecurityIndex is 0 or 1, "Choose a secure connection for reading mail.", 1);
-        var incomingPortValid = Port(IncomingPort);
-        Check(nameof(IncomingPort), incomingPortValid, "Enter a reading port number from 1 to 65535.", 1);
-        Check(nameof(IncomingEmail), IncomingEmail.Trim().Length is > 0 and <= 255 && (!IsMicrosoft || IncomingEmail.Trim().Equals(email, StringComparison.OrdinalIgnoreCase)),
-            IsMicrosoft ? "Use the same email address as in Account for Microsoft." : "Enter the email address used to read your mail.", 1);
-        Check(nameof(IncomingHost), !IsMicrosoft || UsesMicrosoftServers(includeSmtp: false), "Microsoft sign-in needs a Microsoft reading server.", 1);
-        if (IsPassword && !smtpOnly)
-            Check(nameof(IncomingPassword), IncomingPassword.Length > 0 || (incomingPortValid && CanKeepPassword(IncomingEndpoint(), _saved?.Incoming)),
-                "Enter your mail password or app password. Changed server settings need it again.", 1);
-
-        // Sending remains optional, but configured endpoints must be complete.
-        if (ConfigureSending)
-        {
-            Check(nameof(SendingHost), Host(SendingHost), "Enter your sending server, such as smtp.example.com.", 2);
-            Check(nameof(SendingSecurityIndex), SendingSecurityIndex is 0 or 1, "Choose a secure connection for sending mail.", 2);
-            var sendingPortValid = Port(SendingPort);
-            Check(nameof(SendingPort), sendingPortValid, "Enter a sending port number from 1 to 65535.", 2);
-            Check(nameof(SendingEmail), SendingEmail.Trim().Length is > 0 and <= 255 && (!IsMicrosoft || SendingEmail.Trim().Equals(email, StringComparison.OrdinalIgnoreCase)),
-                IsMicrosoft ? "Use the same email address as in Account for Microsoft." : "Enter the email address used to send your mail.", 2);
-            Check(nameof(SendingHost), !IsMicrosoft || UsesMicrosoftServers(), "Microsoft sign-in needs a Microsoft sending server.", 2);
-            if (IsPassword)
-                Check(nameof(SendingPassword), SendingPassword.Length > 0 || (sendingPortValid && CanKeepPassword(SendingEndpoint(), _saved?.Smtp)),
-                    "Enter the password or app password for sending. Changed server settings need it again.", 2);
-        }
-
-        // Folder limits are per account; POP3 always keeps its single INBOX.
-        string[] folders = IsPop ? ["INBOX"] : SelectedFolders.ToArray();
-        Check(nameof(SelectedFolders), (checking && folders.Length == 0) || folders.Length is >= 1 and <= 20,
-            "Choose between one and twenty mail folders under Read mail.", 1);
-        Check(nameof(SelectedFolders), !folders.Any(folder => folder.Any(character => character < 32 || character > 126)),
-            "Folder names currently need basic English letters, numbers or punctuation, such as INBOX.", 1);
-        _errors = errors;
+            Id = Id, Authentication = CaptureAuthentication(), Smtp = ConfigureSending ? CaptureSending() : null,
+            Email = IsMicrosoft ? Email : null,
+            Incoming = IsMicrosoft ? CaptureIncoming() : null,
+            SendEnabled = IsMicrosoft ? SendEnabled : null
+        };
+        return new SmtpCheckSnapshot(settings, new() { ["smtp"] = IsPassword ? SendingPassword : "" }, Revision);
     }
+
+    /// <summary>Capture the selected sign-in method without validating provider policy locally.</summary>
+    private AccountAuthentication CaptureAuthentication() => AuthenticationIndex switch
+    {
+        0 => new(),
+        1 => new() { Method = "microsoft_oauth", ClientId = MicrosoftClientId, Tenant = Tenant.Trim() },
+        _ => new() { Method = "" }
+    };
+
+    /// <summary>Convert incoming draft fields into the engine endpoint payload.</summary>
+    private MailEndpoint CaptureIncoming() => new()
+    {
+        Protocol = Protocol, Host = IncomingHost, Port = ParsePort(IncomingPort, "incoming.port"),
+        Tls = Security(IncomingSecurityIndex), Username = IncomingEmail
+    };
+
+    /// <summary>Convert sending draft fields into the engine endpoint payload.</summary>
+    private MailEndpoint CaptureSending() => new()
+    {
+        Host = SendingHost, Port = ParsePort(SendingPort, "smtp.port"),
+        Tls = Security(SendingSecurityIndex), Username = SendingEmail
+    };
+
+    /// <summary>Translate a connection security choice into the engine's protocol value.</summary>
+    /// <param name="index">Desktop choice index, or an invalid selection sent for engine validation.</param>
+    private static string Security(int index) => index switch { 0 => "tls", 1 => "starttls", _ => "" };
+
+    /// <summary>Convert the form's port text to an integer before serializing the endpoint.</summary>
+    /// <param name="value">Port text as entered in the form.</param>
+    /// <param name="field">Engine field path for the endpoint's port.</param>
+    private static int ParsePort(string value, string field) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var port)
+            ? port : throw new EngineException("Enter a whole number in Port.", field: field);
+
+    /// <summary>Clear errors from a previous operation before submitting the draft again.</summary>
+    private void ClearErrors()
+    {
+        if (_errors.Count == 0) return;
+        _errors = [];
+        Notify(nameof(Errors));
+    }
+
+    /// <summary>Map a safe engine field path to its editor property and tab.</summary>
+    /// <param name="error">Engine validation error or local field conversion error.</param>
+    internal void ShowError(EngineException error)
+    {
+        var field = error.Field switch
+        {
+            "label" => (nameof(Label), 0),
+            "email" => (nameof(Email), 0),
+            "preset" => (nameof(PresetId), 0),
+            "authentication.method" => (nameof(AuthenticationIndex), 0),
+            "authentication.tenant" => (UsesOrganizationId ? nameof(OrganizationId) : nameof(TenantIndex), 0),
+            "incoming.protocol" => (nameof(ProtocolIndex), 1),
+            "incoming.host" => (nameof(IncomingHost), 1),
+            "incoming.port" => (nameof(IncomingPort), 1),
+            "incoming.tls" => (nameof(IncomingSecurityIndex), 1),
+            "incoming.username" => (nameof(IncomingEmail), 1),
+            "passwords.incoming" => (nameof(IncomingPassword), 1),
+            "folders" => (nameof(SelectedFolders), 1),
+            "smtp.configured" => (nameof(ConfigureSending), 2),
+            "smtp.host" => (nameof(SendingHost), 2),
+            "smtp.port" => (nameof(SendingPort), 2),
+            "smtp.tls" => (nameof(SendingSecurityIndex), 2),
+            "smtp.username" => (nameof(SendingEmail), 2),
+            "passwords.smtp" => (nameof(SendingPassword), 2),
+            _ => ((string?)null, 0)
+        };
+        if (field.Item1 is { } property)
+        {
+            _errors = [new(property, error.Message, field.Item2)];
+            Notify(nameof(Errors));
+        }
+    }
+}
+
+/// <summary>One provider choice with an ID from the engine and desktop presentation.</summary>
+/// <param name="Id">Stable provider ID used in account settings.</param>
+/// <param name="Label">Provider name shown in the native picker.</param>
+internal sealed record ProviderChoice(string Id, string Label)
+{
+    public string Glyph => Id switch { "custom" => "\uE713", "icloud" => "\uE753", _ => "\uE715" };
+    public string Accent => Id switch
+    {
+        "gmail" => "#D94235", "icloud" => "#3282CF", "outlook" => "#1274C4",
+        "microsoft365" => "#8661C5", _ => "#667789"
+    };
+
+    /// <summary>Expose the visible provider name to native selection and text search.</summary>
+    public override string ToString() => Label;
 }

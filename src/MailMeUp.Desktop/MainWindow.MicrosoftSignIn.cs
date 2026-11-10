@@ -35,7 +35,7 @@ public sealed partial class MainWindow
     private async Task SignInMicrosoftAsync()
     {
         try { await _configuration.SignInMicrosoftAsync(ShowMicrosoftSignInAsync, _lifetime.Token); }
-        catch (EngineException) { FocusAccountError(); throw; }
+        catch (EngineException error) { ShowAccountError(error); throw; }
     }
 
     /// <summary>Shows native browser and clipboard actions; the model owns the sign-in lifecycle.</summary>

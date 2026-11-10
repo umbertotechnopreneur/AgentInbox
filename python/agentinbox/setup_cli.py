@@ -43,12 +43,17 @@ def add_commands(commands):
     doctor.add_argument("--json", action="store_true", help="Write one JSON diagnostic result; failures exit with status 1.")
     connection = commands.add_parser("mcp-config", help="Print a local stdio MCP configuration with absolute interpreter, source and profile paths.")
     connection.add_argument("--json", action="store_true", help="Wrap the configuration in the standard ok/result JSON response.")
-    profile = commands.add_parser("profile", help="Show profile paths or retry pending credential cleanup.")
+    profile = commands.add_parser("profile", help="Show profile paths, manage encrypted backups or retry credential cleanup.")
     actions = profile.add_subparsers(dest="action", required=True)
     for name, description in (("show", "Show where settings and protected credentials are stored."),
                               ("cleanup", "Retry local cleanup of retired credentials; never repeat a save or send.")):
         command = actions.add_parser(name, help=description, description=description)
         command.add_argument("--json", action="store_true", help="Write one JSON result for automation.")
+    for name, description in (("export", "Save all accounts and passwords to a new encrypted backup."),
+                              ("import", "Restore an encrypted backup into an empty profile.")):
+        command = actions.add_parser(name, help=description, description=description)
+        command.add_argument("file", type=Path, help="Local encrypted backup filename.")
+        command.add_argument("--json", action="store_true", help="Write counts and cleanup status. Passphrase prompts use the terminal.")
     presets = commands.add_parser("presets", help="Show the supported providers and their connection requirements.")
     presets.add_argument("--json", action="store_true", help="Write one JSON result for automation.")
     accounts = commands.add_parser("accounts", help="Add, inspect, update, sign in and check existing mailboxes.",
@@ -139,6 +144,26 @@ def _password(prompt):
     return value
 
 
+def _profile_backup(application, options):
+    """Ask for the backup passphrase locally and run the selected file operation.
+
+    Args:
+        application: Shared engine using the selected local profile and credential store.
+        options: Explicit import or export action and local encrypted filename.
+    """
+    from .backup import export_backup, import_backup
+
+    if not sys.stdin.isatty():
+        raise MailError("terminal_required", "Run the backup command in your own terminal for hidden passphrase input.")
+    if options.action == "import":
+        passphrase = _password("Backup passphrase: ")
+        return import_backup(application.store, options.file, passphrase)
+    passphrase = _password("New backup passphrase (at least 12 characters): ")
+    if passphrase != _password("Confirm backup passphrase: "):
+        raise MailError("passphrase_mismatch", "The passphrases did not match. No backup was written.")
+    return export_backup(application.store, options.file, passphrase)
+
+
 def _passwords(account, prompt):
     """Prompt only for the password-based endpoints selected by the setup command.
 
@@ -219,6 +244,8 @@ def run(application, options):
     if options.command == "presets":
         return application.manage("presets", {})
     if options.command == "profile":
+        if options.action in {"export", "import"}:
+            return _profile_backup(application, options)
         return application.manage("profile_info" if options.action == "show" else "retry_cleanup", {})
     if options.action == "list":
         return application.manage("list_accounts", {})
@@ -270,6 +297,16 @@ def display(options, result):
         for check in result["checks"]:
             print(f"{check['status'].upper()}: {check['name']}: {check['message']}")
         print("No mailbox connection was attempted.")
+    elif options.command == "profile" and options.action == "export":
+        print(f"Encrypted backup saved with {result['accounts']} accounts.")
+        if result["temporary_cleanup_pending"]:
+            print("A temporary encrypted copy remains in the destination directory.")
+    elif options.command == "profile" and options.action == "import":
+        print(f"Imported {result['accounts']} accounts into the selected profile.")
+        if result["microsoft_signin_required"]:
+            print(f"Sign in again for {result['microsoft_signin_required']} Microsoft accounts.")
+        if result["cleanup_pending"]:
+            print("Protected-data cleanup remains pending. Run profile cleanup.")
     elif options.command == "accounts" and options.action == "list":
         if not result:
             print("No accounts configured. Start with: accounts add")

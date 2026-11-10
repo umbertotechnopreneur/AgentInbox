@@ -23,6 +23,7 @@ using MailMeUp.Desktop.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Windows.Storage.Pickers;
 
 namespace MailMeUp.Desktop;
 
@@ -35,7 +36,8 @@ public sealed partial class MainWindow
         // Build page-level actions and placeholders before the account workspace.
         _save = Action("Save changes", () => _ = RunAsync(SaveAccountAsync), accent: true);
         _cancelAccount = Action("Cancel", CancelNewAccount, tooltip: "Discard this new account and return to your saved accounts.");
-        Page.Children.Add(Heading("Email accounts", "Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other IMAP or POP3 providers. Share accounts and selected IMAP folders with your AI agent through one MCP connection."));
+        Page.Children.Add(Stack(Heading("Email accounts", "Connect as many compatible mailboxes as you need: Gmail, Microsoft, iCloud, GoDaddy and other IMAP or POP3 providers. Share accounts and selected IMAP folders with your AI agent through one MCP connection."),
+            BuildBackupActions()));
         _saveStatus = Hint("");
         _saveStatus.VerticalAlignment = VerticalAlignment.Center;
         PageActions.Children.Add(_save);
@@ -116,15 +118,76 @@ public sealed partial class MainWindow
         BindAccountControls();
     }
 
+    /// <summary>Show the backup actions above both the account list and the empty profile.</summary>
+    private StackPanel BuildBackupActions()
+    {
+        var export = Action("Export accounts", () => _ = RunAsync(() =>
+            _configuration.BackUpAccountsAsync(true, () => ChooseBackupAsync(true), _lifetime.Token)),
+            tooltip: "Save all configured accounts and their saved passwords in an encrypted backup.");
+        var import = Action("Import accounts", () => _ = RunAsync(() =>
+            _configuration.BackUpAccountsAsync(false, () => ChooseBackupAsync(false), _lifetime.Token)),
+            tooltip: "Restore accounts and saved passwords from an encrypted backup into an empty profile.");
+        ModelBinding.Bind(export, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanExportAccounts));
+        ModelBinding.Bind(import, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.CanImportAccounts));
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        actions.Children.Add(export);
+        actions.Children.Add(import);
+        actions.SizeChanged += (_, args) => actions.Orientation = args.NewSize.Width < 280
+            ? Orientation.Vertical : Orientation.Horizontal;
+        return actions;
+    }
+
+    /// <summary>Collect the backup filename and masked passphrase using native dialogs.</summary>
+    /// <param name="exporting">Whether to choose a new backup filename and confirm a new passphrase.</param>
+    private async Task<(string Path, string Passphrase, string Confirmation)?> ChooseBackupAsync(bool exporting)
+    {
+        PickFileResult? file;
+        if (exporting)
+        {
+            var picker = new FileSavePicker(AppWindow.Id)
+            {
+                SuggestedFileName = "agentinbox",
+                DefaultFileExtension = ".backup",
+                FileTypeChoices = { { "AgentInbox backup", new List<string> { ".backup" } } }
+            };
+            file = await picker.PickSaveFileAsync();
+        }
+        else
+        {
+            var picker = new FileOpenPicker(AppWindow.Id);
+            file = await picker.PickSingleFileAsync();
+        }
+        if (file is null || _lifetime.IsCancellationRequested) return null;
+
+        var passphrase = new PasswordBox { Header = "Backup passphrase", PasswordRevealMode = PasswordRevealMode.Hidden };
+        AutomationProperties.SetName(passphrase, "Backup passphrase");
+        var confirmation = new PasswordBox { Header = "Confirm passphrase", PasswordRevealMode = PasswordRevealMode.Hidden };
+        AutomationProperties.SetName(confirmation, "Confirm passphrase");
+        var content = Stack(Hint(exporting
+            ? "Choose a passphrase with at least 12 characters. You will need it to restore your accounts."
+            : "Enter the passphrase used to create this backup. Sign in again to any Microsoft accounts after import."), passphrase);
+        if (exporting) content.Children.Add(confirmation);
+        var title = exporting ? "Export accounts" : "Import accounts";
+        try
+        {
+            var result = await Dialog(title, content, title).ShowAsync();
+            return result == ContentDialogResult.Primary ? (file.Path, passphrase.Password, confirmation.Password) : null;
+        }
+        finally
+        {
+            passphrase.Password = "";
+            confirmation.Password = "";
+        }
+    }
+
     /// <summary>Create provider, identity, sign-in and access-permission controls.</summary>
     private StackPanel BuildIdentityTab()
     {
-        _preset = new ComboBox { Header = "Email provider", HorizontalAlignment = HorizontalAlignment.Stretch };
-        _preset.Items.Add(PresetItem("Other mail provider", "\uE713", 0x667789));
-        _preset.Items.Add(PresetItem("Gmail", "\uE715", 0xD94235));
-        _preset.Items.Add(PresetItem("iCloud", "\uE753", 0x3282CF));
-        _preset.Items.Add(PresetItem("Outlook.com", "\uE715", 0x1274C4));
-        _preset.Items.Add(PresetItem("Microsoft 365", "\uE71D", 0x8661C5));
+        _preset = new ComboBox
+        {
+            Header = "Email provider", HorizontalAlignment = HorizontalAlignment.Stretch,
+            SelectedValuePath = nameof(ProviderChoice.Id), ItemTemplate = (DataTemplate)Root.Resources["ProviderChoiceTemplate"]
+        };
 
         _label = Field("Connection name", "Personal, work, or a name you recognize");
         AutomationProperties.SetName(_label, "Connection name");

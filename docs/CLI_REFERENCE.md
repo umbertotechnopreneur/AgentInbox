@@ -16,6 +16,8 @@ Prefix each command below with `python -B python/run.py` from the source checkou
 | `doctor --check-storage` | Also store, read and remove a disposable protected value; report pending cleanup separately |
 | `mcp-config` | Print local MCP JSON with absolute interpreter, source and profile paths; do not edit client settings |
 | `profile show` | Show the selected profile and protected-storage locations |
+| `profile export FILE` | Save all account settings and endpoint passwords in one encrypted backup |
+| `profile import FILE` | Restore a current-format backup into an empty profile |
 | `presets` | Show supported providers and connection requirements |
 | `accounts list` | List all saved connections, including disabled ones |
 | `accounts show ID` | Show settings, current revision and Microsoft sign-in status |
@@ -39,6 +41,28 @@ The setup file is UTF-8 JSON, optionally with a BOM, at most 256 KB, with one to
 Guided `accounts add` requires an interactive terminal. Omit both `--file` and `--entry` to use it, or supply both for the settings-file workflow. Microsoft presets select OAuth and require `--client-id` only in guided source setup. Prompts use stderr even with `--json`; passwords still require hidden terminal input.
 
 `doctor` returns exit status 1 if any diagnostic fails. With `--json`, inspect `result.ready` separately from `ok`, which reports whether diagnosis completed. Storage is tested only with `--check-storage`; default checks do not prove the keyring is unlocked. `mcp-config` prints the raw MCP configuration by default; `--json` wraps it in `ok`/`result`. It does not edit client settings or verify a client connection.
+
+## Back up and restore accounts
+
+In the Windows app, open **Accounts** and choose **Export accounts** or **Import accounts**. You can import only into an empty AgentInbox profile.
+
+Run the commands in your own terminal. Export to a new filename in a directory that supports hard links. Choose a passphrase of at least twelve characters and confirm it when asked. Enter the same passphrase at import. The terminal hides the input.
+
+```sh
+agentinbox profile export /path/to/agentinbox.backup
+AGENTINBOX_DATA_DIR=/path/to/empty-profile agentinbox profile import /path/to/agentinbox.backup
+```
+
+These examples use the installed Linux CLI. With the Windows MSIX, run these commands in PowerShell. Set `AGENTINBOX_DATA_DIR` before import if you want to restore into a different, empty profile.
+
+```powershell
+AgentInbox.exe -B -m agentinbox profile export "$env:USERPROFILE\Documents\agentinbox.backup"
+AgentInbox.exe -B -m agentinbox profile import "$env:USERPROFILE\Documents\agentinbox.backup"
+```
+
+From a checkout, replace `agentinbox` with `python -B python/run.py`. The backup uses the runtime's OpenSSL AES-256-GCM and derives its key with scrypt. It includes account settings, selected folders, permission choices and saved incoming and SMTP passwords. Microsoft accounts keep their settings and need a new sign-in after import. Mail, Microsoft tokens, send history and Codex settings stay outside the backup.
+
+Import verifies the passphrase and file integrity before it writes credentials. It saves the passwords in the destination profile's operating-system keyring. When using a separate restored profile, set the same absolute `AGENTINBOX_DATA_DIR` for setup and regenerate the MCP configuration.
 
 ## Windows installation
 

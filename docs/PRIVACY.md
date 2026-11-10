@@ -10,7 +10,7 @@ AgentInbox connects your email to an assistant you choose. It uses IMAP or POP3 
 
 I am Umberto Giacobbi. For privacy questions about AgentInbox or information you send me, contact hello@umbertogiacobbi.biz.
 
-This policy covers the Windows app, Python engine and local MCP connection. AgentInbox does not upload your mailbox to a server I operate. Website browsing is covered by the separate [website privacy notice](https://umbertogiacobbi.biz/privacy/).
+This policy covers the Windows and Linux setup apps, Python engine and local MCP connection. AgentInbox does not upload your mailbox to a server I operate. Website browsing is covered by the separate [website privacy notice](https://umbertogiacobbi.biz/privacy/).
 
 ## Account settings and passwords
 
@@ -36,7 +36,7 @@ Passwords, Microsoft tokens and device-sign-in codes are not returned as MCP too
 
 ## Sending mail
 
-SMTP starts disabled. Enabling it for an account allows Codex or another connected MCP client to submit messages directly through `send_email`. The Windows app only configures accounts and permissions. AgentInbox does not open a second confirmation window; give your assistant the intended account, recipients, content and attachments before asking it to send.
+SMTP starts disabled. Enabling it for an account allows Codex or another connected MCP client to submit messages directly through `send_email`. The setup apps configure accounts and permissions. AgentInbox does not open a second confirmation window; give your assistant the intended account, recipients, content and attachments before asking it to send.
 
 The engine builds the message and reads selected local attachment files in memory for the submission. It does not save message bodies or attachment bytes to an outgoing queue. The configured SMTP server receives the message and recipients, and it and the recipients can retain copies. Server acceptance does not establish final delivery.
 
