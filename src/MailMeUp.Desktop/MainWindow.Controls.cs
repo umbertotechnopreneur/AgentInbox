@@ -185,20 +185,6 @@ public sealed partial class MainWindow
         return placeholder;
     }
 
-    /// <summary>Compose a provider choice with its leading native icon.</summary>
-    /// <param name="name">Accessible action name or visible choice label.</param>
-    /// <param name="glyph">Symbol glyph rendered using the native icon font.</param>
-    /// <param name="color">Packed 24-bit RGB color for the leading icon.</param>
-    private static ComboBoxItem PresetItem(string name, string glyph, uint color)
-    {
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        content.Children.Add(ColoredIcon(glyph, color));
-        content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
-        var item = new ComboBoxItem { Content = content };
-        AutomationProperties.SetName(item, name);
-        return item;
-    }
-
     /// <summary>Centers each tab icon and label without changing the stock TabViewItem template.</summary>
     /// <param name="name">Accessible action name or visible choice label.</param>
     /// <param name="glyph">Symbol glyph rendered using the native icon font.</param>

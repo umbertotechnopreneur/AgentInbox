@@ -27,7 +27,10 @@ import time
 import uuid
 from pathlib import Path
 
-from .config import SCHEMA_VERSION, account_input
+from .config import (
+    SCHEMA_VERSION, account_input, password_required, same_microsoft_context,
+    saved_password_reference, validate_passwords,
+)
 from .errors import MailError
 from .vault import Vault
 from .models import SavedAccount
@@ -341,8 +344,7 @@ class Store:
         account = account_input(value)
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
-        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(not isinstance(p, str) or len(p) > 4096 or "\0" in p or "\r" in p or "\n" in p for p in passwords.values()):
-            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
+        validate_passwords(passwords)
         oauth = account["authentication"]["method"] == "microsoft_oauth"
         if oauth and any(passwords.values()):
             raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")

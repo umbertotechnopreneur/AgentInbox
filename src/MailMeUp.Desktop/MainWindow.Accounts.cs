@@ -183,12 +183,11 @@ public sealed partial class MainWindow
     /// <summary>Create provider, identity, sign-in and access-permission controls.</summary>
     private StackPanel BuildIdentityTab()
     {
-        _preset = new ComboBox { Header = "Email provider", HorizontalAlignment = HorizontalAlignment.Stretch };
-        _preset.Items.Add(PresetItem("Other mail provider", "\uE713", 0x667789));
-        _preset.Items.Add(PresetItem("Gmail", "\uE715", 0xD94235));
-        _preset.Items.Add(PresetItem("iCloud", "\uE753", 0x3282CF));
-        _preset.Items.Add(PresetItem("Outlook.com", "\uE715", 0x1274C4));
-        _preset.Items.Add(PresetItem("Microsoft 365", "\uE71D", 0x8661C5));
+        _preset = new ComboBox
+        {
+            Header = "Email provider", HorizontalAlignment = HorizontalAlignment.Stretch,
+            SelectedValuePath = nameof(ProviderChoice.Id), ItemTemplate = (DataTemplate)Root.Resources["ProviderChoiceTemplate"]
+        };
 
         _label = Field("Connection name", "Personal, work, or a name you recognize");
         AutomationProperties.SetName(_label, "Connection name");

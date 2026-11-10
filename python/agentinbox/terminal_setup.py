@@ -97,11 +97,11 @@ def account_draft(application, client_id=None):
     if provider in PROVIDER_HELP:
         sys.stderr.write("Provider help: " + PROVIDER_HELP[provider] + "\n")
     auth = {"method": "password"}
-    if provider in {"outlook", "microsoft365"}:
+    if tenant := preset.get("microsoft_tenant"):
         if not client_id:
             raise MailError("microsoft_configuration", "Guided Microsoft setup requires --client-id PUBLIC_GUID from your app registration. See docs/CLI_SETUP_GUIDE.md#supply-a-public-client-registration.")
         auth = authentication({"method": "microsoft_oauth", "client_id": client_id,
-                               "tenant": "consumers" if provider == "outlook" else "organizations"})
+                               "tenant": tenant})
     elif client_id:
         raise MailError("invalid_arguments", "--client-id applies only to Outlook.com or Microsoft 365.")
     mailbox = address(_ask("Existing email address"))

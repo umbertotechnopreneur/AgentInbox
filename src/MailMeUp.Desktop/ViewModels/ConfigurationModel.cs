@@ -117,10 +117,13 @@ internal sealed class ConfigurationModel : ObservableModel
     /// <summary>Create a check model from an explicit validated account snapshot.</summary>
     /// <param name="snapshot">Validated account settings, transient passwords and expected revision for this operation.</param>
     /// <param name="saveAccount">Whether to save the checked account after explicit folder selection.</param>
-    /// <param name="smtpOnly">Whether to check only SMTP without requiring incoming credentials.</param>
     /// <param name="savedCheck">Whether this is a saved-account check that skips editing and folder-choice steps.</param>
-    internal AccountCheckModel CreateCheck(AccountSnapshot snapshot, bool saveAccount, bool smtpOnly, bool savedCheck = false) =>
-        new(_engine, this, snapshot, saveAccount, smtpOnly, savedCheck);
+    internal AccountCheckModel CreateCheck(AccountSnapshot snapshot, bool saveAccount, bool savedCheck = false) =>
+        new(_engine, this, snapshot, saveAccount, savedCheck);
+
+    /// <summary>Prepare an SMTP-only connection check.</summary>
+    /// <param name="snapshot">Sending settings and transient credentials for the check.</param>
+    internal AccountCheckModel CreateSmtpCheck(SmtpCheckSnapshot snapshot) => new(_engine, this, snapshot);
     public string SaveText => CreatingAccount ? "Create account" : "Save changes";
     public string SaveStatus => CreatingAccount ? "New connection" : Editor.HasChanges ? "Unsaved changes" : "All changes saved";
     public string SaveHint => CreatingAccount ? "Check this account and choose folders. For Microsoft, save the settings and sign in."
@@ -176,10 +179,10 @@ internal sealed class ConfigurationModel : ObservableModel
     internal async Task LoadAccountsAsync(CancellationToken cancellationToken)
     {
         var selected = Editor.Id;
-        var presetsResult = await _engine.ManageAsync("presets", new { }, cancellationToken);
-        var presets = presetsResult.Deserialize<Dictionary<string, ProviderPreset>>()
-            ?? throw new EngineException("The engine returned no email providers.");
-        Editor.SetPresets(presets);
+        var policyResult = await _engine.ManageAsync("account_editor", new { }, cancellationToken);
+        var policy = policyResult.Deserialize<AccountEditorPolicy>()
+            ?? throw new EngineException("The engine returned no account editor catalog.");
+        Editor.SetPolicy(policy);
         var result = await _engine.ManageAsync("list_accounts", new { }, cancellationToken);
         var accounts = result.EnumerateArray().Select(SavedAccount.Read).ToArray();
         _updatingAccounts = true;

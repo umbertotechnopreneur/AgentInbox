@@ -67,6 +67,7 @@ class ProviderPreset(TypedDict):
     incoming: dict[str, EndpointPreset]
     smtp: EndpointPreset | None
     authentication_methods: list[str]
+    microsoft_tenant: NotRequired[str]
     notice: NotRequired[str]
 
 

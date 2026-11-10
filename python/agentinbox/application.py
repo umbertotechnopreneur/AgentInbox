@@ -381,24 +381,19 @@ class MailApplication:
         """
         return self._send_result(self.sends.get(request_id))
 
-    def _check_credentials(self, value, passwords, expected_revision, protocols):
-        """Validate an editor snapshot and resolve credentials only for the requested checks.
+    def _check_credentials(self, account, passwords, expected_revision, protocols):
+        """Resolve credentials only for the requested endpoints in a validated snapshot.
 
         Args:
-            value: Untrusted current-form account payload validated without saving it.
-            passwords: Incoming and SMTP password fields; empty strings request
-                permitted saved-credential reuse.
+            account: Validated account or SMTP check settings, including OAuth context if used.
+            passwords: Transient password fields for the requested endpoints. An empty
+                string requests permitted saved-credential reuse.
             expected_revision: Saved account revision being edited or checked; None
                 denotes a new account.
             protocols: Endpoint keys whose credentials are required for this check
                 (incoming and/or smtp).
         """
-        account = account_input(value)
-        if not isinstance(passwords, dict) or set(passwords) != {"incoming", "smtp"} or any(
-            not isinstance(secret, str) or len(secret) > 4096 or any(c in secret for c in "\0\r\n")
-            for secret in passwords.values()
-        ):
-            raise MailError("invalid_credentials", "Check the passwords for reading and sending in AgentInbox.")
+        validate_passwords(passwords, smtp_only=protocols == ("smtp",))
         if expected_revision is not None and (type(expected_revision) is not int or expected_revision < 1):
             raise MailError("invalid_configuration", "An existing account revision must be a positive integer.")
         previous = self.store.account(account["id"]) if account["id"] else None
@@ -410,9 +405,7 @@ class MailApplication:
         if account["authentication"]["method"] == "microsoft_oauth":
             if any(passwords.values()):
                 raise MailError("invalid_credentials", "Microsoft sign-in does not need a password in this app.")
-            if previous is None or not previous["oauth_secret"] or any(
-                previous[key] != account[key] for key in ("authentication", "incoming", "smtp", "email")
-            ) or (account["send_enabled"] and not previous["send_enabled"]):
+            if previous is None or not previous["oauth_secret"] or not same_microsoft_context(previous, account):
                 raise MailError("authorization_required", "Save changes, then press Sign in with Microsoft before checking this account.")
             token = self.microsoft.access_token(previous)
             credentials = {protocol: {"password": "", "access_token": token} for protocol in ("incoming", "smtp")}
@@ -421,22 +414,21 @@ class MailApplication:
                 if account[protocol] is None:
                     continue
                 secret = passwords[protocol]
-                if not secret and previous and previous["authentication"] == account["authentication"] and previous[protocol] == account[protocol]:
-                    secret = self.store.vault.get(previous[protocol + "_secret"])
                 if not secret:
-                    purpose = "reading" if protocol == "incoming" else "sending"
-                    section = "Read mail" if protocol == "incoming" else "Send mail"
-                    raise MailError("password_required", f"Enter the password for {purpose} under {section}. A new server or email address needs its password entered again.")
+                    reference = saved_password_reference(previous, account, protocol)
+                    if reference:
+                        secret = self.store.vault.get(reference)
+                if not secret:
+                    raise password_required(protocol)
                 credentials[protocol] = {"password": secret}
-        return account, credentials
+        return credentials
 
     def check_smtp(self, value: dict, passwords: dict, expected_revision: int | None, progress=None) -> dict:
         """Check only current-form SMTP authentication without saving, reading or enabling sending.
 
         Args:
-            value: Untrusted current-form account payload validated without saving it.
-            passwords: Incoming and SMTP password fields; empty strings request
-                permitted saved-credential reuse.
+            value: Current SMTP settings and any required Microsoft authorization context.
+            passwords: Transient SMTP password; an empty string requests saved reuse.
             expected_revision: Saved account revision being edited or checked; None
                 denotes a new account.
             progress: Optional callback receiving a stage and state; it must not receive
@@ -444,9 +436,8 @@ class MailApplication:
         """
         if progress:
             progress("settings", "started")
-        account, credentials = self._check_credentials(value, passwords, expected_revision, ("smtp",))
-        if account["smtp"] is None:
-            raise MailError("smtp_not_configured", "Configure an SMTP server before checking its connection.")
+        account = smtp_check_input(value)
+        credentials = self._check_credentials(account, passwords, expected_revision, ("smtp",))
         if progress:
             progress("settings", "passed")
         with mail.smtp_connection(account["smtp"], **credentials["smtp"], progress=progress):
@@ -469,7 +460,8 @@ class MailApplication:
         if progress:
             progress("settings", "started")
         read_message = flag(read_message, "Reading a sample")
-        account, credentials = self._check_credentials(value, passwords, expected_revision, ("incoming", "smtp"))
+        account = account_input(value, discover_folders=not read_message)
+        credentials = self._check_credentials(account, passwords, expected_revision, ("incoming", "smtp"))
         if progress:
             progress("settings", "passed")
         connect = pop.pop_connection if account["incoming"]["protocol"] == "pop3" else mail.imap_connection

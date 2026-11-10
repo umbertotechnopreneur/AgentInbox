@@ -71,7 +71,10 @@ public sealed partial class MainWindow
         TextField(_smtpHost, nameof(AccountEditorModel.SendingHost));
         TextField(_smtpPort, nameof(AccountEditorModel.SendingPort));
         TextField(_smtpUser, nameof(AccountEditorModel.SendingEmail));
-        Choice(_preset, nameof(AccountEditorModel.PresetIndex));
+        ModelBinding.Bind(_preset, ItemsControl.ItemsSourceProperty, _configuration.Editor, nameof(AccountEditorModel.Providers));
+        ModelBinding.Bind(_preset, ComboBox.SelectedValueProperty, _configuration.Editor, nameof(AccountEditorModel.PresetId), BindingMode.TwoWay);
+        ModelBinding.Bind(_preset, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
+        _accountFields[nameof(AccountEditorModel.PresetId)] = _preset;
         ModelBinding.Bind(_authentication, ItemsControl.ItemsSourceProperty, _configuration.Editor, nameof(AccountEditorModel.AuthenticationChoices));
         Choice(_authentication, nameof(AccountEditorModel.AuthenticationIndex));
         Choice(_tenant, nameof(AccountEditorModel.TenantIndex));
@@ -82,6 +85,7 @@ public sealed partial class MainWindow
         PasswordField(_smtpPassword, nameof(AccountEditorModel.SendingPassword));
         ModelBinding.Bind(_readEnabled, ToggleSwitch.IsOnProperty, _configuration.Editor, nameof(AccountEditorModel.ReadEnabled), BindingMode.TwoWay);
         ModelBinding.Bind(_configureSmtp, ToggleSwitch.IsOnProperty, _configuration.Editor, nameof(AccountEditorModel.ConfigureSending), BindingMode.TwoWay);
+        _accountFields[nameof(AccountEditorModel.ConfigureSending)] = _configureSmtp;
         ModelBinding.Bind(_sendEnabled, ToggleSwitch.IsOnProperty, _configuration.Editor, nameof(AccountEditorModel.SendEnabled), BindingMode.TwoWay);
         foreach (var control in new Control[] { _readEnabled, _configureSmtp, _sendEnabled, _checkConnection, _microsoftSignIn, _cancelAccount, _createFirstAccount })
             ModelBinding.Bind(control, Control.IsEnabledProperty, _configuration, nameof(ConfigurationModel.IsIdle));
