@@ -44,6 +44,8 @@ Guided `accounts add` requires an interactive terminal. Omit both `--file` and `
 
 ## Back up and restore accounts
 
+In the Windows app, open **Accounts** and choose **Export accounts** or **Import accounts**. You can import only into an empty AgentInbox profile.
+
 Run the commands in your own terminal. Export to a new filename in a directory that supports hard links. Choose a passphrase of at least twelve characters and confirm it when asked. Enter the same passphrase at import. The terminal hides the input.
 
 ```sh
@@ -51,7 +53,14 @@ agentinbox profile export /path/to/agentinbox.backup
 AGENTINBOX_DATA_DIR=/path/to/empty-profile agentinbox profile import /path/to/agentinbox.backup
 ```
 
-These examples use the installed Linux CLI. From a checkout, replace `agentinbox` with `python -B python/run.py`. The backup uses the runtime's OpenSSL AES-256-GCM and derives its key with scrypt. It includes account settings, selected folders, permission choices and saved incoming and SMTP passwords. Microsoft accounts keep their settings and need a new sign-in after import. Mail, Microsoft tokens, send history and Codex settings stay outside the backup.
+These examples use the installed Linux CLI. With the Windows MSIX, run these commands in PowerShell. Set `AGENTINBOX_DATA_DIR` before import if you want to restore into a different, empty profile.
+
+```powershell
+AgentInbox.exe -B -m agentinbox profile export "$env:USERPROFILE\Documents\agentinbox.backup"
+AgentInbox.exe -B -m agentinbox profile import "$env:USERPROFILE\Documents\agentinbox.backup"
+```
+
+From a checkout, replace `agentinbox` with `python -B python/run.py`. The backup uses the runtime's OpenSSL AES-256-GCM and derives its key with scrypt. It includes account settings, selected folders, permission choices and saved incoming and SMTP passwords. Microsoft accounts keep their settings and need a new sign-in after import. Mail, Microsoft tokens, send history and Codex settings stay outside the backup.
 
 Import verifies the passphrase and file integrity before it writes credentials. It saves the passwords in the destination profile's operating-system keyring. When using a separate restored profile, set the same absolute `AGENTINBOX_DATA_DIR` for setup and regenerate the MCP configuration.
 

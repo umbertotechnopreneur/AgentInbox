@@ -509,6 +509,16 @@ class MailApplication:
         """
         if not isinstance(arguments, dict):
             raise MailError("invalid_arguments", "Arguments must be an object.")
+        if operation in {"export_backup", "import_backup"}:
+            if set(arguments) != {"path", "passphrase"} or any(not isinstance(value, str) for value in arguments.values()):
+                raise MailError("invalid_arguments", "Supply a local backup filename and passphrase.")
+            path = Path(arguments["path"])
+            if not path.is_absolute():
+                raise MailError("invalid_backup_path", "Choose an absolute local backup filename.")
+            from .backup import export_backup, import_backup
+
+            backup = export_backup if operation == "export_backup" else import_backup
+            return backup(self.store, path, arguments["passphrase"])
         if operation == "presets" and not arguments:
             return PRESETS
         if operation == "account_editor" and not arguments:
