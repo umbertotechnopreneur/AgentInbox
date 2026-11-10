@@ -1,6 +1,6 @@
 # Accounts and signing in
 
-Configure accounts through the [command-line quick start](CLI_SETUP_GUIDE.md) or Windows setup. In Windows setup, choosing Outlook.com or Microsoft 365 selects **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
+Configure accounts through the [command-line quick start](CLI_SETUP_GUIDE.md) or the Windows and Linux setup apps. In either app, choosing Outlook.com or Microsoft 365 selects **Sign in with Microsoft** and the matching personal or work/school account type. Gmail and iCloud select **Use a password** and explain how to create a separate password for this app. Reading uses IMAP or POP3; optional sending uses SMTP.
 
 ## Passwords and app passwords
 
@@ -16,13 +16,13 @@ For Outlook.com and Microsoft 365, choose **Sign in with Microsoft**. Your usual
 
 The Outlook.com and Microsoft 365 choices select **Sign in with Microsoft**. AgentInbox shows a short code; enter it on Microsoft's page and choose whether to allow mail access. Reading and sending use the same sign-in, with no separate password fields. The underlying OAuth connection uses standard IMAP, POP or SMTP, not Microsoft Graph. [Microsoft protocol documentation](https://learn.microsoft.com/en-us/exchange/client-developer/legacy-protocols/how-to-authenticate-an-imap-pop-smtp-application-by-using-oauth/).
 
-Windows setup ships the owner's existing public Microsoft client ID in `src/MailMeUp.Desktop/appsettings.json`, copied beside the application when built and published. It is not a password or client secret and is not shown in the account form. Missing or invalid application settings fail at startup. Saved OAuth accounts retain the client ID associated with their tokens; selecting a Microsoft preset uses the shipped registration.
+Both setup apps ship the public Microsoft client ID from `src/MailMeUp.Desktop/appsettings.json`. It is not a password or client secret and is not shown in the account form. Missing or invalid application settings fail at startup. Saved OAuth accounts retain the client ID associated with their tokens; selecting a Microsoft preset uses the shipped registration.
 
 The recovered registration has not been verified against Microsoft's service for the current device-code flow or mail protocol scopes. Recovery of an ID does not prove it supports these requirements. For maintainers configuring this registration:
 
 1. Choose supported account types that include the account you intend to connect.
 2. Enable **Allow public client flows** for device-code authentication.
-3. Put the Application (client) ID in `MicrosoftClientId` in the desktop application settings. Account configuration still supports `common`, `organizations`, `consumers` or an explicit tenant GUID; source-only local management callers supply the ID in their authentication settings.
+3. Put the Application (client) ID in `MicrosoftClientId` in the desktop application settings. Account configuration still supports `common`, `organizations`, `consumers` or an explicit tenant GUID; CLI and local management callers supply the ID in their authentication settings.
 4. Use the delegated mail permissions for the selected incoming protocol, plus SMTP only when sending is enabled. No application client secret is used.
 
 Registration creates the application identity; bundling its ID does not create or validate the registration. [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app), [public-client configuration](https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-applications).
@@ -64,7 +64,7 @@ Account JSON stores non-secret settings and permission choices, not password or 
 | macOS | Keychain through native APIs |
 | Linux | Native `libsecret` APIs with an unlocked Secret Service keyring |
 
-The macOS and Linux implementations are source-only and untested. I welcome contributor pull requests that improve them and document the platform, credential path and checks actually performed.
+On Linux, open **Troubleshooting** and choose **Check keyring access** to verify access in your session. The same disposable check is available through `agentinbox doctor --check-storage`.
 
 Windows credentials are limited to 2,560 UTF-8 bytes; oversized values fail instead of switching to a file. Microsoft access tokens stay only in process memory. Refresh tokens remain in protected storage and are replaced after successful refresh without changing account settings.
 

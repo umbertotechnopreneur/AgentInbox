@@ -67,9 +67,7 @@ Your mail stays with its provider. Your assistant may send requested content to 
 
 ## Need help?
 
-Windows 11 supports x64 and ARM64. Linux and macOS use the Python source only, with Python 3.11 or newer.
-
-On Linux, start with the [terminal setup guide](docs/LINUX_SETUP.md): check your keyring, add mailboxes with guided prompts and generate your MCP connection.
+Windows 11 supports x64 and ARM64. On Linux, use the [GTK setup app or command line](docs/LINUX_SETUP.md) with Python 3.11 or newer. Debian-based systems can install local `.deb` builds. On macOS, run the Python CLI from source.
 
 [Accounts and passwords](docs/AUTHENTICATION.md) · [Troubleshooting](docs/RECOVERY.md) · [Build and contribute](docs/DEVELOPMENT.md) · [How it works](docs/ARCHITECTURE.md)
 

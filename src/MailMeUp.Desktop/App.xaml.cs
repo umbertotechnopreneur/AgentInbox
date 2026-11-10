@@ -20,7 +20,6 @@
 using System.Runtime.InteropServices;
 using MailMeUp.Desktop.Services;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 
 namespace MailMeUp.Desktop;
@@ -59,9 +58,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (window is null) return;
         try
         {
-            if (window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
-                presenter.Restore();
-            window.Activate();
+            window.ShowSetupWindow();
             SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(window));
         }
         catch (Exception)

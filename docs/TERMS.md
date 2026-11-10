@@ -12,7 +12,7 @@ I am Umberto Giacobbi, and I maintain AgentInbox with help from contributors. Co
 
 The public source is [MIT-licensed](https://github.com/umbertotechnopreneur/AgentInbox/blob/main/LICENSE). That license governs your rights to use, copy, modify and distribute it. These terms do not remove those rights. Third-party components retain their own licenses.
 
-The Python engine and Windows configuration app are in development. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64. Linux and macOS are source-only, without compiled distributions or commercial support. Source availability does not establish platform compatibility or Store availability.
+The Python engine and configuration apps are in development. Windows commercial distribution is MSIX for Windows 11 x64 and ARM64. Linux Debian packages are available for local builds. On macOS, you run the Python CLI from source. Commercial support is outside scope on Linux and macOS.
 
 ## Authorized accounts and data
 

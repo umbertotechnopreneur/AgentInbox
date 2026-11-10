@@ -36,6 +36,8 @@ internal sealed class ConfigurationModel : ObservableModel
     private string _page = "accounts";
     private int _editorTab;
     private bool _updatingAccounts;
+    private bool _refreshingActivity;
+    private TrayActivity? _activity;
 
     /// <summary>Initialize the owned model or native view and its explicit dependencies.</summary>
     /// <param name="engine">Shared adapter for the local Python management contract.</param>
@@ -57,6 +59,27 @@ internal sealed class ConfigurationModel : ObservableModel
         Assistant.PropertyChanged += (_, _) => Notify();
     }
 
+    internal TrayActivity? Activity { get => _activity; private set => Set(ref _activity, value); }
+
+    /// <summary>Refresh live MCP status without changing account editor state.</summary>
+    /// <param name="cancellationToken">Configuration application lifetime token.</param>
+    internal async Task RefreshActivityAsync(CancellationToken cancellationToken)
+    {
+        if (_refreshingActivity || cancellationToken.IsCancellationRequested) return;
+        _refreshingActivity = true;
+        try
+        {
+            var result = await _engine.ManageAsync("activity_status", new { }, cancellationToken);
+            Activity = new TrayActivity(result.GetProperty("mcp_connected").GetBoolean(),
+                result.GetProperty("has_mailboxes").GetBoolean());
+        }
+        catch (Exception)
+        {
+            if (!cancellationToken.IsCancellationRequested) Activity = null;
+        }
+        finally { _refreshingActivity = false; }
+    }
+
     public AccountEditorModel Editor { get; }
     public MicrosoftSignInModel SignIn { get; }
     public AssistantConnectionModel Assistant { get; }
@@ -68,6 +91,8 @@ internal sealed class ConfigurationModel : ObservableModel
         set { if (!_updatingAccounts) SelectedAccount = value?.Account; }
     }
     public bool CanTestAll => IsIdle && Accounts.Count > 0;
+    public bool CanExportAccounts => IsIdle && AccountsLoaded && Accounts.Count > 0;
+    public bool CanImportAccounts => IsIdle && AccountsLoaded && !CreatingAccount;
     public NotificationModel Notice { get; } = new();
     public NotificationModel Cleanup { get; } = new();
     public bool IsBusy { get => _isBusy; set { if (Set(ref _isBusy, value)) Notify(); } }
@@ -169,6 +194,48 @@ internal sealed class ConfigurationModel : ObservableModel
         }
         finally { _updatingAccounts = false; }
         Notify();
+    }
+
+    /// <summary>Export all saved accounts or import a backup and refresh the account list.</summary>
+    /// <param name="exporting">Whether to write a new encrypted backup instead of restoring one.</param>
+    /// <param name="chooseBackup">Native prompt for the local file and passphrase, or null on cancellation.</param>
+    /// <param name="cancellationToken">Configuration window lifetime token.</param>
+    internal async Task BackUpAccountsAsync(bool exporting,
+        Func<Task<(string Path, string Passphrase, string Confirmation)?>> chooseBackup, CancellationToken cancellationToken)
+    {
+        if (!exporting && (Accounts.Count > 0 || CreatingAccount))
+            throw new EngineException("Import requires an empty AgentInbox profile. Use a separate profile to keep your existing accounts.");
+
+        var request = await chooseBackup();
+        if (request is not { } backup || cancellationToken.IsCancellationRequested) return;
+        if (exporting && !string.Equals(backup.Passphrase, backup.Confirmation, StringComparison.Ordinal))
+            throw new EngineException("The passphrases did not match. No backup was written.");
+
+        var result = await _engine.ManageAsync(exporting ? "export_backup" : "import_backup",
+            new { path = backup.Path, passphrase = backup.Passphrase }, cancellationToken);
+        var count = result.GetProperty("accounts").GetInt32();
+        if (exporting)
+        {
+            var cleanupPending = result.GetProperty("temporary_cleanup_pending").GetBoolean();
+            var message = $"The encrypted backup contains {count} account(s).";
+            if (cleanupPending) message += " An encrypted temporary file could not be removed from the destination folder.";
+            Notice.Show("Backup saved", message, cleanupPending ? 2 : 1);
+            return;
+        }
+
+        var restored = $"Restored {count} account(s).";
+        if (result.GetProperty("microsoft_signin_required").GetInt32() > 0)
+            restored += " Sign in again to your Microsoft accounts.";
+        try
+        {
+            await LoadAccountsAsync(cancellationToken);
+            Notice.Show("Accounts imported", restored, 1);
+        }
+        catch (Exception)
+        {
+            Notice.Show("Accounts imported", restored + " Reopen AgentInbox to refresh the account list.", 2);
+        }
+        ApplyCleanup(result);
     }
 
     /// <summary>Commit the validated account snapshot through the Python settings operation.</summary>
@@ -368,3 +435,6 @@ internal sealed class NotificationModel : ObservableModel
         Title = title; Message = message; Severity = severity; IsOpen = true;
     }
 }
+
+/// <summary>A local MCP connection and mailbox presence snapshot.</summary>
+internal readonly record struct TrayActivity(bool Connected, bool HasMailboxes);

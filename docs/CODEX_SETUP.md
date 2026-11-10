@@ -2,7 +2,7 @@
 
 I wanted one assistant connection for all my mailboxes. Connect as many compatible accounts as you need from Gmail, Microsoft, iCloud, GoDaddy and other IMAP/POP3 providers. One local MCP connection exposes all enabled accounts and their selected folders. Your AI agent can work across dozens of IMAP folders across mailboxes, searching each selected account and folder in turn. You do not need a separate MCP registration for each mailbox. IMAP allows up to twenty selected folders per account; POP3 exposes one INBOX per account.
 
-Windows setup guides you through connecting Codex. Another assistant can use the same mail tools if you configure its local MCP client manually. Codex starts AgentInbox on your PC when it needs its mail tools. Windows setup adds an entry to Codex's settings file. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+The Windows and Linux setup apps guide you through connecting Codex. Another assistant can use the same mail tools if you configure its local MCP client manually. Codex starts AgentInbox on the machine that runs its MCP process. See the [official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ## Installed Windows app
 
@@ -26,6 +26,10 @@ The packaged configuration starts the stable execution alias at `%LOCALAPPDATA%\
 
 The configuration sets `AGENTINBOX_DATA_DIR` to the app's physical profile. Keep the execution alias enabled in Windows app execution aliases settings.
 
+## Installed Linux app
+
+Open **Connect Codex** in [Linux setup](LINUX_SETUP.md). Use **Connect or update Codex** to register your profile with the local Codex CLI, or copy the connection settings. **Check Codex settings** inspects the user-level entry. **Test local MCP startup** starts the generated command and requests tool definitions. In a new Codex chat, paste the account access prompt from **Troubleshooting** to verify which accounts and folders Codex can see.
+
 ## Source checkout
 
 Choose a Python 3.11+ interpreter and the checkout's `python/run.py`. Configure your client's local stdio MCP registration to start:
@@ -38,14 +42,14 @@ Pass `-B`, the script path and `mcp` as separate arguments. Do not depend on the
 
 ### Linux and macOS prerequisites
 
-Use Python 3.11 or newer on the machine running the MCP client. Configure accounts through the [management CLI](CLI_REFERENCE.md); the graphical setup app is Windows-only. The Python engine uses the standard library, but credential storage needs the operating system's native facilities:
+Use Python 3.11 or newer on the machine running the MCP client. Configure accounts through the [management CLI](CLI_REFERENCE.md) or the [Linux setup app](LINUX_SETUP.md). The Python engine uses the standard library, but credential storage needs the operating system's native facilities:
 
 - On Linux, install libsecret through your distribution and make an unlocked Secret Service keyring available in the same user session as the MCP process. Python alone is insufficient. A headless or SSH session needs its own working Secret Service session; no plaintext storage is provided.
 - On macOS, make the login Keychain available to the user running the MCP process.
 
 Without an explicit `AGENTINBOX_DATA_DIR`, Linux uses `$XDG_DATA_HOME/agentinbox`, or `~/.local/share/agentinbox` when `XDG_DATA_HOME` is unset or empty. A relative value is rejected. macOS uses `~/Library/Application Support/AgentInbox`. To avoid selecting a different profile, pass the same absolute `AGENTINBOX_DATA_DIR` to management commands and the MCP client.
 
-On Linux, the [terminal guide](LINUX_SETUP.md) covers guided `accounts add`, `doctor --check-storage` and `mcp-config`. The latter prints a stdio JSON entry with absolute interpreter, source and profile paths without editing your client's settings. Register the entry in your client, then start a new session and request the account list.
+On Linux, the [Linux setup guide](LINUX_SETUP.md) covers guided `accounts add`, `doctor --check-storage` and `mcp-config`. The latter prints a stdio JSON entry with absolute interpreter, source and profile paths without editing your client's settings. Register the entry in your client, then start a new session and request the account list.
 
 ## Use the same profile
 
@@ -53,7 +57,7 @@ Configure accounts locally first. The MCP process must use the same profile; an 
 
 Start a new client session after changing its configuration. List accounts, search one account in a short date range, then read a selected message. Process startup does not prove client integration or mailbox access works.
 
-Sending requires SMTP and sending permission to be enabled in local setup, using the Windows app or CLI. Your MCP client submits an explicitly requested message immediately through `send_email`; AgentInbox does not open another approval window. Keep the request ID to check unresolved outcomes, and never retry them automatically.
+Sending requires SMTP and sending permission to be enabled in local setup, using either setup app or the CLI. Your MCP client submits an explicitly requested message immediately through `send_email`; AgentInbox does not open another approval window. Keep the request ID to check unresolved outcomes, and never retry them automatically.
 
 See [MCP tools](MCP_CONTRACT.md) and [privacy](PRIVACY.md).
 
@@ -65,7 +69,7 @@ The files under `integrations/codex` are source templates. When source packaging
 python -B scripts/export-plugin.py --data-dir <absolute-profile-directory>
 ```
 
-Use `--python <absolute-interpreter>` if the client should use a different Python installation. The engine has no GUI dependency; the Windows app is only for configuration.
+Use `--python <absolute-interpreter>` if the client should use a different Python installation. The engine has no GUI dependency; the setup apps are for local configuration.
 
 Export on each target machine. The exporter preserves the interpreter path you supply, including a virtual environment's Python symlink; resolving that link could select the base installation instead. On Linux and macOS, the selected interpreter must have execute permission. An existing file cannot be used as the profile directory. The exporter checks paths without starting the interpreter or checking its version.
 

@@ -122,6 +122,7 @@ public sealed partial class MainWindow : Window
         if (_loaded) return;
         _loaded = true;
         Navigation.SelectedItem = Navigation.MenuItems[0];
+        InitializeTray();
     }
 
     /// <summary>Show the native mail icon when a provider favicon cannot load.</summary>
@@ -171,8 +172,13 @@ public sealed partial class MainWindow : Window
     /// <param name="args">The item the user invoked without changing the selected page.</param>
     private async void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
-        if (args.InvokedItemContainer != AboutItem || !AboutItem.IsEnabled || _lifetime.IsCancellationRequested) return;
+        if (args.InvokedItemContainer == AboutItem) await ShowAboutAsync();
+    }
 
+    /// <summary>Present the About dialog from setup navigation or the tray.</summary>
+    private async Task ShowAboutAsync()
+    {
+        if (!AboutItem.IsEnabled || !_configuration.IsIdle || _lifetime.IsCancellationRequested) return;
         AboutItem.IsEnabled = false;
         try
         {
