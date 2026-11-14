@@ -163,7 +163,7 @@ def main():
                 "local email MCP bridge and CLI\n Connect existing IMAP and POP3 mailboxes and optional SMTP through one\n stdio MCP connection. Uses the system Python and Secret Service keyring.",
                 engine_files)
         package(work, "agentinbox", version,
-                f"agentinbox-engine (= {version}), python3-gi, gir1.2-gtk-4.0 (>= 4.8)",
+                f"agentinbox-engine (= {version}), python3-gi, gir1.2-gtk-4.0 (>= 4.8), gir1.2-adw-1 (>= 1.2)",
                 "graphical setup for the AgentInbox email MCP bridge\n Configure existing mailboxes, choose folders and permissions, and connect\n an AI assistant to the shared AgentInbox engine.",
                 setup_files)
         desktop = work / "agentinbox/usr/share/applications" / f"{APP_ID}.desktop"

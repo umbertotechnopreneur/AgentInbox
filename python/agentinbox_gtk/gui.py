@@ -30,7 +30,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
-from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from agentinbox import __version__
 from agentinbox.application import MailApplication
@@ -224,21 +225,39 @@ def choice(options, selected, name, change, *, compact=False, providers=None):
     return widget
 
 
+def setting_row(title, widget, subtitle=""):
+    """Put a native control at the end of a GNOME preference row.
+
+    Args:
+        title: Plain-text title describing the setting.
+        widget: Native bound input or action to display on the right.
+        subtitle: Optional explanation displayed below the setting title.
+    """
+    row = Adw.ActionRow(title=title, subtitle=subtitle, use_markup=False)
+    row.set_title_lines(2)
+    row.set_subtitle_lines(2)
+    widget.set_valign(Gtk.Align.CENTER)
+    widget.set_hexpand(False)
+    row.add_suffix(widget)
+    row.set_activatable_widget(widget)
+    return row
+
+
 def toggle(model, field, text, tooltip):
-    """Bind one checkbox to a boolean draft property.
+    """Bind a native GNOME switch row to a boolean model property.
 
     Args:
         model: Observable editor draft.
-        field: GObject property bound to the active state.
-        text: Visible and accessible checkbox label.
+        field: GObject property bound to the switch state.
+        text: Visible and accessible row title.
         tooltip: Explanation of the permission or setting.
     """
-    widget = describe(Gtk.CheckButton(label=text), text, tooltip)
+    widget = describe(Gtk.Switch(), text, tooltip)
     model.bind_property(field, widget, "active", TWO_WAY)
-    return widget
+    return setting_row(text, widget, tooltip)
 
 
-class SetupWindow(Gtk.ApplicationWindow):
+class SetupWindow(Adw.ApplicationWindow):
     """Bind GTK pages to one configuration model for the window lifetime."""
 
     def __init__(self, app, model):
@@ -248,7 +267,7 @@ class SetupWindow(Gtk.ApplicationWindow):
             app: Owning GTK application instance.
             model: Observable configuration state for the selected profile.
         """
-        super().__init__(application=app, title="AgentInbox", default_width=880, default_height=590)
+        super().__init__(application=app, title="AgentInbox", default_width=980, default_height=720)
         self.model = model
         self.tray = None
         self.about_window = None
@@ -257,9 +276,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.quitting = False
         self.fields = {}
         self.section_binding = None
-        root = column(14)
-        for side in ("top", "bottom", "start", "end"):
-            root.set_property(f"margin-{side}", 18)
+        root = column(0)
         self.settings_view = root
         style = Gtk.CssProvider()
         style.load_from_data(SIGNIN_STYLE)
@@ -268,19 +285,25 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.signin = Gtk.Box(visible=False)
         self.signin.add_css_class("agentinbox-signin-shade")
         overlay.add_overlay(self.signin)
-        self.set_child(overlay)
+        self.set_content(overlay)
         keys = Gtk.EventControllerKey()
         keys.connect("key-pressed", self.signin_key)
         self.add_controller(keys)
-        self.pages = Gtk.Stack(vexpand=True, vhomogeneous=False)
-        nav = Gtk.StackSwitcher(stack=self.pages, halign=Gtk.Align.START, hexpand=True)
-        navigation = Gtk.Box(spacing=8)
-        navigation.append(nav)
-        navigation.append(button("About", "Open information about AgentInbox in a separate window.",
-                                 self.show_about))
-        root.append(navigation)
-        root.append(Gtk.Separator())
-        root.append(self.pages)
+        self.pages = Adw.ViewStack(vexpand=True, vhomogeneous=False)
+        nav = describe(Adw.ViewSwitcher(stack=self.pages, policy=Adw.ViewSwitcherPolicy.WIDE),
+                       "Settings pages", "Switch between accounts, connection settings and troubleshooting.")
+        header = Adw.HeaderBar(title_widget=nav)
+        header.add_css_class("flat")
+        header.pack_end(button("About", "Open information about AgentInbox in a separate window.", self.show_about))
+        root.append(header)
+
+        content = column(16)
+        for side in ("top", "bottom", "start", "end"):
+            content.set_property(f"margin-{side}", 24)
+        clamp = Adw.Clamp(maximum_size=840, tightening_threshold=760, child=content)
+        clamp.set_vexpand(True)
+        root.append(clamp)
+        content.append(self.pages)
         status = Gtk.Box(spacing=8)
         notice = label()
         notice.set_lines(2)
@@ -291,7 +314,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         details = button("Details", "Read the complete status message.",
                          lambda: self.show_text("Operation details", self.model.notice))
         status.append(details)
-        root.append(status)
+        content.append(status)
         cleanup = button("Retry protected-data cleanup", "Retry removing retired credentials from your keyring.",
                          model.retry_cleanup)
         model.bind_property("cleanup-pending", cleanup, "visible", SYNC)
@@ -319,11 +342,6 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.assistant_page()
         self.troubleshooting_page()
         model.bind_property("page", self.pages, "visible-child-name", TWO_WAY)
-        tab = nav.get_first_child()
-        for tab_name in ("Accounts", "Connect Codex", "Troubleshooting"):
-            describe(tab, tab_name, f"Open the {tab_name} page")
-            tab = tab.get_next_sibling()
-
         for field in ("busy", "flow"):
             model.connect(f"notify::{field}", self.update_activity, cleanup)
         model.connect("notify::accounts", self.render_accounts)
@@ -345,7 +363,9 @@ class SetupWindow(Gtk.ApplicationWindow):
             name: Stable navigation ID.
             title: Visible navigation tab label.
         """
-        self.pages.add_titled(content, name, title)
+        icons = {"accounts": "mail-unread-symbolic", "assistant": "insert-link-symbolic",
+                 "troubleshooting": "help-browser-symbolic"}
+        self.pages.add_titled_with_icon(content, name, title, icons[name])
 
     def accounts_page(self):
         """Build saved-account controls and the draft editor slot."""
@@ -401,9 +421,11 @@ class SetupWindow(Gtk.ApplicationWindow):
         self.account_list.append(actions)
 
         if not accounts and not self.model.draft:
-            self.account_list.append(label("Connect your first mailbox", heading=True))
-            self.account_list.append(label("Add Gmail, Microsoft, iCloud, GoDaddy or another compatible mailbox. "
-                                           "Choose which folders to share through one MCP connection."))
+            empty = Adw.StatusPage(
+                title="Connect your mailboxes", icon_name="mail-unread-symbolic",
+                description="Add Gmail, Microsoft, iCloud, GoDaddy or another compatible mailbox. "
+                            "Choose the folders to share through one MCP connection.")
+            self.account_list.append(empty)
 
     def render_editor(self, *_change):
         """Bind the active draft to the three native editor tabs.
@@ -427,7 +449,9 @@ class SetupWindow(Gtk.ApplicationWindow):
         logo = Gtk.Image.new_from_file(provider_image_path(draft.preset))
         logo.set_pixel_size(28)
         header.append(describe(logo, provider_name))
-        heading = label("Edit connection" if draft.identity else "New connection", heading=True)
+        heading = label(draft.label or ("Edit connection" if draft.identity else "New connection"), heading=True)
+        heading.set_lines(1)
+        heading.set_ellipsize(Pango.EllipsizeMode.END)
         heading.set_hexpand(True)
         header.append(heading)
         header.append(tabs)
@@ -446,8 +470,6 @@ class SetupWindow(Gtk.ApplicationWindow):
             tab = tab.get_next_sibling()
         self.section_binding = self.model.bind_property("editor-section", sections, "visible-child-name", TWO_WAY)
         self.editor.append(sections)
-        self.editor.append(Gtk.Separator())
-
         actions = Gtk.Box(spacing=8)
         save = button("Save changes", "Save the current account and its sharing permissions.", self.model.save)
         save.add_css_class("suggested-action")
@@ -459,6 +481,8 @@ class SetupWindow(Gtk.ApplicationWindow):
                                   lambda: self.confirm("Remove this account?",
                                                        "This removes local access to the mailbox. Your email stays with your provider.",
                                                        "Remove account", self.model.remove)))
+        if draft.identity:
+            actions.get_last_child().add_css_class("destructive-action")
         self.editor.append(actions)
 
     def identity_fields(self, draft):
@@ -467,38 +491,36 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             draft: Current observable account editor.
         """
-        content = column()
+        content = column(16)
+        group = Adw.PreferencesGroup(title="Mailbox", description="Connect an existing email account.")
         providers = {key: preset["label"] for key, preset in self.model.presets.items()}
-
         provider = choice(providers, draft.preset, "Email provider", self.model.select_provider,
                           providers={key: key for key in providers})
         self.fields["preset"] = ("account", provider)
-        grid = Gtk.Grid(column_spacing=12, row_spacing=8)
-        grid.attach(Gtk.Label(label="Provider", xalign=0), 0, 0, 1, 1)
-        grid.attach(provider, 1, 0, 1, 1)
-        self.entry(grid, 1, "Email address", draft, "email", "email", "account", 254)
-        self.entry(grid, 2, "Connection name", draft, "label", "label", "account", 100,
-                   placeholder="Defaults to your email address")
-        content.append(grid)
+        group.add(setting_row("Provider", provider))
+        self.entry(group, "Email address", draft, "email", "email", "account", 254)
+        self.entry(group, "Connection name", draft, "label", "label", "account", 100,
+                   hint="Defaults to your email address")
+        group.add(toggle(draft, "read-enabled", "Allow reading",
+                         "Search and read messages in the folders you choose."))
+        content.append(group)
 
         preset = self.model.presets[draft.preset]
-        if draft.microsoft and not preset.get("microsoft_tenant"):
-            content.append(label("Sign in on Microsoft's website to authorize this mailbox."))
-        elif preset.get("notice") and (draft.microsoft or not preset.get("microsoft_tenant")):
-            content.append(label(preset["notice"]))
+        if draft.microsoft:
+            notice = preset.get("notice", "Sign in on Microsoft's website to authorize this mailbox.")
         else:
-            content.append(label("Enter the mail settings from your provider. Use an app password if your provider requires one."))
-        if draft.preset in PROVIDER_HELP:
-            content.append(link(f"{preset['label']} sign-in help", PROVIDER_HELP[draft.preset]))
-
+            notice = preset.get("notice", "Use the server settings and app password supplied by your provider.")
+        help_group = Adw.PreferencesGroup(title="Sign-in", description=notice)
         actions = Gtk.Box(spacing=8)
-        actions.append(toggle(draft, "read-enabled", "Allow reading",
-                              "Let your assistant search and read in the folders you choose."))
         if draft.microsoft:
             actions.append(button("Sign in with Microsoft", "Save these settings and request a code for Microsoft's website.",
                                   lambda: self.model.save(sign_in=True)))
+            actions.get_first_child().add_css_class("suggested-action")
             actions.append(label("Sign-in saved" if draft.microsoft_connected else "Sign-in required"))
-        content.append(actions)
+        if draft.preset in PROVIDER_HELP:
+            actions.append(link("Provider help", PROVIDER_HELP[draft.preset]))
+        help_group.add(actions)
+        content.append(help_group)
         return content
 
     def incoming_fields(self, draft):
@@ -507,7 +529,7 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             draft: Current observable account editor.
         """
-        content = column()
+        content = column(16)
         content.append(self.endpoint_fields(draft.incoming, "incoming", draft))
         actions = Gtk.Box(spacing=8)
         actions.append(button("Check connection", "Check this draft and discover folders without saving or sending.",
@@ -570,85 +592,80 @@ class SetupWindow(Gtk.ApplicationWindow):
         Args:
             draft: Current observable account editor.
         """
-        content = column()
+        content = column(16)
+        permissions = Adw.PreferencesGroup(title="Sending")
         configure = toggle(draft, "configure-smtp", "Configure a sending server",
-                           "Add SMTP settings so you can check the sending connection.")
+                           "Set up SMTP for this mailbox.")
         self.fields["smtp.configured"] = ("smtp", configure)
-        content.append(configure)
-        settings = column()
+        permissions.add(configure)
+        send = toggle(draft, "send-enabled", "Allow sending",
+                      "Your assistant can send email when you explicitly ask.")
+        draft.bind_property("configure-smtp", send, "sensitive", SYNC)
+        permissions.add(send)
+        content.append(permissions)
+
+        settings = column(12)
         settings.append(self.endpoint_fields(draft.smtp, "smtp", draft))
-        actions = Gtk.Box(spacing=8)
-        actions.append(toggle(draft, "send-enabled", "Allow sending",
-                              "Let your assistant send through MCP when you explicitly request it."))
-        actions.append(button("Check sending connection", "Check SMTP sign-in without submitting email or saving changes.",
-                              lambda: self.model.check_draft(smtp_only=True)))
-        settings.append(actions)
+        settings.append(button("Check sending connection", "Check SMTP sign-in without submitting email or saving changes.",
+                               lambda: self.model.check_draft(smtp_only=True)))
         draft.bind_property("configure-smtp", settings, "visible", SYNC)
         content.append(settings)
         return content
 
     def endpoint_fields(self, endpoint, prefix, draft):
-        """Bind a compact desktop grid to an incoming or outgoing endpoint.
+        """Group native GNOME rows for an incoming or outgoing endpoint.
 
         Args:
             endpoint: Observable endpoint draft.
             prefix: Engine field prefix and editor section, either incoming or smtp.
             draft: Active account draft supplying protocol and authentication.
         """
-        grid = Gtk.Grid(column_spacing=12, row_spacing=8)
-        self.entry(grid, 0, "Server", endpoint, "host", f"{prefix}.host", prefix, 255)
-        self.entry(grid, 0, "Port", endpoint, "port", f"{prefix}.port", prefix, 5, column_index=2)
+        group = Adw.PreferencesGroup(title="Incoming server" if prefix == "incoming" else "Sending server")
+        self.entry(group, "Server", endpoint, "host", f"{prefix}.host", prefix, 255)
+
+        port = describe(Gtk.Entry(width_chars=5, max_width_chars=5, max_length=5,
+                                  input_purpose=Gtk.InputPurpose.DIGITS), "Port")
+        endpoint.bind_property("port", port, "text", TWO_WAY)
+        self.fields[f"{prefix}.port"] = (prefix, port)
         security = choice(SECURITY, endpoint.tls, "Connection security",
                           lambda selected: endpoint.set_property("tls", selected))
-        security.set_halign(Gtk.Align.START)
         self.fields[f"{prefix}.tls"] = (prefix, security)
-        grid.attach(Gtk.Label(label="Connection security", xalign=0), 0, 1, 1, 1)
-        grid.attach(security, 1, 1, 1, 1)
+        controls = Gtk.Box(spacing=8)
+        controls.append(port)
+        controls.append(security)
         if prefix == "incoming":
             protocols = {protocol: protocol.upper() for protocol in draft.protocols(self.model.presets)}
             protocol = choice(protocols, draft.protocol, "Incoming mail protocol", self.model.select_protocol)
-            protocol.set_hexpand(False)
             self.fields["incoming.protocol"] = (prefix, protocol)
-            grid.attach(Gtk.Label(label="Protocol", xalign=0), 2, 1, 1, 1)
-            grid.attach(protocol, 3, 1, 1, 1)
-        self.entry(grid, 2, "Sign-in username", endpoint, "username", f"{prefix}.username", prefix, 255,
-                   placeholder="Defaults to your email address", span=3)
+            controls.append(protocol)
+        group.add(setting_row("Connection", controls, "Encrypted connection with certificate validation"))
+        self.entry(group, "Sign-in username", endpoint, "username", f"{prefix}.username", prefix, 255,
+                   hint="Defaults to your email address")
         if not draft.microsoft:
-            self.entry(grid, 3, "Password or app password", endpoint, "password", f"passwords.{prefix}", prefix,
-                       4096, password=True, span=3)
-        return grid
+            self.entry(group, "Password or app password", endpoint, "password", f"passwords.{prefix}", prefix,
+                       4096, password=True)
+        return group
 
-    def entry(self, grid, row, text, model, field, engine_field, tab, maximum, *, placeholder="", password=False, column_index=0, span=1):
-        """Attach a labeled, bounded entry bound to an observable field.
+    def entry(self, group, text, model, field, engine_field, section, maximum, *, hint="", password=False):
+        """Add a labeled GNOME entry row bound to an observable field.
 
         Args:
-            grid: Parent native form grid.
-            row: Zero-based row in the grid.
-            text: Label and accessible entry name.
+            group: Preferences group receiving the bound row.
+            text: Visible and accessible entry title.
             model: Observable account or endpoint draft.
-            field: Model property bound to the entry text.
-            engine_field: Validation field path reported by the engine.
-            tab: Stable editor section name for the field.
-            maximum: Maximum number of editable characters.
-            placeholder: Optional native hint for a blank entry.
-            password: Use the native masked entry when True.
-            column_index: Zero-based grid column for the field label.
-            span: Number of grid columns occupied by the entry.
+            field: Model property bound to editable text.
+            engine_field: Shared validator's field path.
+            section: Stable editor section used for validation navigation.
+            maximum: Maximum accepted character count.
+            hint: Optional tooltip explaining how blank input is handled.
+            password: Whether the entry masks a transient secret.
         """
-        if password:
-            widget = Gtk.PasswordEntry(show_peek_icon=True, hexpand=True)
-            widget.get_delegate().set_max_length(maximum)
-        else:
-            widget = Gtk.Entry(max_length=maximum, hexpand=True, placeholder_text=placeholder)
-        describe(widget, text)
+        kind = Adw.PasswordEntryRow if password else Adw.EntryRow
+        widget = describe(kind(title=text, use_markup=False), text, hint or text)
+        widget.get_delegate().set_max_length(maximum)
         model.bind_property(field, widget, "text", TWO_WAY)
-        self.fields[engine_field] = (tab, widget)
-        if column_index:
-            widget.set_width_chars(maximum)
-            widget.set_max_width_chars(maximum)
-            widget.set_hexpand(False)
-        grid.attach(Gtk.Label(label=text, xalign=0), column_index, row, 1, 1)
-        grid.attach(widget, column_index + 1, row, span, 1)
+        self.fields[engine_field] = (section, widget)
+        group.add(widget)
 
     def focus_error(self, _model, _property):
         """Navigate to the field associated with the current safe engine error.
@@ -781,8 +798,9 @@ class SetupWindow(Gtk.ApplicationWindow):
     def assistant_page(self):
         """Show the registration and separate Codex and MCP check results."""
         page = column(12)
-        page.append(label("Connect Codex", heading=True))
-        page.append(label("One connection gives Codex access to the mailboxes and folders you choose."))
+        connection = Adw.PreferencesGroup(
+            title="Connect Codex",
+            description="One connection for the mailboxes and folders you choose.")
         self.assistant_actions = Gtk.Box(spacing=8)
         self.assistant_actions.append(button("Check Codex settings", "Inspect the user-level AgentInbox MCP entry.",
                                              self.model.check_codex))
@@ -792,18 +810,22 @@ class SetupWindow(Gtk.ApplicationWindow):
                                                                   "Register AgentInbox", self.model.connect_codex)))
         self.assistant_actions.append(button("Test local MCP startup", "Start the generated command and request tool definitions.",
                                              self.model.test_startup))
-        page.append(self.assistant_actions)
+        connect = self.assistant_actions.get_first_child().get_next_sibling()
+        connect.add_css_class("suggested-action")
+        for caption, field, icon in (
+            ("Codex registration", "codex-status", "insert-link-symbolic"),
+            ("Local startup", "startup-status", "utilities-terminal-symbolic"),
+        ):
+            row = Adw.ActionRow(title=caption, use_markup=False)
+            row.set_subtitle_lines(3)
+            row.add_prefix(Gtk.Image.new_from_icon_name(icon))
+            self.model.bind_property(field, row, "subtitle", SYNC)
+            connection.add(row)
+        connection.add(self.assistant_actions)
+        page.append(connection)
 
-        results = Gtk.Grid(column_spacing=12, row_spacing=6)
-        for row, (caption, field) in enumerate((("Codex", "codex-status"), ("Local MCP", "startup-status"))):
-            status = label(selectable=True)
-            self.model.bind_property(field, status, "label", SYNC)
-            results.attach(Gtk.Label(label=caption, xalign=0), 0, row, 1, 1)
-            results.attach(status, 1, row, 1, 1)
-        page.append(results)
-        page.append(label("After connecting, open a new Codex chat to check access."))
-        page.append(Gtk.Separator())
-        page.append(label("Manual setup", heading=True))
+        manual = Adw.PreferencesGroup(
+            title="Manual setup", description="Copy settings for Codex or another local MCP client.")
         actions = Gtk.Box(spacing=8)
         actions.append(button("Copy Codex command", "Copy the command for the selected profile.",
                               lambda: self.copy(self.model.codex_command())))
@@ -813,14 +835,16 @@ class SetupWindow(Gtk.ApplicationWindow):
                               lambda: self.show_text("Connection details", self.model.codex_command() + "\n\n"
                                                      + json.dumps(self.model.connection, indent=2), monospace=True)))
         actions.append(link("Setup guide", "https://learn.chatgpt.com/docs/extend/mcp?surface=cli"))
-        page.append(actions)
+        manual.add(actions)
+        page.append(manual)
+        page.append(label("After connecting, open a new Codex chat to check access."))
         self.add_page(page, "assistant", "Connect Codex")
 
     def troubleshooting_page(self):
         """Offer safe Codex prompts and the existing local profile diagnostics."""
         page = column(12)
-        page.append(label("Troubleshooting", heading=True))
-        page.append(label("Check the local profile, TLS and access to your keyring."))
+        checks = Adw.PreferencesGroup(
+            title="Local checks", description="Check the profile, encrypted connections and keyring access.")
         self.diagnostic_actions = Gtk.Box(spacing=8)
         self.diagnostic_actions.append(button("Check local setup", "Check local profile settings, TLS and keyring prerequisites.",
                                               self.model.check_profile))
@@ -841,10 +865,10 @@ class SetupWindow(Gtk.ApplicationWindow):
 
         self.model.connect("notify::diagnosis", update_result)
         result.set_sensitive(bool(self.model.diagnosis))
-        page.append(self.diagnostic_actions)
-        page.append(Gtk.Separator())
-        page.append(label("Ask Codex", heading=True))
-        page.append(label("Copy a prompt to check which mailboxes Codex can access or investigate a connection problem."))
+        checks.add(self.diagnostic_actions)
+        page.append(checks)
+        prompts = Adw.PreferencesGroup(
+            title="Ask Codex", description="Copy a prompt to check mailbox access or investigate a connection problem.")
         actions = Gtk.Box(spacing=8)
         actions.append(button("Copy access prompt", "Copy the prompt that lists the accessible mailboxes.",
                               lambda: self.copy(ACCOUNT_PROMPT)))
@@ -852,7 +876,8 @@ class SetupWindow(Gtk.ApplicationWindow):
                               lambda: self.copy(TROUBLESHOOTING_PROMPT)))
         actions.append(button("View prompts", "Read both prompts before copying.",
                               lambda: self.show_text("Codex prompts", ACCOUNT_PROMPT + "\n\n" + TROUBLESHOOTING_PROMPT)))
-        page.append(actions)
+        prompts.add(actions)
+        page.append(prompts)
         self.add_page(page, "troubleshooting", "Troubleshooting")
 
     def choose_backup_file(self, menu, exporting):
@@ -1105,7 +1130,7 @@ def main(argv=None):
         parser.error(str(error))
     # A custom profile can run independently of the normal desktop instance.
     flags = Gio.ApplicationFlags.NON_UNIQUE if os.environ.get("AGENTINBOX_DATA_DIR") else Gio.ApplicationFlags(0)
-    app = Gtk.Application(application_id=APP_ID, flags=flags)
+    app = Adw.Application(application_id=APP_ID, flags=flags)
 
     def activate(application):
         """Present the configuration window for this application instance.

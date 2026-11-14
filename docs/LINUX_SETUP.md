@@ -6,7 +6,7 @@ You can connect Gmail, Microsoft, iCloud, GoDaddy and other compatible IMAP/POP3
 
 ## Install the setup app
 
-On a Debian-based desktop with Python 3.11 or newer and GTK 4.8 or newer, install both matching local packages together. From their directory, run:
+On a Debian-based desktop with Python 3.11 or newer and GTK 4.8 or newer and libadwaita 1.2 or newer, install both matching local packages together. From their directory, run:
 
 ```sh
 sudo apt install ./agentinbox-engine_*_all.deb ./agentinbox_*_all.deb
@@ -20,7 +20,7 @@ To build the packages from a checkout, install `fakeroot` and `desktop-file-util
 fakeroot python3 -B scripts/build-linux-deb.py
 ```
 
-The build writes both packages and their SHA-256 checksums to `artifacts/linux-deb/<version>/`. They use the system Python. To run GTK directly from source, install `python3-gi` and `gir1.2-gtk-4.0`, then run `PYTHONPATH=python /usr/bin/python3 -B -m agentinbox_gtk.gui` from the checkout.
+The build writes both packages and their SHA-256 checksums to `artifacts/linux-deb/<version>/`. They use the system Python. To run GTK directly from source, install `python3-gi`, `gir1.2-gtk-4.0` and `gir1.2-adw-1`, then run `PYTHONPATH=python /usr/bin/python3 -B -m agentinbox_gtk.gui` from the checkout.
 
 ## Back up your accounts
 

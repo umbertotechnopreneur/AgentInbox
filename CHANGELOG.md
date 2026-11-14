@@ -1,6 +1,6 @@
 # Latest update
 
-## 2.0.10
+## 2.0.12
 
-- Show Microsoft sign-in in a centered Linux dialog with a larger code and a blurred backdrop.
-- Export encrypted backups and restore accounts from the Linux settings window.
+- Use native GNOME header navigation, preference groups, entry rows and switches in Linux setup.
+- Follow the system color preference while keeping drafts and configuration state in the model.
